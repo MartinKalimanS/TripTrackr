@@ -10,3 +10,7 @@ export * from './sync/tables';
 export * from './sync/records';
 export * from './sync/envelope';
 export * from './api/errors';
+export * from './api/auth';
+export * from './api/users';
+export * from './api/lookups';
+export * from './api/trips';

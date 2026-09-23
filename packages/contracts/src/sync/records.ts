@@ -80,18 +80,30 @@ const tripStopFields = {
 const departNotBeforeArrive = (s: { arrive_date: string; depart_date: string }) =>
   s.depart_date >= s.arrive_date;
 
-export const TripStopPushRecord = z
-  .strictObject({ ...pushMeta, ...tripStopFields })
-  .refine(departNotBeforeArrive, {
+/**
+ * The unrefined shapes are exported because zod cannot `.omit()`/`.extend()` a
+ * schema once a refinement is attached; the REST `TripStop` derives from the
+ * pull shape and re-applies `tripStopDatesInOrder` itself.
+ */
+export const tripStopDatesInOrder = {
+  check: departNotBeforeArrive,
+  params: {
     message: 'depart_date must not precede arrive_date',
-    path: ['depart_date'],
-  });
-export const TripStopPullRecord = z
-  .strictObject({ ...pullMeta, ...tripStopFields })
-  .refine(departNotBeforeArrive, {
-    message: 'depart_date must not precede arrive_date',
-    path: ['depart_date'],
-  });
+    path: ['depart_date'] as PropertyKey[],
+  },
+};
+
+export const TripStopPushShape = z.strictObject({ ...pushMeta, ...tripStopFields });
+export const TripStopPullShape = z.strictObject({ ...pullMeta, ...tripStopFields });
+
+export const TripStopPushRecord = TripStopPushShape.refine(
+  tripStopDatesInOrder.check,
+  tripStopDatesInOrder.params,
+);
+export const TripStopPullRecord = TripStopPullShape.refine(
+  tripStopDatesInOrder.check,
+  tripStopDatesInOrder.params,
+);
 
 // ---------------------------------------------------------------------------
 // expense_categories (custom rows only — system rows are reference data)
