@@ -57,7 +57,7 @@
 
 ## Notes on the translation from source documents
 
-The two source documents (`travelappblueprint.md`, `travelappfullspec.md`) are predominantly implementation-level: database schemas, endpoint tables, provider selections, hosting costs. None of that belongs in a specification. Each technical decision was traced back to the user-facing property it exists to guarantee, and only that property was recorded:
+The two source documents (`docs/travelappblueprint.md`, `docs/travelappfullspec.md`) are predominantly implementation-level: database schemas, endpoint tables, provider selections, hosting costs. None of that belongs in a specification. Each technical decision was traced back to the user-facing property it exists to guarantee, and only that property was recorded:
 
 | Source document says                                                                           | Specification says                                                                                                             |
 | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |

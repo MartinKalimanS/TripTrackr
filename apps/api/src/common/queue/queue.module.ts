@@ -1,10 +1,12 @@
 import {
   Global,
   Inject,
+  Logger,
   Module,
   type OnApplicationShutdown,
   type Provider,
 } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
@@ -50,11 +52,34 @@ const DEFAULT_JOB_OPTIONS = {
   removeOnFail: { age: 604_800 },
 } as const;
 
+/**
+ * Builds one producer-side queue.
+ *
+ * The error listener is not optional. BullMQ re-emits every connection error on
+ * the Queue, and an EventEmitter with no 'error' listener has nowhere to put it
+ * but the console — so a Redis that is down at boot, or that drops during a
+ * deploy, would spray raw stack traces past the structured logger and its
+ * redaction list. Here each one becomes a single line at error level, which is
+ * also what makes the outage visible rather than absorbed.
+ */
+export function createQueue(name: QueueName, connection: Redis, logger: Logger): Queue {
+  const queue = new Queue(name, {
+    connection,
+    defaultJobOptions: { ...DEFAULT_JOB_OPTIONS },
+  });
+
+  queue.on('error', (error: Error) => {
+    logger.error(`Queue "${name}": ${error.message}`);
+  });
+
+  return queue;
+}
+
 const queueProviders: Provider[] = Object.values(QUEUE_NAMES).map((name) => ({
   provide: queueToken(name),
   inject: [BULL_CONNECTION],
   useFactory: (connection: Redis): Queue =>
-    new Queue(name, { connection, defaultJobOptions: { ...DEFAULT_JOB_OPTIONS } }),
+    createQueue(name, connection, new Logger(QueueModule.name)),
 }));
 
 /**
@@ -71,17 +96,40 @@ const queueProviders: Provider[] = Object.values(QUEUE_NAMES).map((name) => ({
     { provide: BULL_CONNECTION, useFactory: createBullConnection },
     ...queueProviders,
   ],
-  exports: [BULL_CONNECTION, ...queueProviders.map((p) => (p as { provide: string }).provide)],
+  exports: [
+    BULL_CONNECTION,
+    ...queueProviders.map((p) => (p as { provide: string }).provide),
+  ],
 })
 export class QueueModule implements OnApplicationShutdown {
-  constructor(@Inject(BULL_CONNECTION) private readonly connection: Redis) {}
+  constructor(
+    @Inject(BULL_CONNECTION) private readonly connection: Redis,
+    private readonly moduleRef: ModuleRef,
+  ) {}
 
   /**
-   * Closing the connection on shutdown rather than leaving it to process exit:
-   * an in-flight `add()` that loses its connection mid-write leaves the caller
-   * believing a job was enqueued when it was not.
+   * Closing on shutdown rather than leaving it to process exit: an in-flight
+   * `add()` that loses its connection mid-write leaves the caller believing a
+   * job was enqueued when it was not.
+   *
+   * Each queue is closed first so BullMQ detaches its listeners from the shared
+   * connection; then the connection itself. `quit()` needs a live server to
+   * acknowledge it, so a connection that never got that far is dropped with
+   * `disconnect()`, which also cancels the reconnect timer that would otherwise
+   * keep the process alive.
    */
   async onApplicationShutdown(): Promise<void> {
+    await Promise.all(
+      Object.values(QUEUE_NAMES).map((name) =>
+        this.moduleRef.get<Queue>(queueToken(name), { strict: false }).close(),
+      ),
+    );
+
+    if (this.connection.status !== 'ready') {
+      this.connection.disconnect();
+      return;
+    }
+
     await this.connection.quit();
   }
 }

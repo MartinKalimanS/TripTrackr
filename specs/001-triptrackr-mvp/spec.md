@@ -8,7 +8,7 @@
 
 **Input**: User description: "using the blueprint and spec complete the template"
 
-**Source documents**: `travelappblueprint.md` (product & technical blueprint), `travelappfullspec.md` (full technical specification)
+**Source documents**: `docs/travelappblueprint.md` (product & technical blueprint), `docs/travelappfullspec.md` (full technical specification)
 
 ---
 
@@ -548,7 +548,7 @@ Three questions were open when this specification was first drafted. All were de
 This specification carries every user story through to delivery rather than being split per phase. The sequencing constraint above, not a document boundary, is what governs build order.
 
 **2. Trips are single-owner, with the seam for members left open.**
-`travelappfullspec.md` models every trip as belonging to exactly one traveller, and both the privacy model and the last-write-wins conflict rule are justified by that assumption. A competing earlier decision favoured group trips joined by an invite code. The resolution is to ship single-owner — keeping the privacy and synchronisation models internally consistent, and avoiding the multi-editor case that last-write-wins genuinely cannot serve — while requiring that adding members later be an additive change rather than a restructuring (FR-085). Group travel is therefore deferred, not designed out.
+`docs/travelappfullspec.md` models every trip as belonging to exactly one traveller, and both the privacy model and the last-write-wins conflict rule are justified by that assumption. A competing earlier decision favoured group trips joined by an invite code. The resolution is to ship single-owner — keeping the privacy and synchronisation models internally consistent, and avoiding the multi-editor case that last-write-wins genuinely cannot serve — while requiring that adding members later be an additive change rather than a restructuring (FR-085). Group travel is therefore deferred, not designed out.
 
 **3. Free trips are capped; a subscription lifts the cap.**
 The product is free up to 5 trips. Beyond that a traveller either subscribes monthly or deletes an existing trip to make room. The decisive constraint is that this must never cost a traveller anything they have already recorded: reaching the allowance, or letting a subscription lapse while over it, blocks _creating_ a new trip and nothing else (FR-076, FR-080). Everything already captured stays readable and editable indefinitely. Requirements are written against an _entitlement_ rather than a subscription specifically, so a one-off "buy more trips" purchase — raised as a possible alternative — can be added later without reopening them.

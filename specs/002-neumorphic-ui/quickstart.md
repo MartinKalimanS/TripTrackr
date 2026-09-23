@@ -15,17 +15,23 @@ npm install                       # no new dependency is added by this feature
 npm run typecheck                 # tsc --noEmit
 ```
 
+> **Monorepo note (2026-09-23).** The app now lives in the `apps/mobile` workspace (001 research
+> D-13). `npm install`, `npm run lint`, `npm run typecheck`, and `npm test` still work from the
+> repository root and fan out to every workspace; the app-only scripts below (`npm run test:cov`,
+> `npm run ios` / `npm run android`, `npm run e2e`) run from `apps/mobile/`, or from the root with
+> `-w apps/mobile`.
+
 No dev-client rebuild is required. `boxShadow` is a core React Native style prop, so nothing native
 changes (research R-001).
 
 **Devices needed for full validation**
 
-| Target                      | Why                                                     |
-| --------------------------- | ------------------------------------------------------- |
-| iOS device or simulator     | `full` profile; iOS-only accessibility signals          |
-| Android 10+ (API 29+)       | `full` profile; inset shadows                           |
-| Android 9 (API 28)          | `reduced` profile — outset only. Easy to forget.        |
-| A physical device, outdoors | SC-003. Not simulatable.                                |
+| Target                      | Why                                              |
+| --------------------------- | ------------------------------------------------ |
+| iOS device or simulator     | `full` profile; iOS-only accessibility signals   |
+| Android 10+ (API 29+)       | `full` profile; inset shadows                    |
+| Android 9 (API 28)          | `reduced` profile — outset only. Easy to forget. |
+| A physical device, outdoors | SC-003. Not simulatable.                         |
 
 ---
 
@@ -39,12 +45,12 @@ npm run test:cov                  # coverage report
 
 ### What the suite proves
 
-| Test file                          | Proves                                                    | Criterion |
-| ---------------------------------- | --------------------------------------------------------- | --------- |
-| `test/theme/contrast.test.ts`      | Every token pair meets its floor, both themes, all profiles | **SC-002** |
-| `test/theme/elevation-profile.test.ts` | Correct tier per platform and API level               | R-005     |
-| `test/theme/appearance.test.ts`    | Per-platform accessibility signal mapping                  | R-003     |
-| `src/components/ui/*.test.tsx`     | Press/busy/disabled states and their announcements          | FR-018–020 |
+| Test file                                          | Proves                                                      | Criterion  |
+| -------------------------------------------------- | ----------------------------------------------------------- | ---------- |
+| `apps/mobile/test/theme/contrast.test.ts`          | Every token pair meets its floor, both themes, all profiles | **SC-002** |
+| `apps/mobile/test/theme/elevation-profile.test.ts` | Correct tier per platform and API level                     | R-005      |
+| `apps/mobile/test/theme/appearance.test.ts`        | Per-platform accessibility signal mapping                   | R-003      |
+| `apps/mobile/src/components/ui/*.test.tsx`         | Press/busy/disabled states and their announcements          | FR-018–020 |
 
 **Expected outcome**: all green. A failing `contrast.test.ts` means a token was changed or added
 without classification — fix the token or classify the pair, never relax the assertion.
@@ -54,7 +60,7 @@ without classification — fix the token or classify the pair, never relax the a
 Confidence in the gate is worth more than a passing run:
 
 ```bash
-# Temporarily lighten a border token in src/constants/theme.ts, e.g. #79838F -> #A8B2BE
+# Temporarily lighten a border token in apps/mobile/src/constants/theme.ts, e.g. #79838F -> #A8B2BE
 npm test -- contrast
 ```
 
@@ -83,7 +89,7 @@ For **each** target device in the prerequisites table, walk every screen and con
 - [ ] Raised surfaces look raised, not pressed in.
 
 > This is the single cheapest, highest-value check in the whole feature. The `BoxShadowValue`
-> documentation states positive `offsetY` means *up*, contradicting the CSS convention. If it is
+> documentation states positive `offsetY` means _up_, contradicting the CSS convention. If it is
 > wrong, **every** surface is inverted and the entire token set needs its signs flipped. Do this
 > before tuning any other value.
 
@@ -96,12 +102,12 @@ For **each** target device in the prerequisites table, walk every screen and con
 
 Enable each in turn, then re-walk the screens:
 
-| Setting              | iOS path                                    | Android path                            | Expected                          |
-| -------------------- | ------------------------------------------- | --------------------------------------- | --------------------------------- |
-| Increase contrast    | Accessibility → Display → Increase Contrast | Accessibility → High contrast text      | Borders appear; `reduced` profile |
-| Reduce motion        | Accessibility → Motion                      | Accessibility → Remove animations       | States still change, instantly    |
-| Reduce transparency  | Accessibility → Display                     | _(no such setting — expected)_          | Opaque surfaces                   |
-| Largest text         | Accessibility → Display → Text Size         | Display → Font size (max)               | Nothing clipped (**SC-008**)      |
+| Setting             | iOS path                                    | Android path                       | Expected                          |
+| ------------------- | ------------------------------------------- | ---------------------------------- | --------------------------------- |
+| Increase contrast   | Accessibility → Display → Increase Contrast | Accessibility → High contrast text | Borders appear; `reduced` profile |
+| Reduce motion       | Accessibility → Motion                      | Accessibility → Remove animations  | States still change, instantly    |
+| Reduce transparency | Accessibility → Display                     | _(no such setting — expected)_     | Opaque surfaces                   |
+| Largest text        | Accessibility → Display → Text Size         | Display → Font size (max)          | Nothing clipped (**SC-008**)      |
 
 **Driving these from adb** — the exact keys matter, and two of them are easy to get wrong. These
 were read out of React Native's own `AccessibilityInfoModule.kt`, not guessed:
@@ -160,10 +166,10 @@ adb shell "cmd uimode night no"
 ## 3. End-to-end
 
 ```bash
-npm run e2e                       # maestro test e2e/
+npm run e2e                       # maestro test apps/mobile/e2e/
 ```
 
-`e2e/01-appearance.yaml` sweeps theme switching and the largest text size across the main screens,
+`apps/mobile/e2e/01-appearance.yaml` sweeps theme switching and the largest text size across the main screens,
 asserting no clipped or missing content (**SC-008**, **SC-010**).
 
 ---
@@ -212,11 +218,11 @@ individual components — that is what the profile mechanism exists to prevent (
 
 Stated plainly so these do not quietly disappear into a green test run:
 
-| Criterion  | Why it needs people                                                        |
-| ---------- | -------------------------------------------------------------------------- |
+| Criterion  | Why it needs people                                                                                                                           |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | **SC-003** | Outdoor daylight legibility, 10 participants. No emulator reproduces sunlight — and this is the criterion the whole style most risks failing. |
-| **SC-004** | Whether 95% of first-time viewers can tell what is tappable from a still image. |
-| **SC-007** | Task-completion timings compared against the pre-change build.              |
+| **SC-004** | Whether 95% of first-time viewers can tell what is tappable from a still image.                                                               |
+| **SC-007** | Task-completion timings compared against the pre-change build.                                                                                |
 
 Coverage percentage is not a substitute for any of these. The token layer is pure and trivially
 coverable, so it is entirely possible to reach 80% while the actual question — how this looks in a
@@ -239,6 +245,11 @@ traveller's hand on a bright street — remains untested.
       defaults to `lf`. Setting `endOfLine: "auto"` and `bracketSameLine: true` (the latter matching
       how the codebase already writes JSX) resolved it; the residual genuine deviations were
       reformatted in one pass and `npx prettier --check` is now clean across `src/` and `test/`.
+      _Layout note (2026-09-23): the paragraph above describes the pre-monorepo tree. `server/` is
+      now `apps/api/`, the mobile project is `apps/mobile/`, and the `exclude` / `testPathIgnorePatterns`
+      seams it mentions no longer exist — each workspace has its own `tsconfig.json` and
+      `jest.config.js` (001 research D-13). Kept as written because it records what was verified
+      on that date._
 - [x] Contrast gate verified to actually fail when a token is broken (§1).
       **Verified**: lightening `border` to `#A8B2BE` drops it to 1.74:1 and fails the suite by name.
 - [x] `offsetY` sign confirmed on both platforms (§2.2).
@@ -248,7 +259,10 @@ traveller's hand on a bright street — remains untested.
 - [ ] Manual sweep complete on iOS, Android 10+, **and Android 9**. — **DEFERRED, needs hardware**
 - [ ] All four accessibility adaptations verified on device. — **DEFERRED, needs hardware**
 - [x] Action parity under every setting (T059). — **DONE**, automated in
-      `test/app/action-parity.test.tsx` against the registry in `test/app/action-registry.ts`.
+      `apps/mobile/test/app/action-parity.test.tsx` against the registry in `apps/mobile/test/app/action-registry.ts`.
+      _Superseded 2026-09-23: both files rendered the two template screens and were deleted with them
+      (001 R008; tasks.md status note). The parity property is re-verified per real screen as feature
+      001 lands, reusing the registry pattern described in the deferral record below._
 - [ ] Screen-reader output diffed before/after — no change. — **DEFERRED, needs VoiceOver/TalkBack**
 - [ ] Performance baseline captured before, compared after. — **DEFERRED, needs the oldest supported
       device; note the baseline had to be captured BEFORE the change and was not, so a true
@@ -260,12 +274,12 @@ traveller's hand on a bright street — remains untested.
 
 Everything automatable is done and green, with one correction to an earlier version of this record:
 T059 (Acceptance Scenario 5.4 — every default action remains available under each setting) was
-previously listed here as deferred, but it is a *parity* property rather than a look-and-feel one,
+previously listed here as deferred, but it is a _parity_ property rather than a look-and-feel one,
 and parity is a set comparison a test can make. It is now automated in
-`test/app/action-parity.test.tsx`, which renders both screens across five settings — each of the
+`apps/mobile/test/app/action-parity.test.tsx`, which renders both screens across five settings — each of the
 three signals alone, the largest text size, and all of them at once — and diffs the action set
 against the default. "An action" is defined by the explicit per-screen registry in
-`test/app/action-registry.ts`; that file records why a registry was chosen over reading the
+`apps/mobile/test/app/action-registry.ts`; that file records why a registry was chosen over reading the
 accessibility tree or harvesting press handlers, and states the cost it carries.
 
 Verified by mutation rather than by the suite being green: hiding the home screen's primary action
@@ -276,8 +290,8 @@ or human participants — none of which are available in this environment. They 
 style most risks failing, and no amount of green unit tests substitutes for it.
 
 **One deferral has degraded, and it is worth stating plainly.** T002 asked for a scroll frame-rate
-baseline to be captured *before* the styling landed. That never happened, and the styling has now
-landed. SC-006 is a *regression* criterion, so on this build it can no longer be measured as
+baseline to be captured _before_ the styling landed. That never happened, and the styling has now
+landed. SC-006 is a _regression_ criterion, so on this build it can no longer be measured as
 specified. The options are to measure against a `git stash` of the pre-change tree, or to restate
 SC-006 as an absolute frame-rate floor rather than a relative one. That is a judgement call for the
 person who owns the criterion, not something to quietly redefine here.

@@ -5,8 +5,9 @@ import { importGeoCatalogue } from '../../apps/api/src/db/geo-catalogue';
  * Loads the reference geography catalogue (T038, research D-11, FR-014).
  *
  * ```sh
- * cd server
- * npm run geo:import -- --countries ../data/countryInfo.txt --cities ../data/cities15000.txt
+ * # from the repository root; MIGRATION_DATABASE_URL must be set (the import
+ * # alters the catalogue tables, which the API role may not do)
+ * npm run geo:import -w apps/api -- --countries ./data/countryInfo.txt --cities ./data/cities15000.txt
  * ```
  *
  * Extracts come from https://download.geonames.org/export/dump/ (CC BY 4.0):
@@ -14,12 +15,9 @@ import { importGeoCatalogue } from '../../apps/api/src/db/geo-catalogue';
  * population. `cities15000.txt` is the launch default at roughly 26,000 places;
  * `cities500.txt` is far broader and takes correspondingly longer.
  *
- * The work lives in `server/src/db/geo-catalogue.ts` rather than here. Node
- * resolves a package from the importing file's directory, and `postgres` is
- * installed under `server/`, so a script in this directory cannot reach it — but
- * a module under `server/` that this file imports resolves its own dependencies
- * normally. Splitting it also leaves the positional column parsing unit-testable
- * without a database, which for a positional format is where the mistakes are.
+ * The work lives in `apps/api/src/db/geo-catalogue.ts` rather than here so that
+ * the positional column parsing stays unit-testable without a database — for a
+ * positional format, that is where the mistakes are. This file is only the CLI.
  *
  * Safe to re-run: every row is upserted on its natural key, so refreshing against
  * a newer extract updates rows in place and leaves `cities.id` stable. Any
@@ -61,10 +59,15 @@ function parseArgs(argv: readonly string[]): Args {
 }
 
 async function main(): Promise<void> {
-  const databaseUrl = process.env.DATABASE_URL;
+  // The owner's connection, never the API's: the import ALTERs the catalogue
+  // tables, and `triptrackr_api` is deliberately unable to (research D-20).
+  const databaseUrl = process.env.MIGRATION_DATABASE_URL;
 
   if (!databaseUrl) {
-    throw new Error('DATABASE_URL is not set.');
+    throw new Error(
+      'MIGRATION_DATABASE_URL is not set. The geography import alters the schema and must ' +
+        'run as the database owner, not as the API role.',
+    );
   }
 
   const args = parseArgs(process.argv.slice(2));

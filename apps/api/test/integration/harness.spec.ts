@@ -41,8 +41,12 @@ describe('integration harness', () => {
 
   it('gives a traveller their own trips when identified', async () => {
     // Arrange + Act
-    const rows = await harness.asUser(harness.accountA.id, (tx) =>
-      tx<{ id: string }[]>`SELECT id FROM trips WHERE owner_id = ${harness.accountA.id}::uuid`,
+    const rows = await harness.asUser(
+      harness.accountA.id,
+      (tx) =>
+        tx<
+          { id: string }[]
+        >`SELECT id FROM trips WHERE owner_id = ${harness.accountA.id}::uuid`,
     );
 
     // Assert
@@ -53,8 +57,12 @@ describe('integration harness', () => {
 
   it("does not give traveller B traveller A's private trip", async () => {
     // Arrange + Act — the assertion the two-account fixture exists for.
-    const rows = await harness.asUser(harness.accountB.id, (tx) =>
-      tx<{ id: string }[]>`SELECT id FROM trips WHERE id = ${harness.accountA.privateTripId}::uuid`,
+    const rows = await harness.asUser(
+      harness.accountB.id,
+      (tx) =>
+        tx<
+          { id: string }[]
+        >`SELECT id FROM trips WHERE id = ${harness.accountA.privateTripId}::uuid`,
     );
 
     // Assert

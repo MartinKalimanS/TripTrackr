@@ -32,11 +32,15 @@ const base = {
 const withDatabase = {
   globalSetup: '<rootDir>/test/setup.ts',
   globalTeardown: '<rootDir>/test/teardown.ts',
-  testTimeout: 120_000,
 };
 
 /** @type {import('jest').Config} */
 const config = {
+  // Global, not per project: Jest 30 rejects `testTimeout` inside a project
+  // config with a validation warning on every run. Generous because the three
+  // database projects pull and start a PostGIS container in globalSetup; the
+  // unit project never comes near it.
+  testTimeout: 120_000,
   projects: [
     { ...base, displayName: 'unit', testMatch: ['<rootDir>/test/unit/**/*.spec.ts'] },
     {

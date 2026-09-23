@@ -1,6 +1,8 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
   char,
+  check,
   index,
   pgTable,
   text,
@@ -52,7 +54,7 @@ export const oauthIdentities = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    /** 'google' | 'apple' — constrained by a CHECK added in the RLS migration. */
+    /** 'google' | 'apple' — a CHECK constraint, not a convention (data-model.md §2). */
     provider: text('provider').notNull(),
     providerUid: text('provider_uid').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -63,6 +65,7 @@ export const oauthIdentities = pgTable(
     // pair is what lets the lookup happen before any insert is attempted.
     uniqueIndex('oauth_identities_provider_uid_key').on(t.provider, t.providerUid),
     index('oauth_identities_user_id_idx').on(t.userId),
+    check('oauth_identities_provider_check', sql`${t.provider} IN ('google', 'apple')`),
   ],
 );
 
@@ -80,9 +83,11 @@ export const refreshTokens = pgTable(
     /** FR-004: sign out here, or on every row for the user to sign out everywhere. */
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
     /**
-     * FR-005. Presenting a token that has already been rotated means the chain was
-     * stolen. Knowing which token replaced it is what lets the whole family be
-     * revoked rather than just this one request rejected.
+     * FR-005. Set on the *retired* row and pointing forward at its successor
+     * (data-model.md §2): presenting a token that has already been rotated means
+     * the chain was stolen, and this is the link that lets the whole family be
+     * revoked rather than just this one request rejected. Written by
+     * `auth_insert_refresh_token` (0007) in the same statement as the successor.
      */
     replacedById: uuid('replaced_by_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

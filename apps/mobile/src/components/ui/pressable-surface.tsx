@@ -14,8 +14,18 @@ import { Colors, MinTouchTarget, type DepthLevel, type Radius } from '@/constant
 import { useAppearance } from '@/hooks/use-appearance';
 import { surfaceStyle, type SurfaceTreatment } from '@/theme/surfaces';
 
+/**
+ * Resting treatments a control may have. `recessed` is the "currently
+ * selected" affordance — a tab or segment pressed into its bar — and is the
+ * one addition to contract C9's original `raised | flat` (R009, D-17): the tab
+ * bar needs a selected state that is still an interactive surface, and faking
+ * it with a static `<Surface>` around a flat control would have lost the
+ * compliance border and the touch-target guarantee.
+ */
+export type RestingTreatment = Extract<SurfaceTreatment, 'raised' | 'flat' | 'recessed'>;
+
 export type PressableSurfaceProps = Omit<PressableProps, 'style' | 'disabled'> & {
-  treatment?: Extract<SurfaceTreatment, 'raised' | 'flat'>;
+  treatment?: RestingTreatment;
   depth?: DepthLevel;
   radius?: keyof typeof Radius;
   /** An operation is in flight. Rejects input, announced as in-progress. */
@@ -39,7 +49,7 @@ const FocusRingWidth = 2;
  * trying to observe it through a simulated gesture.
  */
 export function treatmentFor(
-  resting: 'raised' | 'flat',
+  resting: RestingTreatment,
   { pressed, busy, disabled }: { pressed: boolean; busy: boolean; disabled: boolean },
 ): SurfaceTreatment {
   if (disabled) return 'disabled';

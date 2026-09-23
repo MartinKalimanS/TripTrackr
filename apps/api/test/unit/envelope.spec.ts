@@ -3,6 +3,8 @@ import { randomBytes } from 'node:crypto';
 import { EnvelopeService } from '@/common/crypto/envelope.service';
 import { resetEnvCache } from '@/common/config/env.schema';
 
+import { applyUnitTestEnv } from '../support/env';
+
 /**
  * The envelope encryption contract (FR-033, research D-04).
  *
@@ -15,27 +17,7 @@ import { resetEnvCache } from '@/common/config/env.schema';
 const MASTER_KEY = randomBytes(32).toString('base64');
 
 function withEnv(overrides: Record<string, string> = {}): void {
-  resetEnvCache();
-  Object.assign(process.env, {
-    NODE_ENV: 'test',
-    DATABASE_URL: 'postgres://u:p@localhost:5432/db',
-    REDIS_URL: 'redis://localhost:6379',
-    JWT_ACCESS_SECRET: 'x'.repeat(32),
-    JWT_REFRESH_SECRET: 'y'.repeat(32),
-    S3_ENDPOINT: 'http://localhost:9000',
-    S3_ACCESS_KEY_ID: 'key',
-    S3_SECRET_ACCESS_KEY: 'secret',
-    S3_BUCKET_PHOTOS: 'photos',
-    S3_BUCKET_DOCUMENTS: 'documents',
-    DOCUMENT_MASTER_KEY: MASTER_KEY,
-    DOCUMENT_MASTER_KEY_ID: 'v1',
-    MAPBOX_ACCESS_TOKEN: 't',
-    ANTHROPIC_API_KEY: 't',
-    RESEND_API_KEY: 't',
-    REVENUECAT_API_KEY: 't',
-    REVENUECAT_WEBHOOK_SECRET: 't',
-    ...overrides,
-  });
+  applyUnitTestEnv({ DOCUMENT_MASTER_KEY: MASTER_KEY, ...overrides });
 }
 
 describe('EnvelopeService', () => {
@@ -80,7 +62,10 @@ describe('EnvelopeService', () => {
     // attacker has write access to the database and swaps the row identity.
     const victimId = '5a1f1b3e-0000-4000-8000-000000000003';
     const attackerId = '5a1f1b3e-0000-4000-8000-000000000004';
-    const sealed = service.seal(Buffer.from('victim contents'), service.documentAad(victimId));
+    const sealed = service.seal(
+      Buffer.from('victim contents'),
+      service.documentAad(victimId),
+    );
 
     // Act + Assert — genuine DEK, intact ciphertext, wrong row: it still fails.
     expect(() => service.open(sealed, service.documentAad(attackerId))).toThrow();
@@ -107,7 +92,10 @@ describe('EnvelopeService', () => {
   it('names the retired key rather than reporting a decryption failure after rotation', () => {
     // Arrange — a row wrapped under v1, opened by a process now holding v2.
     const documentId = '5a1f1b3e-0000-4000-8000-000000000006';
-    const sealed = service.seal(Buffer.from('older document'), service.documentAad(documentId));
+    const sealed = service.seal(
+      Buffer.from('older document'),
+      service.documentAad(documentId),
+    );
 
     withEnv({ DOCUMENT_MASTER_KEY_ID: 'v2' });
 

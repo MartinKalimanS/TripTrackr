@@ -1,9 +1,9 @@
 # Contract: Surface Component API
 
-**Feature**: `specs/002-neumorphic-ui` | **Consumers**: screens in `src/app/`, feature 001 screens
+**Feature**: `specs/002-neumorphic-ui` | **Consumers**: screens in `apps/mobile/src/app/`, feature 001 screens
 
 The primitives every screen composes from. The contract is deliberately narrow: a screen declares
-*what a thing is*, never *how deep its shadow is*.
+_what a thing is_, never _how deep its shadow is_.
 
 ---
 
@@ -32,7 +32,7 @@ The primitives every screen composes from. The contract is deliberately narrow: 
 
 ```tsx
 <PressableSurface
-  treatment="raised" | "flat"
+  treatment="raised" | "flat" | "recessed"
   depth={1 | 2 | 3}
   busy?={boolean}
   disabled?={boolean}
@@ -41,17 +41,23 @@ The primitives every screen composes from. The contract is deliberately narrow: 
 />
 ```
 
+_Amended 2026-09-23: `treatment` gained `"recessed"`. The neumorphic tab bar (research D-17 in
+feature 001; task T076) renders the **selected** tab as a recessed surface that must stay an
+interactive, labelled, focusable control — a `<Surface treatment="recessed">` would have lost the
+FR-009/FR-011/FR-012 guarantees below. Acceptance Scenario 2.4 ("selected by more than shadow depth
+alone") is still met by the label weight and `accessibilityState.selected`._
+
 **Guarantees**
 
-| Behaviour                                                                    | Requirement |
-| ---------------------------------------------------------------------------- | ----------- |
-| Shows `pressed` for the full duration of the held touch, reverts on release  | FR-018      |
-| Press style appears within 100 ms; no interpolation                          | SC-005, R-004 |
-| Always carries a compliant hairline border (it is an interactive element)    | FR-009      |
-| Exposes a visible focus indicator meeting 3:1, distinct from press depth     | FR-012      |
-| Touch target ≥ platform minimum regardless of visible decoration size        | FR-011      |
-| `disabled` → flat, inert, announced unavailable                              | FR-019      |
-| `busy` → dimmed, rejects input, announced in-progress                        | FR-020      |
+| Behaviour                                                                     | Requirement      |
+| ----------------------------------------------------------------------------- | ---------------- |
+| Shows `pressed` for the full duration of the held touch, reverts on release   | FR-018           |
+| Press style appears within 100 ms; no interpolation                           | SC-005, R-004    |
+| Always carries a compliant hairline border (it is an interactive element)     | FR-009           |
+| Exposes a visible focus indicator meeting 3:1, distinct from press depth      | FR-012           |
+| Touch target ≥ platform minimum regardless of visible decoration size         | FR-011           |
+| `disabled` → flat, inert, announced unavailable                               | FR-019           |
+| `busy` → dimmed, rejects input, announced in-progress                         | FR-020           |
 | `disabled` and `busy` are mutually exclusive; both set is a development error | §5 of data-model |
 
 **Obligations**: `accessibilityLabel` is required by the type, not merely encouraged — a soft
@@ -99,11 +105,11 @@ explicit counter-signal, or it will quietly imply the opposite.
 **Guarantee**: no treatment is applied over map, globe, street-level, or photographic content
 (FR-024).
 
-| Rule                                                                     | Requirement |
-| ------------------------------------------------------------------------ | ----------- |
-| No shadow, tint, scrim, or overlay drawn across map or image content     | FR-024      |
-| Controls over such content are opaque and bordered, legible on light and dark | FR-025  |
-| Images carry a hairline boundary against similar-toned surfaces          | FR-026      |
+| Rule                                                                          | Requirement |
+| ----------------------------------------------------------------------------- | ----------- |
+| No shadow, tint, scrim, or overlay drawn across map or image content          | FR-024      |
+| Controls over such content are opaque and bordered, legible on light and dark | FR-025      |
+| Images carry a hairline boundary against similar-toned surfaces               | FR-026      |
 
 **Obligation**: `<Surface>` frames media; it never wraps it as a parent whose shadow bleeds inward.
 A shadow cast onto map imagery can be mistaken for terrain, which is a correctness problem, not an

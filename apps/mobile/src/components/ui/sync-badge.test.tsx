@@ -55,12 +55,13 @@ describe('<SyncBadge> — contract C11', () => {
   });
 
   test('distinguishes failure from the other states by more than hue', async () => {
-    await render(<SyncBadge state="failed" />);
-    const failedIcon = screen.getByTestId('sync-badge-icon').props.children;
-    screen.unmount?.();
+    // One render, re-rendered in place: unmounting the global `screen` while a
+    // second render was pending produced overlapping `act()` scopes.
+    const view = await render(<SyncBadge state="failed" />);
+    const failedIcon = view.getByTestId('sync-badge-icon').props.children;
 
-    await render(<SyncBadge state="pending" />);
-    const pendingIcon = screen.getByTestId('sync-badge-icon').props.children;
+    await view.rerender(<SyncBadge state="pending" />);
+    const pendingIcon = view.getByTestId('sync-badge-icon').props.children;
 
     expect(failedIcon).not.toBe(pendingIcon);
   });

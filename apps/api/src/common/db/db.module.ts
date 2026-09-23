@@ -11,13 +11,30 @@ export const DRIZZLE = Symbol('DRIZZLE');
 export type Database = PostgresJsDatabase<typeof schema>;
 
 /**
+ * Ceilings on how long a connection may sit idle, wait to be established, or
+ * run one statement.
+ *
+ * A request holds a connection for the life of its transaction, so a statement
+ * that never returns is a connection the pool never gets back; twenty of them is
+ * an outage. The statement ceiling is generous enough for a full sync snapshot
+ * and far below the point at which a traveller has given up. Idle connections
+ * are released so a quiet API does not pin twenty backends on a modest VPS.
+ */
+const POOL_MAX_CONNECTIONS = 20;
+const IDLE_TIMEOUT_SECONDS = 30;
+const CONNECT_TIMEOUT_SECONDS = 10;
+const STATEMENT_TIMEOUT_MS = 30_000;
+
+/**
  * The one connection pool, and the Drizzle instance over it.
  *
  * DATABASE_URL names the **API** role — a non-superuser that does not own the
  * tables (0003_api_role.sql). Migrations connect separately, as a privileged
- * role, so the API can never alter the policies it is subject to
- * (contracts/data-access-policy.md §1). Pointing this at the migration role
- * would leave every policy in place and silently stop enforcing them.
+ * role through MIGRATION_DATABASE_URL, so the API can never alter the policies
+ * it is subject to (contracts/data-access-policy.md §1, research D-20). Pointing
+ * this at the migration role would leave every policy in place and silently
+ * stop enforcing them; adversarial test 17 reads `current_user` from this pool
+ * for exactly that reason.
  */
 @Global()
 @Module({
@@ -31,8 +48,18 @@ export type Database = PostgresJsDatabase<typeof schema>;
           // RlsSessionMiddleware), so pooled connections are handed back and
           // forth constantly. SET LOCAL is what keeps one traveller's identity
           // from riding along into the next request that borrows the connection.
-          max: 20,
+          max: POOL_MAX_CONNECTIONS,
           prepare: false,
+          idle_timeout: IDLE_TIMEOUT_SECONDS,
+          connect_timeout: CONNECT_TIMEOUT_SECONDS,
+          connection: {
+            // Sent as a startup parameter, so it binds the session before the
+            // first query and cannot be forgotten by a code path.
+            statement_timeout: STATEMENT_TIMEOUT_MS,
+            // Names this process in pg_stat_activity, next to the migration
+            // runner and the worker, so a stuck backend is attributable.
+            application_name: 'triptrackr-api',
+          },
         });
       },
     },

@@ -1,13 +1,14 @@
 import type { Sql } from 'postgres';
 
-import { API_ROLE, ensureMigrated, migrationSql } from '../support/db';
+import { API_ROLE, apiSql, ensureMigrated, migrationSql } from '../support/db';
 
 /**
- * Adversarial suite rows 14, 15 and 16 (contracts/data-access-policy.md §4).
+ * Adversarial suite rows 14 to 17 (contracts/data-access-policy.md §4).
  *
- * These assert on `pg_catalog` rather than on behaviour, and that is the whole
- * point of them. The three configuration mistakes in §1 — a superuser API role,
- * a missing FORCE, a public-read policy on a private table — are *silent*: every
+ * These assert on `pg_catalog` and on the live connection rather than on
+ * behaviour, and that is the whole point of them. The configuration mistakes in
+ * §1 — a superuser API role, a missing FORCE, a public-read policy on a private
+ * table, an API pointed at the owner's connection string — are *silent*: every
  * behavioural privacy test still passes while the guarantee is entirely absent.
  * A behavioural suite cannot detect its own disablement, so this file watches
  * the configuration the other files depend on.
@@ -169,6 +170,58 @@ describe('privacy — catalogue assertions', () => {
       `;
 
       expect(rows[0]?.has_create).toBe(false);
+    });
+  });
+
+  // Row 17 — data-access-policy.md §1 "Deployment obligation" (research D-20)
+  describe('row 17: DATABASE_URL connects as the API role, not the owner', () => {
+    // Row 16 inspects the role as it is defined. This row inspects the role the
+    // API is actually *using*. The scaffold passed 16 while every service ran as
+    // the superuser owner, because 16 cannot see which connection string a
+    // process was handed — only a query from inside that connection can.
+    let api: Sql;
+
+    beforeAll(() => {
+      api = apiSql();
+    });
+
+    afterAll(async () => {
+      await api?.end();
+    });
+
+    it('identifies as triptrackr_api from inside its own pool', async () => {
+      // Arrange + Act — the connection is built from DATABASE_URL and nothing else.
+      const rows = await api<
+        { role: string; rolsuper: boolean; rolbypassrls: boolean }[]
+      >`
+        SELECT current_user AS role, r.rolsuper, r.rolbypassrls
+        FROM pg_roles r
+        WHERE r.rolname = current_user
+      `;
+
+      // Assert
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.role).toBe(API_ROLE);
+      expect(rows[0]?.rolsuper).toBe(false);
+      expect(rows[0]?.rolbypassrls).toBe(false);
+    });
+
+    it('is a different identity from the one the migrations connect as', async () => {
+      // Two strings naming the same role would pass row 16 and the test above
+      // while the API held every DDL and policy right the owner does.
+      const [apiRow] = await api<{ role: string }[]>`SELECT current_user AS role`;
+      const [ownerRow] = await sql<{ role: string }[]>`SELECT current_user AS role`;
+
+      expect(apiRow?.role).toBe(API_ROLE);
+      expect(ownerRow?.role).not.toBe(API_ROLE);
+    });
+
+    it('cannot see the owner-only policy machinery well enough to change it', async () => {
+      // A policy-alter right is a table-owner right; being able to name the
+      // policies is fine, being able to drop one is not.
+      await expect(
+        api.unsafe('DROP POLICY IF EXISTS expenses_owner_only ON expenses'),
+      ).rejects.toThrow(/must be owner|permission denied/i);
     });
   });
 });

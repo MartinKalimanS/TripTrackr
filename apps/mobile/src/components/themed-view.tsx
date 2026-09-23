@@ -1,13 +1,12 @@
 import { View, type ViewProps } from 'react-native';
 
 import { ThemeColor, type DepthLevel, type Radius } from '@/constants/theme';
+import { useAppearance } from '@/hooks/use-appearance';
 import { useSurface } from '@/hooks/use-surface';
-import { useTheme } from '@/hooks/use-theme';
 import type { SurfaceTreatment } from '@/theme/surfaces';
 
 export type ThemedViewProps = ViewProps & {
-  lightColor?: string;
-  darkColor?: string;
+  /** A flat fill from the ramp. Defaults to the canvas. */
   type?: ThemeColor;
   /**
    * Neumorphic surface treatment (feature 002). When given, it supersedes
@@ -23,9 +22,6 @@ export type ThemedViewProps = ViewProps & {
 
 export function ThemedView({
   style,
-  // Destructured only so they are not spread onto the native View.
-  lightColor: _lightColor,
-  darkColor: _darkColor,
   type,
   treatment,
   depth = 1,
@@ -33,7 +29,10 @@ export function ThemedView({
   pending = false,
   ...otherProps
 }: ThemedViewProps) {
-  const theme = useTheme();
+  // Contract C4: the appearance resolver is the single subscription point. The
+  // scaffold's `useTheme` read `useColorScheme` on its own, which is exactly the
+  // second source of truth that lets one view lag a theme switch (FR-023).
+  const { tokens } = useAppearance();
   const surface = useSurface(treatment ?? 'flat', { depth, radius, pending });
 
   if (treatment || pending) {
@@ -42,7 +41,7 @@ export function ThemedView({
 
   return (
     <View
-      style={[{ backgroundColor: theme[type ?? 'background'] }, style]}
+      style={[{ backgroundColor: tokens[type ?? 'canvas'] }, style]}
       {...otherProps}
     />
   );

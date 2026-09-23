@@ -38,7 +38,9 @@ apps/mobile/android/
 .env
 .env.*
 !.env.example
-infra/secrets/
+infra/secrets/*
+!infra/secrets/README.md
+!infra/secrets/.gitkeep
 
 # ---------------------------------------------------------------------------
 # Tooling & OS noise

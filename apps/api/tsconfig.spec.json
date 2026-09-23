@@ -1,9 +1,17 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": ".",
+    // The repository root, not this package. The contracts mapping below pulls
+    // packages/contracts/src into this program, and tsc reports TS6059 for any
+    // source file outside rootDir even with noEmit — so a rootDir of "." fails
+    // the moment a spec imports @triptrackr/contracts. Nothing is emitted from
+    // this config, so the wider root costs nothing.
+    "rootDir": "../..",
     "isolatedModules": true,
     "noEmit": true,
+    // Its own build-info, so a type-check never overwrites the build's record
+    // (and vice versa) with one describing a different program.
+    "tsBuildInfoFile": "./dist/.spec.tsbuildinfo",
     "paths": {
       "@/*": ["./src/*"],
       // Type-check and lint against the contracts SOURCE so neither depends on

@@ -81,14 +81,24 @@ describe('push records', () => {
       deleted: false,
     };
     expect(DocumentPushRecord.safeParse(doc).success).toBe(true);
-    expect(DocumentPushRecord.safeParse({ ...doc, is_public: false }).success).toBe(false);
+    expect(DocumentPushRecord.safeParse({ ...doc, is_public: false }).success).toBe(
+      false,
+    );
   });
 
   it('keeps money as a decimal string, never a float (SC-016)', () => {
-    expect(ExpensePushRecord.safeParse({ ...validExpense, amount: 12.5 }).success).toBe(false);
-    expect(ExpensePushRecord.safeParse({ ...validExpense, amount: '12.505' }).success).toBe(false);
-    expect(ExpensePushRecord.safeParse({ ...validExpense, amount: '-4.00' }).success).toBe(true);
-    expect(ExpensePushRecord.safeParse({ ...validExpense, amount: '0' }).success).toBe(true);
+    expect(ExpensePushRecord.safeParse({ ...validExpense, amount: 12.5 }).success).toBe(
+      false,
+    );
+    expect(
+      ExpensePushRecord.safeParse({ ...validExpense, amount: '12.505' }).success,
+    ).toBe(false);
+    expect(
+      ExpensePushRecord.safeParse({ ...validExpense, amount: '-4.00' }).success,
+    ).toBe(true);
+    expect(ExpensePushRecord.safeParse({ ...validExpense, amount: '0' }).success).toBe(
+      true,
+    );
   });
 
   it('rejects a stop whose departure precedes its arrival (FR-011)', () => {
@@ -103,13 +113,13 @@ describe('push records', () => {
       deleted: false,
     };
     expect(TripStopPushRecord.safeParse(stop).success).toBe(true);
-    expect(TripStopPushRecord.safeParse({ ...stop, depart_date: '2026-05-09' }).success).toBe(
-      false,
-    );
+    expect(
+      TripStopPushRecord.safeParse({ ...stop, depart_date: '2026-05-09' }).success,
+    ).toBe(false);
     // Same-day arrival and departure is legitimate.
-    expect(TripStopPushRecord.safeParse({ ...stop, depart_date: '2026-05-10' }).success).toBe(
-      true,
-    );
+    expect(
+      TripStopPushRecord.safeParse({ ...stop, depart_date: '2026-05-10' }).success,
+    ).toBe(true);
   });
 
   it('rejects a note anchored to neither a country nor a city (FR-019)', () => {
@@ -158,7 +168,9 @@ describe('push envelope', () => {
       ...validExpense,
       id: `6f1c2c4e-8a1e-4a3b-9c6c-${String(i).padStart(12, '0')}`,
     }));
-    expect(PushRequest.safeParse({ table: 'expenses', records: tooMany }).success).toBe(false);
+    expect(PushRequest.safeParse({ table: 'expenses', records: tooMany }).success).toBe(
+      false,
+    );
   });
 
   it('expresses applied, over-allowance, conflict and rejected results', () => {
@@ -180,7 +192,11 @@ describe('push envelope', () => {
 
 describe('pull envelope', () => {
   it('defaults every table to an empty change list so the client never branches on undefined', () => {
-    const parsed = PullResponse.parse({ changes: {}, next_cursor: 'abc', has_more: false });
+    const parsed = PullResponse.parse({
+      changes: {},
+      next_cursor: 'abc',
+      has_more: false,
+    });
     for (const table of SYNC_TABLES) {
       expect(parsed.changes[table]).toEqual([]);
     }

@@ -4,7 +4,7 @@
 
 ## Purpose
 
-`travelappblueprint.md` and `travelappfullspec.md` already settle most of the stack. This document
+`docs/travelappblueprint.md` and `docs/travelappfullspec.md` already settle most of the stack. This document
 does two things: it records those settled choices so the plan does not silently re-decide them, and
 it resolves the questions that were genuinely open — including two where reading the versioned Expo
 documentation changed the answer the full specification had assumed.
@@ -15,7 +15,7 @@ Decisions are numbered `D-nn` and referenced from [plan.md](./plan.md).
 
 ## D-01 — Local offline store: `expo-sqlite` + SQLCipher + Drizzle, not WatermelonDB
 
-**Deviates from `travelappfullspec.md` §5.2.**
+**Deviates from `docs/travelappfullspec.md` §5.2.**
 
 **Decision**: Use `expo-sqlite` with the `useSQLCipher: true` config-plugin option as the on-device
 store, with Drizzle ORM for the local schema and migrations, and a hand-written sync engine.
@@ -326,15 +326,15 @@ governed by the blueprint, the full specification, or the constitution rather th
 | Area                       | Choice                                                        | Governed by                                   |
 | -------------------------- | ------------------------------------------------------------- | --------------------------------------------- |
 | Mobile framework           | Expo SDK 57, dev-client workflow                              | Constitution, Technology Constraints          |
-| Backend framework          | NestJS, with the planner as a separable module                | `travelappfullspec.md` §2                     |
-| Database                   | PostgreSQL + PostGIS, self-hosted in Docker                   | Constitution; `travelappfullspec.md` §3       |
-| Cache, queues, rate limits | Redis                                                         | `travelappfullspec.md` §2                     |
-| Object storage             | MinIO in development, Cloudflare R2 in production             | `travelappfullspec.md` §9.5                   |
+| Backend framework          | NestJS, with the planner as a separable module                | `docs/travelappfullspec.md` §2                |
+| Database                   | PostgreSQL + PostGIS, self-hosted in Docker                   | Constitution; `docs/travelappfullspec.md` §3  |
+| Cache, queues, rate limits | Redis                                                         | `docs/travelappfullspec.md` §2                |
+| Object storage             | MinIO in development, Cloudflare R2 in production             | `docs/travelappfullspec.md` §9.5              |
 | Hosting                    | A single Hetzner VPS running Docker Compose                   | Constitution, "no hyperscaler"                |
-| Server state on the client | TanStack Query; Zustand for ephemeral UI state                | `travelappfullspec.md` §5.2                   |
-| Token storage              | `expo-secure-store` (Keychain / Keystore), never AsyncStorage | `travelappfullspec.md` §5.2                   |
-| Transactional email        | Resend                                                        | `travelappfullspec.md` §9.5                   |
-| Error reporting            | Sentry, both sides                                            | `travelappfullspec.md` §9.4; FR-073           |
+| Server state on the client | TanStack Query; Zustand for ephemeral UI state                | `docs/travelappfullspec.md` §5.2              |
+| Token storage              | `expo-secure-store` (Keychain / Keystore), never AsyncStorage | `docs/travelappfullspec.md` §5.2              |
+| Transactional email        | Resend                                                        | `docs/travelappfullspec.md` §9.5              |
+| Error reporting            | Sentry, both sides                                            | `docs/travelappfullspec.md` §9.4; FR-073      |
 | Build order gate           | Offline sync before social                                    | Constitution II; spec "Sequencing constraint" |
 | Trip ownership             | Single owner, with the member seam left open                  | spec Resolved Decision 2; FR-085              |
 
@@ -344,7 +344,7 @@ governed by the blueprint, the full specification, or the constitution rather th
 
 Before the first product screen was written, the repository was audited end to end (mobile, server,
 infrastructure, CI, and spec-to-code consistency) with the explicit brief of correcting design and
-architecture *before* implementation rather than after. The decisions below record what changed and
+architecture _before_ implementation rather than after. The decisions below record what changed and
 why. Where a decision supersedes an earlier one, the earlier one is named.
 
 ## D-13 — Repository layout: npm-workspaces monorepo with a shared contracts package
@@ -460,7 +460,7 @@ a decision.
 migrations.**
 
 **Decision**: `postgres` (postgres.js) is the driver; migrations are hand-written SQL files applied
-by `src/db/migrate.ts` inside one transaction each, with a `schema_migrations` ledger. Drizzle Kit
+by `apps/api/src/db/migrate.ts` inside one transaction each, with a `schema_migrations` ledger. Drizzle Kit
 is retained for `generate` as a diff tool only; its output is reviewed and hand-edited before it
 becomes a migration, and its `meta/` journal is not the source of truth.
 
@@ -486,4 +486,3 @@ compose file, every policy in the data-access contract was bypassed in any envir
 the repository, while the privacy suite (which provisions its own role) stayed green. This is the
 exact silent failure D-03 warns about, one layer up: not a missing `FORCE`, but a missing
 connection string.
-

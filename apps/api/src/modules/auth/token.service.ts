@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'node:crypto';
 
+import { ACCESS_TOKEN_ALGORITHM } from '@/common/auth/token-algorithm';
 import { loadEnv } from '@/common/config/env.schema';
 import { requireRlsTransaction } from '@/common/rls/rls-context';
 
@@ -15,12 +16,21 @@ export interface AccessTokenClaims {
   readonly sub: string;
 }
 
-interface RefreshTokenRow {
+/** One row from `auth_consume_refresh_token` (0007). */
+interface ConsumedRefreshToken {
   readonly id: string;
   readonly user_id: string;
-  readonly revoked_at: Date | null;
   readonly expired: boolean;
+  /**
+   * True when the row existed but had already been retired — by an earlier
+   * rotation, a sign-out, or a concurrent caller that won the race. This is the
+   * reuse signal FR-005 turns into a family-wide revocation.
+   */
+  readonly reused: boolean;
 }
+
+/** Bytes of entropy in a refresh token — 256 bits, nothing to guess. */
+const REFRESH_TOKEN_BYTES = 32;
 
 /**
  * Issues, rotates and revokes tokens (contracts/rest-api.md §1, FR-003–FR-005).
@@ -45,7 +55,8 @@ interface RefreshTokenRow {
  * That is not indirection for its own sake: token rotation happens before the
  * request has an authenticated session, so a direct query would hit the RLS
  * policies and fail closed. `0006_auth_functions.sql` explains the bypass and
- * bounds it.
+ * bounds it; 0007 makes it the *only* write path by revoking the API role's
+ * direct INSERT/UPDATE/DELETE on `refresh_tokens`.
  */
 @Injectable()
 export class TokenService {
@@ -65,6 +76,7 @@ export class TokenService {
 
     return this.jwt.signAsync({ sub: userId } satisfies AccessTokenClaims, {
       secret: env.JWT_ACCESS_SECRET,
+      algorithm: ACCESS_TOKEN_ALGORITHM,
       // Typed through JwtSignOptions rather than `any`: the underlying library
       // accepts a `ms`-style template literal union that a plain string does not
       // satisfy, and widening to `any` there would also silence real mistakes in
@@ -79,13 +91,17 @@ export class TokenService {
    * The plaintext is returned once and never stored, so a database dump yields no
    * usable token — the same reason password hashes are stored rather than
    * passwords.
+   *
+   * `replacesId` names the token this one retires. The function writes the link
+   * on the *retired* row (`replaced_by_id`, pointing forward — data-model.md §2)
+   * in the same statement as the insert.
    */
   async issueRefreshToken(
-      userId: string,
-      deviceInfo?: string,
-      replacesId?: string,
+    userId: string,
+    deviceInfo?: string,
+    replacesId?: string,
   ): Promise<string> {
-    const token = randomBytes(32).toString('base64url');
+    const token = randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
 
     await requireRlsTransaction()`
       SELECT auth_insert_refresh_token(
@@ -111,6 +127,13 @@ export class TokenService {
    * the correct trade when the alternative is leaving an attacker holding a valid
    * chain.
    *
+   * **The check and the revocation are one statement.** `auth_consume_refresh_token`
+   * is an `UPDATE … WHERE revoked_at IS NULL RETURNING`, so two requests presenting
+   * the same token at the same moment cannot both read "live" and both mint: the
+   * second blocks on the row lock, re-reads the committed row, updates nothing, and
+   * comes back with `reused = true`. The earlier read-then-revoke sequence let both
+   * through, which is precisely the window a replayed stolen token needs.
+   *
    * Returns null for every failure. The caller must not tell the difference
    * between "unknown token", "expired" and "reused" — each distinction is a signal
    * an attacker can measure.
@@ -118,24 +141,25 @@ export class TokenService {
   async rotate(presentedToken: string): Promise<TokenPair | null> {
     const tx = requireRlsTransaction();
 
-    const rows = await tx<RefreshTokenRow[]>`
-      SELECT * FROM auth_find_refresh_token(${hashToken(presentedToken)})
+    const rows = await tx<ConsumedRefreshToken[]>`
+      SELECT * FROM auth_consume_refresh_token(${hashToken(presentedToken)})
     `;
 
     const row = rows[0];
     if (!row) return null;
 
-    if (row.revoked_at !== null) {
+    if (row.reused) {
       this.logger.warn(
-          `Refresh token reuse detected for user ${row.user_id}; revoking the whole family.`,
+        `Refresh token reuse detected for user ${row.user_id}; revoking the whole family.`,
       );
       await this.revokeAllForUser(row.user_id);
       return null;
     }
 
+    // Consumed — it cannot be presented again — but past its lifetime, so it
+    // earns nothing. Ordered after the reuse check on purpose: a replayed token
+    // that has also expired is still a replayed token.
     if (row.expired) return null;
-
-    await tx`SELECT auth_revoke_refresh_tokens(${hashToken(presentedToken)}, NULL)`;
 
     return {
       accessToken: await this.issueAccessToken(row.user_id),
@@ -179,7 +203,7 @@ export function toPostgresInterval(value: string): string {
 
   if (!match) {
     throw new Error(
-        `Token TTL must look like "30d", "12h", "15m" or "45s"; received "${value}".`,
+      `Token TTL must look like "30d", "12h", "15m" or "45s"; received "${value}".`,
     );
   }
 

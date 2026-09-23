@@ -1,8 +1,10 @@
 import * as Sentry from '@sentry/nestjs';
 import { NestFactory } from '@nestjs/core';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
+import { configureApp } from './app.setup';
 import { loadEnv } from './common/config/env.schema';
 
 async function bootstrap(): Promise<void> {
@@ -19,20 +21,24 @@ async function bootstrap(): Promise<void> {
     });
   }
 
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    // Held until configureApp installs the pino logger, so nothing is written
+    // through the console logger the redaction list does not cover.
+    bufferLogs: true,
+    // Registered by configureApp with an explicit limit instead of the default.
+    bodyParser: false,
+  });
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      // FR-027 / FR-032 depend on this: a visibility parameter smuggled onto an
-      // expense or document payload is rejected outright rather than ignored.
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+  configureApp(app);
+
+  // SIGTERM from the orchestrator runs every onApplicationShutdown hook: the
+  // pool drains, the Redis clients quit, in-flight transactions settle. Without
+  // this a deploy kills requests mid-transaction and leaves them to roll back
+  // on their own.
+  app.enableShutdownHooks();
 
   await app.listen(env.PORT);
-  new Logger('Bootstrap').log(`TripTrackr API listening on port ${env.PORT}`);
+  app.get(Logger).log(`TripTrackr API listening on port ${env.PORT}`, 'Bootstrap');
 }
 
 void bootstrap();

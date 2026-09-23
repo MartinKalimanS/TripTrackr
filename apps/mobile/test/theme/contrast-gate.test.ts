@@ -38,15 +38,6 @@ const NON_TEXT_TOKENS = ['border', 'borderStrong'] as const;
 /** Measured against the accent fill they sit on rather than against the canvas. */
 const ON_ACCENT_TOKENS = ['accentInk'] as const;
 
-/** Pre-existing scaffold tokens, kept until every consumer is migrated. */
-const LEGACY_TOKENS = [
-  'text',
-  'background',
-  'backgroundElement',
-  'backgroundSelected',
-  'textSecondary',
-] as const;
-
 describe('contrast gate — contract C3', () => {
   describe.each(THEMES)('%s theme', (theme) => {
     const palette = Colors[theme];
@@ -106,22 +97,6 @@ describe('contrast gate — contract C3', () => {
       },
     );
 
-    test.each(LEGACY_TOKENS.filter((t) => t.startsWith('text')))(
-      'legacy %s still meets the normal-text floor',
-      (token) => {
-        const backgrounds = [
-          'background',
-          'backgroundElement',
-          'backgroundSelected',
-        ] as const;
-        for (const background of backgrounds) {
-          expect(
-            contrastRatio(palette[token], palette[background]),
-          ).toBeGreaterThanOrEqual(ContrastFloor.normalText);
-        }
-      },
-    );
-
     test('increased contrast raises text to the 7:1 floor (FR-013)', () => {
       // Under increased contrast the primary ink must clear AAA. Muted text is
       // deliberately excluded: FR-013 is satisfied by promoting muted text to
@@ -139,7 +114,6 @@ describe('contrast gate — contract C3', () => {
       ...TEXT_TOKENS,
       ...NON_TEXT_TOKENS,
       ...ON_ACCENT_TOKENS,
-      ...LEGACY_TOKENS,
     ]);
 
     test.each(THEMES)('every %s token is classified', (theme) => {

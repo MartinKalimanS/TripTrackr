@@ -67,6 +67,27 @@ describe('<PressableSurface> state machine — data-model §5', () => {
     expect(treatmentFor('raised', state({ pressed: true, busy: true }))).toBe('busy');
   });
 
+  test('may rest recessed — the selected-tab affordance — and still be a control (R009)', async () => {
+    await render(
+      <PressableSurface
+        treatment="recessed"
+        accessibilityLabel="Save trip"
+        onPress={jest.fn()}
+      />,
+    );
+    const style = currentStyle();
+    const shadows = style.boxShadow as unknown as { inset: boolean }[];
+
+    expect(shadows.every((s) => s.inset)).toBe(true);
+    // Recessed does not mean decorative: the compliance border and the touch
+    // target are what make it a control rather than a well (FR-009, FR-011).
+    expect(style.borderWidth).toBeGreaterThan(0);
+    expect(style.minHeight).toBeGreaterThanOrEqual(44);
+    expect(
+      treatmentFor('recessed', { pressed: false, busy: false, disabled: false }),
+    ).toBe('recessed');
+  });
+
   test('rests raised and sinks when pressed (FR-018)', async () => {
     await render(<PressableSurface accessibilityLabel="Save trip" onPress={jest.fn()} />);
 

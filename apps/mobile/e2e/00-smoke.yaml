@@ -2,6 +2,11 @@
 #
 # This asserts the one thing every other flow depends on. If it fails, the
 # remaining flows' results carry no information.
+#
+# `clearState` wipes the keychain, so the session store hydrates to
+# `signed-out` and the auth gate (src/app/_layout.tsx, Stack.Protected) MUST
+# land on the welcome screen. Seeing the tabs here would mean the gate let an
+# unauthenticated launch through — the failure R009 exists to prevent.
 appId: com.triptrackr.app
 tags:
   - smoke
@@ -10,3 +15,7 @@ tags:
     clearState: true
 - assertVisible:
     id: 'app-root'
+- assertVisible:
+    id: 'welcome-screen'
+- assertNotVisible:
+    id: 'tab-bar'

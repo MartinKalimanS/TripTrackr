@@ -42,13 +42,12 @@ module.exports = defineConfig([
         'error',
         {
           selector:
-            "Literal[value=/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/]",
+            'Literal[value=/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/]',
           message:
             'Raw colour literal. Import the token from @/constants/theme or use a treatment from @/hooks/use-surface (contract C1).',
         },
         {
-          selector:
-            "Literal[value=/^(?:rgba?|hsla?)\\(/]",
+          selector: 'Literal[value=/^(?:rgba?|hsla?)\\(/]',
           message:
             'Raw colour literal. Import the token from @/constants/theme or use a treatment from @/hooks/use-surface (contract C1).',
         },

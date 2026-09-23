@@ -1,17 +1,76 @@
-# Production overrides. Run as:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Production overrides — layered on top of docker-compose.yml.
+#
+# Run from the REPOSITORY ROOT so that `--env-file .env` resolves and every
+# `${VAR:?...}` below is checked against the real values:
+#
+#   docker compose --env-file .env \
+#     -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --build
+#
+# Requires Docker Compose v2.24 or newer (the `!reset` tag). Check with
+# `docker compose version`.
 #
 # Differences from development:
-#   - Object storage is Cloudflare R2, so MinIO is not started.
-#   - Traefik terminates TLS with an ACME resolver.
-#   - Ports are not published for postgres, redis, or the API; only Traefik is public.
+#   - No default passwords. A missing POSTGRES_PASSWORD or API_DB_PASSWORD
+#     aborts `up` with a message instead of silently using "triptrackr".
+#   - Object storage is Cloudflare R2 (or any S3-compatible bucket), so MinIO
+#     is not started and S3_ENDPOINT comes from .env untouched.
+#   - Traefik terminates TLS (Let's Encrypt, TLS-ALPN challenge), redirects
+#     HTTP to HTTPS permanently, and adds security headers.
+#   - Postgres, Redis and the API publish no host ports; only Traefik is public.
+#   - Memory/CPU ceilings sized for a 4 GB VPS (~3 GB committed, headroom for
+#     the OS, Docker and the nightly backup).
+#   - A `backup` service takes a nightly pg_dump into the `postgres-backups`
+#     volume and optionally ships it off-box (infra/scripts/README.md).
+#
+# Secrets. Compose `secrets:` below mount infra/secrets/*.txt (gitignored) into
+# the application containers at /run/secrets/<name>. HONEST STATUS: the API's
+# environment schema (apps/api/src/common/config/env.schema.ts) reads plain
+# environment variables today and has no `*_FILE` support, so the values it
+# actually uses still come from .env via env_file. The mounts are in place so
+# that adding `*_FILE` support to the API is the only remaining step; until
+# then .env on the host is the source of truth and MUST match the files. See
+# infra/README.md "Secrets" for the follow-up.
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  api_db_password:
+    file: ./secrets/api_db_password.txt
+  jwt_access_secret:
+    file: ./secrets/jwt_access_secret.txt
+  jwt_refresh_secret:
+    file: ./secrets/jwt_refresh_secret.txt
+  document_master_key:
+    file: ./secrets/document_master_key.txt
 
 services:
   postgres:
     ports: !reset []
+    mem_limit: 1.5g
+    cpus: 2
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env for production}
+    # Tuned for the 1.5 GB ceiling above. shared_buffers ~25% of the limit;
+    # effective_cache_size tells the planner how much OS cache to expect.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=384MB
+      - -c
+      - effective_cache_size=1GB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=96MB
+      - -c
+      - max_connections=100
+    secrets:
+      - postgres_password
 
   redis:
     ports: !reset []
+    mem_limit: 256m
+    cpus: 0.5
 
   minio:
     profiles: ['donotstart']
@@ -19,29 +78,80 @@ services:
   minio-init:
     profiles: ['donotstart']
 
+  migrate:
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://${POSTGRES_USER:-triptrackr}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env for production}@postgres:5432/${POSTGRES_DB:-triptrackr}
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?API_DB_PASSWORD must be set in .env for production}
+    secrets:
+      - postgres_password
+      - api_db_password
+
   api:
     ports: !reset []
+    mem_limit: 512m
+    cpus: 1
+    environment:
+      DATABASE_URL: postgresql://triptrackr_api:${API_DB_PASSWORD:?API_DB_PASSWORD must be set in .env for production}@postgres:5432/${POSTGRES_DB:-triptrackr}
+      # Development pinned this to MinIO; production reads the R2 endpoint from .env.
+      S3_ENDPOINT: !reset null
+      NODE_ENV: production
+    secrets:
+      - api_db_password
+      - jwt_access_secret
+      - jwt_refresh_secret
+      - document_master_key
     labels:
       - 'traefik.enable=true'
-      - 'traefik.http.routers.api.rule=Host(`${API_HOST}`)'
+      - 'traefik.http.routers.api.rule=Host(`${API_HOST:?API_HOST must be set in .env for production}`)'
       - 'traefik.http.routers.api.entrypoints=websecure'
+      - 'traefik.http.routers.api.tls=true'
       - 'traefik.http.routers.api.tls.certresolver=letsencrypt'
-      - 'traefik.http.services.api.loadbalancer.server.port=3000'
-      - 'traefik.http.middlewares.api-ratelimit.ratelimit.average=100'
-      - 'traefik.http.middlewares.api-ratelimit.ratelimit.burst=50'
-      - 'traefik.http.routers.api.middlewares=api-ratelimit@docker'
+      # Security headers. HSTS for a year including subdomains; the API serves
+      # JSON only, so framing and MIME sniffing are denied outright.
+      - 'traefik.http.middlewares.api-headers.headers.stsSeconds=31536000'
+      - 'traefik.http.middlewares.api-headers.headers.stsIncludeSubdomains=true'
+      - 'traefik.http.middlewares.api-headers.headers.stsPreload=true'
+      - 'traefik.http.middlewares.api-headers.headers.forceSTSHeader=true'
+      - 'traefik.http.middlewares.api-headers.headers.contentTypeNosniff=true'
+      - 'traefik.http.middlewares.api-headers.headers.frameDeny=true'
+      - 'traefik.http.middlewares.api-headers.headers.referrerPolicy=no-referrer'
+      - 'traefik.http.middlewares.api-headers.headers.customResponseHeaders.Server='
+      - 'traefik.http.middlewares.api-headers.headers.customResponseHeaders.X-Powered-By='
+      - 'traefik.http.routers.api.middlewares=api-headers@docker,api-ratelimit@docker'
+
+  worker:
+    mem_limit: 512m
+    cpus: 1
+    environment:
+      DATABASE_URL: postgresql://triptrackr_api:${API_DB_PASSWORD:?API_DB_PASSWORD must be set in .env for production}@postgres:5432/${POSTGRES_DB:-triptrackr}
+      S3_ENDPOINT: !reset null
+      NODE_ENV: production
+    secrets:
+      - api_db_password
+      - jwt_access_secret
+      - jwt_refresh_secret
+      - document_master_key
 
   traefik:
+    mem_limit: 128m
+    cpus: 0.5
+    # `command` lists replace rather than merge, so the full set is restated.
     command:
       - '--providers.docker=true'
       - '--providers.docker.exposedbydefault=false'
       - '--entrypoints.web.address=:80'
       - '--entrypoints.web.http.redirections.entrypoint.to=websecure'
       - '--entrypoints.web.http.redirections.entrypoint.scheme=https'
+      - '--entrypoints.web.http.redirections.entrypoint.permanent=true'
       - '--entrypoints.websecure.address=:443'
-      - '--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}'
+      - '--entrypoints.websecure.http.tls=true'
+      - '--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL must be set in .env for production}'
       - '--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json'
       - '--certificatesresolvers.letsencrypt.acme.tlschallenge=true'
+      - '--api.dashboard=false'
+      - '--global.sendanonymoususage=false'
+      - '--global.checknewversion=false'
+      - '--log.level=INFO'
     ports:
       - '80:80'
       - '443:443'
@@ -49,5 +159,44 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - letsencrypt:/letsencrypt
 
+  # Nightly pg_dump of the whole database as the OWNER (the API role cannot read
+  # across RLS, and pg_dump refuses to run with policies in force). Dumps land in
+  # the `postgres-backups` volume; with BACKUP_S3_* set in .env they are also
+  # copied off-box. Constitution: "A backup that has never been restored from is
+  # not a backup" — infra/scripts/restore-rehearsal.sh is the other half, and
+  # infra/scripts/README.md sets its cadence.
+  backup:
+    build:
+      context: .
+      dockerfile: backup/Dockerfile
+    image: triptrackr-backup:local
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      BACKUP_DATABASE_URL: postgresql://${POSTGRES_USER:-triptrackr}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env for production}@postgres:5432/${POSTGRES_DB:-triptrackr}
+      BACKUP_DIR: /backups
+    volumes:
+      - postgres-backups:/backups
+    # Unhealthy when the newest successful backup is older than BACKUP_MAX_AGE_HOURS
+    # (default 48h — one missed night is tolerated, two are not).
+    healthcheck:
+      test: ['CMD', 'backup-healthcheck.sh']
+      interval: 5m
+      timeout: 10s
+      retries: 3
+      start_period: 10m
+
 volumes:
   letsencrypt:
+  postgres-backups:

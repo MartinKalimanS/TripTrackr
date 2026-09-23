@@ -28,12 +28,12 @@ no nested wrapper views, no SVG.
 
 **Platform constraints (verified)**:
 
-| Capability            | Requirement                                  |
-| --------------------- | -------------------------------------------- |
-| `boxShadow` at all    | **New Architecture only**                    |
-| Outset shadows        | Android **9+** (API 28)                      |
-| Inset shadows         | Android **10+** (API 29)                     |
-| iOS                   | Supported                                    |
+| Capability         | Requirement               |
+| ------------------ | ------------------------- |
+| `boxShadow` at all | **New Architecture only** |
+| Outset shadows     | Android **9+** (API 28)   |
+| Inset shadows      | Android **10+** (API 29)  |
+| iOS                | Supported                 |
 
 Expo SDK 57 / React Native 0.86 runs the New Architecture by default, so the primary precondition is
 already met by this repository.
@@ -63,13 +63,13 @@ Shadows carry the aesthetic; a hairline border carries the compliance, and it is
 **Rationale**: Candidate tones were measured in this repository using the WCAG relative-luminance
 formula. The results are unambiguous:
 
-| Pair (light theme, canvas `#E3E8EF`) | Ratio     | Verdict           |
-| ------------------------------------ | --------- | ----------------- |
-| canvas vs light shadow `#FFFFFF`     | **1.23**  | cannot ever pass  |
-| canvas vs dark shadow `#B4BECD`      | **1.52**  | cannot ever pass  |
-| canvas vs primary text `#151A21`     | **14.19** | AAA               |
-| canvas vs secondary text `#4C5666`   | **6.03**  | AA                |
-| canvas vs accent `#2456C7`           | **5.28**  | AA                |
+| Pair (light theme, canvas `#E3E8EF`) | Ratio     | Verdict          |
+| ------------------------------------ | --------- | ---------------- |
+| canvas vs light shadow `#FFFFFF`     | **1.23**  | cannot ever pass |
+| canvas vs dark shadow `#B4BECD`      | **1.52**  | cannot ever pass |
+| canvas vs primary text `#151A21`     | **14.19** | AAA              |
+| canvas vs secondary text `#4C5666`   | **6.03**  | AA               |
+| canvas vs accent `#2456C7`           | **5.28**  | AA               |
 
 The shadow tones sit at 1.2–1.5:1. FR-009 requires 3:1 for anything that identifies a control. No
 amount of tuning closes that gap, because a shadow that reached 3:1 against its own background
@@ -78,15 +78,15 @@ neumorphism exists to avoid.
 
 Solving for the minimum compliant border tone on each canvas gives:
 
-| Canvas            | Minimum compliant border | Measured ratio |
-| ----------------- | ------------------------ | -------------- |
-| light `#E3E8EF`   | `#79838F`                | **3.13**       |
-| light `#E3E8EF`   | `#6F7885` (safety margin)| **3.63**       |
-| dark `#23272F`    | `#6B7482`                | **3.17**       |
-| dark `#23272F`    | `#727B89` (safety margin)| **3.50**       |
+| Canvas          | Minimum compliant border  | Measured ratio |
+| --------------- | ------------------------- | -------------- |
+| light `#E3E8EF` | `#79838F`                 | **3.13**       |
+| light `#E3E8EF` | `#6F7885` (safety margin) | **3.63**       |
+| dark `#23272F`  | `#6B7482`                 | **3.17**       |
+| dark `#23272F`  | `#727B89` (safety margin) | **3.50**       |
 
 **The scoping decision that preserves the aesthetic**: WCAG 1.4.11 (Non-text Contrast) governs
-visual information required to *identify user interface components and their states*. It does not
+visual information required to _identify user interface components and their states_. It does not
 govern decorative surfaces that carry no affordance. Therefore:
 
 - **Interactive** surfaces — buttons, inputs, toggles, tabs, pressable rows — carry the compliant
@@ -116,12 +116,12 @@ specification already anticipated that shadow alone would not carry it.
 
 **Rationale** (verified against React Native `AccessibilityInfo` documentation):
 
-| Requirement                   | iOS signal                      | Android signal                | Cross-platform? |
-| ----------------------------- | ------------------------------- | ----------------------------- | --------------- |
-| FR-015 reduced motion         | `isReduceMotionEnabled`         | `isReduceMotionEnabled`       | **Yes**         |
-| FR-014 reduced transparency   | `isReduceTransparencyEnabled`   | — none —                      | No (iOS only)   |
-| FR-013 increased contrast     | `isDarkerSystemColorsEnabled`   | `isHighTextContrastEnabled`   | No (differs)    |
-| FR-016 enlarged text          | `fontScale`                     | `fontScale`                   | **Yes**         |
+| Requirement                 | iOS signal                    | Android signal              | Cross-platform? |
+| --------------------------- | ----------------------------- | --------------------------- | --------------- |
+| FR-015 reduced motion       | `isReduceMotionEnabled`       | `isReduceMotionEnabled`     | **Yes**         |
+| FR-014 reduced transparency | `isReduceTransparencyEnabled` | — none —                    | No (iOS only)   |
+| FR-013 increased contrast   | `isDarkerSystemColorsEnabled` | `isHighTextContrastEnabled` | No (differs)    |
+| FR-016 enlarged text        | `fontScale`                   | `fontScale`                 | **Yes**         |
 
 Two findings matter and are easy to get wrong:
 
@@ -184,10 +184,10 @@ once per appearance change rather than per surface.
 feature, and it coincides exactly with the Android capability tiers from R-001. One resolver
 therefore covers both concerns:
 
-| Profile   | Selected when                                                        | Rendering                                       |
-| --------- | -------------------------------------------------------------------- | ----------------------------------------------- |
+| Profile   | Selected when                                                         | Rendering                                        |
+| --------- | --------------------------------------------------------------------- | ------------------------------------------------ |
 | `full`    | iOS, or Android 10+                                                   | Two composed shadows, outset and inset available |
-| `reduced` | Android 9 (outset only), or increased-contrast requested              | One outset shadow plus compliant border         |
+| `reduced` | Android 9 (outset only), or increased-contrast requested              | One outset shadow plus compliant border          |
 | `flat`    | Android 8 and below, or measured frame-rate shortfall in list context | Borders and tonal fill only, no shadows          |
 
 Because every treatment is resolved from tokens rather than hard-coded per component, dropping a
@@ -206,35 +206,42 @@ increased-contrast simply selects `reduced`.
 
 ## R-006: Does the existing theme layer get extended or replaced?
 
-**Decision**: Extend. `src/constants/theme.ts` keeps its role as the token source; `Colors` gains the
+**Decision**: Extend. `apps/mobile/src/constants/theme.ts` keeps its role as the token source; `Colors` gains the
 neumorphic surface ramps and `Spacing` is retained unchanged. `ThemedView` and `ThemedText` remain
 the typed entry points and gain a `treatment` capability rather than being superseded.
 
 **Rationale** (verified by reading the repository):
 
-- `src/constants/theme.ts` already exports `Colors` (light/dark), `Fonts`, `Spacing`, and layout
+- `apps/mobile/src/constants/theme.ts` already exports `Colors` (light/dark), `Fonts`, `Spacing`, and layout
   constants, and `ThemeColor` is already a union derived from the palette — so adding surface tones
   extends the existing type safety instead of competing with it.
-- `src/hooks/use-theme.ts` already resolves the scheme and returns the active palette. It is the
+- `apps/mobile/src/hooks/use-theme.ts` already resolves the scheme and returns the active palette. It is the
   natural place to widen into the fuller `AppearanceContext` of R-003.
 - `ThemedView` already accepts a `type?: ThemeColor` and applies a background. A `treatment` prop is
   the same idea one level up.
 - The `Spacing` scale (2/4/8/16/24/32/64) is sound and is reused as-is; FR-001's "spacing steps" is
   already satisfied by existing code.
 
-**Consequence for scope**: the product is currently at its scaffold state — `src/app/` contains
+**Consequence for scope**: the product is currently at its scaffold state — `apps/mobile/src/app/` contains
 `index.tsx` and `explore.tsx`. The MVP screens described in `specs/001-triptrackr-mvp` are not yet
 built. So "every screen" (FR-003) is small today, and the substance of this feature is the **token
 system, the treatment primitives, and the automated verification harness** that feature 001's
 screens will then be built on top of. This is the favourable ordering: the design system lands
 before the screens that must comply with it, rather than as a retrofit across a finished app.
 
+_Annotation 2026-09-23_: the two template screens were deleted with the create-expo-app scaffold
+(001 research D-14, task R008), which makes the paragraph above more true rather than less — the
+token layer, primitives, and harness are exactly what survived, and the first real consumer is the
+custom tab bar (tasks.md T076; 001 research D-17). `use-theme.ts`, named above as the widening
+point, went with the last template consumer; `useAppearance()` (R-003, contract C4) is the single
+entry point that remains. `ThemedView` and `ThemedText` are retained as described.
+
 **Alternatives considered**:
 
 - _A styling library (Unistyles, Tamagui, NativeWind)_ — rejected. The token surface needed here is
   small, the existing theme module already does the job, and each option adds a build-level
   dependency plus a migration for code that is already written and tested.
-- _A parallel `src/design/` system alongside the existing theme_ — rejected. Two sources of truth
+- _A parallel `apps/mobile/src/design/` system alongside the existing theme_ — rejected. Two sources of truth
   for colour is the exact failure FR-028 forbids.
 
 ---
@@ -268,7 +275,7 @@ glass surface.
 These are cheap checks, deliberately scheduled rather than assumed. Each becomes a task.
 
 1. ~~**`offsetY` sign convention.**~~ **RESOLVED 2026-08-29 — from source, no device required.**
-   The documentation page claims positive `offsetY` means *up*. That is **wrong**. Both native
+   The documentation page claims positive `offsetY` means _up_. That is **wrong**. Both native
    implementations offset in a y-down coordinate space:
    - iOS `React/Fabric/Utils/RCTBoxShadow.mm:82` — `CGRectOffset(shadowRect, shadow.offsetX, shadow.offsetY)`;
      Core Graphics view coordinates have y increasing downward.
@@ -282,6 +289,7 @@ These are cheap checks, deliberately scheduled rather than assumed. Each becomes
    defines only `offsetX` and `offsetY` as required on `BoxShadowValue`; `blurRadius`,
    `spreadDistance`, `color`, and `inset` are all optional. The documentation table stated the
    opposite. The type definition is authoritative.
+
 2. ~~**`react-native-web` behaviour.**~~ **RESOLVED 2026-08-29 — from source, no browser required.**
    `react-native-web@0.21` supports **both** composed and inset shadows:
    - `dist/exports/StyleSheet/preprocess.js:167-172` — an array `boxShadow` is passed through
@@ -291,9 +299,17 @@ These are cheap checks, deliberately scheduled rather than assumed. Each becomes
      so the `inset` keyword is emitted.
 
    Web therefore resolves to the **`full`** profile rather than degrading to `flat`.
-   `src/theme/elevation-profile.ts` and `test/theme/elevation-profile.test.ts` were updated
+   `apps/mobile/src/theme/elevation-profile.ts` and `apps/mobile/test/theme/elevation-profile.test.ts` were updated
    accordingly; only genuinely unrecognised platforms now fall back to `flat`.
-3. **Frame-rate baseline.** SC-006 is a *regression* criterion, so a pre-change baseline must be
+
+   _Annotation 2026-09-23 — **moot, retained as history**._ The web target was removed by the
+   architecture audit (001 research D-14): `react-native-web`, `react-dom`, every `*.web.tsx`
+   variant, and `global.css` are gone, and the app ships to iOS and Android only. Nothing above is
+   wrong — it is simply no longer exercised. The resolver's rule that unrecognised platforms fall
+   back to `flat` is unaffected; a `web` branch, if one remains, is dead code to be removed when
+   `elevation-profile.ts` is next touched, not a supported path.
+
+3. **Frame-rate baseline.** SC-006 is a _regression_ criterion, so a pre-change baseline must be
    captured on the oldest supported device before the treatments are applied. A criterion measured
    only after the change cannot detect a regression.
 
@@ -301,13 +317,13 @@ These are cheap checks, deliberately scheduled rather than assumed. Each becomes
 
 ## Summary of decisions
 
-| ID    | Decision                                                                       |
-| ----- | ------------------------------------------------------------------------------ |
-| R-001 | Core `boxShadow` with two composed values and `inset`; no dependency added      |
-| R-002 | Shadows for aesthetics, compliant hairline border on interactive elements only  |
-| R-003 | One `AppearanceContext` resolver; per-platform mapping for contrast/transparency |
-| R-004 | Discrete token swap on press — no interpolation, so reduced motion is free      |
-| R-005 | `full` / `reduced` / `flat` elevation profiles from one resolver                |
-| R-006 | Extend `src/constants/theme.ts`; no styling library, no parallel system         |
-| R-007 | `expo-glass-effect` not adopted; removal deferred to housekeeping               |
-| R-008 | Three empirical checks scheduled: offsetY sign, web behaviour, perf baseline    |
+| ID    | Decision                                                                                             |
+| ----- | ---------------------------------------------------------------------------------------------------- |
+| R-001 | Core `boxShadow` with two composed values and `inset`; no dependency added                           |
+| R-002 | Shadows for aesthetics, compliant hairline border on interactive elements only                       |
+| R-003 | One `AppearanceContext` resolver; per-platform mapping for contrast/transparency                     |
+| R-004 | Discrete token swap on press — no interpolation, so reduced motion is free                           |
+| R-005 | `full` / `reduced` / `flat` elevation profiles from one resolver                                     |
+| R-006 | Extend `apps/mobile/src/constants/theme.ts`; no styling library, no parallel system                  |
+| R-007 | `expo-glass-effect` not adopted; removal deferred to housekeeping                                    |
+| R-008 | Three empirical checks scheduled: offsetY sign, web behaviour (moot since 2026-09-23), perf baseline |

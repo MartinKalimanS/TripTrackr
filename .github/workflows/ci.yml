@@ -1,3 +1,14 @@
+# TripTrackr CI — npm-workspaces monorepo (apps/mobile, apps/api, packages/contracts).
+#
+# Constitution, Development Workflow & Quality Gates: "CI MUST run linting, tests,
+# and migrations against an ephemeral database on every pull request. A red build
+# MUST NOT be merged." Constitution I & III: the adversarial privacy suite is a
+# REQUIRED job — never continue-on-error, never allowed to pass by being skipped.
+#
+# Branch protection should require exactly one status check: "CI passed". That
+# job fails if ANY upstream job failed, was cancelled, or was skipped, so a
+# deleted or path-filtered job cannot silently turn the gate green.
+
 name: CI
 
 on:
@@ -5,153 +16,324 @@ on:
     branches: [main]
   pull_request:
 
+# Read-only token everywhere; no job publishes anything.
+permissions:
+  contents: read
+
 # A newer push to the same branch makes the older run irrelevant.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '22'
+  CI: 'true'
+  EXPO_NO_TELEMETRY: '1'
+  FORCE_COLOR: '1'
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  lint:
+  # ---------------------------------------------------------------------------
+  # Static checks
+  # ---------------------------------------------------------------------------
+  lint-typecheck:
     name: Lint & typecheck
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
+      - run: npm ci
 
-      - name: Install mobile dependencies
-        run: npm ci
+      # The API and the mobile app resolve @triptrackr/contracts through its
+      # `dist` types, so the package is built before anything type-aware runs.
+      - name: Build contracts
+        run: npm run build:contracts
 
-      - name: Install API dependencies
-        run: npm ci
-        working-directory: server
+      - name: Lint (every workspace, zero warnings)
+        run: npm run lint
 
-      - name: Lint mobile
-        run: npx eslint . --max-warnings=0
+      - name: Typecheck (every workspace)
+        run: npm run typecheck
 
-      - name: Typecheck mobile
-        run: npx tsc --noEmit
+  format:
+    name: Formatting (prettier --check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
 
-      - name: Lint API
-        run: npx eslint . --max-warnings=0
-        working-directory: server
-
-      - name: Typecheck API
-        run: npx tsc --noEmit
-        working-directory: server
+  # ---------------------------------------------------------------------------
+  # Tests — one job per workspace
+  # ---------------------------------------------------------------------------
+  contracts-tests:
+    name: Contracts tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Test with coverage
+        run: npm run test -w packages/contracts -- --coverage
 
   mobile-tests:
-    name: Mobile unit tests
+    name: Mobile tests (80% floor)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
-
       - run: npm ci
 
       # Constitution III: below 80% the build fails rather than warns. The
-      # threshold lives in jest.config.js, so --coverage is what enforces it.
+      # threshold lives in apps/mobile/jest.config.js; --coverage enforces it.
       - name: Test with coverage
-        run: npx jest --ci --coverage
+        run: npm run test:cov -w apps/mobile
 
+      # Evaluates app.json and every config plugin the way prebuild would,
+      # without generating native projects. Catches a broken plugin or a typo
+      # in app.json before it costs an EAS build.
+      - name: Expo config sanity (introspect)
+        working-directory: apps/mobile
+        run: npx expo config --type introspect > /dev/null
+
+  # Runs unit, contract, integration AND privacy projects once, with coverage,
+  # so the 80% gate (apps/api/jest.config.js) is enforced against the whole
+  # suite without booting Testcontainers twice. Testcontainers starts a real
+  # postgis/postgis:17-3.5 — a mocked database cannot evaluate an RLS policy, so
+  # these suites have no mock path.
   api-tests:
-    name: API unit & integration tests
+    name: API tests + coverage (80% floor)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
-
       - run: npm ci
-        working-directory: server
-
-      - name: Unit tests
-        run: npm run test:unit
-        working-directory: server
-
-      # Testcontainers boots a real postgis/postgis:17-3.5. A mocked database
-      # cannot evaluate an RLS policy, so these suites have no mock path.
-      - name: Contract tests
-        run: npm run test:contract
-        working-directory: server
-
-      - name: Integration tests
-        run: npm run test:integration
-        working-directory: server
+      - name: Unit, contract, integration and privacy projects with coverage
+        run: npm run test:cov -w apps/api
 
   # ---------------------------------------------------------------------------
   # Constitution I & III: the adversarial privacy suite is a REQUIRED job.
   # It asks, as an attacker would, whether one traveller can reach another's
-  # rows. It must never be marked continue-on-error, and it must never be
-  # allowed to pass by being skipped.
+  # rows — expenses and documents through every route, private notes, pending
+  # photos, blocked accounts — and asserts refusal. It also asserts on
+  # pg_catalog: RLS enabled AND forced, no public-read policy on expenses or
+  # documents, the API role is not a superuser, and the API connects as
+  # triptrackr_api rather than the owner (data-access-policy.md §4, tests 14–17).
+  # It must never be marked continue-on-error.
   # ---------------------------------------------------------------------------
   privacy:
     name: Privacy suite (required)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
-
       - run: npm ci
-        working-directory: server
-
       - name: Adversarial privacy tests
-        run: npm run test:privacy
-        working-directory: server
+        run: npm run test:privacy -w apps/api
 
-  coverage-gate:
-    name: Coverage gate (80% floor)
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+
+  # Proves the multi-stage Dockerfile still builds against the monorepo layout
+  # (repository-root context, workspace install, contracts dist copied in). No
+  # push, no registry. The image is not started — it needs a database and
+  # every secret — but the artefacts the compose file relies on are asserted.
+  docker-build:
+    name: API image builds
     runs-on: ubuntu-latest
-    needs: [api-tests]
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - name: Build
+        run: docker build -f apps/api/Dockerfile -t triptrackr-api:ci .
+      - name: Inspect
+        run: |
+          docker image inspect triptrackr-api:ci \
+            --format 'size={{.Size}} user={{.Config.User}} workdir={{.Config.WorkingDir}}'
+          test "$(docker image inspect triptrackr-api:ci --format '{{.Config.User}}')" = "node" \
+            || { echo "::error::image does not run as the node user"; exit 1; }
+      - name: Runtime artefacts present (main, migrate, worker, migrations)
+        run: |
+          docker run --rm triptrackr-api:ci sh -c '
+            test -f dist/main.js &&
+            test -f dist/db/migrate.js &&
+            test -f dist/workers/main.js &&
+            ls dist/db/migrations/*.sql >/dev/null'
 
-      - uses: actions/setup-node@v4
+  # Both compose files must parse and merge. The production overlay uses
+  # `${VAR:?}` for every secret, so placeholders are supplied here; `.env` must
+  # exist because the services load it with env_file.
+  compose-validate:
+    name: Compose files validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      POSTGRES_PASSWORD: ci-placeholder
+      API_DB_PASSWORD: ci-placeholder
+      API_HOST: api.example.test
+      ACME_EMAIL: ops@example.test
+    steps:
+      - uses: actions/checkout@v7
+      - run: cp .env.example .env
+      - name: Development stack
+        run: docker compose -f infra/docker-compose.yml config -q
+      - name: Production overlay
+        run: docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config -q
+      # Structural assertions on the merged production config (data-access-policy.md
+      # §1 "Deployment obligation"): the API and the worker connect as
+      # triptrackr_api, the owner URL reaches only `migrate`, and nothing but
+      # Traefik publishes a port.
+      - name: Production overlay wires roles and ports correctly
+        run: |
+          cfg=$(docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config --format json)
+          fail() { echo "::error::$1"; exit 1; }
+          for svc in api worker; do
+            url=$(echo "$cfg" | jq -r ".services.${svc}.environment.DATABASE_URL")
+            [[ "$url" == postgresql://triptrackr_api:*@postgres:5432/* ]] \
+              || fail "${svc}.DATABASE_URL must connect as triptrackr_api (got: ${url%%:*}://…)"
+            mig=$(echo "$cfg" | jq -r ".services.${svc}.environment.MIGRATION_DATABASE_URL")
+            [[ "$mig" != *"@postgres:"* ]] \
+              || fail "${svc} received the owner connection string; only migrate may hold it"
+          done
+          mig=$(echo "$cfg" | jq -r '.services.migrate.environment.MIGRATION_DATABASE_URL')
+          [[ "$mig" == postgresql://triptrackr:*@postgres:5432/* ]] \
+            || fail "migrate.MIGRATION_DATABASE_URL must be the owner's connection string"
+          published=$(echo "$cfg" | jq -c '[.services[] | .ports // [] | .[] | .published] | sort')
+          [[ "$published" == '["443","80"]' ]] \
+            || fail "only Traefik may publish ports (80, 443); found ${published}"
+          echo "roles and ports wired as specified"
+
+  # ---------------------------------------------------------------------------
+  # Constitution: "CI MUST run ... migrations against an ephemeral database" and
+  # "Backups MUST be verified by performing an actual restore." One job does
+  # both, end to end, with the real tooling: migrate an empty PostGIS 17 with
+  # the repository's SQL, back it up with the production backup image, restore
+  # the dump into a second empty server, and assert the schema, the migrations
+  # ledger and forced RLS on expenses/documents all came back.
+  # ---------------------------------------------------------------------------
+  backup-rehearsal:
+    name: Migrate, back up, restore, assert
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: triptrackr
+          POSTGRES_PASSWORD: ci-owner
+          POSTGRES_DB: triptrackr
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U triptrackr"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      scratch:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: triptrackr
+          POSTGRES_PASSWORD: ci-scratch
+          POSTGRES_DB: postgres
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U triptrackr"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
-
       - run: npm ci
-        working-directory: server
 
-      # coverageThreshold in server/jest.config.ts fails the run below 80%.
-      - name: API coverage
-        run: npm run test:cov
-        working-directory: server
+      # The runner connects as the OWNER and applies API_DB_PASSWORD to the
+      # triptrackr_api role (data-access-policy.md §1, research D-20).
+      - name: Apply migrations to the ephemeral database
+        run: npm run db:migrate -w apps/api
+        env:
+          MIGRATION_DATABASE_URL: postgresql://triptrackr:ci-owner@localhost:5432/triptrackr
+          API_DB_PASSWORD: ci-api-role-password
 
-  # Single required status check for branch protection: it fails if ANY
-  # upstream job failed OR was skipped, so a deleted job cannot silently
-  # turn a required gate green.
+      - name: Build the backup image
+        run: docker build -f infra/backup/Dockerfile -t triptrackr-backup:ci infra
+
+      # --network host so "localhost" inside the container is the runner, where
+      # the service containers' ports are published. The image runs as the
+      # postgres user, hence the world-writable scratch directory.
+      - name: Take a backup with backup.sh
+        run: |
+          mkdir -p "$RUNNER_TEMP/backups" && chmod 0777 "$RUNNER_TEMP/backups"
+          docker run --rm --network host \
+            -v "$RUNNER_TEMP/backups:/backups" \
+            -e BACKUP_DATABASE_URL=postgresql://triptrackr:ci-owner@localhost:5432/triptrackr \
+            -e BACKUP_RETENTION_DAYS=1 \
+            triptrackr-backup:ci backup.sh
+          ls -la "$RUNNER_TEMP/backups"
+
+      - name: Restore into the scratch server and assert (restore-rehearsal.sh)
+        run: |
+          docker run --rm --network host \
+            -v "$RUNNER_TEMP/backups:/backups:ro" \
+            -e RESTORE_TARGET_URL=postgresql://triptrackr:ci-scratch@localhost:5433/postgres \
+            triptrackr-backup:ci restore-rehearsal.sh
+
+  # ---------------------------------------------------------------------------
+  # Single required status check for branch protection. Lists EVERY job above;
+  # fails if any of them failed, was cancelled, or was skipped.
+  # ---------------------------------------------------------------------------
   ci-passed:
     name: CI passed
     runs-on: ubuntu-latest
-    needs: [lint, mobile-tests, api-tests, privacy, coverage-gate]
+    timeout-minutes: 5
+    needs:
+      - lint-typecheck
+      - format
+      - contracts-tests
+      - mobile-tests
+      - api-tests
+      - privacy
+      - docker-build
+      - compose-validate
+      - backup-rehearsal
     if: always()
     steps:
       - name: Verify every gate succeeded
         run: |
-          echo "lint=${{ needs.lint.result }}"
+          echo "lint-typecheck=${{ needs.lint-typecheck.result }}"
+          echo "format=${{ needs.format.result }}"
+          echo "contracts-tests=${{ needs.contracts-tests.result }}"
           echo "mobile-tests=${{ needs.mobile-tests.result }}"
           echo "api-tests=${{ needs.api-tests.result }}"
           echo "privacy=${{ needs.privacy.result }}"
-          echo "coverage-gate=${{ needs.coverage-gate.result }}"
+          echo "docker-build=${{ needs.docker-build.result }}"
+          echo "compose-validate=${{ needs.compose-validate.result }}"
+          echo "backup-rehearsal=${{ needs.backup-rehearsal.result }}"
           if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ] \
             || [ "${{ contains(needs.*.result, 'cancelled') }}" = "true" ] \
             || [ "${{ contains(needs.*.result, 'skipped') }}" = "true" ]; then

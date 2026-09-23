@@ -18,17 +18,19 @@ const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
 };
 
-beforeEach(() => {
+function mockAppearance(theme: 'light' | 'dark' = 'light') {
   useAppearance.mockReturnValue({
-    theme: 'light',
+    theme,
     prefersMoreContrast: false,
     prefersLessMotion: false,
     prefersLessTransparency: false,
     fontScale: 1,
     elevationProfile: 'full',
-    tokens: Colors.light,
+    tokens: Colors[theme],
   } as AppearanceContext);
-});
+}
+
+beforeEach(() => mockAppearance());
 
 function styleOf(testID: string) {
   const style = screen.getByTestId(testID).props.style;
@@ -36,10 +38,18 @@ function styleOf(testID: string) {
 }
 
 describe('<ThemedView>', () => {
-  test('falls back to the legacy colour type when no treatment is given', async () => {
-    await render(<ThemedView testID="v" type="canvas" />);
+  test('paints the canvas when neither a type nor a treatment is given', async () => {
+    // The scaffold defaulted to a white `background` token, which is how a
+    // white bar ended up against the grey canvas (FR-023). The default is now
+    // the canvas itself, so an unstyled view can never be the odd one out.
+    await render(<ThemedView testID="v" />);
     expect(styleOf('v').backgroundColor).toBe(Colors.light.canvas);
     expect(styleOf('v').boxShadow).toBeUndefined();
+  });
+
+  test('fills with the named ramp token when no treatment is given', async () => {
+    await render(<ThemedView testID="v" type="surfaceSunk" />);
+    expect(styleOf('v').backgroundColor).toBe(Colors.light.surfaceSunk);
   });
 
   test('applies a neumorphic treatment when one is given', async () => {
@@ -48,8 +58,8 @@ describe('<ThemedView>', () => {
   });
 
   test('treatment supersedes type rather than fighting it', async () => {
-    await render(<ThemedView testID="v" type="background" treatment="raised" />);
-    // `background` is #ffffff; the treatment's surface must win.
+    await render(<ThemedView testID="v" type="surfaceSunk" treatment="raised" />);
+    // The treatment's surface must win over the sunk fill.
     expect(styleOf('v').backgroundColor).toBe(Colors.light.surface);
   });
 
@@ -58,9 +68,9 @@ describe('<ThemedView>', () => {
     expect(styleOf('v').borderColor).toBe(Colors.light.accent);
   });
 
-  test('does not spread lightColor/darkColor onto the native view', async () => {
-    await render(<ThemedView testID="v" lightColor="#fff" darkColor="#000" />);
-    expect(screen.getByTestId('v').props.lightColor).toBeUndefined();
-    expect(screen.getByTestId('v').props.darkColor).toBeUndefined();
+  test('follows the resolved theme through the single appearance resolver (C4)', async () => {
+    mockAppearance('dark');
+    await render(<ThemedView testID="v" />);
+    expect(styleOf('v').backgroundColor).toBe(Colors.dark.canvas);
   });
 });

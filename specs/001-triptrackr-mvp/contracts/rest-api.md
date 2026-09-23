@@ -2,7 +2,7 @@
 
 **Branch**: `001-triptrackr-mvp` | Conventions: [README.md](./README.md)
 
-Baseline from `travelappfullspec.md` §4. Endpoints added or changed by the requirements in
+Baseline from `docs/travelappfullspec.md` §4. Endpoints added or changed by the requirements in
 [../spec.md](../spec.md) are marked **added** or **changed**, with the reason.
 
 ---
@@ -125,7 +125,7 @@ is **not** rejected while moderation is pending. The photo simply does not becom
 until `moderation_state = 'approved'`, because the RLS predicate requires it (FR-056). The response
 states the pending status plainly so the traveller is not misled about what others can see.
 
-This differs from `travelappfullspec.md` §4.5, which gated the toggle in the endpoint. Gating at the
+This differs from `docs/travelappfullspec.md` §4.5, which gated the toggle in the endpoint. Gating at the
 endpoint puts the guarantee in application code, where Constitution I says it must not solely live.
 
 ---
@@ -176,15 +176,15 @@ endpoint puts the guarantee in application code, where Constitution I says it mu
 
 ## 8. Planner
 
-| Method | Path                                         | Access          | Notes                                                                     |
-| ------ | -------------------------------------------- | --------------- | ------------------------------------------------------------------------- |
-| POST   | `/trips/:tripId/planner/generate`            | owner           | `{city_id, day_date, prompt}`. Async — returns a `job_id`. FR-063, FR-068 |
-| GET    | `/planner/jobs/:jobId`                       | owner           | Poll status and progress. FR-068                                          |
-| GET    | `/trips/:tripId/itinerary`                   | owner           | Full itinerary. Owner-only in this release — see note below               |
-| POST   | `/trips/:tripId/itinerary/days/:dayId/items` | owner           | Traveller-added activity. FR-067                                          |
-| PATCH  | `/itinerary-items/:id`                       | owner           | Reorder or move between days. FR-067                                      |
-| DELETE | `/itinerary-items/:id`                       | owner           | FR-067                                                                    |
-| GET    | `/trips/:tripId/itinerary/days/:dayId/route` | owner           | Walking route GeoJSON for that day. FR-066                                |
+| Method | Path                                         | Access | Notes                                                                     |
+| ------ | -------------------------------------------- | ------ | ------------------------------------------------------------------------- |
+| POST   | `/trips/:tripId/planner/generate`            | owner  | `{city_id, day_date, prompt}`. Async — returns a `job_id`. FR-063, FR-068 |
+| GET    | `/planner/jobs/:jobId`                       | owner  | Poll status and progress. FR-068                                          |
+| GET    | `/trips/:tripId/itinerary`                   | owner  | Full itinerary. Owner-only in this release — see note below               |
+| POST   | `/trips/:tripId/itinerary/days/:dayId/items` | owner  | Traveller-added activity. FR-067                                          |
+| PATCH  | `/itinerary-items/:id`                       | owner  | Reorder or move between days. FR-067                                      |
+| DELETE | `/itinerary-items/:id`                       | owner  | FR-067                                                                    |
+| GET    | `/trips/:tripId/itinerary/days/:dayId/route` | owner  | Walking route GeoJSON for that day. FR-066                                |
 
 **Contract obligations:**
 
@@ -232,7 +232,7 @@ alike, and one predicate covers all four where four filters offer four chances t
 
 ## 10. Commerce — **added section**
 
-`travelappfullspec.md` predates the subscription requirements (FR-074 to FR-084).
+`docs/travelappfullspec.md` predates the subscription requirements (FR-074 to FR-084).
 
 | Method | Path                          | Access          | Notes                                                                                                    |
 | ------ | ----------------------------- | --------------- | -------------------------------------------------------------------------------------------------------- |

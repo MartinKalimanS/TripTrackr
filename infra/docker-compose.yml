@@ -2,14 +2,78 @@
 #
 # Constitution, Technology & Platform Constraints: the whole stack MUST remain
 # runnable on a single modest VPS. Everything here is self-hosted; nothing depends
-# on a hyperscaler-managed service.
+# on a hyperscaler-managed service. Production overrides live in
+# docker-compose.prod.yml and are layered on top of this file.
+#
+# Run from the repository root:
+#   npm run infra:up                     # == docker compose -f infra/docker-compose.yml up -d
+#   docker compose -f infra/docker-compose.yml logs -f api
+#
+# Two things about environment variables that are easy to get wrong:
+#
+#   1. `env_file: ../.env` loads the repository-root .env into a container. The
+#      connection strings in .env point at `localhost` so the API can run on the
+#      host; inside a container `localhost` is the container itself. Every
+#      service below therefore OVERRIDES the connection strings with service
+#      hostnames (postgres, redis, minio) in `environment:`, which Compose
+#      applies on top of env_file.
+#
+#   2. `${VAR:-default}` interpolation in THIS file is resolved by Compose from
+#      the shell and from a .env in the *project directory*, which is this
+#      `infra/` directory — NOT the repository root. The defaults below match
+#      .env.example, so the stock development values work with no flags. If you
+#      change POSTGRES_PASSWORD or API_DB_PASSWORD in .env, run Compose with
+#      `--env-file .env` from the repository root so both sides agree.
+#
+# Two database roles, two connection strings (contracts/data-access-policy.md §1,
+# research D-20):
+#
+#   MIGRATION_DATABASE_URL  the database owner  -> `migrate` one-shot only
+#   DATABASE_URL            triptrackr_api      -> `api` and `worker`
+#
+# The API must NEVER receive the owner URL. RLS does not apply to a superuser or
+# to a table owner, so pointing the API at the owner silently disables every
+# privacy policy while every behavioural test keeps passing.
 
 name: triptrackr
 
+# ---------------------------------------------------------------------------
+# Shared fragments
+# ---------------------------------------------------------------------------
+
+# One image, built once by `api`, reused by `migrate` and `worker`. Compose
+# tolerates the "image not found" pull for the two consumers because a service
+# in the same project builds that image name.
+x-api-image: &api-image triptrackr-api:local
+
+# Log rotation everywhere. Without it a chatty container fills the VPS disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+
+# The API-role connection string and the other in-network endpoints, shared by
+# `api` and `worker`. `migrate` deliberately does not include this fragment.
+x-api-env: &api-env
+  DATABASE_URL: postgresql://triptrackr_api:${API_DB_PASSWORD:-triptrackr-api-dev}@postgres:5432/${POSTGRES_DB:-triptrackr}
+  # The owner's URL and the role password are NOT handed to the API or the
+  # worker. Their env schema does not declare them (apps/api/src/common/config/
+  # env.schema.ts), so there is nothing to satisfy — and `.env` may still carry
+  # MIGRATION_DATABASE_URL for running migrations from the host; env_file
+  # values the process never reads are inert. `migrate` gets the owner's URL
+  # explicitly below.
+  REDIS_URL: redis://redis:6379
+  S3_ENDPOINT: http://minio:9000
+
 services:
+  # -------------------------------------------------------------------------
+  # Data stores
+  # -------------------------------------------------------------------------
   postgres:
     image: postgis/postgis:17-3.5
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-triptrackr}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-triptrackr}
@@ -19,15 +83,28 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-triptrackr}']
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-triptrackr}']
       interval: 5s
       timeout: 5s
       retries: 10
 
+  # Redis carries sessions, rate-limit counters, the planner cache AND the
+  # BullMQ job queue. A queue cannot survive eviction: `allkeys-lru` would
+  # silently drop jobs (a thumbnail never generated, an object-store sweep never
+  # run). `noeviction` makes Redis refuse writes at the ceiling instead, which
+  # the API reports loudly. Cache entries carry their own TTLs.
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.11-alpine
     restart: unless-stopped
-    command: ['redis-server', '--appendonly', 'yes']
+    logging: *default-logging
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --maxmemory
+      - 200mb
+      - --maxmemory-policy
+      - noeviction
     ports:
       - '6379:6379'
     volumes:
@@ -40,9 +117,12 @@ services:
 
   # S3-compatible object storage for development. Cloudflare R2 replaces this in
   # production (docker-compose.prod.yml). Buckets are private in both.
+  # MinIO stopped publishing to Docker Hub after this release; quay.io is the
+  # registry that still serves it.
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     restart: unless-stopped
+    logging: *default-logging
     command: ['server', '/data', '--console-address', ':9001']
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-triptrackr}
@@ -61,7 +141,8 @@ services:
   # Creates the two private buckets on first run. Explicitly does NOT set a public
   # download policy — objects are reachable only through signed URLs.
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    logging: *default-logging
     depends_on:
       minio:
         condition: service_healthy
@@ -73,24 +154,41 @@ services:
       echo 'Buckets ready (private).'
       "
 
+  # -------------------------------------------------------------------------
+  # Application — one image, three roles
+  # -------------------------------------------------------------------------
+
+  # One-shot. Applies every pending SQL migration as the database OWNER, then
+  # sets the API role's password from API_DB_PASSWORD so `triptrackr_api` is
+  # usable before the API's first connection. This is the only service that is
+  # handed the owner URL.
   migrate:
-    build:
-      context: ../server
-      dockerfile: Dockerfile
+    image: *api-image
+    logging: *default-logging
+    restart: 'no'
     depends_on:
       postgres:
         condition: service_healthy
     env_file:
       - ../.env
-    # En lugar de usar tsx (que fue borrado), ejecutamos el código ya compilado a JavaScript
-    command: [ 'node', 'dist/db/migrate.js' ]
-    restart: 'no'
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://${POSTGRES_USER:-triptrackr}:${POSTGRES_PASSWORD:-triptrackr}@postgres:5432/${POSTGRES_DB:-triptrackr}
+      API_DB_PASSWORD: ${API_DB_PASSWORD:-triptrackr-api-dev}
+    command: ['node', 'dist/db/migrate.js']
+    # The image's HEALTHCHECK probes the HTTP port; a one-shot has none.
+    healthcheck:
+      disable: true
 
   api:
+    image: *api-image
     build:
-      context: ../server
-      dockerfile: Dockerfile
+      # The repository root, not apps/api: the image needs packages/contracts.
+      # The root .dockerignore keeps the mobile app, docs, specs and every .env
+      # out of the context.
+      context: ..
+      dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,38 +198,70 @@ services:
         condition: service_completed_successfully
     env_file:
       - ../.env
+    environment:
+      <<: *api-env
     ports:
       - '3000:3000'
+    # Gate for depends_on and for Traefik: the image's own HEALTHCHECK is
+    # restated here so Compose reports it and dependants can wait on it.
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/health || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     labels:
       - 'traefik.enable=true'
       - 'traefik.http.routers.api.rule=Host(`${API_HOST:-api.localhost}`)'
+      - 'traefik.http.routers.api.entrypoints=web'
       - 'traefik.http.services.api.loadbalancer.server.port=3000'
-      # Coarse edge rate limiting. The per-account limiter lives in the API (T032).
+      - 'traefik.http.services.api.loadbalancer.healthcheck.path=/health'
+      - 'traefik.http.services.api.loadbalancer.healthcheck.interval=30s'
+      - 'traefik.http.services.api.loadbalancer.healthcheck.timeout=5s'
+      # Coarse edge rate limiting. The per-account limiter lives in the API.
       - 'traefik.http.middlewares.api-ratelimit.ratelimit.average=100'
       - 'traefik.http.middlewares.api-ratelimit.ratelimit.burst=50'
       - 'traefik.http.routers.api.middlewares=api-ratelimit@docker'
 
+  # BullMQ consumer: thumbnails, EXIF, moderation, object-store sweeps. Same
+  # image and the same API role — never the owner.
   worker:
-    build:
-      context: ../server
-      dockerfile: Dockerfile
+    image: *api-image
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     env_file:
       - ../.env
-    command: ['npm', 'run', 'worker']
+    environment:
+      <<: *api-env
+    command: ['node', 'dist/workers/main.js']
+    # The image's HEALTHCHECK probes :3000, which the worker does not serve;
+    # left enabled it would report "unhealthy" forever. Follow-up: a worker
+    # liveness probe (BullMQ heartbeat) so this can be re-enabled honestly.
+    healthcheck:
+      disable: true
 
+  # -------------------------------------------------------------------------
+  # Edge
+  # -------------------------------------------------------------------------
   traefik:
-    image: traefik:v3.3
+    image: traefik:v3.7.13
     restart: unless-stopped
+    logging: *default-logging
     command:
       - '--providers.docker=true'
       - '--providers.docker.exposedbydefault=false'
       - '--entrypoints.web.address=:80'
+      - '--api.dashboard=false'
+      - '--global.sendanonymoususage=false'
+      - '--global.checknewversion=false'
+      - '--log.level=INFO'
     ports:
       - '80:80'
     volumes:

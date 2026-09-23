@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, RequestMethod } from '@nestjs/common';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
 
@@ -20,15 +20,27 @@ import { loadEnv } from '@/common/config/env.schema';
       useFactory: () => {
         const env = loadEnv();
         const isProduction = env.NODE_ENV === 'production';
+        const isTest = env.NODE_ENV === 'test';
 
         return {
-          pinoHttp: {
-            level: isProduction ? 'info' : 'debug',
+          // Every route, in the named-wildcard form Nest 11's router expects.
+          // nestjs-pino's own default is the legacy bare `*`, which Nest
+          // rewrites at boot with a warning; the two spellings match the same
+          // requests, and this one matches RlsModule.
+          forRoutes: [{ path: '*path', method: RequestMethod.ALL }],
 
-            // Pretty output locally; JSON in production, where a log shipper reads it.
-            transport: isProduction
-              ? undefined
-              : { target: 'pino-pretty', options: { singleLine: true } },
+          pinoHttp: {
+            // Under test only refusals and failures are worth the output; a line
+            // per request would bury the assertion that failed.
+            level: isProduction ? 'info' : isTest ? 'warn' : 'debug',
+
+            // Pretty output locally; JSON in production, where a log shipper
+            // reads it. Never under test: pino-pretty runs in a worker thread,
+            // which Jest cannot see to wait for and reports as a leaked handle.
+            transport:
+              isProduction || isTest
+                ? undefined
+                : { target: 'pino-pretty', options: { singleLine: true } },
 
             // Correlates every line of one request, and reaches the client as a
             // header so a support report can name the exact request.

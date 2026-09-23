@@ -10,7 +10,9 @@ export const IsoDateTime = z.iso.datetime({ offset: true });
 export const IsoDate = z.iso.date();
 
 /** ISO 4217, upper case. */
-export const CurrencyCode = z.string().regex(/^[A-Z]{3}$/, 'Expected an ISO 4217 currency code');
+export const CurrencyCode = z
+  .string()
+  .regex(/^[A-Z]{3}$/, 'Expected an ISO 4217 currency code');
 
 /**
  * Money travels as a decimal string with at most two fractional digits.
@@ -20,7 +22,10 @@ export const CurrencyCode = z.string().regex(/^[A-Z]{3}$/, 'Expected an ISO 4217
  */
 export const DecimalString = z
   .string()
-  .regex(/^-?\d{1,10}(\.\d{1,2})?$/, 'Expected a decimal amount with at most two decimals');
+  .regex(
+    /^-?\d{1,10}(\.\d{1,2})?$/,
+    'Expected a decimal amount with at most two decimals',
+  );
 
 /** FX rates carry more precision than amounts; six decimals matches NUMERIC(14,6). */
 export const RateString = z

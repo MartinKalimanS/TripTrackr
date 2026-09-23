@@ -11,9 +11,6 @@ module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
-    // Listed before the alias: `@/global.css` must resolve to the stub, not to a
-    // file Jest would then try to parse as JavaScript.
-    '\.(css)$': '<rootDir>/test/style-stub.js',
     // Mirrors tsconfig.json `paths`: `@/assets/*` resolves to the project-root
     // assets directory, NOT to src/assets. Listed before the general alias
     // because moduleNameMapper takes the first match, and the general rule
@@ -26,6 +23,12 @@ module.exports = {
   },
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}', '<rootDir>/test/**/*.test.{ts,tsx}'],
   testPathIgnorePatterns: ['/node_modules/', '<rootDir>/e2e/'],
+  // The first render in a suite pays for Babel-transforming every React Native
+  // and Expo module it touches; on a cold cache that alone can exceed Jest's
+  // 5 s default and fail a test that has nothing wrong with it. The tests
+  // themselves are fast — this only stops a slow disk from being reported as
+  // a product defect.
+  testTimeout: 20000,
   // `standard-navigation` is an ESM-only transitive dependency of expo-router.
   // Without it in this allowlist, importing expo-router throws "Cannot use
   // import statement outside a module" from

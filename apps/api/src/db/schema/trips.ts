@@ -76,9 +76,20 @@ export const tripStops = pgTable(
     sortOrder: smallint('sort_order').notNull(),
     arriveDate: date('arrive_date').notNull(),
     departDate: date('depart_date').notNull(),
+    /**
+     * Added 2026-09-23 (research D-16, migration 0007). Stops are mirrored on the
+     * device and synchronised (sync-protocol.md), and a table without a tombstone
+     * cannot propagate a deletion at all — the stop simply reappeared on the
+     * next pull (FR-039).
+     */
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (t) => [
     index('trip_stops_trip_id_sort_idx').on(t.tripId, t.sortOrder),
+    // The sync cursor pages by updated_at (sync-protocol.md §1).
+    index('trip_stops_updated_at_idx').on(t.updatedAt),
     /**
      * FR-011, and the *only* date constraint on this table. Overlapping stop ranges
      * and wide gaps between them are legitimate itineraries — a traveller may

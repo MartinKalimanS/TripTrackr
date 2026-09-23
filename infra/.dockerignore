@@ -1,0 +1,9 @@
+# Build context for infra/backup/Dockerfile is this directory. Only the backup
+# image's inputs are allowed in; secrets and compose files never enter a build
+# context, so nothing here can be COPYed into an image by accident.
+*
+!backup/
+!scripts/backup.sh
+!scripts/backup-loop.sh
+!scripts/backup-healthcheck.sh
+!scripts/restore-rehearsal.sh

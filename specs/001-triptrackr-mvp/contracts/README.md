@@ -29,6 +29,11 @@ and the two OAuth routes requires `Authorization: Bearer <access_token>`.
 }
 ```
 
+This shape is materialised once, as the strict `ApiError` schema in
+`packages/contracts/src/api/errors.ts` (`@triptrackr/contracts`, research D-13); the server's
+exception filter and the client's API layer both import it rather than restating it. The sync
+envelopes and per-table record schemas live in the same package (`packages/contracts/src/sync/`).
+
 FR-072 requires messages to be human-readable without revealing internal detail. Two rules follow,
 and they are contract obligations rather than style preferences:
 
@@ -49,9 +54,10 @@ and they are contract obligations rather than style preferences:
 An endpoint marked `owner` that forgot its `WHERE` clause still returns nothing, because the database
 refuses. That is the design (Constitution I).
 
-**Idempotency**: every `POST` that creates a record accepts an `Idempotency-Key` header. The sync
-push path relies on it, and so does the purchase-completion path (FR-083 — no duplicate charge on
-retry).
+**Idempotency**: every `POST` that creates a record accepts an `Idempotency-Key` header; the
+purchase-completion path relies on it (FR-083 — no duplicate charge on retry). The sync push path is
+the exception: its records carry a client-generated `id` that _is_ the idempotency key (research
+D-15, [sync-protocol.md](./sync-protocol.md) §2), so it needs no header.
 
 **Pagination**: cursor-based, never offset. Offsets skip or repeat rows when the underlying set
 changes between pages, which for the sync feed means a lost or duplicated record.

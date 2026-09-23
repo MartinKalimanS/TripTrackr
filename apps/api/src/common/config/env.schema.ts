@@ -13,8 +13,18 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
 
-  // PostgreSQL + PostGIS. The API connects as a non-superuser role (T023) so that
-  // RLS is enforced against it rather than bypassed.
+  // PostgreSQL + PostGIS — the API-role connection string (research D-20,
+  // contracts/data-access-policy.md §1 "Deployment obligation").
+  //
+  // DATABASE_URL names `triptrackr_api`: non-superuser, owns nothing,
+  // NOBYPASSRLS (0003_api_role.sql). Every request the API and the worker make
+  // runs as this role, which is what makes the policies in 0005 real rather
+  // than decorative. Pointing it at the owner leaves every policy in place and
+  // silently stops enforcing them — adversarial test 17 exists for exactly that.
+  //
+  // The owner's URL is deliberately NOT part of this schema: the API process
+  // has no legitimate use for it, and a variable the process does not declare
+  // is a variable a compose file never has to hand it. See `migrationEnvSchema`.
   DATABASE_URL: z.string().url(),
 
   // Redis: sessions, rate limits, planner cache, BullMQ transport.
@@ -65,6 +75,29 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+/**
+ * What the migration one-shot and the geography import need — and the API
+ * process must never receive.
+ *
+ * The two identities are two schemas on purpose. Migrations run in a container
+ * that has no business holding S3 credentials or the document master key, and
+ * the API runs in a container that has no business holding the owner's
+ * password. Splitting the declarations is what lets a compose file give each
+ * service exactly its own variables, with nothing inert or borrowed.
+ */
+const migrationEnvSchema = z.object({
+  // Names the database owner. Used by the migration runner and the geography
+  // import, both of which alter the schema; never by a request path.
+  MIGRATION_DATABASE_URL: z.string().url(),
+
+  // The API role's password. Applied by the migration runner
+  // (`ALTER ROLE triptrackr_api PASSWORD …`) so the role has credentials before
+  // the API first connects; the API's DATABASE_URL must carry the same value.
+  API_DB_PASSWORD: z.string().min(16),
+});
+
+export type MigrationEnv = z.infer<typeof migrationEnvSchema>;
+
 let cached: Env | undefined;
 
 /**
@@ -74,19 +107,30 @@ let cached: Env | undefined;
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   if (cached) return cached;
 
-  const parsed = envSchema.safeParse(source);
+  cached = parseOrThrow(envSchema, source, 'The API will not start.');
+  return cached;
+}
+
+/** Validates the migration runner's variables. Not memoised; it runs once. */
+export function loadMigrationEnv(source: NodeJS.ProcessEnv = process.env): MigrationEnv {
+  return parseOrThrow(migrationEnvSchema, source, 'Migrations will not run.');
+}
+
+function parseOrThrow<T extends z.ZodType>(
+  schema: T,
+  source: NodeJS.ProcessEnv,
+  consequence: string,
+): z.infer<T> {
+  const parsed = schema.safeParse(source);
 
   if (!parsed.success) {
     const problems = parsed.error.issues
       .map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`)
       .join('\n');
-    throw new Error(
-      `Environment validation failed. The API will not start.\n${problems}`,
-    );
+    throw new Error(`Environment validation failed. ${consequence}\n${problems}`);
   }
 
-  cached = parsed.data;
-  return cached;
+  return parsed.data;
 }
 
 /** Test-only: clears the memoised environment between cases. */

@@ -4,7 +4,7 @@
 
 ## How to read this document
 
-The server schema is the authority. `travelappfullspec.md` §3 supplies the baseline; this document
+The server schema is the authority. `docs/travelappfullspec.md` §3 supplies the baseline; this document
 records it in requirement terms, and marks every place where the specification's requirements
 extended or changed it.
 
@@ -493,11 +493,11 @@ what makes a retried push an idempotent upsert rather than a potential duplicate
 
 Every mirrored table adds these local-only columns:
 
-| Column                               | Purpose                                                                                       |
-| ------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `is_dirty` (boolean)                 | Set on every local write, cleared only when the server confirms                               |
-| `synced_at` (nullable)               | When the server last acknowledged this row; null for a row that has never been pushed         |
-| `local_file_uri` (photos, documents) | Where the bytes live on device until the upload queue drains                                  |
+| Column                               | Purpose                                                                               |
+| ------------------------------------ | ------------------------------------------------------------------------------------- |
+| `is_dirty` (boolean)                 | Set on every local write, cleared only when the server confirms                       |
+| `synced_at` (nullable)               | When the server last acknowledged this row; null for a row that has never been pushed |
+| `local_file_uri` (photos, documents) | Where the bytes live on device until the upload queue drains                          |
 
 `updated_at` and `deleted_at` mirror the server's and drive both the conflict comparison and the
 tombstone propagation.

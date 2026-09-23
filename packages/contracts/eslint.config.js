@@ -10,7 +10,13 @@ const prettierConfig = require('eslint-config-prettier');
  */
 module.exports = tseslint.config(
   {
-    ignores: ['node_modules/', 'dist/', 'coverage/', 'eslint.config.js', 'jest.config.js'],
+    ignores: [
+      'node_modules/',
+      'dist/',
+      'coverage/',
+      'eslint.config.js',
+      'jest.config.js',
+    ],
   },
   ...tseslint.configs.recommendedTypeChecked,
   prettierConfig,

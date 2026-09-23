@@ -1,8 +1,8 @@
 # Contract: Design Tokens & Appearance Resolution
 
-**Feature**: `specs/002-neumorphic-ui` | **Consumers**: every screen and component in `src/`
+**Feature**: `specs/002-neumorphic-ui` | **Consumers**: every screen and component in `apps/mobile/src/`
 
-This is the contract between the token layer (`src/theme/`, `src/constants/theme.ts`) and everything
+This is the contract between the token layer (`apps/mobile/src/theme/`, `apps/mobile/src/constants/theme.ts`) and everything
 that renders. It is the interface this feature exposes to the rest of the product, including to the
 screens feature 001 has yet to build.
 
@@ -11,12 +11,12 @@ screens feature 001 has yet to build.
 ## C1. The token layer is the only source of visual values
 
 **Guarantee**: every colour, corner radius, shadow, border width, and spacing step used anywhere in
-`src/` originates from an exported token.
+`apps/mobile/src/` originates from an exported token.
 
 **Obligation on consumers** (FR-028): no literal colour, no inline shadow, no ad-hoc radius. A
 genuinely new need is added to the token set, not applied locally.
 
-**Enforcement**: lint rule rejecting colour literals in `src/app/` and `src/components/`, plus code
+**Enforcement**: lint rule rejecting colour literals in `apps/mobile/src/app/` and `apps/mobile/src/components/`, plus code
 review. A one-off value is a contract breach, not a style preference.
 
 ---
@@ -47,14 +47,14 @@ you render") applies to the palette itself.
 **Guarantee**: the test suite fails if any token pair falls below its floor, in either theme, in
 every elevation profile.
 
-| Pair class                                     | Floor    | Requirement |
-| ---------------------------------------------- | -------- | ----------- |
-| body text on its surface                       | **4.5**  | FR-008      |
-| large text on its surface                      | **3.0**  | FR-008      |
-| interactive border vs adjacent surface         | **3.0**  | FR-009      |
-| focus indicator vs adjacent surface            | **3.0**  | FR-012      |
-| accent and danger vs their surface             | **4.5**  | FR-008      |
-| any text pair when `prefersMoreContrast`       | **7.0**  | FR-013      |
+| Pair class                               | Floor   | Requirement |
+| ---------------------------------------- | ------- | ----------- |
+| body text on its surface                 | **4.5** | FR-008      |
+| large text on its surface                | **3.0** | FR-008      |
+| interactive border vs adjacent surface   | **3.0** | FR-009      |
+| focus indicator vs adjacent surface      | **3.0** | FR-012      |
+| accent and danger vs their surface       | **4.5** | FR-008      |
+| any text pair when `prefersMoreContrast` | **7.0** | FR-013      |
 
 **Explicitly exempt**: `shadowLight` and `shadowDark`. They are decorative and carry no state or
 affordance, so WCAG 1.4.11 does not apply. The exemption is enumerated in code as a named allowlist
@@ -75,7 +75,7 @@ interface AppearanceContext {
   theme: 'light' | 'dark';
   prefersMoreContrast: boolean;
   prefersLessMotion: boolean;
-  prefersLessTransparency: boolean;   // structurally false on Android
+  prefersLessTransparency: boolean; // structurally false on Android
   fontScale: number;
   elevationProfile: ElevationProfile;
   tokens: ResolvedTokens;
@@ -104,7 +104,7 @@ mount is a breach.
 - Deterministic, so it is fully unit-testable without a device.
 - Monotonic in capability: a lower Android API level never yields a richer profile.
 
-**Contract with the surface layer**: the profile changes *how* a treatment renders, never *which*
+**Contract with the surface layer**: the profile changes _how_ a treatment renders, never _which_
 treatment a component asked for. A component requests `recessed`; the profile decides whether that
 is an inset shadow pair or a `surfaceSunk` fill. Call sites never branch on profile.
 

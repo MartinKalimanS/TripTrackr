@@ -33,12 +33,22 @@ export const expenseCategories = pgTable(
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     icon: text('icon'),
+    /**
+     * Added 2026-09-23 (migration 0007). Custom categories are created offline at
+     * the moment an expense needs them, so they are mirrored on the device and
+     * synchronised ahead of `expenses` (sync-protocol.md §2, "parents before
+     * children"). The tombstone exists for the same reason as on `trip_stops`.
+     */
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (t) => [
     // NULLS NOT DISTINCT so the six seeded system rows cannot be duplicated:
     // by default PostgreSQL treats each NULL user_id as distinct, which would
     // permit a second "Food" system row.
     unique('expense_categories_user_name_key').on(t.userId, t.name).nullsNotDistinct(),
+    index('expense_categories_updated_at_idx').on(t.updatedAt),
   ],
 );
 

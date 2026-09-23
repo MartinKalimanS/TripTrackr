@@ -2,10 +2,7 @@ import { Worker, type Job, type Processor } from 'bullmq';
 import Redis from 'ioredis';
 
 import { loadEnv } from '@/common/config/env.schema';
-import {
-  QUEUE_NAMES,
-  type QueueName,
-} from '@/common/queue/queue.constants';
+import { QUEUE_NAMES, type QueueName } from '@/common/queue/queue.constants';
 import { createBullConnection } from '@/common/queue/queue.module';
 
 /**
@@ -82,6 +79,15 @@ function bootstrapWorker(): void {
         attempt: job?.attemptsMade,
         message: error.message,
       });
+    });
+
+    // 'error' is the connection, not a job: Redis unreachable, a dropped socket
+    // mid-deploy. BullMQ re-emits it on the Worker, and an EventEmitter with no
+    // listener for 'error' throws — which here would mean a Redis blip takes the
+    // whole worker process down with it. ioredis reconnects on its own; this
+    // just makes each attempt a line in the log.
+    worker.on('error', (error: Error) => {
+      logLine('error', { queue: name, message: `connection: ${error.message}` });
     });
 
     workers.push(worker);

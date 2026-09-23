@@ -23,6 +23,27 @@ export interface ApiErrorBody {
   };
 }
 
+/** Status codes at or above this are defects rather than considered answers. */
+const LOWEST_SERVER_ERROR_STATUS = 500;
+const LOWEST_CLIENT_ERROR_STATUS = 400;
+const HIGHEST_STATUS = 599;
+
+/** The one sentence an unrecognised failure is allowed to say. */
+const GENERIC_MESSAGE = 'Something went wrong on our end. Please try again.';
+
+/**
+ * An error raised by Express's own middleware — the body parser's 413, an
+ * `http-errors` 415 — rather than by Nest. Not an HttpException, but it carries
+ * the status it means and an `expose` flag saying whether its message was
+ * written for the caller. Nest maps only JSON `SyntaxError` before handing the
+ * rest to this filter, so without recognising the shape a body over the limit
+ * would be reported and logged as a 500 defect when it is a considered answer.
+ */
+interface ExpressHttpError extends Error {
+  readonly status: number;
+  readonly expose?: boolean;
+}
+
 /**
  * Turns every thrown thing into that shape, and nothing else (FR-072).
  *
@@ -34,10 +55,10 @@ export interface ApiErrorBody {
  * helpfully forwarded `error.message` would publish the name of the session
  * variable, the schema, and often a fragment of the failing query. The stack goes
  * to the log, where it is useful; the caller gets a sentence.
+ *
+ * Registered once, as `APP_FILTER` in AppModule, so the contract suite and the
+ * running process share it.
  */
-/** Status codes at or above this are defects rather than considered answers. */
-const LOWEST_SERVER_ERROR_STATUS = 500;
-
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
@@ -47,14 +68,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = context.getResponse<Response>();
     const request = context.getRequest<Request>();
 
-    // Annotated as `number` rather than inferred: `getStatus()` returns a plain
-    // number while the fallback is an `HttpStatus` member, and the resulting union
-    // cannot be compared against either one without a type complaint.
-    const status: number =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
-
+    const status = statusOf(exception);
     const body = this.toBody(exception, status);
 
     // Full detail, server-side only. A 5xx is a defect and needs the stack; a 4xx
@@ -98,15 +112,47 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return { error: { code: codeForStatus(status), message: exception.message } };
     }
 
+    // Express's own 4xx. `expose` is http-errors' word for "this message was
+    // written for the client" — it is true for a 413 and false for anything
+    // that wraps an internal failure, and the filter honours it as such.
+    if (isExpressHttpError(exception) && status < LOWEST_SERVER_ERROR_STATUS) {
+      return {
+        error: {
+          code: codeForStatus(status),
+          message: exception.expose === true ? exception.message : GENERIC_MESSAGE,
+        },
+      };
+    }
+
     // Anything unrecognised. Deliberately says nothing about what happened —
     // see the class comment.
-    return {
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Something went wrong on our end. Please try again.',
-      },
-    };
+    return { error: { code: 'INTERNAL_ERROR', message: GENERIC_MESSAGE } };
   }
+}
+
+/**
+ * Annotated as `number` rather than inferred: `getStatus()` returns a plain
+ * number while the fallback is an `HttpStatus` member, and the resulting union
+ * cannot be compared against either one without a type complaint.
+ */
+function statusOf(exception: unknown): number {
+  if (exception instanceof HttpException) return exception.getStatus();
+  if (isExpressHttpError(exception)) return exception.status;
+
+  return HttpStatus.INTERNAL_SERVER_ERROR;
+}
+
+function isExpressHttpError(value: unknown): value is ExpressHttpError {
+  if (!(value instanceof Error) || !('status' in value)) return false;
+
+  const { status } = value as { status: unknown };
+
+  return (
+    typeof status === 'number' &&
+    Number.isInteger(status) &&
+    status >= LOWEST_CLIENT_ERROR_STATUS &&
+    status <= HIGHEST_STATUS
+  );
 }
 
 function isApiErrorBody(value: unknown): value is ApiErrorBody {

@@ -168,6 +168,13 @@ export interface ImportResult {
 }
 
 export interface ImportOptions {
+  /**
+   * The **owner's** connection string — `MIGRATION_DATABASE_URL`, never
+   * `DATABASE_URL`. The import alters `cities` (see {@link ensureGeonameIdColumn}),
+   * which only the table's owner may do; the API role is denied DDL by design
+   * (0003_api_role.sql, research D-20). {@link importGeoCatalogue} checks this
+   * against the live session and refuses rather than failing mid-load.
+   */
   readonly databaseUrl: string;
   readonly countryInfoPath: string;
   readonly citiesPath: string;
@@ -188,6 +195,7 @@ export async function importGeoCatalogue(options: ImportOptions): Promise<Import
   const sql = postgres(options.databaseUrl, { max: 1, onnotice: () => undefined });
 
   try {
+    await assertOwnsCatalogue(sql);
     await ensureGeonameIdColumn(sql);
 
     const countries = await importCountries(sql, options.countryInfoPath);
@@ -196,6 +204,40 @@ export async function importGeoCatalogue(options: ImportOptions): Promise<Import
     return { countries, cities, skipped };
   } finally {
     await sql.end();
+  }
+}
+
+/**
+ * Refuses to run as anyone who cannot alter `cities`.
+ *
+ * The scaffold handed every process the same connection string, so this import
+ * would have run as whichever role that string named — and if it named the API
+ * role, `ALTER TABLE` below would fail with a bare permission error twenty
+ * seconds into a run, after nothing useful had been said about why. Checking
+ * membership of the owning role up front (superusers pass; that is what
+ * `pg_has_role` returns for them) turns that into one sentence naming the
+ * variable to change.
+ */
+async function assertOwnsCatalogue(sql: Sql): Promise<void> {
+  const [row] = await sql<{ role: string; owner: string; may_alter: boolean }[]>`
+    SELECT current_user                                    AS role,
+           pg_get_userbyid(c.relowner)                     AS owner,
+           pg_has_role(current_user, c.relowner, 'USAGE')  AS may_alter
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'cities'
+  `;
+
+  if (!row) {
+    throw new Error('The cities table does not exist. Run the migrations first.');
+  }
+
+  if (!row.may_alter) {
+    throw new Error(
+      `The geography import connected as "${row.role}", but "cities" is owned by ` +
+        `"${row.owner}" and the import alters it. Use MIGRATION_DATABASE_URL, not ` +
+        'DATABASE_URL (research D-20).',
+    );
   }
 }
 

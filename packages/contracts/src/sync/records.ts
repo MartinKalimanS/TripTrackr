@@ -128,14 +128,18 @@ const noteFields = {
 const anchored = (n: { country_id: number | null; city_id: number | null }) =>
   n.country_id !== null || n.city_id !== null;
 
-export const NotePushRecord = z.strictObject({ ...pushMeta, ...noteFields }).refine(anchored, {
-  message: 'A note must be anchored to a country or a city',
-  path: ['country_id'],
-});
-export const NotePullRecord = z.strictObject({ ...pullMeta, ...noteFields }).refine(anchored, {
-  message: 'A note must be anchored to a country or a city',
-  path: ['country_id'],
-});
+export const NotePushRecord = z
+  .strictObject({ ...pushMeta, ...noteFields })
+  .refine(anchored, {
+    message: 'A note must be anchored to a country or a city',
+    path: ['country_id'],
+  });
+export const NotePullRecord = z
+  .strictObject({ ...pullMeta, ...noteFields })
+  .refine(anchored, {
+    message: 'A note must be anchored to a country or a city',
+    path: ['country_id'],
+  });
 
 // ---------------------------------------------------------------------------
 // expenses — owner-only, structurally. There is no visibility field here and

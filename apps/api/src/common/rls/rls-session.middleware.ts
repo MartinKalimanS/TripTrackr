@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import type { NextFunction, Request, Response } from 'express';
 import type { Sql } from 'postgres';
 
+import { ACCESS_TOKEN_ALGORITHM } from '@/common/auth/token-algorithm';
 import { loadEnv } from '@/common/config/env.schema';
 import { PG_CONNECTION } from '@/common/db/db.module';
 import { runInRlsContext } from './rls-context';
@@ -145,6 +146,10 @@ export class RlsSessionMiddleware implements NestMiddleware {
     try {
       const claims = await this.jwt.verifyAsync<AccessTokenClaims>(header.slice(7), {
         secret: loadEnv().JWT_ACCESS_SECRET,
+        // The same single algorithm the service signs with. Left open, the
+        // verifier would honour whatever `alg` the token's own header claims —
+        // and the token is the attacker's to write.
+        algorithms: [ACCESS_TOKEN_ALGORITHM],
       });
 
       return claims.sub || null;

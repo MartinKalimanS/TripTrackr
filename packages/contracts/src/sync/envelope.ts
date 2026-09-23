@@ -60,7 +60,8 @@ export type PullResponse = z.infer<typeof PullResponse>;
 // POST /sync/push
 // ---------------------------------------------------------------------------
 
-const batch = <T extends z.ZodTypeAny>(record: T) => z.array(record).min(1).max(MAX_PUSH_BATCH);
+const batch = <T extends z.ZodTypeAny>(record: T) =>
+  z.array(record).min(1).max(MAX_PUSH_BATCH);
 
 /**
  * One request per table per cycle. The record schema is bound to the table name

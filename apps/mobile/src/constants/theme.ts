@@ -1,9 +1,10 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Design tokens — the only source of visual values (feature 002, contract C1).
+ *
+ * Every colour, radius, depth, and spacing step used anywhere in `src/`
+ * originates here. Screens and components import tokens; they never write a
+ * literal, and an ESLint rule (eslint.config.js) rejects one that tries.
  */
-
-import '@/global.css';
 
 import { Platform, StyleSheet } from 'react-native';
 
@@ -21,16 +22,14 @@ import { Platform, StyleSheet } from 'react-native';
  * The shadow tones sit at 1.16–1.52:1 against their canvas and can never reach
  * the 3:1 non-text floor. That is why `border` exists and why it is applied to
  * interactive elements only — see research R-002.
+ *
+ * The create-expo-app scaffold tokens (`text`, `background`, `backgroundElement`,
+ * `backgroundSelected`, `textSecondary`) were removed with the template (R008):
+ * every consumer now reads from the ramp, so keeping them would have been two
+ * palettes for one product — the half-converted state FR-023 forbids.
  */
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-
-    // --- neumorphic ramp -------------------------------------------------
     canvas: '#E3E8EF',
     surface: '#E3E8EF',
     surfaceSunk: '#DCE2EA',
@@ -45,13 +44,6 @@ export const Colors = {
     danger: '#B3261E', //  5.31:1 vs canvas
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-
-    // --- neumorphic ramp -------------------------------------------------
     canvas: '#23272F',
     surface: '#23272F',
     surfaceSunk: '#1E222A',
@@ -69,6 +61,10 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+/**
+ * System font families. iOS and Android only (research D-14) — the `web`
+ * branch that carried CSS variables left with the web target.
+ */
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
@@ -86,12 +82,6 @@ export const Fonts = Platform.select({
     rounded: 'normal',
     mono: 'monospace',
   },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
 });
 
 export const Spacing = {
@@ -104,7 +94,6 @@ export const Spacing = {
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
 
 /**
@@ -149,15 +138,14 @@ export const LightSource = { x: -1, y: -1 } as const;
 export const BorderHairline = StyleSheet.hairlineWidth;
 
 /**
- * Brand colours for the launch experience.
+ * Brand colour for the launch experience.
  *
- * These are NOT part of the neumorphic ramp and are deliberately exempt from the
- * contrast gate: they are the splash identity, and `SplashBackground` MUST stay
- * identical to `expo.plugins["expo-splash-screen"].backgroundColor` in app.json.
- * If the two drift, the launch flashes one colour and then another.
+ * NOT part of the neumorphic ramp and deliberately exempt from the contrast
+ * gate: it is the splash identity, and it MUST stay identical to the
+ * `expo-splash-screen` plugin's `backgroundColor` in app.config.ts. If the two
+ * drift, the launch flashes one colour and then another.
  */
 export const SplashBackground = '#208AEF';
-export const SplashGradient = 'linear-gradient(180deg, #3C9FFE, #0274DF)';
 
 /** Platform minimum touch target, independent of visible decoration (FR-011). */
 export const MinTouchTarget = Platform.select({ ios: 44, android: 48 }) ?? 44;

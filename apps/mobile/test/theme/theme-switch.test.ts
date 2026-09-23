@@ -23,11 +23,12 @@ describe('theme switching — FR-022, FR-023', () => {
   test('no token holds the same value in both themes by accident', () => {
     // A token identical across themes is almost always one that was added to
     // one ramp and copied without being re-chosen for the other.
-    const shared = Object.keys(Colors.light).filter(
-      (key) =>
-        Colors.light[key as keyof typeof Colors.light] ===
-        Colors.dark[key as keyof typeof Colors.dark],
-    );
+    // Widened to `string`: with the legacy tokens gone the two literal unions
+    // no longer overlap, and TypeScript (correctly) flags the comparison as
+    // always-false — which is precisely the property being asserted at runtime.
+    const light: Record<string, string> = Colors.light;
+    const dark: Record<string, string> = Colors.dark;
+    const shared = Object.keys(light).filter((key) => light[key] === dark[key]);
     expect(shared).toEqual([]);
   });
 

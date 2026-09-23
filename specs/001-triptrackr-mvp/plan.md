@@ -172,7 +172,7 @@ _GATE: evaluated before Phase 0 research, and re-evaluated after Phase 1 design.
 **All gates pass. There are no violations to justify — the Complexity Tracking table below is
 intentionally empty.**
 
-Two deviations from `travelappfullspec.md` are recorded. Neither touches a constitutional principle;
+Two deviations from `docs/travelappfullspec.md` are recorded. Neither touches a constitutional principle;
 both carry rationale in [research.md](./research.md) (D-01 and D-07).
 
 **Post-Phase-1 re-evaluation**: re-run after the design artifacts were written. All gates still pass.
@@ -190,7 +190,7 @@ a boarding pass (Principle I, FR-033).
 ```text
 specs/001-triptrackr-mvp/
 ├── plan.md                        # This file
-├── research.md                    # Phase 0 output — decisions D-01..D-12
+├── research.md                    # Phase 0 output — decisions D-01..D-12; audit D-13..D-20
 ├── data-model.md                  # Phase 1 output — entities, columns, RLS posture
 ├── quickstart.md                  # Phase 1 output — how to run and validate
 ├── contracts/

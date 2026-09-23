@@ -59,7 +59,8 @@ privacy guarantee is not in force, and no amount of passing behavioural tests wi
 ## 3. Run the mobile app
 
 ```bash
-npm install
+npm install                   # from the repository root — one lockfile for every workspace
+cd apps/mobile
 npx expo run:android          # or run:ios — builds the dev client
 npx expo start --dev-client
 ```
@@ -75,7 +76,7 @@ resolves `localhost` to itself.
 what else works.
 
 ```bash
-cd server && npm run test:privacy
+cd apps/api && npm run test:privacy
 ```
 
 The suite is specified in full at
@@ -83,8 +84,9 @@ The suite is specified in full at
 PostgreSQL via Testcontainers — a mocked database cannot exercise an RLS policy — and it runs _as a
 non-owner_, attempting to reach account A's data from accounts B and C through every available route.
 
-**Pass condition**: 16 of 16, including the three `pg_catalog` assertions that verify the policies
-are actually in force rather than merely defined.
+**Pass condition**: 20 of 20, including the four assertions (rows 14–17) that check `pg_catalog` and
+the live connection rather than behaviour — they verify the policies are actually in force, and that
+the API is connected as `triptrackr_api`, rather than merely defined.
 
 **Manual confirmation** of the same property, worth doing once by hand because it is the product's
 whole premise:
@@ -104,10 +106,10 @@ whole premise:
 **The social layer does not begin until this passes.** Constitution II; spec "Sequencing constraint".
 
 ```bash
-maestro test e2e/offline-sync.yaml
+maestro test apps/mobile/e2e/06-offline-acceptance.yaml     # tasks.md T140 + T203
 ```
 
-The twelve scenarios are specified at
+The fifteen scenarios are specified at
 [contracts/sync-protocol.md](./contracts/sync-protocol.md) §6.
 
 **Manual confirmation**, two devices, one account:
@@ -227,18 +229,20 @@ Free allowance is configuration; set it low for testing rather than creating fiv
 ## 11. Full check before calling work done
 
 ```bash
-cd server && npm run lint && npm run test:unit && npm run test:integration && npm run test:privacy
-npm run lint && npm run test                          # mobile, from the repository root
-maestro test e2e/                                     # all flows
+npm run lint && npm run typecheck                     # every workspace, from the repository root
+npm run test -w packages/contracts                    # the shared sync and REST schemas
+npm run test:unit -w apps/api && npm run test:integration -w apps/api && npm run test:privacy -w apps/api
+npm run test -w apps/mobile
+maestro test apps/mobile/e2e/                         # all flows
 ```
 
-| Gate                                     | Threshold                                             |
-| ---------------------------------------- | ----------------------------------------------------- |
-| Coverage, both sides                     | ≥ 80% (Constitution III)                              |
-| Privacy suite                            | 16 of 16, including the three `pg_catalog` assertions |
-| Offline suite                            | 12 of 12                                              |
-| Migrations against an ephemeral database | Clean                                                 |
-| Backup restored into a scratch database  | Verified — an unrestored backup is not a backup       |
+| Gate                                     | Threshold                                                       |
+| ---------------------------------------- | --------------------------------------------------------------- |
+| Coverage, both sides                     | ≥ 80% (Constitution III)                                        |
+| Privacy suite                            | 20 of 20, including the four `pg_catalog`/connection assertions |
+| Offline suite                            | 15 of 15                                                        |
+| Migrations against an ephemeral database | Clean                                                           |
+| Backup restored into a scratch database  | Verified — an unrestored backup is not a backup                 |
 
 The last row is a launch-blocking checklist item, not a runbook footnote (Constitution, Technology
 Constraints; SC-020).

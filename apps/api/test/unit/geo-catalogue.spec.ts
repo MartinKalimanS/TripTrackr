@@ -1,8 +1,4 @@
-import {
-  parseCityLine,
-  parseCountryLine,
-  stripAccents,
-} from '@/db/geo-catalogue';
+import { parseCityLine, parseCountryLine, stripAccents } from '@/db/geo-catalogue';
 
 /**
  * The GeoNames extracts are positional and carry no header row, so nothing in the

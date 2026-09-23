@@ -35,6 +35,27 @@ export const RateLimited = (options: RateLimit) => SetMetadata(RATE_LIMIT_KEY, o
 const DEFAULT_LIMIT: RateLimit = { limit: 120, windowSeconds: 60 };
 
 /**
+ * Count a hit and, if this hit created the counter, give it a lifetime — as one
+ * server-side step.
+ *
+ * Run as two commands, INCR then EXPIRE, there is a gap between them. A process
+ * that dies in the gap, or a second request that lands in it and sees a count of
+ * 2, leaves a counter with no expiry: a bucket that never empties, and a caller
+ * locked out of that route until someone notices. Redis executes a script
+ * atomically, so the counter and its expiry are created together or not at all.
+ *
+ * Only the creating hit sets the TTL. Refreshing it on every hit would turn a
+ * fixed window into a sliding one that never expires under sustained load.
+ */
+const HIT_SCRIPT = `
+  local count = redis.call('INCR', KEYS[1])
+  if count == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+  end
+  return count
+`;
+
+/**
  * Per-account rate limiting (FR-071).
  *
  * Keyed on the authenticated traveller, falling back to client IP only when there
@@ -45,8 +66,8 @@ const DEFAULT_LIMIT: RateLimit = { limit: 120, windowSeconds: 60 };
  * requests at the end of one window and `limit` again at the start of the next.
  * That burst is acceptable here because this layer exists to stop runaway clients
  * and casual scraping, and Traefik applies a coarser global ceiling in front of it
- * (plan.md). The counter is a single atomic INCR, which is worth more at this tier
- * than smoothing the edge.
+ * (plan.md). The counter is one atomic script ({@link HIT_SCRIPT}), which is
+ * worth more at this tier than smoothing the edge.
  *
  * **Unreachable Redis fails OPEN, loudly.** This is a deliberate trade and the
  * opposite of how the privacy layer behaves. RLS fails closed because the cost of
@@ -78,14 +99,9 @@ export class RateLimitGuard implements CanActivate {
     const key = this.bucketKey(request, options);
 
     try {
-      const count = await this.redis.incr(key);
-
-      // Only the request that created the counter sets its lifetime. Refreshing
-      // the TTL on every hit would turn a fixed window into a sliding one that
-      // never expires under sustained load, locking the caller out indefinitely.
-      if (count === 1) {
-        await this.redis.expire(key, options.windowSeconds);
-      }
+      const count = Number(
+        await this.redis.eval(HIT_SCRIPT, 1, key, options.windowSeconds),
+      );
 
       const remaining = Math.max(0, options.limit - count);
       response.setHeader('X-RateLimit-Limit', options.limit);

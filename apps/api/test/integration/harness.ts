@@ -73,8 +73,18 @@ export async function createHarness(): Promise<Harness> {
   const api = apiSql();
 
   await seedGeography(owner);
-  const accountA = await seedAccount(owner, ACCOUNT_A_ID, 'a@example.test', 'Traveller A');
-  const accountB = await seedAccount(owner, ACCOUNT_B_ID, 'b@example.test', 'Traveller B');
+  const accountA = await seedAccount(
+    owner,
+    ACCOUNT_A_ID,
+    'a@example.test',
+    'Traveller A',
+  );
+  const accountB = await seedAccount(
+    owner,
+    ACCOUNT_B_ID,
+    'b@example.test',
+    'Traveller B',
+  );
 
   return {
     owner,
@@ -150,8 +160,20 @@ async function seedAccount(
     ON CONFLICT (id) DO NOTHING
   `;
 
-  const privateTripId = await seedTrip(sql, id, `${displayName}'s private trip`, false, CITY.zurich);
-  const publicTripId = await seedTrip(sql, id, `${displayName}'s public trip`, true, CITY.paris);
+  const privateTripId = await seedTrip(
+    sql,
+    id,
+    `${displayName}'s private trip`,
+    false,
+    CITY.zurich,
+  );
+  const publicTripId = await seedTrip(
+    sql,
+    id,
+    `${displayName}'s public trip`,
+    true,
+    CITY.paris,
+  );
 
   return { id, email, displayName, privateTripId, publicTripId };
 }
