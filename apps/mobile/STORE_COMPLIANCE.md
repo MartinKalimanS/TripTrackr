@@ -146,23 +146,20 @@ by hand for each release. Consequences:
 - Sentry `dist` follows the same rule (`src/lib/sentry.ts`): set from config when present,
   otherwise the SDK reads the native build number.
 
-## EAS project identity (RUN ONCE, BY THE ACCOUNT OWNER)
+## EAS project identity — DONE (2026-09-23)
 
-`extra.eas.projectId` and `owner` are intentionally absent — a fabricated id would be worse
-than none. With a dynamic config, `eas init` cannot write them for you
-(<https://docs.expo.dev/workflow/configuration.md>, "Configuration resolution rules"):
+The app is linked to `@martinkaliman/triptrackr` (project id
+`4c7cfcc9-2e03-4863-b096-4f173627961f`); `owner` and `extra.eas.projectId` live in
+`app.config.ts`. The id is not a secret — it names the project, it grants nothing.
 
-```sh
-cd apps/mobile
-eas init            # creates/links the project and prints its id
-```
+Two things to know if this ever has to be redone:
 
-Then add to `app.config.ts`:
-
-```ts
-owner: '<expo-account>',
-extra: { eas: { projectId: '<printed id>' } },
-```
+- Run `eas init` from **`apps/mobile`**, not the repository root. With a dynamic config the CLI
+  cannot write into `app.config.ts` (<https://docs.expo.dev/workflow/configuration.md>,
+  "Configuration resolution rules"); from the root it writes a stray `app.json` that Expo never
+  reads. Copy the printed values into `app.config.ts` by hand and delete whatever the CLI wrote.
+- The same id must be used by every `APP_VARIANT`, so dev-client and store builds share one
+  project, its credentials, and its build history.
 
 `submit.production` is `{}` on purpose. Fill `ios.ascAppId` (App Store Connect app id) and
 `android.serviceAccountKeyPath`/`track` when the store records exist; until then `eas submit`

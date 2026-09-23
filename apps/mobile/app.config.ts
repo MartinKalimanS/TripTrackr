@@ -48,6 +48,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: IS_DEV ? 'TripTrackr (Dev)' : 'TripTrackr',
   slug: 'triptrackr',
+  // EAS project identity, as linked by `eas init` on 2026-09-23. The project id
+  // is not a secret — it names the project on expo.dev, it grants nothing — and
+  // it must be identical for every variant so dev and store builds share one
+  // EAS project, its credentials, and its build history.
+  owner: 'martinkaliman',
+  extra: {
+    ...config.extra,
+    eas: { projectId: '4c7cfcc9-2e03-4863-b096-4f173627961f' },
+  },
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
