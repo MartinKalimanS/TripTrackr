@@ -20,7 +20,68 @@ jest.mock('expo-secure-store', () => {
     deleteItemAsync: jest.fn(async (key: string) => {
       store.delete(key);
     }),
+    // Keychain accessibility constants are opaque numbers on the device
+    // (v57 SecureStore reference, `KeychainAccessibilityConstant`).
+    AFTER_FIRST_UNLOCK: 1,
+    WHEN_UNLOCKED: 2,
     __reset: () => store.clear(),
+  };
+});
+
+// expo-crypto's native module is auto-mocked by jest-expo into a function that
+// returns `undefined` (randomUUID) or all-zero bytes (getRandomBytesAsync) —
+// both would silently pass tests that a device would fail (duplicate ids, a
+// zero database key). Node's CSPRNG gives the same contract with real entropy.
+jest.mock('expo-crypto', () => {
+  const nodeCrypto = require('crypto') as typeof import('crypto');
+  return {
+    randomUUID: jest.fn(() => nodeCrypto.randomUUID()),
+    getRandomBytes: jest.fn(
+      (count: number) => new Uint8Array(nodeCrypto.randomBytes(count)),
+    ),
+    getRandomBytesAsync: jest.fn(
+      async (count: number) => new Uint8Array(nodeCrypto.randomBytes(count)),
+    ),
+  };
+});
+
+// expo-sqlite is native. Suites that need a real database build one over
+// `node:sqlite` through test/db/sqlite-harness.ts and hand it to drizzle; the
+// module itself only has to exist so that `drizzle-orm/expo-sqlite` (which
+// imports `addDatabaseChangeListener` for live queries) can load. The listener
+// registry is real so a suite can fire a table change and watch a live query
+// re-run — exactly what the device's update hook does.
+// (Only global names appear in type positions here: babel-jest's out-of-scope
+// guard misreads a parameter name inside a function type as a variable.)
+jest.mock('expo-sqlite', () => {
+  const listeners: Set<Function> = new Set();
+  return {
+    openDatabaseAsync: jest.fn(),
+    openDatabaseSync: jest.fn(),
+    addDatabaseChangeListener: jest.fn((listener: Function) => {
+      listeners.add(listener);
+      return { remove: () => listeners.delete(listener) };
+    }),
+    __emitChange: (tableName: string) => {
+      for (const listener of listeners) {
+        listener({ databaseName: 'test', tableName, rowId: 0 });
+      }
+    },
+    __listenerCount: () => listeners.size,
+  };
+});
+
+// The native date picker renders a dialog (Android) or a UIDatePicker (iOS).
+// The stub records its props so a test can drive `onValueChange` directly.
+jest.mock('@react-native-community/datetimepicker', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+  const Picker = (props: Record<string, unknown>) =>
+    React.createElement(View, { testID: 'date-time-picker', ...props });
+  return {
+    __esModule: true,
+    default: Picker,
+    DateTimePickerAndroid: { open: jest.fn(), dismiss: jest.fn(async () => true) },
   };
 });
 

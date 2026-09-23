@@ -88,10 +88,11 @@ describe('TokenService.rotate', () => {
     ]);
 
     // Act
-    const pair = await rotate(script);
+    const outcome = await rotate(script);
 
     // Assert — a pair, and the new refresh token is linked to the one it retires.
-    expect(pair).not.toBeNull();
+    expect(outcome.status).toBe('rotated');
+    const pair = outcome.status === 'rotated' ? outcome.pair : undefined;
     expect(pair?.accessToken.split('.')).toHaveLength(3);
     expect(pair?.refreshToken).toHaveLength(43); // 32 bytes, base64url
 
@@ -122,10 +123,11 @@ describe('TokenService.rotate', () => {
     ]);
 
     // Act
-    const pair = await rotate(script);
+    const outcome = await rotate(script);
 
-    // Assert — nothing minted, everything for this account revoked.
-    expect(pair).toBeNull();
+    // Assert — nothing minted, everything for this account revoked, and the
+    // outcome named so the device can tell its owner why it was signed out.
+    expect(outcome).toEqual({ status: 'reused' });
 
     const revoke = script.calls.find((c) => c.sql.includes('auth_revoke_refresh_tokens'));
     expect(revoke?.values).toEqual([USER_ID]);
@@ -139,10 +141,10 @@ describe('TokenService.rotate', () => {
     const script = scriptedTx([]);
 
     // Act
-    const pair = await rotate(script);
+    const outcome = await rotate(script);
 
     // Assert
-    expect(pair).toBeNull();
+    expect(outcome).toEqual({ status: 'rejected' });
     expect(script.calls).toHaveLength(1);
     expect(script.calls[0]?.sql).toContain('auth_consume_refresh_token');
   });
@@ -154,10 +156,10 @@ describe('TokenService.rotate', () => {
     ]);
 
     // Act
-    const pair = await rotate(script);
+    const outcome = await rotate(script);
 
     // Assert
-    expect(pair).toBeNull();
+    expect(outcome).toEqual({ status: 'rejected' });
     expect(script.calls.some((c) => c.sql.includes('auth_insert_refresh_token'))).toBe(
       false,
     );
@@ -166,8 +168,9 @@ describe('TokenService.rotate', () => {
     );
   });
 
-  it('returns null identically for unknown, expired and reused tokens', async () => {
-    // FR-072: the caller must not be able to tell which refusal it received.
+  it('refuses unknown and expired tokens identically', async () => {
+    // FR-072: the caller must not be able to tell which of these two refusals it
+    // received. Reuse is the deliberate exception — see the rotate() comment.
     const results = await Promise.all([
       rotate(scriptedTx([])),
       rotate(
@@ -175,14 +178,9 @@ describe('TokenService.rotate', () => {
           { id: OLD_TOKEN_ID, user_id: USER_ID, expired: true, reused: false },
         ]),
       ),
-      rotate(
-        scriptedTx([
-          { id: OLD_TOKEN_ID, user_id: USER_ID, expired: false, reused: true },
-        ]),
-      ),
     ]);
 
-    expect(results).toEqual([null, null, null]);
+    expect(results).toEqual([{ status: 'rejected' }, { status: 'rejected' }]);
   });
 });
 

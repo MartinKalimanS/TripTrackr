@@ -4,7 +4,7 @@
   "private": true,
   "description": "TripTrackr API — NestJS 11 on Node.js 22 LTS",
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=22.16.0"
   },
   "scripts": {
     "build": "nest build",

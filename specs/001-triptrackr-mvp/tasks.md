@@ -99,10 +99,10 @@ An npm-workspaces monorepo — two deployables and one shared package (plan.md, 
 
 ### Mobile plumbing
 
-- [ ] T039 [P] Implement the API client with automatic token refresh in `apps/mobile/src/lib/api-client.ts`
-- [ ] T040 [P] Implement the secure storage wrapper in `apps/mobile/src/lib/secure-store.ts` for tokens and the local database key (FR-003)
-- [ ] T041 Implement the SQLCipher-encrypted local database in `apps/mobile/src/db/client.ts` with the Drizzle local schema in `apps/mobile/src/db/schema.ts` — the seven mirrored tables in `SYNC_TABLES`, each keyed by a client-generated UUID `id` (no `server_id`, research D-15), with the local-only columns `is_dirty`, `synced_at`, and `local_file_uri` (photos, documents), and row types inferred from the `*PullRecord` schemas in `@triptrackr/contracts` (data-model.md §10, research D-01, D-13)
-- [ ] T042 Generate the initial local migration in `apps/mobile/src/db/migrations/`
+- [x] T039 [P] Implement the API client with automatic token refresh in `apps/mobile/src/lib/api-client.ts`
+- [x] T040 [P] Implement the secure storage wrapper in `apps/mobile/src/lib/secure-store.ts` for tokens and the local database key (FR-003)
+- [x] T041 Implement the SQLCipher-encrypted local database in `apps/mobile/src/db/client.ts` with the Drizzle local schema in `apps/mobile/src/db/schema.ts` — the seven mirrored tables in `SYNC_TABLES`, each keyed by a client-generated UUID `id` (no `server_id`, research D-15), with the local-only columns `is_dirty`, `synced_at`, and `local_file_uri` (photos, documents), and row types inferred from the `*PullRecord` schemas in `@triptrackr/contracts` (data-model.md §10, research D-01, D-13)
+- [x] T042 Generate the initial local migration in `apps/mobile/src/db/migrations/`
 - [x] T043 [P] Wire the TanStack Query provider and Zustand root store in `apps/mobile/src/app/_layout.tsx` and `apps/mobile/src/lib/store.ts` — delivered by R009: `QueryClientProvider` in the root layout; Zustand stores are per feature (`apps/mobile/src/features/auth/session-store.ts`) rather than one root store, so `lib/store.ts` is intentionally absent
 - [x] T044 [P] Create the route group shells `apps/mobile/src/app/(auth)/_layout.tsx`, `apps/mobile/src/app/(tabs)/_layout.tsx`, and `apps/mobile/src/app/trip/[id]/_layout.tsx` (see R009 — the root `Stack`, the `modal/` group, `+not-found`, and the neumorphic tab bar are delivered there and supersede these shells; `(tabs)/_layout.tsx` passes the R009 bar as `tabBar`)
 
@@ -143,35 +143,36 @@ Before any user story began, the repository was audited end to end — mobile, s
 
 ### Tests for User Story 1 ⚠️ Write first, confirm failing
 
-- [ ] T045 [P] [US1] Contract test — every endpoint rejects missing, malformed, and expired tokens — in `apps/api/test/contract/auth-boundary.spec.ts` (contract test 1)
-- [ ] T046 [P] [US1] Contract test — a replayed rotated refresh token revokes the whole family — in `apps/api/test/contract/refresh-rotation.spec.ts` (contract test 2, FR-005)
-- [ ] T047 [P] [US1] Contract test — login rate limiting engages and its response does not distinguish unknown account from wrong password — in `apps/api/test/contract/login-rate-limit.spec.ts` (contract test 3, FR-071)
-- [ ] T048 [P] [US1] Integration test — a non-owner requesting an existing private trip receives exactly the not-found response — in `apps/api/test/integration/trips-access.spec.ts` (contract test 4)
-- [ ] T049 [P] [US1] Integration test — trip creation, stop insertion, reordering, and rejection of a departure preceding arrival — in `apps/api/test/integration/trips.spec.ts` (FR-010, FR-011, FR-012)
-- [ ] T050 [P] [US1] Integration test — city autocomplete is accent-tolerant and ranks well-known cities first — in `apps/api/test/integration/lookups.spec.ts` (FR-014)
-- [ ] T051 [P] [US1] Unit test — trip lifecycle status derives from dates and a client-supplied `status` is rejected — in `apps/api/test/unit/trip-status.spec.ts` (FR-013)
-- [ ] T052 [P] [US1] Component test — trip creation form validation and stop ordering — in `apps/mobile/src/features/trips/__tests__/trip-form.test.tsx`
+- [x] T045 [P] [US1] Contract test — every endpoint rejects missing, malformed, and expired tokens — in `apps/api/test/contract/auth-boundary.spec.ts` (contract test 1)
+- [x] T046 [P] [US1] Contract test — a replayed rotated refresh token revokes the whole family — in `apps/api/test/contract/refresh-rotation.spec.ts` (contract test 2, FR-005)
+- [x] T047 [P] [US1] Contract test — login rate limiting engages and its response does not distinguish unknown account from wrong password — in `apps/api/test/contract/login-rate-limit.spec.ts` (contract test 3, FR-071)
+- [x] T048 [P] [US1] Integration test — a non-owner requesting an existing private trip receives exactly the not-found response — in `apps/api/test/integration/trips-access.spec.ts` (contract test 4)
+- [x] T049 [P] [US1] Integration test — trip creation, stop insertion, reordering, and rejection of a departure preceding arrival — in `apps/api/test/integration/trips.spec.ts` (FR-010, FR-011, FR-012)
+- [x] T050 [P] [US1] Integration test — city autocomplete is accent-tolerant and ranks well-known cities first — in `apps/api/test/integration/lookups.spec.ts` (FR-014)
+- [x] T051 [P] [US1] Unit test — trip lifecycle status derives from dates and a client-supplied `status` is rejected — in `apps/api/test/unit/trip-status.spec.ts` (FR-013)
+- [x] T052 [P] [US1] Component test — trip creation form validation and stop ordering — in `apps/mobile/src/features/trips/__tests__/trip-form.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T053 [US1] Implement registration and login in `apps/api/src/modules/auth/auth.controller.ts` and `apps/api/src/modules/auth/auth.service.ts` (FR-001)
-- [ ] T054 [US1] Implement Google and Apple OAuth with server-side token verification and transparent first-use account creation in `apps/api/src/modules/auth/oauth.service.ts` (FR-002)
-- [ ] T055 [US1] Implement refresh rotation, reuse detection, logout, and logout-all in `apps/api/src/modules/auth/refresh.service.ts` (FR-003, FR-004, FR-005)
-- [ ] T056 [US1] Implement email verification and password reset with Resend in `apps/api/src/modules/auth/verification.service.ts`
-- [ ] T057 [US1] Apply the rate-limit guard to every `/auth/*` route in `apps/api/src/modules/auth/auth.module.ts` (FR-071)
-- [ ] T058 [P] [US1] Implement `GET /me` and `PATCH /me` in `apps/api/src/modules/users/users.controller.ts` (FR-008)
-- [ ] T059 [US1] Implement trips CRUD in `apps/api/src/modules/trips/trips.controller.ts` and `apps/api/src/modules/trips/trips.service.ts` — creation deliberately without any allowance check, which arrives in US9 (FR-009)
-- [ ] T060 [US1] Implement stop create, patch, delete, and reordering in `apps/api/src/modules/trips/stops.controller.ts` (FR-010, FR-012)
-- [ ] T061 [US1] Implement derived lifecycle status in `apps/api/src/modules/trips/trip-status.service.ts`, rejecting a supplied `status` (FR-013)
-- [ ] T062 [US1] Implement `GET /trips/:id/arcs` deriving great-circle pairs from consecutive stops in `apps/api/src/modules/trips/arcs.service.ts` (FR-016)
-- [ ] T063 [P] [US1] Implement the lookups module `GET /countries` and `GET /countries/:id/cities` with accent-tolerant ranked search in `apps/api/src/modules/lookups/lookups.controller.ts` (FR-014)
-- [ ] T064 [P] [US1] Build the auth screens in `apps/mobile/src/app/(auth)/welcome.tsx`, `apps/mobile/src/app/(auth)/login.tsx`, and `apps/mobile/src/app/(auth)/register.tsx`
-- [ ] T065 [US1] Implement auth mutations and session persistence in `apps/mobile/src/features/auth/use-session.ts` (FR-003)
-- [ ] T066 [US1] Build the trip list screen and add-trip modal in `apps/mobile/src/app/(tabs)/index.tsx` and `apps/mobile/src/app/modal/add-trip.tsx`
-- [ ] T067 [US1] Build the country-filtered searchable city picker in `apps/mobile/src/components/trip/city-picker.tsx` (FR-014)
-- [ ] T068 [US1] Build the trip detail screen and stops editor in `apps/mobile/src/app/trip/[id]/index.tsx`
-- [ ] T069 [US1] Implement next-stop arrival date suggestion and client-side date validation in `apps/mobile/src/features/trips/stop-dates.ts` (FR-015, FR-011)
-- [ ] T070 [US1] Write the Maestro flow `apps/mobile/e2e/01-account-and-trip.yaml` covering register, create a two-stop trip, relaunch, and verify persistence
+- [x] T053 [US1] Implement registration and login in `apps/api/src/modules/auth/auth.controller.ts` and `apps/api/src/modules/auth/auth.service.ts` (FR-001)
+- [x] T054 [US1] Implement Google and Apple OAuth with server-side token verification and transparent first-use account creation in `apps/api/src/modules/auth/oauth.service.ts` (FR-002)
+- [x] T055 [US1] Implement refresh rotation, reuse detection, logout, and logout-all in `apps/api/src/modules/auth/refresh.service.ts` (FR-003, FR-004, FR-005)
+- [x] T056 [US1] Implement email verification and password reset with Resend in `apps/api/src/modules/auth/verification.service.ts`
+- [x] T057 [US1] Apply the rate-limit guard to every `/auth/*` route in `apps/api/src/modules/auth/auth.module.ts` (FR-071)
+- [x] T058 [P] [US1] Implement `GET /me` and `PATCH /me` in `apps/api/src/modules/users/users.controller.ts` (FR-008)
+- [x] T059 [US1] Implement trips CRUD in `apps/api/src/modules/trips/trips.controller.ts` and `apps/api/src/modules/trips/trips.service.ts` — creation deliberately without any allowance check, which arrives in US9 (FR-009)
+- [x] T060 [US1] Implement stop create, patch, delete, and reordering in `apps/api/src/modules/trips/stops.controller.ts` (FR-010, FR-012)
+- [x] T061 [US1] Implement derived lifecycle status in `apps/api/src/modules/trips/trip-status.service.ts`, rejecting a supplied `status` (FR-013)
+- [x] T062 [US1] Implement `GET /trips/:id/arcs` deriving great-circle pairs from consecutive stops in `apps/api/src/modules/trips/arcs.service.ts` (FR-016)
+- [x] T063 [P] [US1] Implement the lookups module `GET /countries` and `GET /countries/:id/cities` with accent-tolerant ranked search in `apps/api/src/modules/lookups/lookups.controller.ts` (FR-014)
+- [x] T064 [P] [US1] Build the auth screens in `apps/mobile/src/app/(auth)/welcome.tsx`, `apps/mobile/src/app/(auth)/login.tsx`, and `apps/mobile/src/app/(auth)/register.tsx`
+- [x] T065 [US1] Implement auth mutations and session persistence in `apps/mobile/src/features/auth/use-session.ts` (FR-003)
+- [x] T066 [US1] Build the trip list screen and add-trip modal in `apps/mobile/src/app/(tabs)/index.tsx` and `apps/mobile/src/app/modal/add-trip.tsx`
+- [x] T067 [US1] Build the country-filtered searchable city picker in `apps/mobile/src/components/trip/city-picker.tsx` (FR-014)
+- [x] T068 [US1] Build the trip detail screen and stops editor in `apps/mobile/src/app/trip/[id]/index.tsx` — reordering ships as move-up/move-down controls with `accessibilityActions`; the drag gesture of Acceptance Scenario 1.6 is T071b below
+- [x] T069 [US1] Implement next-stop arrival date suggestion and client-side date validation in `apps/mobile/src/features/trips/stop-dates.ts` (FR-015, FR-011)
+- [ ] T071b [US1] Add drag-to-reorder to the stops editor (`apps/mobile/src/components/trip/stop-editor.tsx`) on top of the existing move controls — long-press drag via react-native-gesture-handler + reanimated (both installed), keeping the buttons as the accessible path (Acceptance Scenario 1.6)
+- [x] T070 [US1] Write the Maestro flow `apps/mobile/e2e/01-account-and-trip.yaml` covering register, create a two-stop trip, relaunch, and verify persistence
 
 **Checkpoint**: A traveller can register and record a multi-stop trip. This is the MVP.
 

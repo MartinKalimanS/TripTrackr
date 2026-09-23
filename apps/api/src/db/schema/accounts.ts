@@ -97,3 +97,41 @@ export const refreshTokens = pgTable(
     index('refresh_tokens_user_id_idx').on(t.userId),
   ],
 );
+
+/**
+ * One-shot tokens sent by email (migration 0008). Same shape and the same
+ * posture as `refresh_tokens`: the SHA-256 of a 32-byte random value, never
+ * the value; SELECT-only for the API role; every write behind an `auth_*`
+ * SECURITY DEFINER function, so a request path cannot mint itself a link.
+ */
+const emailTokenColumns = () => ({
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  /** Set when consumed; a spent token reads exactly like an unknown one. */
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Proves control of the address given at registration (spec Assumptions). */
+export const emailVerificationTokens = pgTable(
+  'email_verification_tokens',
+  emailTokenColumns(),
+  (t) => [
+    uniqueIndex('email_verification_tokens_hash_key').on(t.tokenHash),
+    index('email_verification_tokens_user_id_idx').on(t.userId),
+  ],
+);
+
+/** Consuming one installs a new hash and revokes every refresh token (0008). */
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  emailTokenColumns(),
+  (t) => [
+    uniqueIndex('password_reset_tokens_hash_key').on(t.tokenHash),
+    index('password_reset_tokens_user_id_idx').on(t.userId),
+  ],
+);

@@ -96,17 +96,15 @@ describe('contract — health and the error envelope', () => {
       // Act
       const response = await request(app.getHttpServer()).get('/v1/me');
 
-      // Assert — the route is not registered yet, so today this is a 404; once
-      // the profile module lands it becomes the JwtAuthGuard's 401. Either is
-      // a refusal, and the obligation under test is the envelope it arrives
-      // in, not the code. Tighten to 401 when /me exists.
-      expect([401, 404]).toContain(response.status);
+      // Assert — the JwtAuthGuard's 401, in the one envelope. The full
+      // boundary — every protected route, every kind of bad token — is
+      // auth-boundary.spec.ts; this pins that the filter that shapes the
+      // refusal is the global one.
+      expect(response.status).toBe(401);
 
       const parsed = ApiError.safeParse(response.body);
       expect(parsed.success).toBe(true);
-      expect(parsed.success && parsed.data.error.code).toMatch(
-        /^(UNAUTHENTICATED|NOT_FOUND)$/,
-      );
+      expect(parsed.success && parsed.data.error.code).toBe('UNAUTHENTICATED');
     });
 
     it('carries no internal detail — no stack, no SQL, no status object', async () => {

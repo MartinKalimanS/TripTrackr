@@ -1,6 +1,7 @@
 import type { Sql, TransactionSql } from 'postgres';
 
 import { apiSql, ensureMigrated, migrationSql } from '../support/db';
+import { CITY, seedGeography } from '../support/geography';
 
 /**
  * The integration fixture: a real PostgreSQL 17 + PostGIS 3.5, every migration
@@ -22,13 +23,12 @@ import { apiSql, ensureMigrated, migrationSql } from '../support/db';
  * the server never runs in.
  */
 
-/** Geography ids the seed installs; specs reference them by name, not by number. */
-export const CITY = {
-  /** Zürich — accent-bearing on purpose, for the FR-014 folding tests. */
-  zurich: 1,
-  paris: 2,
-  tokyo: 3,
-} as const;
+/**
+ * Geography ids the seed installs; specs reference them by name, not by number.
+ * Defined once in test/support/geography.ts so the lookup specs and this
+ * fixture cannot disagree about which city an id names.
+ */
+export { CITY };
 
 export interface SeededAccount {
   readonly id: string;
@@ -111,40 +111,6 @@ export async function createHarness(): Promise<Harness> {
       await Promise.all([owner.end(), api.end()]);
     },
   };
-}
-
-/**
- * Three cities in three countries. Reference data, unpoliced by design — a
- * country's name belongs to everyone.
- *
- * Idempotent, because each Jest worker builds the fixture against the one shared
- * container and would otherwise collide on the primary key.
- */
-async function seedGeography(sql: Sql): Promise<void> {
-  await sql`
-    INSERT INTO countries (id, iso_code, name, continent) VALUES
-      (1, 'CH', 'Switzerland', 'Europe'),
-      (2, 'FR', 'France', 'Europe'),
-      (3, 'JP', 'Japan', 'Asia')
-    ON CONFLICT (id) DO NOTHING
-  `;
-
-  await sql`
-    INSERT INTO cities (id, country_id, name, ascii_name, location, timezone, population) VALUES
-      (${CITY.zurich}, 1, 'Zürich', 'Zurich',
-       ST_SetSRID(ST_MakePoint(8.5417, 47.3769), 4326)::geography, 'Europe/Zurich', 421878),
-      (${CITY.paris}, 2, 'Paris', 'Paris',
-       ST_SetSRID(ST_MakePoint(2.3522, 48.8566), 4326)::geography, 'Europe/Paris', 2148000),
-      (${CITY.tokyo}, 3, 'Tokyo', 'Tokyo',
-       ST_SetSRID(ST_MakePoint(139.6917, 35.6895), 4326)::geography, 'Asia/Tokyo', 13960000)
-    ON CONFLICT (id) DO NOTHING
-  `;
-
-  // serial columns do not advance when ids are supplied explicitly, so the next
-  // insert from application code would collide on 1. Resynchronising here saves
-  // every future spec from a failure that has nothing to do with what it tests.
-  await sql`SELECT setval('cities_id_seq', (SELECT MAX(id) FROM cities))`;
-  await sql`SELECT setval('countries_id_seq', (SELECT MAX(id) FROM countries))`;
 }
 
 /** One traveller, one private trip, one public trip, each with a single stop. */

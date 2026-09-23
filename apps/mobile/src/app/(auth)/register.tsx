@@ -1,13 +1,11 @@
 /**
- * Register — placeholder form (R009).
+ * Register — email, password, display name (T064, T065; FR-001).
  *
- * The one piece of behaviour already here is the confirmation check, because
- * it is purely local and FR-010 requires the mismatch to be said in words, not
- * shown as a red border alone. Everything that talks to the API is US1's:
- *
- * TODO(US1 T064, T065): enable the action, call the register mutation, write
- * the session through `useSessionStore`, and surface API errors via the field
- * `error` prop.
+ * The rules are `RegisterRequest`'s: a twelve-character password floor and no
+ * composition rule (contracts/api/auth.ts explains why). The confirmation
+ * check is purely local and is said in words, not shown as a red border
+ * alone (FR-010). API refusals — an email that already has an account, a
+ * rate limit — become plain sentences through `describeAuthError`.
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -17,17 +15,43 @@ import { ThemedText } from '@/components/themed-text';
 import { PressableSurface } from '@/components/ui/pressable-surface';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
-import { Spacing } from '@/constants/theme';
+import { Colors, Spacing } from '@/constants/theme';
+import { describeAuthError } from '@/features/auth/auth-errors';
+import {
+  hasErrors,
+  validateRegister,
+  type FieldErrors,
+  type RegisterFields,
+} from '@/features/auth/form-validation';
+import { useRegister } from '@/features/auth/use-session';
+import { useAppearance } from '@/hooks/use-appearance';
+
+const MISMATCH = 'Passwords do not match';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { theme } = useAppearance();
+  const register = useRegister();
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
+  const [errors, setErrors] = useState<FieldErrors<RegisterFields>>({});
+  const [submitted, setSubmitted] = useState(false);
 
+  const values = { email, password, display_name: displayName };
+  const liveErrors = submitted ? validateRegister(values) : errors;
   // Only once the traveller has typed a confirmation: flagging an empty field
   // as "not matching" would be shouting before they have had a chance to answer.
-  const mismatch = confirmation.length > 0 && confirmation !== password;
+  const mismatch = (confirmation.length > 0 || submitted) && confirmation !== password;
+
+  const submit = () => {
+    const found = validateRegister(values);
+    setSubmitted(true);
+    setErrors(found);
+    if (hasErrors(found) || confirmation !== password) return;
+    register.mutate(values);
+  };
 
   return (
     <Screen testID="register-screen">
@@ -43,6 +67,18 @@ export default function RegisterScreen() {
       </View>
 
       <TextField
+        testID="register-display-name"
+        label="Name"
+        value={displayName}
+        onChangeText={setDisplayName}
+        autoCapitalize="words"
+        textContentType="name"
+        autoComplete="name"
+        returnKeyType="next"
+        error={liveErrors.display_name}
+      />
+      <TextField
+        testID="register-email"
         label="Email"
         value={email}
         onChangeText={setEmail}
@@ -51,31 +87,52 @@ export default function RegisterScreen() {
         keyboardType="email-address"
         textContentType="emailAddress"
         autoComplete="email"
+        returnKeyType="next"
+        error={liveErrors.email}
       />
       <TextField
+        testID="register-password"
         label="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
         textContentType="newPassword"
         autoComplete="new-password"
+        returnKeyType="next"
+        error={liveErrors.password}
       />
       <TextField
+        testID="register-confirm-password"
         label="Confirm password"
         value={confirmation}
         onChangeText={setConfirmation}
         secureTextEntry
         textContentType="newPassword"
         autoComplete="new-password"
-        error={mismatch ? 'Passwords do not match' : undefined}
+        returnKeyType="go"
+        onSubmitEditing={submit}
+        error={mismatch ? MISMATCH : undefined}
       />
 
+      {register.error ? (
+        <ThemedText
+          testID="register-error"
+          type="small"
+          accessibilityRole="alert"
+          style={{ color: Colors[theme].danger }}>
+          {describeAuthError(register.error)}
+        </ThemedText>
+      ) : null}
+
       <PressableSurface
+        testID="register-submit"
         accessibilityLabel="Create account"
-        disabled
+        depth={2}
+        busy={register.isPending}
+        onPress={submit}
         style={styles.submit}>
         <ThemedText type="smallBold" style={styles.centred}>
-          Create account
+          {register.isPending ? 'Creating your account…' : 'Create account'}
         </ThemedText>
       </PressableSurface>
     </Screen>

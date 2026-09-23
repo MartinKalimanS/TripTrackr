@@ -23,6 +23,8 @@ import { loadMigrationEnv } from '@/common/config/env.schema';
  *   0006_auth_functions.sql   hand-authored — the pre-authentication keyholes
  *   0007_sync_tombstones_and_write_pinning.sql
  *                             hand-authored — sync columns, write pinning
+ *   0008_us1_auth.sql         hand-authored — registration and OAuth keyholes,
+ *                             email-verification and password-reset tokens
  *
  * Constitution: "Migrations version-controlled ... production schema MUST NEVER
  * be hand-edited."

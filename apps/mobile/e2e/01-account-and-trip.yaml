@@ -1,0 +1,161 @@
+# User Story 1 — create an account and record a multi-stop trip (tasks.md T070).
+#
+# The story's Independent Test, end to end: register a new account, create a
+# trip with two ordered stops in different cities, force-quit and relaunch,
+# and confirm the trip and both stops persist with the correct order.
+#
+# Persistence is LOCAL (Constitution II): the trip and stops live in the
+# device's SQLCipher database from the moment they are saved, so the relaunch
+# proves the local-first path, not the server. Only registration and the city
+# lookups need the API.
+#
+# PREREQUISITES
+# -------------
+# - A development build with EXPO_PUBLIC_API_URL pointing at a reachable API
+#   (a physical device needs the machine's LAN address, not localhost).
+# - The API has the geography catalogue imported
+#   (`infra/scripts/import-geo-catalogue.ts`) — Italy with Rome and Florence.
+# - Every account is unique: the email carries `Date.now()`, so the flow can
+#   run repeatedly against the same API without a cleanup step.
+#
+# City names are matched with a regex because the catalogue stores the local
+# name (`Roma`, `Firenze`) while an English extract would store `Rome` /
+# `Florence`; either spelling satisfies the flow.
+appId: com.triptrackr.app
+tags:
+  - us1
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    id: 'app-root'
+- assertVisible:
+    id: 'welcome-screen'
+
+# --- Register (Acceptance Scenario 1.1) ------------------------------------
+- evalScript: ${output.email = 'maestro-' + Date.now() + '@example.com'}
+- tapOn:
+    id: 'welcome-create-account'
+- assertVisible:
+    id: 'register-screen'
+- tapOn:
+    id: 'register-display-name'
+- inputText: 'Maestro Traveller'
+- tapOn:
+    id: 'register-email'
+- inputText: ${output.email}
+- tapOn:
+    id: 'register-password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'register-confirm-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register-submit'
+
+# Signed in: the gate swaps the auth group for the tabs once the encrypted
+# local store is open. Give the first open (key generation + migrations) time.
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+
+# --- Create a trip (Acceptance Scenario 1.3) --------------------------------
+- tapOn:
+    id: 'tab-trips'
+- assertVisible:
+    id: 'trips-screen'
+- assertVisible: 'No trips yet'
+- tapOn:
+    id: 'trips-plan-trip'
+- assertVisible:
+    id: 'add-trip-screen'
+- tapOn:
+    id: 'add-trip-title'
+- inputText: 'Italy, spring 2026'
+- hideKeyboard
+- tapOn:
+    id: 'currency-EUR'
+- tapOn:
+    id: 'add-trip-save'
+
+# The sheet is replaced by the trip itself, marked Planning (FR-013).
+- assertVisible:
+    id: 'trip-screen'
+- assertVisible: 'Italy, spring 2026'
+- assertVisible: 'Planning'
+- assertVisible: 'No stops yet'
+
+# --- First stop: Rome (Acceptance Scenario 1.4) ------------------------------
+- tapOn:
+    id: 'trip-add-stop'
+- assertVisible:
+    id: 'stop-editor'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Italy'
+- tapOn:
+    id: 'city-picker-country-IT'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'Rom'
+- tapOn:
+    text: 'Rom(a|e)'
+# The chosen place and the pre-filled dates are shown; today → tomorrow is fine.
+- assertVisible:
+    id: 'stop-editor-arrive'
+- tapOn:
+    id: 'stop-editor-save'
+- assertVisible: 'Stop 1: Rom(a|e).*'
+
+# --- Second stop: Florence (Acceptance Scenario 1.5 — arrival pre-suggested) --
+- tapOn:
+    id: 'trip-add-stop'
+- assertVisible:
+    id: 'stop-editor'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Italy'
+- tapOn:
+    id: 'city-picker-country-IT'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'F'
+- tapOn:
+    text: '(Firenze|Florence)'
+- assertVisible:
+    id: 'stop-editor-arrive'
+- tapOn:
+    id: 'stop-editor-save'
+- scrollUntilVisible:
+    element:
+      text: 'Stop 2: (Firenze|Florence).*'
+    direction: DOWN
+- assertVisible: 'Stop 1: Rom(a|e).*'
+
+# --- Relaunch: everything persists (Independent Test) ------------------------
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+- tapOn:
+    id: 'tab-trips'
+- assertVisible:
+    id: 'trips-screen'
+- assertVisible: 'Italy, spring 2026'
+- assertVisible: '2 stops.*'
+- assertVisible: 'Planning'
+- tapOn: 'Italy, spring 2026'
+- assertVisible:
+    id: 'trip-screen'
+- assertVisible: 'Stop 1: Rom(a|e).*'
+- scrollUntilVisible:
+    element:
+      text: 'Stop 2: (Firenze|Florence).*'
+    direction: DOWN

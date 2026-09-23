@@ -148,6 +148,110 @@ describe('RateLimitGuard', () => {
     expect(headers.get('Retry-After')).toBe(17);
   });
 
+  describe('per account identifier (FR-071, rest-api.md §1)', () => {
+    // `/auth/login`, `/auth/register` and `/auth/password-reset/request` are
+    // limited per IP *and* per account identifier. A guess distributed across
+    // many addresses against one email is still one attack on one account.
+    const options = {
+      limit: 10,
+      windowSeconds: 60,
+      perIdentifier: { field: 'email', limit: 3, windowSeconds: 900 },
+    };
+
+    it('counts a second bucket keyed on a hash of the identifier, never the value', async () => {
+      // Arrange
+      const redis = scriptedRedis(1);
+      const guard = new RateLimitGuard(redis.client, new Reflector());
+      const { context } = contextFor(
+        { [RATE_LIMIT_KEY]: options },
+        { method: 'POST', path: '/auth/login', body: { email: 'Someone@Example.test' } },
+      );
+
+      // Act
+      await guard.canActivate(context);
+
+      // Assert — two atomic hits, and the address appears in neither key.
+      expect(redis.eval).toHaveBeenCalledTimes(2);
+      const keys = redis.eval.mock.calls.map((call) => call[2] as string);
+      expect(keys[0]).toMatch(/^ratelimit:ip:10\.0\.0\.1:POST:\/auth\/login:\d+$/);
+      expect(keys[1]).toMatch(/^ratelimit:acct:[0-9a-f]{32}:POST:\/auth\/login:\d+$/);
+      expect(keys.join('\n')).not.toMatch(/example\.test/i);
+
+      const windows = redis.eval.mock.calls.map((call) => call[3] as number);
+      expect(windows).toEqual([60, 900]);
+    });
+
+    it('folds case and whitespace so one address is one bucket', async () => {
+      const redis = scriptedRedis(1);
+      const guard = new RateLimitGuard(redis.client, new Reflector());
+      const first = contextFor(
+        { [RATE_LIMIT_KEY]: options },
+        { method: 'POST', path: '/auth/login', body: { email: 'Someone@Example.test' } },
+      );
+      const second = contextFor(
+        { [RATE_LIMIT_KEY]: options },
+        {
+          method: 'POST',
+          path: '/auth/login',
+          body: { email: '  someone@example.test ' },
+        },
+      );
+
+      await guard.canActivate(first.context);
+      await guard.canActivate(second.context);
+
+      const accountKeys = redis.eval.mock.calls
+        .map((call) => call[2] as string)
+        .filter((key) => key.includes(':acct:'));
+      expect(new Set(accountKeys).size).toBe(1);
+    });
+
+    it('answers 429 when the identifier bucket alone is exhausted', async () => {
+      // Arrange — the address bucket is fine (count 1), the account bucket is
+      // over (count 4 of 3).
+      const evalMock = jest.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(4);
+      const client = {
+        eval: evalMock,
+        ttl: () => Promise.resolve(600),
+      } as unknown as Redis;
+      const guard = new RateLimitGuard(client, new Reflector());
+      const { context, headers } = contextFor(
+        { [RATE_LIMIT_KEY]: options },
+        { method: 'POST', path: '/auth/login', body: { email: 'someone@example.test' } },
+      );
+
+      // Act
+      const attempt = guard.canActivate(context);
+
+      // Assert — the same envelope as an address limit; nothing says which
+      // bucket tripped, because that would say whether the account is known
+      // to be under attack.
+      await expect(attempt).rejects.toBeInstanceOf(HttpException);
+      await attempt.catch((error: HttpException) => {
+        expect(error.getStatus()).toBe(429);
+        expect(error.getResponse()).toMatchObject({
+          error: { code: 'RATE_LIMITED', details: { retry_after_seconds: 600 } },
+        });
+      });
+      expect(headers.get('Retry-After')).toBe(600);
+    });
+
+    it('skips the identifier bucket when the body carries no such field', async () => {
+      // A malformed body is refused by validation a moment later; the limiter
+      // does not invent an identifier for it.
+      const redis = scriptedRedis(1);
+      const guard = new RateLimitGuard(redis.client, new Reflector());
+      const { context } = contextFor(
+        { [RATE_LIMIT_KEY]: options },
+        { method: 'POST', path: '/auth/login', body: { password: 'x' } },
+      );
+
+      await guard.canActivate(context);
+
+      expect(redis.eval).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('fails open, and says so, when Redis is unreachable', async () => {
     // Arrange — the documented trade: an abuse control must not become an
     // outage. The log line is the part that keeps it honest.

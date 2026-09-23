@@ -1,36 +1,33 @@
 /**
- * Session state — the auth gate's source of truth (R009, research D-17).
+ * Session state — the auth gate's source of truth (R009, research D-17; T065).
  *
  * The root layout chooses between the `(auth)` and `(tabs)` groups from
  * `status` alone, so this store is deliberately small: it answers "is there a
- * session on this device?" and nothing else. Sign-in, refresh, and sign-out
- * mutations arrive with US1 (T065) and write through this store rather than
- * around it.
+ * session on this device, and whose?" and nothing else. The register / login /
+ * OAuth / sign-out mutations (`use-session.ts`) and the API client's refresh
+ * path write through `signIn` / `signOut` rather than around them.
  *
- * Hydration is a local keychain read — no network (Principle II). The token is
- * opaque here; only the API client (T039) ever inspects it.
+ * Hydration is a local keychain read — no network (Principle II). Tokens are
+ * never held here; only the API client (T039) reads them, through the T040
+ * wrapper.
  */
-import * as SecureStore from 'expo-secure-store';
+import type { UserProfile } from '@triptrackr/contracts';
 import { create } from 'zustand';
 
-/**
- * Keychain / Keystore key. Shared with the API client and the sign-in
- * mutation; changing it signs every traveller out on their next launch.
- * `expo-secure-store` keys may contain letters, digits, `.`, `-`, `_` only
- * (v57 SecureStore reference).
- */
-export const SESSION_KEY = 'triptrackr.session';
+import { getSession } from '@/lib/secure-store';
 
 export type SessionStatus =
   /** The keychain has not answered yet. The gate MUST NOT decide. */
   | 'loading'
   /** No session on this device. */
   | 'signed-out'
-  /** A session token is stored. Validity is the API client's concern. */
+  /** A session is stored. Token validity is the API client's concern. */
   | 'signed-in';
 
 export interface SessionState {
   status: SessionStatus;
+  /** The signed-in traveller, as last returned by the API. Null when signed out. */
+  user: UserProfile | null;
   /**
    * Read the stored session and settle `status`.
    *
@@ -41,20 +38,32 @@ export interface SessionState {
    * caller (the root layout) reports it.
    */
   hydrate: () => Promise<void>;
+  /** A session has been established and persisted; open the signed-in screens. */
+  signIn: (user: UserProfile) => void;
+  /** The local session is gone (sign-out, or a refresh the server refused). */
+  signOut: () => void;
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
   status: 'loading',
+  user: null,
 
   hydrate: async () => {
-    let token: string | null;
+    let session: Awaited<ReturnType<typeof getSession>>;
     try {
-      token = await SecureStore.getItemAsync(SESSION_KEY);
+      session = await getSession();
     } catch (error) {
-      set({ status: 'signed-out' });
+      set({ status: 'signed-out', user: null });
       throw error;
     }
-    // An empty string is not a session — it is a bug in whoever wrote it.
-    set({ status: token ? 'signed-in' : 'signed-out' });
+    set(
+      session
+        ? { status: 'signed-in', user: session.user }
+        : { status: 'signed-out', user: null },
+    );
   },
+
+  signIn: (user) => set({ status: 'signed-in', user }),
+
+  signOut: () => set({ status: 'signed-out', user: null }),
 }));

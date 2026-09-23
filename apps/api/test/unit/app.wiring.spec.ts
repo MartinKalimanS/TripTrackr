@@ -122,11 +122,39 @@ describe('AppModule wiring', () => {
     });
 
     it('answers an unknown route in the contract error envelope', async () => {
-      const response = await request(app.getHttpServer()).get('/v1/me');
+      const response = await request(app.getHttpServer()).get(
+        '/v1/definitely-not-a-route',
+      );
 
       expect(response.status).toBe(404);
       expect(ApiError.safeParse(response.body).success).toBe(true);
       expect(response.body).toMatchObject({ error: { code: 'NOT_FOUND' } });
+    });
+
+    it('guards a protected route before it reaches the database', async () => {
+      // The JwtAuthGuard is registered by AuthModule; this proves it is wired
+      // into the graph the process boots, not just defined.
+      const before = pool.queries.length;
+
+      const response = await request(app.getHttpServer()).get('/v1/me');
+
+      expect(response.status).toBe(401);
+      expect(response.body).toMatchObject({ error: { code: 'UNAUTHENTICATED' } });
+      // The middleware opened a transaction (BEGIN is issued by the fake's
+      // begin()), but no owned table was queried.
+      expect(pool.queries.slice(before).some((q) => /FROM\s+"?users/i.test(q))).toBe(
+        false,
+      );
+    });
+
+    it('serves the public lookup routes without a token', async () => {
+      // The fake pool answers every query with no rows, so the list is empty —
+      // the point is that the route exists, is public, and speaks the contract.
+      const response = await request(app.getHttpServer()).get('/v1/countries');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ countries: [] });
+      expect(response.headers['cache-control']).toBe('public, max-age=86400');
     });
 
     it('answers a malformed JSON body in the same envelope, before any transaction opens', async () => {

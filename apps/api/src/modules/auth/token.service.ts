@@ -16,6 +16,18 @@ export interface AccessTokenClaims {
   readonly sub: string;
 }
 
+/**
+ * What presenting a refresh token produced.
+ *
+ * `rejected` covers an unknown token and an expired one alike — the caller
+ * must not be able to tell those apart. `reused` is deliberately distinct:
+ * see {@link TokenService.rotate}.
+ */
+export type RotationOutcome =
+  | { readonly status: 'rotated'; readonly pair: TokenPair }
+  | { readonly status: 'reused' }
+  | { readonly status: 'rejected' };
+
 /** One row from `auth_consume_refresh_token` (0007). */
 interface ConsumedRefreshToken {
   readonly id: string;
@@ -134,11 +146,16 @@ export class TokenService {
    * comes back with `reused = true`. The earlier read-then-revoke sequence let both
    * through, which is precisely the window a replayed stolen token needs.
    *
-   * Returns null for every failure. The caller must not tell the difference
-   * between "unknown token", "expired" and "reused" — each distinction is a signal
-   * an attacker can measure.
+   * "Unknown" and "expired" are one outcome, `rejected`: the difference is a
+   * signal an attacker can measure and a traveller cannot use. "Reused" is
+   * reported as itself, and that is the other half of FR-005 — "inform the
+   * account holder". The device presenting a retired token is as likely to be
+   * the owner's, finding every session gone because a thief refreshed first,
+   * as it is to be the thief's; telling it *why* it has been signed out is the
+   * one channel that reaches the owner at that moment, and tells the thief
+   * nothing they did not already know.
    */
-  async rotate(presentedToken: string): Promise<TokenPair | null> {
+  async rotate(presentedToken: string): Promise<RotationOutcome> {
     const tx = requireRlsTransaction();
 
     const rows = await tx<ConsumedRefreshToken[]>`
@@ -146,24 +163,27 @@ export class TokenService {
     `;
 
     const row = rows[0];
-    if (!row) return null;
+    if (!row) return { status: 'rejected' };
 
     if (row.reused) {
       this.logger.warn(
         `Refresh token reuse detected for user ${row.user_id}; revoking the whole family.`,
       );
       await this.revokeAllForUser(row.user_id);
-      return null;
+      return { status: 'reused' };
     }
 
     // Consumed — it cannot be presented again — but past its lifetime, so it
     // earns nothing. Ordered after the reuse check on purpose: a replayed token
     // that has also expired is still a replayed token.
-    if (row.expired) return null;
+    if (row.expired) return { status: 'rejected' };
 
     return {
-      accessToken: await this.issueAccessToken(row.user_id),
-      refreshToken: await this.issueRefreshToken(row.user_id, undefined, row.id),
+      status: 'rotated',
+      pair: {
+        accessToken: await this.issueAccessToken(row.user_id),
+        refreshToken: await this.issueRefreshToken(row.user_id, undefined, row.id),
+      },
     };
   }
 

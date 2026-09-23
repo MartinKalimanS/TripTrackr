@@ -8,6 +8,14 @@ const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 const config = getSentryExpoConfig(__dirname);
 
 /**
+ * Drizzle's generated `src/db/migrations/migrations.js` imports each `.sql`
+ * migration; Metro must treat the extension as source so the import resolves,
+ * and babel.config.js (`inline-import`) then replaces it with the file's text
+ * (https://orm.drizzle.team/docs/connect-expo-sqlite).
+ */
+config.resolver.sourceExts.push('sql');
+
+/**
  * Keep test files out of the app bundle.
  *
  * expo-router treats EVERY file under `src/app/` as a route, so a colocated

@@ -12,11 +12,14 @@ import { RlsModule } from '@/common/rls/rls.module';
 import { StorageModule } from '@/common/storage/storage.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { HealthModule } from '@/modules/health/health.module';
+import { LookupsModule } from '@/modules/lookups/lookups.module';
+import { TripsModule } from '@/modules/trips/trips.module';
+import { UsersModule } from '@/modules/users/users.module';
 
 /**
- * Root module. Feature modules (users, trips, notes, expenses, photos,
- * documents, sync, planner, social, billing, lookups) are registered here as
- * their user-story phases land.
+ * Root module. Feature modules are registered here as their user-story phases
+ * land: auth, users, trips and lookups with User Story 1; notes, expenses,
+ * photos, documents, sync, planner, social and billing with theirs.
  *
  * The infrastructure modules are all `@Global()` and all imported here, once.
  * The scaffold imported only three of them, which meant the pino logger, the
@@ -58,6 +61,9 @@ import { HealthModule } from '@/modules/health/health.module';
     CryptoModule,
     RlsModule,
     AuthModule,
+    UsersModule,
+    TripsModule,
+    LookupsModule,
     HealthModule,
   ],
   controllers: [],

@@ -64,3 +64,52 @@ export function requireRlsTransaction(): TransactionSql {
 export function getCurrentUserId(): string | null {
   return storage.getStore()?.userId ?? null;
 }
+
+/**
+ * The authenticated traveller's id, for code that may only run authenticated.
+ *
+ * The JwtAuthGuard has already turned "no identity" into a 401 for every
+ * non-public route, so reaching this without one is a wiring mistake — a
+ * handler marked `@Public()` that then asks who is calling — and is named as
+ * such rather than becoming a `null` that flows into a query.
+ */
+export function requireCurrentUserId(): string {
+  const userId = getCurrentUserId();
+
+  if (!userId) {
+    throw new Error(
+      'No authenticated traveller in the RLS context. This code path requires the ' +
+        'JwtAuthGuard; a @Public() route cannot call it.',
+    );
+  }
+
+  return userId;
+}
+
+/**
+ * Establishes an identity part-way through a request that began without one.
+ *
+ * Login, registration and OAuth sign-in all start anonymous — that is the whole
+ * point of the `auth_*` keyholes (0006, 0008) — and end with a traveller whose
+ * password or provider token has just been verified. The response needs that
+ * traveller's profile, and the profile lives on a policed table. Rather than
+ * add a keyhole that reads profiles for any id, the request *becomes* the
+ * traveller: `app.current_user_id` is set on the same transaction, with the
+ * same `SET LOCAL` scope, exactly as RlsSessionMiddleware would have done had
+ * the request carried a valid access token. The read then goes through
+ * `users_self_all` like every other read of that row.
+ *
+ * Scoped: the JavaScript context reverts when `fn` settles, and the database
+ * setting dies with the transaction at the end of the request. Nothing here
+ * defaults an identity — `userId` is the one verification just produced.
+ */
+export async function asAuthenticated<T>(
+  userId: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const tx = requireRlsTransaction();
+
+  await tx`SELECT set_config('app.current_user_id', ${userId}, true)`;
+
+  return runInRlsContext({ tx, userId }, fn);
+}

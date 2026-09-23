@@ -1,5 +1,5 @@
 /**
- * Root layout — tasks.md R009, research D-17.
+ * Root layout — tasks.md R009, T041, T043; research D-17.
  *
  * One `Stack` at the root so the `(auth)` group, the `(tabs)` group, the
  * per-trip stack, and the modal group can all mount; the scaffold rendered a
@@ -12,6 +12,14 @@
  * traveller standing on it when the guard flips is moved off it and its
  * history is dropped. That is a stronger promise than a `<Redirect>` inside
  * the group, which only runs once the group has already rendered.
+ *
+ * The local store: once a session exists, the traveller's encrypted database
+ * is opened and migrated here (`useOpenDatabase`) and published to the
+ * signed-in layouts, which gate on it with `RequireLocalStore`. The native
+ * splash stays up until BOTH the session is known AND — for a signed-in
+ * traveller — the store is open or has failed, so the first frame is never a
+ * half-ready screen. A failure renders a designed error state and is reported
+ * (FR-073); a blank screen is not an outcome this layout can produce.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
@@ -21,6 +29,7 @@ import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { LocalStoreProvider, useOpenDatabase } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useAppearance } from '@/hooks/use-appearance';
 import { Sentry, initSentry } from '@/lib/sentry';
@@ -46,14 +55,18 @@ export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-// One client for the app's lifetime (T043). Query defaults are tuned when the
-// first query lands with US1; the provider exists now so screens can assume it.
-const queryClient = new QueryClient();
+// One client for the app's lifetime (T043). Geography lookups tune their own
+// staleTime; nothing else is cached server-side because the trip data is local.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1 } },
+});
 
 function RootLayout() {
   const { theme, tokens } = useAppearance();
   const status = useSessionStore((session) => session.status);
+  const userId = useSessionStore((session) => session.user?.id ?? null);
   const hydrate = useSessionStore((session) => session.hydrate);
+  const store = useOpenDatabase(status === 'signed-in' ? userId : null);
 
   useEffect(() => {
     // The store fails closed on its own; reporting is this layer's job.
@@ -62,9 +75,19 @@ function RootLayout() {
     });
   }, [hydrate]);
 
+  // Settled: the gate can decide AND, for a signed-in traveller, the store
+  // has either opened (migrations included) or failed with something to show.
+  const settled =
+    status === 'signed-out' ||
+    (status === 'signed-in' && (store.db !== null || store.error !== null));
+
   useEffect(() => {
-    if (status !== 'loading') SplashScreen.hide();
-  }, [status]);
+    if (settled) SplashScreen.hide();
+  }, [settled]);
+
+  useEffect(() => {
+    if (store.error) Sentry.captureException(store.error);
+  }, [store.error]);
 
   // Nothing is rendered beneath the splash until the gate can decide — a
   // flash of the welcome screen before the tabs is exactly the wrong first
@@ -95,28 +118,30 @@ function RootLayout() {
       {/* testID is the anchor for the Maestro flows (e2e/00-smoke.yaml). */}
       <View testID="app-root" style={[styles.root, { backgroundColor: tokens.canvas }]}>
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider value={navigationTheme}>
-            {/* FR-023: the status bar follows the theme with the rest of the UI. */}
-            <StatusBar style={isDark ? 'light' : 'dark'} />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: tokens.canvas },
-              }}>
-              <Stack.Protected guard={status === 'signed-out'}>
-                <Stack.Screen name="(auth)" />
-              </Stack.Protected>
+          <LocalStoreProvider value={store}>
+            <ThemeProvider value={navigationTheme}>
+              {/* FR-023: the status bar follows the theme with the rest of the UI. */}
+              <StatusBar style={isDark ? 'light' : 'dark'} />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: tokens.canvas },
+                }}>
+                <Stack.Protected guard={status === 'signed-out'}>
+                  <Stack.Screen name="(auth)" />
+                </Stack.Protected>
 
-              <Stack.Protected guard={status === 'signed-in'}>
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="trip/[id]" />
-                <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-              </Stack.Protected>
+                <Stack.Protected guard={status === 'signed-in'}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="trip/[id]" />
+                  <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                </Stack.Protected>
 
-              {/* Reachable in either state: a bad link is not a reason to sign in. */}
-              <Stack.Screen name="+not-found" />
-            </Stack>
-          </ThemeProvider>
+                {/* Reachable in either state: a bad link is not a reason to sign in. */}
+                <Stack.Screen name="+not-found" />
+              </Stack>
+            </ThemeProvider>
+          </LocalStoreProvider>
         </QueryClientProvider>
       </View>
     </GestureHandlerRootView>

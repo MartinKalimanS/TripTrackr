@@ -1,16 +1,18 @@
 /**
- * R009 — the `(tabs)` placeholders: home, trips, profile.
+ * The `(tabs)` screens: home (globe placeholder), trips (T066), profile (T065).
  *
- * The home tab becomes the Mapbox globe in US3 (T093) and the trip list lands
- * with US1 (T066). Until then each tab is a designed empty state (FR-027) with
- * its primary action reachable — so the navigation tree can be exercised end to
- * end on a device before any product data exists.
+ * The live-query hooks are mocked; their own suite runs them against a real
+ * database. What is pinned here is presentation: every state is designed
+ * (FR-027), the status is text + icon (FR-010/FR-013), a locally written trip
+ * carries the pending marker, and the profile can sign out.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import HomeScreen from '@/app/(tabs)/index';
 import ProfileScreen from '@/app/(tabs)/profile';
 import TripsScreen from '@/app/(tabs)/trips';
+import { useSessionStore } from '@/features/auth/session-store';
+import type { TripSummary } from '@/features/trips/use-trips';
 
 // `mock`-prefixed so Jest's hoisted factory may reference it.
 const mockPush = jest.fn();
@@ -35,8 +37,75 @@ jest.mock('expo-constants', () => ({
   },
 }));
 
+const mockTrips: { data: TripSummary[]; loading: boolean; error: Error | null } = {
+  data: [],
+  loading: false,
+  error: null,
+};
+
+jest.mock('@/features/trips/use-trips', () => ({
+  useTrips: () => mockTrips,
+}));
+
+const mockSignOut = { mutate: jest.fn(), isPending: false, error: null as unknown };
+
+jest.mock('@/features/auth/use-session', () => ({
+  useSignOut: () => mockSignOut,
+}));
+
+jest.mock('@/lib/sentry', () => ({
+  Sentry: { captureException: jest.fn() },
+  initSentry: jest.fn(),
+}));
+
+const profile = {
+  id: '6f1c2c4e-8b3a-4d1e-9f2a-0b7e1c2d3e4f',
+  email: 'ana@example.com',
+  display_name: 'Ana',
+  avatar_url: null,
+  bio: null,
+  home_currency: 'EUR',
+  is_profile_public: false,
+  email_verified_at: null,
+  created_at: '2026-09-01T10:00:00.000Z',
+};
+
+function summary(
+  overrides: Partial<TripSummary['trip']> & {
+    stopCount?: number;
+    status?: TripSummary['status'];
+  } = {},
+): TripSummary {
+  const { stopCount = 0, status = 'planning', ...trip } = overrides;
+  return {
+    trip: {
+      id: 'trip-1',
+      title: 'Italy, spring 2026',
+      home_currency: 'EUR',
+      is_public: false,
+      cover_photo_id: null,
+      status: 'planning',
+      created_at: '2026-09-01T10:00:00.000Z',
+      updated_at: '2026-09-01T10:00:00.000Z',
+      deleted_at: null,
+      is_dirty: true,
+      synced_at: null,
+      ...trip,
+    },
+    stopCount,
+    status,
+  };
+}
+
 beforeEach(() => {
   mockConstants.expoConfig = { version: '1.2.3', ios: { buildNumber: '45' } };
+  mockTrips.data = [];
+  mockTrips.loading = false;
+  mockTrips.error = null;
+  mockSignOut.mutate.mockReset();
+  mockSignOut.isPending = false;
+  mockSignOut.error = null;
+  useSessionStore.setState({ status: 'signed-in', user: profile });
 });
 
 describe('<HomeScreen> — globe placeholder', () => {
@@ -59,24 +128,92 @@ describe('<HomeScreen> — globe placeholder', () => {
   });
 });
 
-describe('<TripsScreen> — list placeholder', () => {
-  test('shows a designed empty state (FR-027)', async () => {
+describe('<TripsScreen> — the local trip list (T066)', () => {
+  test('shows a designed loading state while the store has not answered (FR-027)', async () => {
+    mockTrips.loading = true;
     await render(<TripsScreen />);
-    expect(screen.getByText('No trips yet')).toBeTruthy();
+    expect(screen.getByLabelText('Loading trips')).toBeTruthy();
   });
 
-  test('offers the same primary action as the globe, so a traveller is never stuck', async () => {
+  test('shows a designed empty state and keeps "Plan a trip" reachable', async () => {
     await render(<TripsScreen />);
-    await fireEvent.press(screen.getByLabelText('Plan a trip'));
+    expect(screen.getByText('No trips yet')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('trips-plan-trip'));
     expect(mockPush).toHaveBeenCalledWith('/modal/add-trip');
+  });
+
+  test('shows a designed error state when the store fails', async () => {
+    mockTrips.error = new Error('database is locked');
+    await render(<TripsScreen />);
+    expect(screen.getByText('Couldn’t read your trips')).toBeTruthy();
+    expect(screen.queryByText('database is locked')).toBeNull();
+  });
+
+  test('lists each trip with title, status as text + icon, stop count, and a pending marker while dirty', async () => {
+    mockTrips.data = [
+      summary({ id: 'a', title: 'Italy, spring 2026', stopCount: 2, status: 'planning' }),
+      summary({
+        id: 'b',
+        title: 'Lisbon weekend',
+        stopCount: 1,
+        status: 'active',
+        is_dirty: false,
+      }),
+      summary({
+        id: 'c',
+        title: 'Old trip',
+        stopCount: 0,
+        status: 'past',
+        is_dirty: false,
+      }),
+    ];
+    await render(<TripsScreen />);
+
+    expect(screen.getByText('Italy, spring 2026')).toBeTruthy();
+    expect(screen.getByText('2 stops · EUR')).toBeTruthy();
+    expect(screen.getByText('1 stop · EUR')).toBeTruthy();
+    expect(screen.getByText('No stops yet · EUR')).toBeTruthy();
+    expect(screen.getByLabelText('Status: Planning')).toBeTruthy();
+    expect(screen.getByLabelText('Status: Active')).toBeTruthy();
+    expect(screen.getByLabelText('Status: Past')).toBeTruthy();
+    // Exactly one row is dirty, so exactly one pending badge.
+    expect(screen.getAllByLabelText('Sync pending')).toHaveLength(1);
+  });
+
+  test('opens a trip when its card is pressed', async () => {
+    mockTrips.data = [summary({ id: 'trip-42' })];
+    await render(<TripsScreen />);
+    await fireEvent.press(screen.getByTestId('trip-card-trip-42'));
+    expect(mockPush).toHaveBeenCalledWith('/trip/trip-42');
   });
 });
 
 describe('<ProfileScreen>', () => {
+  test('shows who is signed in', async () => {
+    await render(<ProfileScreen />);
+    expect(screen.getByTestId('profile-display-name')).toHaveTextContent('Ana');
+    expect(screen.getByTestId('profile-email')).toHaveTextContent('ana@example.com');
+    expect(screen.getByText('Home currency: EUR')).toBeTruthy();
+  });
+
   test('shows the app version from the embedded config', async () => {
     await render(<ProfileScreen />);
     expect(screen.getByText(/1\.2\.3/)).toBeTruthy();
     expect(screen.getByText(/\(45\)/)).toBeTruthy();
+  });
+
+  test('signs out through the mutation (FR-004) and marks the row busy while it runs', async () => {
+    await render(<ProfileScreen />);
+    await fireEvent.press(screen.getByTestId('profile-sign-out'));
+    expect(mockSignOut.mutate).toHaveBeenCalled();
+
+    mockSignOut.isPending = true;
+    await render(<ProfileScreen />);
+    expect(
+      screen.getAllByTestId('profile-sign-out').at(-1)?.props.accessibilityState,
+    ).toMatchObject({
+      busy: true,
+    });
   });
 
   test('presents the account-deletion entry point the stores require, disabled until wired', async () => {
@@ -87,7 +224,13 @@ describe('<ProfileScreen>', () => {
     await render(<ProfileScreen />);
     const row = screen.getByLabelText('Delete account');
     expect(row.props.accessibilityState).toMatchObject({ disabled: true });
-    expect(screen.getByText(/Delete account/)).toBeTruthy();
+  });
+
+  test('renders without a traveller card if the session has no profile (defensive)', async () => {
+    useSessionStore.setState({ status: 'signed-in', user: null });
+    await render(<ProfileScreen />);
+    expect(screen.queryByTestId('profile-display-name')).toBeNull();
+    expect(screen.getByText('Version')).toBeTruthy();
   });
 });
 

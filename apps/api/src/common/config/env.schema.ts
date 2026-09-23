@@ -9,6 +9,19 @@ import { z } from 'zod';
  * Nest application is created, so a missing secret stops the process at boot with a
  * readable list rather than surfacing as a 500 on the first request that needs it.
  */
+
+/**
+ * `"a, b,c"` → `['a', 'b', 'c']`. An empty or blank value parses to an empty
+ * list, which callers treat exactly like an absent variable: a provider with
+ * no audience is a provider that is not configured.
+ */
+const commaSeparated = z.string().transform((value) =>
+  value
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0),
+);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -60,6 +73,22 @@ const envSchema = z.object({
   MAPBOX_ACCESS_TOKEN: z.string().min(1),
   ANTHROPIC_API_KEY: z.string().min(1),
   RESEND_API_KEY: z.string().min(1),
+
+  // Transactional email (T056). `EMAIL_FROM` is the envelope sender Resend is
+  // asked to use; `APP_PUBLIC_URL` is where the verification and reset links
+  // point — a web origin, because a `triptrackr://` link in an email client
+  // is dead on a device without the app, and universal links map the origin
+  // to the app where it is installed.
+  EMAIL_FROM: z.string().min(3).default('TripTrackr <no-reply@triptrackr.app>'),
+  APP_PUBLIC_URL: z.string().url().default('https://triptrackr.app'),
+
+  // OAuth audiences (FR-002). Comma-separated client ids: one per platform for
+  // Google, the app's bundle id (and any Services ID) for Apple. Optional on
+  // purpose — a deployment without a provider configured refuses that
+  // provider's tokens with 503 OAUTH_PROVIDER_UNAVAILABLE rather than
+  // accepting a token it could not have checked against any audience.
+  GOOGLE_OAUTH_CLIENT_IDS: commaSeparated.optional(),
+  APPLE_OAUTH_CLIENT_IDS: commaSeparated.optional(),
 
   // Planner quota (FR-069) and cache window (FR-070).
   PLANNER_DAILY_REQUEST_LIMIT: z.coerce.number().int().positive().default(10),

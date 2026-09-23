@@ -27,7 +27,7 @@ npm workspaces, one lockfile at the root. Details and rationale: `specs/001-trip
 
 | Tool                    | Version            | Notes                                                          |
 | ----------------------- | ------------------ | -------------------------------------------------------------- |
-| Node.js                 | 22.13+ (`.nvmrc`)  | `nvm use` / `fnm use`                                          |
+| Node.js                 | 22.16+ (`.nvmrc`)  | `nvm use` / `fnm use`                                          |
 | npm                     | 10.9+              | Ships with Node 22                                             |
 | Docker Engine + Compose | Compose v2.24+     | Runs the backend stack; Testcontainers uses it for API tests   |
 | Xcode                   | 26 (iOS 26 SDK)    | iOS dev-client builds and App Store submission                 |

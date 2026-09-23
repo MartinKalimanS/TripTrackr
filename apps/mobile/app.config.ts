@@ -72,6 +72,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // Top-level field since SDK 56; the expo-build-properties equivalent is
     // marked deprecated on its v57 page.
     deploymentTarget: '15.1',
+    // Sign in with Apple (FR-002; US1 T064). Enables the capability — the
+    // `com.apple.developer.applesignin` entitlement — together with the
+    // `expo-apple-authentication` plugin below
+    // (https://docs.expo.dev/versions/v57.0.0/sdk/apple-authentication.md,
+    // "Setup iOS project"; https://docs.expo.dev/versions/v57.0.0/config/app.md
+    // `ios.usesAppleSignIn`). Apple requires it on any app offering another
+    // third-party sign-in, which the Google button is.
+    usesAppleSignIn: true,
     config: {
       // Writes `ITSAppUsesNonExemptEncryption: false` to Info.plist
       // (@expo/config-plugins withUsesNonExemptEncryption). Rationale and the
@@ -113,6 +121,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   android: {
     package: APP_ID,
+    // Google sign-in (FR-002; US1 T064) returns to the app through
+    // `<applicationId>:/oauthredirect` (expo-auth-session Google provider).
+    // iOS registers the bundle id as a URL scheme automatically; Android only
+    // registers what is listed, so the package name is added here
+    // (https://docs.expo.dev/versions/v57.0.0/config/app.md `android.scheme`).
+    scheme: APP_ID,
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/images/android-icon-foreground.png',
@@ -158,6 +172,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     ['expo-sqlite', { useSQLCipher: true }],
     'expo-secure-store',
+    // Sign in with Apple capability; pairs with `ios.usesAppleSignIn` above
+    // (https://docs.expo.dev/versions/v57.0.0/sdk/apple-authentication.md,
+    // "Example app.json with config plugin"). No config plugin exists for
+    // @react-native-community/datetimepicker on its v57 page; its optional
+    // Android theming plugin is not needed (the system dialog is used as-is).
+    'expo-apple-authentication',
     [
       'expo-camera',
       {
