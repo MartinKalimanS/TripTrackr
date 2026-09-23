@@ -1,10 +1,21 @@
-node_modules/
-.git/
-.expo/
-dist/
-build/
-coverage/
-Dockerfile*
-.dockerignore
-*.log
-.env*
+# Build context for apps/api/Dockerfile is the repository root (the image needs
+# packages/contracts). Everything the API image does not need stays out so the
+# context is small and no secret can be COPYed in by accident.
+**/node_modules
+**/dist
+**/coverage
+**/.expo
+.git
+.github
+.idea
+.claude
+.specify
+apps/mobile
+docs
+specs
+infra
+**/*.md
+!apps/api/README.md
+.env
+.env.*
+*.stackdump

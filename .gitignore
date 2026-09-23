@@ -1,60 +1,61 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# ---------------------------------------------------------------------------
+# Dependencies & build output (every workspace)
+# ---------------------------------------------------------------------------
 node_modules/
-
-# Expo
-.expo/
 dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# Expo / React Native (apps/mobile)
+# ---------------------------------------------------------------------------
+.expo/
 web-build/
 expo-env.d.ts
-
-# Native
+.metro-health-check*
+# Generated native projects — the dev-client workflow prebuilds them on demand.
+apps/mobile/ios/
+apps/mobile/android/
 .kotlin/
 *.orig.*
+
+# Signing material. Never committed; EAS holds credentials.
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
 *.mobileprovision
+*.pem
 
-# Metro
-.metro-health-check*
+# Maestro
+.maestro/
 
-# debug
+# ---------------------------------------------------------------------------
+# Secrets — Constitution: secrets MUST NOT be committed or baked into images.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+infra/secrets/
+
+# ---------------------------------------------------------------------------
+# Tooling & OS noise
+# ---------------------------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+*.stackdump
 npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-example
-
-# generated native folders
-/ios
-/android
-
-/.idea
-/.claude
-# secrets — Constitution: secrets MUST NOT be committed or baked into images
-.env
-.env.*
-!.env.example
-
-# server build + test output
-server/dist/
-server/coverage/
-coverage/
-
-# Maestro
-.maestro/tests/
-
-.env.local
+# Agent tooling: keep the shared skills, ignore per-machine local state.
+.claude/*
+!.claude/settings.json
+!.claude/skills/
+.claude/settings.local.json
+.specify/feature.json

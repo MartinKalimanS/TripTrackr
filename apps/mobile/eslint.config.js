@@ -22,7 +22,6 @@ module.exports = defineConfig([
       'coverage/',
       'android/',
       'ios/',
-      'server/',
       'src/db/migrations/',
       '*.min.js',
     ],

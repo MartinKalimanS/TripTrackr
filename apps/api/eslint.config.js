@@ -18,7 +18,7 @@ module.exports = tseslint.config(
       'coverage/',
       'src/db/migrations/',
       'eslint.config.js',
-      'jest.config.ts',
+      'jest.config.js',
       'drizzle.config.ts',
     ],
   },

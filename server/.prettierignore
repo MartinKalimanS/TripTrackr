@@ -1,5 +1,0 @@
-node_modules/
-dist/
-coverage/
-src/db/migrations/
-package-lock.json

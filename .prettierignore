@@ -3,7 +3,11 @@ dist/
 build/
 coverage/
 .expo/
-android/
-ios/
+apps/mobile/ios/
+apps/mobile/android/
 package-lock.json
-server/package-lock.json
+# Hand-written SQL migrations are formatted by hand; Prettier has no SQL parser.
+apps/api/src/db/migrations/
+# Long-form source documents are preserved verbatim.
+docs/travelappblueprint.md
+docs/travelappfullspec.md

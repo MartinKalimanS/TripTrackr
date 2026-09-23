@@ -1,5 +1,4 @@
-import type { Config } from 'jest';
-
+// @ts-check
 /**
  * Four projects, because they have different costs and different meanings:
  *   unit        — fast, no I/O
@@ -12,45 +11,51 @@ import type { Config } from 'jest';
  */
 const base = {
   preset: 'ts-jest',
-  testEnvironment: 'node' as const,
+  testEnvironment: 'node',
   rootDir: '.',
-  moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+    // Contracts are consumed from source under Jest so no suite depends on a
+    // prior `build` of packages/contracts.
+    '^@triptrackr/contracts$': '<rootDir>/../../packages/contracts/src/index.ts',
+  },
   // tsconfig.spec.json, not tsconfig.json. The build config roots at ./src so
   // that `dist/main.js` stays where package.json expects it; the test config
   // roots at the repository so a spec and the source it imports can share one
   // program. Pointing ts-jest at the build config makes TypeScript infer a root
   // of ./test and fail (TS5011).
   transform: {
-    '^.+\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
 };
 
-const config: Config = {
+const withDatabase = {
+  globalSetup: '<rootDir>/test/setup.ts',
+  globalTeardown: '<rootDir>/test/teardown.ts',
+  testTimeout: 120_000,
+};
+
+/** @type {import('jest').Config} */
+const config = {
   projects: [
     { ...base, displayName: 'unit', testMatch: ['<rootDir>/test/unit/**/*.spec.ts'] },
     {
       ...base,
+      ...withDatabase,
       displayName: 'contract',
       testMatch: ['<rootDir>/test/contract/**/*.spec.ts'],
-      globalSetup: '<rootDir>/test/setup.ts',
-      globalTeardown: '<rootDir>/test/teardown.ts',
-      testTimeout: 120_000,
     },
     {
       ...base,
+      ...withDatabase,
       displayName: 'integration',
       testMatch: ['<rootDir>/test/integration/**/*.spec.ts'],
-      globalSetup: '<rootDir>/test/setup.ts',
-      globalTeardown: '<rootDir>/test/teardown.ts',
-      testTimeout: 120_000,
     },
     {
       ...base,
+      ...withDatabase,
       displayName: 'privacy',
       testMatch: ['<rootDir>/test/privacy/**/*.spec.ts'],
-      globalSetup: '<rootDir>/test/setup.ts',
-      globalTeardown: '<rootDir>/test/teardown.ts',
-      testTimeout: 120_000,
     },
   ],
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.module.ts', '!src/main.ts'],
@@ -61,4 +66,4 @@ const config: Config = {
   },
 };
 
-export default config;
+module.exports = config;

@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-import { importGeoCatalogue } from '../../server/src/db/geo-catalogue';
+import { importGeoCatalogue } from '../../apps/api/src/db/geo-catalogue';
 
 /**
  * Loads the reference geography catalogue (T038, research D-11, FR-014).

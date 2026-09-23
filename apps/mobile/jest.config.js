@@ -20,13 +20,12 @@ module.exports = {
     // would otherwise swallow it and fail to resolve any image.
     '^@/assets/(.*)$': '<rootDir>/assets/$1',
     '^@/(.*)$': '<rootDir>/src/$1',
+    // The shared contracts package is consumed from source under Jest, exactly
+    // as Metro consumes it, so tests never depend on a prior `build`.
+    '^@triptrackr/contracts$': '<rootDir>/../../packages/contracts/src/index.ts',
   },
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}', '<rootDir>/test/**/*.test.{ts,tsx}'],
-  testPathIgnorePatterns: [
-    '<rootDir>/node_modules/',
-    '<rootDir>/server/',
-    '<rootDir>/e2e/',
-  ],
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/e2e/'],
   // `standard-navigation` is an ESM-only transitive dependency of expo-router.
   // Without it in this allowlist, importing expo-router throws "Cannot use
   // import statement outside a module" from
