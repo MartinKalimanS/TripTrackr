@@ -8,10 +8,13 @@ export default function AppTabs() {
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
 
   return (
+    // FR-023: the tab bar is part of "the whole interface updates together".
+    // Left on the legacy `background` token it painted white against the
+    // neumorphic canvas — the half-converted artefact US3 exists to prevent.
     <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      backgroundColor={colors.canvas}
+      indicatorColor={colors.surfaceSunk}
+      labelStyle={{ selected: { color: colors.textPrimary } }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon

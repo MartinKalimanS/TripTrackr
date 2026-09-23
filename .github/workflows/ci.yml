@@ -1,0 +1,161 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch makes the older run irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  lint:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install mobile dependencies
+        run: npm ci
+
+      - name: Install API dependencies
+        run: npm ci
+        working-directory: server
+
+      - name: Lint mobile
+        run: npx eslint . --max-warnings=0
+
+      - name: Typecheck mobile
+        run: npx tsc --noEmit
+
+      - name: Lint API
+        run: npx eslint . --max-warnings=0
+        working-directory: server
+
+      - name: Typecheck API
+        run: npx tsc --noEmit
+        working-directory: server
+
+  mobile-tests:
+    name: Mobile unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      # Constitution III: below 80% the build fails rather than warns. The
+      # threshold lives in jest.config.js, so --coverage is what enforces it.
+      - name: Test with coverage
+        run: npx jest --ci --coverage
+
+  api-tests:
+    name: API unit & integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+        working-directory: server
+
+      - name: Unit tests
+        run: npm run test:unit
+        working-directory: server
+
+      # Testcontainers boots a real postgis/postgis:17-3.5. A mocked database
+      # cannot evaluate an RLS policy, so these suites have no mock path.
+      - name: Contract tests
+        run: npm run test:contract
+        working-directory: server
+
+      - name: Integration tests
+        run: npm run test:integration
+        working-directory: server
+
+  # ---------------------------------------------------------------------------
+  # Constitution I & III: the adversarial privacy suite is a REQUIRED job.
+  # It asks, as an attacker would, whether one traveller can reach another's
+  # rows. It must never be marked continue-on-error, and it must never be
+  # allowed to pass by being skipped.
+  # ---------------------------------------------------------------------------
+  privacy:
+    name: Privacy suite (required)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+        working-directory: server
+
+      - name: Adversarial privacy tests
+        run: npm run test:privacy
+        working-directory: server
+
+  coverage-gate:
+    name: Coverage gate (80% floor)
+    runs-on: ubuntu-latest
+    needs: [api-tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+        working-directory: server
+
+      # coverageThreshold in server/jest.config.ts fails the run below 80%.
+      - name: API coverage
+        run: npm run test:cov
+        working-directory: server
+
+  # Single required status check for branch protection: it fails if ANY
+  # upstream job failed OR was skipped, so a deleted job cannot silently
+  # turn a required gate green.
+  ci-passed:
+    name: CI passed
+    runs-on: ubuntu-latest
+    needs: [lint, mobile-tests, api-tests, privacy, coverage-gate]
+    if: always()
+    steps:
+      - name: Verify every gate succeeded
+        run: |
+          echo "lint=${{ needs.lint.result }}"
+          echo "mobile-tests=${{ needs.mobile-tests.result }}"
+          echo "api-tests=${{ needs.api-tests.result }}"
+          echo "privacy=${{ needs.privacy.result }}"
+          echo "coverage-gate=${{ needs.coverage-gate.result }}"
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ] \
+            || [ "${{ contains(needs.*.result, 'cancelled') }}" = "true" ] \
+            || [ "${{ contains(needs.*.result, 'skipped') }}" = "true" ]; then
+            echo "::error::A required CI gate did not succeed."
+            exit 1
+          fi
+          echo "All required gates passed."

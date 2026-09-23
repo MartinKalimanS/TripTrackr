@@ -1,0 +1,70 @@
+# Appearance sweep: the app stays complete and operable under every appearance
+# setting (feature 002, T057).
+#
+# Covers SC-008 (every screen renders completely at the largest text size) and
+# SC-010 (both themes and all four adaptations render completely, with zero
+# screens left partially converted).
+#
+# HOW TO RUN
+# ----------
+# Maestro cannot change OS appearance from inside a flow, so the DEVICE is
+# configured first and this flow is run once per configuration:
+#
+#   # 1. light, default text
+#   adb shell "cmd uimode night no"
+#   adb shell settings put system font_scale 1.0
+#   maestro test e2e/01-appearance.yaml
+#
+#   # 2. dark
+#   adb shell "cmd uimode night yes"
+#   maestro test e2e/01-appearance.yaml
+#
+#   # 3. largest text
+#   adb shell settings put system font_scale 1.30
+#   maestro test e2e/01-appearance.yaml
+#
+#   # 4. increased contrast
+#   adb shell settings put secure high_text_contrast_enabled 1
+#   maestro test e2e/01-appearance.yaml
+#
+# Switching the theme with the app ALREADY RUNNING (Acceptance Scenario 3.2) is
+# the one case this cannot cover, because the flow owns the launch. It stays a
+# manual check — quickstart.md §2.3.
+#
+# WHAT THIS CANNOT PROVE
+# ----------------------
+# Whether the result looks right. Content-based assertions detect clipping and
+# missing controls; they say nothing about legibility in daylight (SC-003) or
+# whether elements read as tappable (SC-004). Those are T036 and T072, and a
+# green run here is necessary but not sufficient.
+appId: com.triptrackr.app
+tags:
+  - appearance
+---
+- launchApp:
+    clearState: true
+
+# The root always paints the canvas, so a missing root means a screen fell back
+# to a platform default background.
+- assertVisible:
+    id: 'app-root'
+
+# Content-based rather than coordinate-based on purpose: a label clipped by
+# enlarged text disappears from the view hierarchy, so these assertions fail
+# exactly when FR-016 is violated.
+- assertVisible: 'get started'
+- assertVisible: 'Try editing'
+- assertVisible: 'Dev tools'
+- assertVisible: 'Fresh start'
+
+# Scenario 5.4: every action available by default remains available under each
+# adaptation. This control is the screen's primary action.
+- assertVisible: 'Send a test error to Sentry'
+
+# Every reachable screen, not just the first. `optional` keeps the flow honest
+# on builds where the tab bar is not yet present rather than failing spuriously.
+- tapOn:
+    id: 'tab-explore'
+    optional: true
+- assertVisible:
+    id: 'app-root'

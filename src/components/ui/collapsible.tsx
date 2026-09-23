@@ -8,21 +8,48 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
+export function Collapsible({
+  children,
+  title,
+  testID,
+}: PropsWithChildren & {
+  title: string;
+  /**
+   * Identifies the header as an action for the parity registry (T059). Placed
+   * on the header rather than the wrapper because the header is the control —
+   * the wrapper is not pressable and would register an action that cannot be
+   * performed.
+   */
+  testID?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const theme = useTheme();
 
   return (
     <ThemedView>
       <Pressable
+        testID={testID}
+        // FR-017. Without these the header is announced as plain text: a
+        // VoiceOver/TalkBack user gets no indication the section opens at all,
+        // because the chevron is the only other affordance and it is precisely
+        // the cue they cannot see. `expanded` then reports which way it is —
+        // "collapsed" tells the traveller there is more to find, where silence
+        // tells them nothing.
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ expanded: isOpen }}
         style={({ pressed }) => [styles.heading, pressed && styles.pressedHeading]}
         onPress={() => setIsOpen((value) => !value)}>
-        <ThemedView type="backgroundElement" style={styles.button}>
+        <ThemedView treatment="raised" radius="sm" style={styles.button}>
           <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+            name={{
+              ios: 'chevron.right',
+              android: 'chevron_right',
+              web: 'chevron_right',
+            }}
             size={14}
             weight="bold"
-            tintColor={theme.text}
+            tintColor={theme.textPrimary}
             style={{ transform: [{ rotate: isOpen ? '-90deg' : '90deg' }] }}
           />
         </ThemedView>
@@ -31,7 +58,7 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
       </Pressable>
       {isOpen && (
         <Animated.View entering={FadeIn.duration(200)}>
-          <ThemedView type="backgroundElement" style={styles.content}>
+          <ThemedView treatment="recessed" radius="md" style={styles.content}>
             {children}
           </ThemedView>
         </Animated.View>
@@ -52,13 +79,11 @@ const styles = StyleSheet.create({
   button: {
     width: Spacing.four,
     height: Spacing.four,
-    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   content: {
     marginTop: Spacing.three,
-    borderRadius: Spacing.three,
     marginLeft: Spacing.four,
     padding: Spacing.four,
   },

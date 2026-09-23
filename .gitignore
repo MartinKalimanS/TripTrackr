@@ -44,3 +44,17 @@ example
 
 /.idea
 /.claude
+# secrets — Constitution: secrets MUST NOT be committed or baked into images
+.env
+.env.*
+!.env.example
+
+# server build + test output
+server/dist/
+server/coverage/
+coverage/
+
+# Maestro
+.maestro/tests/
+
+.env.local

@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "isolatedModules": true,
+    "noEmit": true
+  },
+  "include": ["src/**/*", "test/**/*"],
+  // Overridden, not inherited. The base config excludes `test/**/*` so that the
+  // build roots at ./src and `dist/main.js` lands where package.json expects it,
+  // and `exclude` beats `include` — so without restating it here this config
+  // matches no spec file at all. That failure is quiet in both directions: tsc
+  // reports nothing to check, and ESLint's type-aware rules report nothing rather
+  // than reporting something weaker.
+  "exclude": ["node_modules", "dist"]
+}

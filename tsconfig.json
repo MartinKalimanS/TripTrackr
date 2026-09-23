@@ -3,18 +3,15 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/assets/*": [
-        "./assets/*"
-      ]
-    }
+      "@/*": ["./src/*"],
+      "@/assets/*": ["./assets/*"]
+    },
+    "types": ["jest", "node"]
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  // The server is a separate NestJS project with its own tsconfig, its own
+  // `@/*` mapping (server/src/*), and decorator support. Compiling it under the
+  // mobile config resolves every `@/…` import to src/ and rejects every
+  // decorator. jest.config.js draws the same boundary via testPathIgnorePatterns.
+  "exclude": ["node_modules", "server", "dist", ".expo"]
 }
