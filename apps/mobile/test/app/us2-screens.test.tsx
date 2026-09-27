@@ -247,6 +247,24 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     expect(screen.getByText('No notes for Whole trip (Italy) yet')).toBeTruthy();
   });
 
+  test('a filter whose stop is removed falls back to "All", and says so', async () => {
+    await render(<NotesScreen />);
+    await fireEvent.press(screen.getByTestId('notes-filter-city:101'));
+
+    mockStops.data = [rome]; // Florence's stop is deleted while the screen is open
+    try {
+      await screen.rerender(<NotesScreen />);
+
+      expect(screen.queryByTestId('notes-filter-city:101')).toBeNull();
+      expect(
+        screen.getByTestId('notes-filter-all').props.accessibilityState,
+      ).toMatchObject({ selected: true });
+      expect(mockUseNotes).toHaveBeenLastCalledWith('trip-42', {});
+    } finally {
+      mockStops.data = [rome, florence];
+    }
+  });
+
   test('renders notes with where they are filed, and edit / delete reach the repository', async () => {
     mockNotes.data = [
       note({}),
