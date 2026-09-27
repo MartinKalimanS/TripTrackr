@@ -42,6 +42,7 @@ const config = {
   // database projects pull and start a PostGIS container in globalSetup; the
   // unit project never comes near it.
   testTimeout: 120_000,
+  workerIdleMemoryLimit: '1GB',
   projects: [
     { ...base, displayName: 'unit', testMatch: ['<rootDir>/test/unit/**/*.spec.ts'] },
     {
