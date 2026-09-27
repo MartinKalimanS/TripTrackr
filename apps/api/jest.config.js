@@ -64,7 +64,12 @@ const config = {
       testMatch: ['<rootDir>/test/privacy/**/*.spec.ts'],
     },
   ],
-  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.module.ts', '!src/main.ts'],
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/**/*.module.ts',
+    '!src/main.ts',
+    '!src/workers/main.ts',
+  ],
   coverageDirectory: 'coverage',
   // Constitution III: 80% floor. Below it, the build fails — it does not warn.
   coverageThreshold: {

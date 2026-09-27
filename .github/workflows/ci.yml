@@ -133,6 +133,8 @@ jobs:
       - run: npm ci
       - name: Unit, contract, integration and privacy projects with coverage
         run: npm run test:cov -w apps/api
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
   # ---------------------------------------------------------------------------
   # Constitution I & III: the adversarial privacy suite is a REQUIRED job.
