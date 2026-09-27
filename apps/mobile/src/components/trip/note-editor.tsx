@@ -11,7 +11,7 @@
  * move, and the body and creation date travel untouched.
  */
 import { useMemo } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, type Control } from 'react-hook-form';
 import { Modal, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,8 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AnchorPicker } from '@/components/trip/anchor-picker';
+import { FormActions } from '@/components/ui/form-actions';
 import { InlineError } from '@/components/ui/inline-error';
-import { PressableSurface } from '@/components/ui/pressable-surface';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import {
@@ -79,6 +79,79 @@ function initialValues(
   };
 }
 
+type NoteControl = Control<NoteFormValues, unknown, CreateNoteRequest>;
+
+type AnchorFieldProps = {
+  control: NoteControl;
+  mode: NoteEditorMode;
+  targets: readonly AnchorTarget[];
+};
+
+function AnchorField({ control, mode, targets }: AnchorFieldProps) {
+  return (
+    <Controller
+      control={control}
+      name="anchorKey"
+      render={({ field, fieldState }) => (
+        <AnchorPicker
+          testID="note-editor-anchor"
+          label={mode.kind === 'edit' ? 'Filed under (change to move)' : 'Filed under'}
+          targets={targets}
+          value={field.value}
+          onChange={field.onChange}
+          error={fieldMessage(fieldState.error, NOTE_FIELD_COPY.anchorKey)}
+        />
+      )}
+    />
+  );
+}
+
+function TitleField({ control }: { control: NoteControl }) {
+  return (
+    <Controller
+      control={control}
+      name="title"
+      render={({ field, fieldState }) => (
+        <TextField
+          testID="note-editor-title"
+          label="Title (optional)"
+          value={field.value}
+          onChangeText={field.onChange}
+          onBlur={field.onBlur}
+          placeholder="Cheese"
+          autoCapitalize="sentences"
+          maxLength={200}
+          error={fieldMessage(fieldState.error, NOTE_FIELD_COPY.title)}
+        />
+      )}
+    />
+  );
+}
+
+function BodyField({ control }: { control: NoteControl }) {
+  return (
+    <Controller
+      control={control}
+      name="body"
+      render={({ field, fieldState }) => (
+        <TextField
+          testID="note-editor-body"
+          label="Note"
+          value={field.value}
+          onChangeText={field.onChange}
+          onBlur={field.onBlur}
+          placeholder="Try the raclette in Valais."
+          multiline
+          textAlignVertical="top"
+          numberOfLines={6}
+          autoCapitalize="sentences"
+          error={fieldMessage(fieldState.error, NOTE_FIELD_COPY.body)}
+        />
+      )}
+    />
+  );
+}
+
 function NoteEditorForm({
   mode,
   targets,
@@ -107,83 +180,20 @@ function NoteEditorForm({
         {mode.kind === 'add' ? 'New note' : 'Edit note'}
       </ThemedText>
 
-      <Controller
-        control={control}
-        name="anchorKey"
-        render={({ field, fieldState }) => (
-          <AnchorPicker
-            testID="note-editor-anchor"
-            label={mode.kind === 'edit' ? 'Filed under (change to move)' : 'Filed under'}
-            targets={targets}
-            value={field.value}
-            onChange={field.onChange}
-            error={fieldMessage(fieldState.error, NOTE_FIELD_COPY.anchorKey)}
-          />
-        )}
-      />
+      <AnchorField control={control} mode={mode} targets={targets} />
 
-      <Controller
-        control={control}
-        name="title"
-        render={({ field, fieldState }) => (
-          <TextField
-            testID="note-editor-title"
-            label="Title (optional)"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            placeholder="Cheese"
-            autoCapitalize="sentences"
-            maxLength={200}
-            error={fieldMessage(fieldState.error, NOTE_FIELD_COPY.title)}
-          />
-        )}
-      />
+      <TitleField control={control} />
 
-      <Controller
-        control={control}
-        name="body"
-        render={({ field, fieldState }) => (
-          <TextField
-            testID="note-editor-body"
-            label="Note"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            placeholder="Try the raclette in Valais."
-            multiline
-            textAlignVertical="top"
-            numberOfLines={6}
-            autoCapitalize="sentences"
-            error={fieldMessage(fieldState.error, NOTE_FIELD_COPY.body)}
-          />
-        )}
-      />
+      <BodyField control={control} />
 
       <InlineError testID="note-editor-error" message={error ?? null} />
 
-      <View style={styles.actions}>
-        <PressableSurface
-          testID="note-editor-cancel"
-          accessibilityLabel="Cancel"
-          treatment="flat"
-          onPress={onCancel}
-          style={styles.action}>
-          <ThemedText type="smallBold" style={styles.centred}>
-            Cancel
-          </ThemedText>
-        </PressableSurface>
-        <PressableSurface
-          testID="note-editor-save"
-          accessibilityLabel="Save note"
-          depth={2}
-          onPress={() => void save()}
-          style={styles.action}>
-          <ThemedText type="smallBold" style={styles.centred}>
-            Save note
-          </ThemedText>
-        </PressableSurface>
-      </View>
+      <FormActions
+        testIDPrefix="note-editor"
+        saveLabel="Save note"
+        onCancel={onCancel}
+        onSave={() => void save()}
+      />
     </View>
   );
 }
@@ -229,12 +239,4 @@ const styles = StyleSheet.create({
   sheet: { flex: 1 },
   scroll: { flexGrow: 1, padding: Spacing.four },
   form: { gap: Spacing.three },
-  actions: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.two },
-  action: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-  },
-  centred: { textAlign: 'center' },
 });

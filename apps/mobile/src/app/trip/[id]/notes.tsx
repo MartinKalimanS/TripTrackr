@@ -27,8 +27,8 @@ import type { NoteWithPlace, NotesFilter } from '@/db/repositories/notes';
 import { NOTE_FORM_COPY } from '@/features/notes/note-form';
 import { anchorTargets, type AnchorTarget } from '@/features/notes/use-move-note';
 import { useNoteActions, useNotes } from '@/features/notes/use-notes';
-import { useTrip, useTripStops } from '@/features/trips/use-trips';
-import { Sentry } from '@/lib/sentry';
+import { useTrip, useTripStops, type LiveResult } from '@/features/trips/use-trips';
+import { useWriteAttempt } from '@/hooks/use-write-attempt';
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -43,47 +43,33 @@ function filterFor(target: AnchorTarget | null): NotesFilter {
     : { country_id: target.country_id ?? undefined };
 }
 
-export default function NotesScreen() {
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string | string[] }>();
-  const tripId = firstParam(id) ?? '';
-
-  const trip = useTrip(tripId);
+function useNotesFilter(tripId: string) {
   const stops = useTripStops(tripId);
   const targets = useMemo(() => anchorTargets(stops.data), [stops.data]);
   const [filterKey, setFilterKey] = useState<string>('all');
   const activeTarget = targets.find((target) => target.key === filterKey) ?? null;
   const notes = useNotes(tripId, filterFor(activeTarget));
+  return { targets, filterKey, setFilterKey, activeTarget, notes };
+}
+
+function confirmDelete(onDelete: () => void) {
+  Alert.alert('Delete this note?', 'It is removed from this trip.', [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Delete', style: 'destructive', onPress: onDelete },
+  ]);
+}
+
+function useNoteWrites(tripId: string) {
   const actions = useNoteActions();
   const [editor, setEditor] = useState<Editor>(null);
-  const [writeError, setWriteError] = useState<string | null>(null);
-
-  /** Runs a local write; reports and returns false when it throws. */
-  const attempt = (write: () => void): boolean => {
-    try {
-      setWriteError(null);
-      write();
-      return true;
-    } catch (error) {
-      Sentry.captureException(error);
-      setWriteError(NOTE_FORM_COPY.saveFailed);
-      return false;
-    }
-  };
+  const { writeError, clearWriteError, attempt } = useWriteAttempt(
+    NOTE_FORM_COPY.saveFailed,
+  );
 
   const openEditor = (next: NonNullable<Editor>) => {
-    setWriteError(null);
+    clearWriteError();
     setEditor(next);
   };
-
-  const openAdd = () =>
-    openEditor({
-      mode: { kind: 'add', initialAnchorKey: activeTarget?.key },
-      noteId: null,
-    });
-
-  const openEdit = (note: NoteWithPlace) =>
-    openEditor({ mode: { kind: 'edit', note }, noteId: note.id });
 
   // The editor closes only once the write has succeeded, so a failed write
   // leaves the typed note on screen with the error beside it.
@@ -100,38 +86,29 @@ export default function NotesScreen() {
     if (saved) setEditor(null);
   };
 
-  const confirmRemove = (note: NoteWithPlace) => {
-    Alert.alert('Delete this note?', 'It is removed from this trip.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => attempt(() => actions.removeNote(note.id)),
-      },
-    ]);
+  return {
+    editor,
+    writeError,
+    openAdd: (initialAnchorKey: string | undefined) =>
+      openEditor({ mode: { kind: 'add', initialAnchorKey }, noteId: null }),
+    openEdit: (note: NoteWithPlace) =>
+      openEditor({ mode: { kind: 'edit', note }, noteId: note.id }),
+    closeEditor: () => setEditor(null),
+    submitEditor,
+    confirmRemove: (note: NoteWithPlace) =>
+      confirmDelete(() => attempt(() => actions.removeNote(note.id))),
   };
+}
 
-  const renderItem = ({ item }: { item: NoteWithPlace }) => (
-    <NoteCard
-      note={item}
-      onEdit={() => openEdit(item)}
-      onRemove={() => confirmRemove(item)}
-    />
-  );
+type NoteWrites = ReturnType<typeof useNoteWrites>;
 
-  const header = (
-    <NotesHeader
-      tripTitle={trip.data?.title ?? null}
-      targets={targets}
-      filterKey={filterKey}
-      writeError={writeError}
-      onBack={() => router.back()}
-      onFilter={setFilterKey}
-      onAdd={openAdd}
-    />
-  );
+type NotesEmptyProps = {
+  notes: LiveResult<NoteWithPlace[]>;
+  activeTarget: AnchorTarget | null;
+};
 
-  const empty = notes.error ? (
+function NotesEmpty({ notes, activeTarget }: NotesEmptyProps) {
+  return notes.error ? (
     <ErrorState
       title="Couldn’t read the notes"
       detail="The local store did not answer."
@@ -144,27 +121,64 @@ export default function NotesScreen() {
       detail="Write the first one — it stays on this device until it syncs."
     />
   );
+}
+
+type NoteEditorSheetProps = { writes: NoteWrites; targets: readonly AnchorTarget[] };
+
+function NoteEditorSheet({ writes, targets }: NoteEditorSheetProps) {
+  if (!writes.editor) return null;
+  return (
+    <NoteEditor
+      visible
+      mode={writes.editor.mode}
+      targets={targets}
+      error={writes.writeError}
+      onCancel={writes.closeEditor}
+      onSubmit={writes.submitEditor}
+    />
+  );
+}
+
+export default function NotesScreen() {
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string | string[] }>();
+  const tripId = firstParam(id) ?? '';
+
+  const trip = useTrip(tripId);
+  const filter = useNotesFilter(tripId);
+  const writes = useNoteWrites(tripId);
+
+  const renderItem = ({ item }: { item: NoteWithPlace }) => (
+    <NoteCard
+      note={item}
+      onEdit={() => writes.openEdit(item)}
+      onRemove={() => writes.confirmRemove(item)}
+    />
+  );
+
+  const header = (
+    <NotesHeader
+      tripTitle={trip.data?.title ?? null}
+      targets={filter.targets}
+      filterKey={filter.filterKey}
+      writeError={writes.writeError}
+      onBack={() => router.back()}
+      onFilter={filter.setFilterKey}
+      onAdd={() => writes.openAdd(filter.activeTarget?.key)}
+    />
+  );
 
   return (
     <>
       <ListScreen
         testID="notes-screen"
-        data={notes.data}
+        data={filter.notes.data}
         keyExtractor={(note) => note.id}
         renderItem={renderItem}
         header={header}
-        empty={empty}
+        empty={<NotesEmpty notes={filter.notes} activeTarget={filter.activeTarget} />}
       />
-      {editor ? (
-        <NoteEditor
-          visible
-          mode={editor.mode}
-          targets={targets}
-          error={writeError}
-          onCancel={() => setEditor(null)}
-          onSubmit={submitEditor}
-        />
-      ) : null}
+      <NoteEditorSheet writes={writes} targets={filter.targets} />
     </>
   );
 }

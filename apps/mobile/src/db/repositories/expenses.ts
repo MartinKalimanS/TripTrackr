@@ -225,6 +225,81 @@ function categoryName(id: string, options: readonly CategoryOption[]): string {
   return options.find((option) => option.id === id)?.name ?? 'Other';
 }
 
+function groupRows<K extends string>(
+  items: readonly ExpenseRow[],
+  key: (row: ExpenseRow) => K,
+): Map<K, ExpenseRow[]> {
+  const buckets = new Map<K, ExpenseRow[]>();
+  for (const item of items) {
+    const list = buckets.get(key(item)) ?? [];
+    list.push(item);
+    buckets.set(key(item), list);
+  }
+  return buckets;
+}
+
+function totalHome(rows: readonly ExpenseRow[]): string {
+  return sumAmounts(rows.map((row) => row.amount_home as string));
+}
+
+function totalsByCategory(
+  converted: readonly ExpenseRow[],
+  options: readonly CategoryOption[],
+): ExpenseSummary['by_category'] {
+  return [...groupRows(converted, (row) => row.category_id)]
+    .map(([category_id, items]) => ({
+      category_id,
+      name: categoryName(category_id, options),
+      total_home: totalHome(items),
+      count: items.length,
+    }))
+    .sort(
+      (x, y) =>
+        compareAmounts(y.total_home, x.total_home) || x.name.localeCompare(y.name),
+    );
+}
+
+function totalsByDay(converted: readonly ExpenseRow[]): ExpenseSummary['by_day'] {
+  return [...groupRows(converted, (row) => row.spent_at)]
+    .map(([date, items]) => ({
+      date,
+      total_home: totalHome(items),
+      count: items.length,
+    }))
+    .sort((x, y) => x.date.localeCompare(y.date));
+}
+
+function ratesApplied(
+  converted: readonly ExpenseRow[],
+  homeCurrency: string,
+): ExpenseSummary['rates_applied'] {
+  const rateKey = (row: ExpenseRow) => `${row.currency}|${row.fx_rate_to_home}`;
+  return [
+    ...groupRows(
+      converted.filter((row) => row.currency !== homeCurrency),
+      rateKey,
+    ),
+  ]
+    .map(([, items]) => ({
+      currency: items[0]!.currency,
+      rate: items[0]!.fx_rate_to_home as string,
+      count: items.length,
+    }))
+    .sort((x, y) => x.currency.localeCompare(y.currency) || x.rate.localeCompare(y.rate));
+}
+
+function pendingByCurrency(
+  pending: readonly ExpenseRow[],
+): ExpenseSummary['pending_conversion']['by_currency'] {
+  return [...groupRows(pending, (row) => row.currency)]
+    .map(([currency, items]) => ({
+      currency,
+      total: sumAmounts(items.map((row) => row.amount)),
+      count: items.length,
+    }))
+    .sort((x, y) => x.currency.localeCompare(y.currency));
+}
+
 /**
  * Pure. The same shape `GET /trips/:tripId/expenses/summary` returns, so one
  * component renders either source. Converted rows total in the home currency;
@@ -239,69 +314,17 @@ export function summariseExpenses(
   const converted = rows.filter((row) => !row.fx_pending && row.amount_home !== null);
   const pending = rows.filter((row) => row.fx_pending || row.amount_home === null);
 
-  const group = <K extends string>(
-    items: readonly ExpenseRow[],
-    key: (row: ExpenseRow) => K,
-  ) => {
-    const buckets = new Map<K, ExpenseRow[]>();
-    for (const item of items) {
-      const list = buckets.get(key(item)) ?? [];
-      list.push(item);
-      buckets.set(key(item), list);
-    }
-    return buckets;
-  };
-
-  const byCategory = [...group(converted, (row) => row.category_id)]
-    .map(([category_id, items]) => ({
-      category_id,
-      name: categoryName(category_id, options),
-      total_home: sumAmounts(items.map((row) => row.amount_home as string)),
-      count: items.length,
-    }))
-    .sort(
-      (x, y) =>
-        compareAmounts(y.total_home, x.total_home) || x.name.localeCompare(y.name),
-    );
-
-  const byDay = [...group(converted, (row) => row.spent_at)]
-    .map(([date, items]) => ({
-      date,
-      total_home: sumAmounts(items.map((row) => row.amount_home as string)),
-      count: items.length,
-    }))
-    .sort((x, y) => x.date.localeCompare(y.date));
-
-  const rateKey = (row: ExpenseRow) => `${row.currency}|${row.fx_rate_to_home}`;
-  const ratesApplied = [
-    ...group(
-      converted.filter((row) => row.currency !== homeCurrency),
-      rateKey,
-    ),
-  ]
-    .map(([, items]) => ({
-      currency: items[0]!.currency,
-      rate: items[0]!.fx_rate_to_home as string,
-      count: items.length,
-    }))
-    .sort((x, y) => x.currency.localeCompare(y.currency) || x.rate.localeCompare(y.rate));
-
-  const pendingByCurrency = [...group(pending, (row) => row.currency)]
-    .map(([currency, items]) => ({
-      currency,
-      total: sumAmounts(items.map((row) => row.amount)),
-      count: items.length,
-    }))
-    .sort((x, y) => x.currency.localeCompare(y.currency));
-
   return {
     home_currency: homeCurrency,
-    total_home: sumAmounts(converted.map((row) => row.amount_home as string)),
-    by_category: byCategory,
-    by_day: byDay,
-    rates_applied: ratesApplied,
+    total_home: totalHome(converted),
+    by_category: totalsByCategory(converted, options),
+    by_day: totalsByDay(converted),
+    rates_applied: ratesApplied(converted, homeCurrency),
     rates_source: ratesSource,
-    pending_conversion: { count: pending.length, by_currency: pendingByCurrency },
+    pending_conversion: {
+      count: pending.length,
+      by_currency: pendingByCurrency(pending),
+    },
   };
 }
 
