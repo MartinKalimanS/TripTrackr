@@ -36,6 +36,18 @@ npm run infra:up                         # dev stack; infra/README.md for produc
 Do not run `npm run test -w apps/api` (or `test:cov`, `test:contract`, `test:integration`,
 `test:privacy`) without Docker: those projects boot a real PostGIS and have no mock path.
 
+Running the API suites locally:
+
+- Run the database projects **one invocation at a time** (e.g.
+  `npx jest --selectProjects integration --maxWorkers=4` from `apps/api`). Three concurrent
+  invocations starve ts-jest's type-aware transform and time out `beforeAll` hooks: whole files
+  fail with no real regression.
+- On Windows, filter by a path **regex fragment** (`npx jest --selectProjects unit -- fx-refresh`);
+  a slash path never matches the backslashed paths.
+- CI's private-repo runners have 2 vCPUs, so Jest picks one worker. `workerIdleMemoryLimit` in
+  `apps/api/jest.config.js` and the CI job's `NODE_OPTIONS=--max-old-space-size=4096` keep the
+  suite inside V8's heap. Reproduce CI with `npx jest --coverage --maxWorkers=1`.
+
 ## Spec precedes code
 
 Work flows `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`. If
@@ -120,3 +132,8 @@ Native modules (`flash-list`, `keyboard-controller`, `expo-localization`) follow
   every release (`infra/scripts/README.md`). CI runs it on every PR.
 - Redis runs with `maxmemory-policy noeviction` because BullMQ jobs must never be evicted.
 - Store submission checklist: `docs/release/store-readiness.md`.
+- **Known issue (2026-09):** MinIO withdrew its public images, so `quay.io/minio/minio` and
+  `quay.io/minio/mc` in `infra/docker-compose.yml` no longer pull and `npm run infra:up` fails
+  until a replacement dev S3 server is chosen (a research decision). Meanwhile start only what you
+  need: `docker compose --env-file .env -f infra/docker-compose.yml up -d postgres redis`. The
+  backup image already moved to `rclone`.
