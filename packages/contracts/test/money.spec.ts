@@ -51,6 +51,19 @@ describe('crossRate', () => {
   });
 });
 
+describe('RateString', () => {
+  it('refuses a zero rate however it is spelled — a conversion by zero is not a rate', () => {
+    for (const zero of ['0', '0.0', '0.000000', '00000000.000000']) {
+      expect(RateString.safeParse(zero).success).toBe(false);
+    }
+  });
+
+  it('accepts the smallest and largest rates the column holds', () => {
+    expect(RateString.safeParse('0.000001').success).toBe(true);
+    expect(RateString.safeParse('12345678.123456').success).toBe(true);
+  });
+});
+
 describe('convertAmount', () => {
   it('multiplies and rounds half-up to two places', () => {
     expect(convertAmount('9.00', '0.888889')).toBe('8.00');
