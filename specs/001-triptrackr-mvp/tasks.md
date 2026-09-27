@@ -47,7 +47,7 @@ An npm-workspaces monorepo — two deployables and one shared package (plan.md, 
 - [x] T004 [P] Implement startup environment-variable schema validation in `apps/api/src/common/config/env.schema.ts` that refuses to boot on any missing secret (Constitution "Technology & Platform Constraints")
 - [x] T005 [P] Configure Drizzle Kit in `apps/api/drizzle.config.ts` with the migrations output directory `apps/api/src/db/migrations/`
 - [x] T006 Install mobile dependencies per plan.md Technical Context into `apps/mobile/package.json` — `@rnmapbox/maps`, `expo-sqlite`, `drizzle-orm`, `@tanstack/react-query`, `zustand`, `expo-secure-store`, `expo-screen-capture`, `expo-camera`, `expo-image-picker`, `expo-image-manipulator`, `expo-file-system`, `react-native-purchases`, `@turf/great-circle`, `@sentry/react-native` — each version verified against the Expo SDK 57 versioned docs
-- [ ] T007 [P] Create the mobile source directory skeleton `apps/mobile/src/features/`, `apps/mobile/src/db/`, `apps/mobile/src/sync/`, `apps/mobile/src/lib/`, `apps/mobile/src/components/globe/`, `apps/mobile/src/components/trip/` per plan.md — _re-opened 2026-09-23: only `lib/` exists; the others were never created_
+- [x] T007 [P] Create the mobile source directory skeleton `apps/mobile/src/features/`, `apps/mobile/src/db/`, `apps/mobile/src/sync/`, `apps/mobile/src/lib/`, `apps/mobile/src/components/globe/`, `apps/mobile/src/components/trip/` per plan.md — _re-opened 2026-09-23: only `lib/` exists; the others were never created_
 - [x] T008 [P] Configure ESLint (flat config) and Prettier for both deployables in `apps/mobile/eslint.config.js` and `apps/api/eslint.config.js`, with one `.prettierrc` at the repository root
 - [x] T009 [P] Configure Jest and the Testcontainers PostgreSQL harness in `apps/api/jest.config.js` and `apps/api/test/setup.ts`
 - [x] T010 [P] Configure Jest and React Native Testing Library in `apps/mobile/jest.config.js` and `apps/mobile/jest.setup.ts`
@@ -130,6 +130,7 @@ Before any user story began, the repository was audited end to end — mobile, s
 - [x] R012 Infra — `infra/docker-compose.yml` env wiring (service hostnames; the API-role URL reaches only `api` and `worker`), image digest pins, resource limits, an `api` healthcheck, `worker` waiting on `migrate`; `infra/scripts/backup.sh` and `infra/scripts/restore-rehearsal.sh` (constitution "Backups" — a backup that has never been restored from is not a backup)
 - [x] R013 Rewrite `.github/workflows/ci.yml` for the monorepo — contracts, mobile, api, privacy, docker-build, compose-validate, and format jobs; explicit `permissions`; per-job timeouts; `.github/dependabot.yml`
 - [x] R014 Repository docs — root `README.md`, operational guidance in `AGENTS.md`, a proprietary `LICENSE`, `docs/legal/*` drafts (privacy policy, terms, account deletion), and `docs/release/store-readiness.md`
+- [x] R015 Library selection (research D-21..D-29, 2026-09-24) — install at the root `react-hook-form`, `@hookform/resolvers`, `react-native-sortables`, `@shopify/flash-list` (SDK pin), `react-native-keyboard-controller` (SDK pin), `date-fns`, `decimal.js`, `expo-localization` (SDK pin) for the mobile app and `decimal.js` for the API; wrap the root layout in `KeyboardProvider`; add the Jest stand-ins in `apps/mobile/jest.setup.ts`; add `apps/mobile/src/lib/form-copy.ts` and `apps/mobile/src/components/ui/list-screen.tsx`; re-implement `apps/mobile/src/features/trips/stop-dates.ts` on `date-fns` with its exported API and tests unchanged; record the conventions in `AGENTS.md`
 
 **Checkpoint**: The scaffold agrees with its specification. `npm run lint && npm run typecheck && npm test` pass from the repository root; the structural rows of the adversarial suite (13–20, including test 17 from the API's own pool) pass, with the behavioural rows 1–12 still arriving with their stories; the app boots to the `(auth)` group with no template screen left in the tree. User story work may begin.
 
@@ -171,7 +172,7 @@ Before any user story began, the repository was audited end to end — mobile, s
 - [x] T067 [US1] Build the country-filtered searchable city picker in `apps/mobile/src/components/trip/city-picker.tsx` (FR-014)
 - [x] T068 [US1] Build the trip detail screen and stops editor in `apps/mobile/src/app/trip/[id]/index.tsx` — reordering ships as move-up/move-down controls with `accessibilityActions`; the drag gesture of Acceptance Scenario 1.6 is T071b below
 - [x] T069 [US1] Implement next-stop arrival date suggestion and client-side date validation in `apps/mobile/src/features/trips/stop-dates.ts` (FR-015, FR-011)
-- [ ] T071b [US1] Add drag-to-reorder to the stops editor (`apps/mobile/src/components/trip/stop-editor.tsx`) on top of the existing move controls — long-press drag via react-native-gesture-handler + reanimated (both installed), keeping the buttons as the accessible path (Acceptance Scenario 1.6)
+- [x] T071b [US1] Add drag-to-reorder to the stops list in `apps/mobile/src/app/trip/[id]/index.tsx` (extracted to `apps/mobile/src/components/trip/stop-list.tsx`) on top of the existing move controls — `react-native-sortables` `Sortable.Grid` with a drag handle (research D-22), an `stopsRepository.reorder(tripId, orderedIds)` write that dirties only the rows whose position changed, keeping the buttons as the accessible path (Acceptance Scenario 1.6)
 - [x] T070 [US1] Write the Maestro flow `apps/mobile/e2e/01-account-and-trip.yaml` covering register, create a two-stop trip, relaunch, and verify persistence
 
 **Checkpoint**: A traveller can register and record a multi-stop trip. This is the MVP.
@@ -186,27 +187,32 @@ Before any user story began, the repository was audited end to end — mobile, s
 
 ### Tests for User Story 2 ⚠️ Write first, confirm failing
 
-- [ ] T071 [P] [US2] Integration test — note CRUD and movement between trip, country, and city levels preserving body and creation date — in `apps/api/test/integration/notes.spec.ts` (FR-017, FR-018)
-- [ ] T072 [P] [US2] Integration test — a note without at least a country anchor is rejected — in `apps/api/test/integration/notes-anchor.spec.ts` (FR-019)
-- [ ] T073 [P] [US2] Contract test — no expense or document route accepts a visibility parameter — in `apps/api/test/contract/no-visibility-param.spec.ts` (contract test 9, FR-027, FR-032)
-- [ ] T074 [P] [US2] Integration test — an edited expense never recomputes its stored conversion rate — in `apps/api/test/integration/expenses-fx-freeze.spec.ts` (FR-022)
-- [ ] T075 [P] [US2] Contract test — an expense with no available rate is stored with `fx_pending`, not rejected — in `apps/api/test/contract/fx-pending.spec.ts` (contract test 12)
-- [ ] T076 [P] [US2] Integration test — the spending summary totals by category and by day in the home currency and discloses applied rates — in `apps/api/test/integration/expenses-summary.spec.ts` (FR-025, FR-026)
-- [ ] T077 [P] [US2] Privacy test — account B cannot read A's expenses by trip id, by direct expense id, or via the summary — in `apps/api/test/privacy/expenses.spec.ts` (adversarial rows 1–3, SC-012)
-- [ ] T078 [P] [US2] Unit test — currency conversion and home-amount precomputation — in `apps/api/test/unit/fx.spec.ts` (FR-021)
+- [x] T071 [P] [US2] Integration test — note CRUD and movement between trip, country, and city levels preserving body and creation date — in `apps/api/test/integration/notes.spec.ts` (FR-017, FR-018)
+- [x] T072 [P] [US2] Integration test — a note without at least a country anchor is rejected — in `apps/api/test/integration/notes-anchor.spec.ts` (FR-019)
+- [ ] T073 [P] [US2] Contract test — no expense or document route accepts a visibility parameter — in `apps/api/test/contract/no-visibility-param.spec.ts` (contract test 9, FR-027, FR-032) — _document-route case is an `it.todo` until T114 (US5)_
+- [x] T074 [P] [US2] Integration test — an edited expense never recomputes its stored conversion rate — in `apps/api/test/integration/expenses-fx-freeze.spec.ts` (FR-022)
+- [x] T075 [P] [US2] Contract test — an expense with no available rate is stored with `fx_pending`, not rejected — in `apps/api/test/contract/fx-pending.spec.ts` (contract test 12)
+- [x] T076 [P] [US2] Integration test — the spending summary totals by category and by day in the home currency and discloses applied rates — in `apps/api/test/integration/expenses-summary.spec.ts` (FR-025, FR-026)
+- [x] T077 [P] [US2] Privacy test — account B cannot read A's expenses by trip id, by direct expense id, or via the summary — in `apps/api/test/privacy/expenses.spec.ts` (adversarial rows 1–3, SC-012)
+- [x] T078 [P] [US2] Unit test — currency conversion and home-amount precomputation — in `apps/api/test/unit/fx.spec.ts` (FR-021)
 
 ### Implementation for User Story 2
 
-- [ ] T079 [P] [US2] Implement the notes module in `apps/api/src/modules/notes/notes.controller.ts` and `apps/api/src/modules/notes/notes.service.ts` (FR-017, FR-018, FR-019)
-- [ ] T080 [P] [US2] Implement expense categories with seeded system defaults and user-scoped custom categories in `apps/api/src/modules/expenses/categories.controller.ts` (FR-023, FR-024)
-- [ ] T081 [US2] Implement the FX rate service and the `fx_rates` refresh job in `apps/api/src/modules/expenses/fx.service.ts` (FR-021, research D-10)
-- [ ] T082 [US2] Implement expenses CRUD, resolving and freezing the rate at entry, in `apps/api/src/modules/expenses/expenses.controller.ts` (FR-020, FR-021, FR-022)
-- [ ] T083 [US2] Implement `GET /trips/:tripId/expenses/summary` returning `by_category`, `by_day`, `total_home`, `rates_applied`, and `pending_conversion` in `apps/api/src/modules/expenses/summary.service.ts` (FR-025, FR-026)
-- [ ] T084 [P] [US2] Build the notes list and editor screens in `apps/mobile/src/app/trip/[id]/notes.tsx` and `apps/mobile/src/components/trip/note-editor.tsx`
-- [ ] T085 [US2] Build the note anchor-level move control in `apps/mobile/src/features/notes/use-move-note.ts` (FR-018)
-- [ ] T086 [P] [US2] Build the expense list screen and add-expense modal in `apps/mobile/src/app/trip/[id]/expenses.tsx` and `apps/mobile/src/app/modal/add-expense.tsx`
-- [ ] T087 [US2] Build the spending summary with per-category and per-day breakdown and multi-currency rate disclosure in `apps/mobile/src/components/trip/spending-summary.tsx` (FR-025, FR-026)
-- [ ] T088 [US2] Write the Maestro flow `apps/mobile/e2e/02-notes-and-expenses.yaml` covering both note levels, three expenses in two currencies, and the note move
+_Amended 2026-09-24 for the library decisions D-21..D-29: the wording below names the library each task builds on so that none of it is hand-rolled a second time._
+
+- [x] T204 [US2] Contracts for the story in `packages/contracts/src/api/notes.ts`, `packages/contracts/src/api/expenses.ts`, and `packages/contracts/src/api/fx.ts` — `CreateNoteRequest`/`PatchNoteRequest`/`Note`/`NotesResponse`, `CreateExpenseRequest`/`PatchExpenseRequest`/`Expense`/`ExpensesResponse`/`ListExpensesQuery`/`ExpenseSummary`, `ExpenseCategory`/`CreateExpenseCategoryRequest`/`ExpenseCategoriesResponse`, `FxRatesResponse`, and the fixed-id `SYSTEM_EXPENSE_CATEGORIES` (research D-29) — with tests in `packages/contracts/test/`; the expense and document DTOs are strict objects that refuse any visibility key (FR-027, FR-032)
+- [x] T205 [US2] Migration `apps/api/src/db/migrations/0009_us2_categories_and_fx.sql` seeding the six system categories with the `SYSTEM_EXPENSE_CATEGORIES` ids (FR-023, research D-29) and granting the API role read on `fx_rates` and write for the refresh job
+- [x] T079 [P] [US2] Implement the notes module in `apps/api/src/modules/notes/notes.controller.ts` and `apps/api/src/modules/notes/notes.service.ts` (FR-017, FR-018, FR-019)
+- [x] T080 [P] [US2] Implement expense categories — the seeded system defaults plus user-scoped custom categories — in `apps/api/src/modules/expenses/categories.controller.ts` (FR-023, FR-024, research D-29)
+- [x] T081 [US2] Implement the FX rate service in `apps/api/src/modules/expenses/fx.service.ts` — cross rates and `amount_home` through `decimal.js` (research D-26) — the daily refresh as a BullMQ job scheduler in `apps/api/src/common/queue/` with its processor in `apps/api/src/workers/fx-refresh.processor.ts` fetching the configurable feed `FX_RATES_URL` (research D-28), and `GET /fx-rates` in `apps/api/src/modules/expenses/fx.controller.ts` for the device's snapshot (FR-021, research D-10)
+- [x] T082 [US2] Implement expenses CRUD, resolving and freezing the rate at entry, in `apps/api/src/modules/expenses/expenses.controller.ts` (FR-020, FR-021, FR-022)
+- [x] T083 [US2] Implement `GET /trips/:tripId/expenses/summary` returning `by_category`, `by_day`, `total_home`, `rates_applied`, and `pending_conversion` in `apps/api/src/modules/expenses/summary.service.ts` — sums in SQL over `NUMERIC`, never in floating point (FR-025, FR-026, SC-016)
+- [x] T206 [US2] Local-first repositories and mirror — `apps/mobile/src/db/repositories/notes.ts`, `apps/mobile/src/db/repositories/expenses.ts` (expenses and custom categories), `apps/mobile/src/db/repositories/fx-rates.ts` (the cached snapshot, refreshed from `GET /fx-rates`), the local `fx_rates` table and generated migration in `apps/mobile/src/db/`, and the live-query hooks `apps/mobile/src/features/notes/use-notes.ts` and `apps/mobile/src/features/expenses/use-expenses.ts` — every write dirties the row; conversion from the snapshot goes through `decimal.js` (Constitution II; research D-10, D-15, D-26, D-29)
+- [x] T084 [P] [US2] Build the notes list and editor screens in `apps/mobile/src/app/trip/[id]/notes.tsx` (a `FlashList`, research D-23) and `apps/mobile/src/components/trip/note-editor.tsx` (`react-hook-form` over `CreateNoteRequest` under a `KeyboardAwareScrollView`, research D-21, D-24)
+- [x] T085 [US2] Build the note anchor-level move control in `apps/mobile/src/features/notes/use-move-note.ts` (FR-018)
+- [x] T086 [P] [US2] Build the expense list screen and add-expense modal in `apps/mobile/src/app/trip/[id]/expenses.tsx` (a `FlashList`) and `apps/mobile/src/app/modal/add-expense.tsx` (`react-hook-form` over `CreateExpenseRequest`; amount parsed with the device's decimal separator from `expo-localization`, research D-21, D-27)
+- [x] T087 [US2] Build the spending summary with per-category and per-day breakdown and multi-currency rate disclosure in `apps/mobile/src/components/trip/spending-summary.tsx` — totals through `decimal.js`, formatted with `Intl.NumberFormat` in the device locale (FR-025, FR-026, research D-26, D-27)
+- [ ] T088 [US2] Write the Maestro flow `apps/mobile/e2e/02-notes-and-expenses.yaml` covering both note levels, three expenses in two currencies, and the note move — _flow written, not yet run: needs a dev-client build on a device_
 
 **Checkpoint**: US1 and US2 both work independently. The data model is validated before visual work begins.
 
@@ -539,7 +545,7 @@ Task: "Contract test payloads validated by @triptrackr/contracts in apps/api/tes
 
 - `[P]` marks tasks touching different files with no incomplete dependencies
 - `[Story]` labels give traceability from any task back to a user story and its requirements
-- Identifiers are stable once assigned: the 2026-09-23 remediation uses `R001`–`R014`, and the tasks added to User Story 6 for the widened sync scope are numbered `T199`–`T203` after the last original task, so no earlier reference (T141 above all) shifts
+- Identifiers are stable once assigned: the 2026-09-23 remediation uses `R001`–`R014` (`R015` for the 2026-09-24 library selection), the tasks added to User Story 6 for the widened sync scope are numbered `T199`–`T203`, and the contracts, migration, and local-mirror tasks added to User Story 2 are `T204`–`T206` — all after the last original task, so no earlier reference (T141 above all) shifts
 - Every test task must be seen to **fail** before its implementation task begins
 - Commit after each task or logical group
 - Every checkpoint is a genuine stopping point where the product is demonstrable

@@ -80,6 +80,23 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
 - Local writes go to the SQLCipher-encrypted SQLite store first; the network is a background
   reconciler. A record is not "saved" until its bytes are uploaded.
 
+## Libraries — use these, do not hand-roll (research D-21..D-29)
+
+| Need                      | Use                                                                                                                  |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| A form                    | `react-hook-form` + `zodResolver(schema from @triptrackr/contracts)`; copy via `apps/mobile/src/lib/form-copy.ts`    |
+| Drag to reorder           | `react-native-sortables` (`Sortable.Grid`/`Sortable.Flex`); keep buttons as the accessible path                      |
+| An unbounded list         | `@shopify/flash-list` as the scroll container (`components/ui/list-screen.tsx`), never nested in `Screen`            |
+| A form under the keyboard | `KeyboardAwareScrollView` from `react-native-keyboard-controller` (provider is in the root layout)                   |
+| Date arithmetic           | `date-fns` on `YYYY-MM-DD` strings via `features/trips/stop-dates.ts` helpers — local calendar day, never UTC        |
+| Money arithmetic          | `decimal.js` — never `Number` on an amount or a rate (SC-016). Wire and DB carry decimal strings / `NUMERIC`         |
+| Locale, decimal separator | `expo-localization` `getLocales()`; format with `Intl`                                                               |
+| A recurring server job    | BullMQ job scheduler (`upsertJobScheduler`) in `apps/api/src/common/queue/`, not `setInterval` or `@nestjs/schedule` |
+| Expense categories        | System rows are `SYSTEM_EXPENSE_CATEGORIES` in contracts (fixed ids, seeded by migration 0009)                       |
+
+Native modules (`flash-list`, `keyboard-controller`, `expo-localization`) follow the SDK 57 pin in
+`node_modules/expo/bundledNativeModules.json`; check it before bumping.
+
 ## Repository hygiene
 
 - **Never edit a `package.json` by hand without then running `npm install` at the ROOT** and

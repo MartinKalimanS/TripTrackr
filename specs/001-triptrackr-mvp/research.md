@@ -486,3 +486,222 @@ compose file, every policy in the data-access contract was bypassed in any envir
 the repository, while the privacy suite (which provisions its own role) stayed green. This is the
 exact silent failure D-03 warns about, one layer up: not a missing `FORCE`, but a missing
 connection string.
+
+---
+
+## Library selection — 2026-09-24
+
+User Story 1 was built with almost no third-party code beyond the platform: forms were validated
+by hand-written adapters over the zod schemas, dates were arithmetic on `YYYY-MM-DD` strings, lists
+were `.map()` inside a `ScrollView`, and reordering shipped as move-up/move-down buttons because the
+drag gesture was not yet written. Before User Story 2 — which adds two more forms, two more lists,
+money arithmetic, and a currency feed — the remaining stories were surveyed for work a maintained
+library already does well, and each candidate was judged on one question: _does it remove code
+this product would otherwise have to write and test, without weakening a constitutional
+guarantee?_ The choices below are the ones that passed. Each names the alternative that was
+rejected so the choice is not re-litigated from scratch; versions were checked against the npm
+registry and, for native modules, against the Expo SDK 57 `bundledNativeModules.json` pin so that
+`expo-doctor` stays clean. Every package selected had been published for more than seven days.
+
+## D-21 — Forms: `react-hook-form` with `@hookform/resolvers` over the contracts' zod schemas
+
+**Decision**: Every form in the mobile app is a `useForm()` whose resolver is
+`zodResolver(<schema from @triptrackr/contracts>)`. Field components are bound with `Controller`.
+Product copy for a refusal is looked up by the zod issue's path and code, in one place
+(`apps/mobile/src/lib/form-copy.ts`), instead of one hand-written translator per form.
+
+**Rationale**: The invariant the first form established — "the form can never accept what the
+server would refuse at sync time" (T066) — is worth keeping, and the way T066 kept it was a bespoke
+`validateTripForm` that re-walks `safeParse` issues. The note editor (T084) and the add-expense
+sheet (T086) each carry five to seven fields with cross-field rules (a note needs an anchor, an
+amount is a decimal string, a category must exist). Writing that translator three more times is
+where the copies drift. `react-hook-form` holds the values, dirtiness, and per-field errors; the
+resolver runs the very same schema the server runs; and the product copy layer maps
+`(path, code) → sentence` exactly once. It is uncontrolled by default, which matters on a mid-tier
+Android device: a keystroke no longer re-renders the whole sheet.
+
+**Alternatives considered**: _Formik_ — rejected; maintenance has slowed and every field is
+controlled, which is the re-render cost above. _Keep hand-rolling per form_ — rejected on the
+drift argument. _TanStack Form_ — capable, but its zod adapter and React Native story are younger
+than `@hookform/resolvers` (zod 4 support since resolvers 5.0), and the team's familiarity is with
+the hook-form API.
+
+**Versions**: `react-hook-form@^7.88`, `@hookform/resolvers@^5.9` (peer `zod ^3.25 || ^4`).
+
+## D-22 — Reordering: `react-native-sortables`
+
+**Decision**: Drag-to-reorder — stops in a trip (T071b, Acceptance Scenario 1.6) and, later,
+itinerary items between days (T170) — uses `react-native-sortables` (`Sortable.Grid` with one
+column for a vertical list; `Sortable.Flex` where items wrap). The move-up/move-down buttons stay
+as the accessible path; the drag is additive.
+
+**Rationale**: A long-press drag with auto-scroll, a drop indicator, layout animation of the
+displaced rows, and haptics is several hundred lines of gesture-handler and reanimated worklet
+code with a long tail of device-specific bugs. `react-native-sortables` is built on exactly the
+two libraries this app already ships (`react-native-gesture-handler` 2.32, `react-native-reanimated`
+4.5 — it declares `>=3` and supports the New Architecture), its `onDragEnd` returns the reordered
+data array, which maps directly onto the repository's "renumber only the rows that moved" write,
+and it supports a drag `Handle` so the row body stays a normal pressable for edit.
+
+**Alternatives considered**: `react-native-draggable-flatlist` — the long-standing choice, rejected:
+its maintenance has lapsed and it targets reanimated 2/3 internals; `react-native-reanimated-dnd`
+— rejected as younger and less complete (no grid, no auto-scroll). _Hand-written_ — rejected; the
+button path already satisfies the requirement, so the only justification for a custom gesture
+would be that no library fit, and one does.
+
+**Version**: `react-native-sortables@^1.10`.
+
+## D-23 — Long lists: `@shopify/flash-list` v2
+
+**Decision**: Any list whose length is unbounded by design — notes and expenses per trip, the photo
+gallery, and later the feed and discovery — renders with `FlashList` as the screen's scroll
+container. Short, fixed lists (currency pills, the six categories, a trip's stops) stay as plain
+views inside `Screen`.
+
+**Rationale**: SC-006 (feature 002) and the mid-tier Android target make list scroll frame rate a
+requirement, not a preference. `FlashList` recycles cells and, in v2, needs no `estimatedItemSize`
+and is written for the New Architecture. Expo SDK 57 pins `2.0.2` in `bundledNativeModules.json`,
+so that pin is the version used. A `FlashList` must be the scroller — nesting one inside the
+`Screen` `ScrollView` defeats recycling and breaks the font-scale rule of contract C13 — which is
+why `components/ui/list-screen.tsx` exists as `Screen`'s sibling rather than a prop.
+
+**Alternatives considered**: `FlatList` — adequate for tens of rows, rejected for the unbounded
+lists because it does not recycle; `LegendList` — promising, rejected as not yet the Expo-pinned
+default.
+
+**Version**: `@shopify/flash-list@2.0.2` (Expo pin).
+
+## D-24 — Keyboard handling: `react-native-keyboard-controller`
+
+**Decision**: `KeyboardProvider` wraps the root layout; form screens and sheets use
+`KeyboardAwareScrollView` from the library instead of `KeyboardAvoidingView`. The Jest environment
+mounts the library's own `jest` mock.
+
+**Rationale**: The note editor is a multiline body under a title, and the expense sheet has an
+amount field above a category grid. `KeyboardAvoidingView` behaves differently per platform, has
+no notion of the focused field, and gets the inset wrong under Android's edge-to-edge default in
+SDK 57; every form would carry its own workaround. The library reads keyboard frames natively,
+scrolls the focused input into view on both platforms with one component, and is what the Expo
+documentation recommends for this problem. It is a native module, so it changes the dev-client
+build — acceptable, since the app already depends on several. Expo SDK 57 pins `1.21.9`.
+
+**Alternatives considered**: `KeyboardAvoidingView` (built in) — rejected for the reasons above;
+`react-native-avoid-softinput` — rejected as less maintained and iOS-centric.
+
+**Version**: `react-native-keyboard-controller@1.21.9` (Expo pin); peer `react-native-reanimated`.
+
+## D-25 — Calendar arithmetic: `date-fns` v4
+
+**Decision**: `date-fns` is the one date library in the mobile app, and the one the API adopts
+the day it needs calendar arithmetic (it does not yet: server dates are ISO strings compared and
+stored, and the FX feed's timestamp is read with `Date.parse`). `stop-dates.ts` keeps its exported
+API (`toIsoDate`, `fromIsoDate`, `addDays`, `todayIso`, `formatIsoDate`) but implements it with
+`formatISO(…, { representation: 'date' })`, `parseISO`, `addDays`, and `isValid`. The rule that
+every date is a **local calendar day** (a traveller picking "12 May" at 23:30 in Rome means 12 May)
+is unchanged: `date-fns` works in local time by default, which is precisely why it was chosen over
+a UTC-first library.
+
+**Rationale**: T069 hand-wrote parse, format, pad, add-days, and validity for `YYYY-MM-DD` strings.
+User Story 2 needs the same again for `spent_at` defaults and the by-day breakdown; User Story 8
+needs day arithmetic across an itinerary. `date-fns` v4 is tree-shakeable (each function is an
+import), typed, immutable, and has first-class `Intl`-free formatting for the cases where
+`Intl.DateTimeFormat` (still used for locale display) is the wrong tool.
+
+**Alternatives considered**: `dayjs` — rejected; its plugin system and mutable-feeling chaining are
+easier to misuse for the local-day rule; `luxon` — rejected as heavier and timezone-first, which
+this data (dates without times) does not need; `Temporal` — not yet shipped in Hermes.
+
+**Version**: `date-fns@^4.4`.
+
+## D-26 — Money arithmetic: `decimal.js`, on both sides, never a float
+
+**Decision**: Every arithmetic operation on an amount or a rate goes through `decimal.js`:
+`amount_home = amount × fx_rate_to_home` rounded half-up to two places at entry (server
+`fx.service.ts`, and on the device when converting from the cached snapshot); the spending
+summary's per-category, per-day, and grand totals; and the display layer's parsing of a typed
+amount. The wire carries decimal **strings** (`DecimalString`, `RateString`) and PostgreSQL holds
+`NUMERIC`; `decimal.js` is what those strings pass through whenever JavaScript has to touch them.
+
+**Rationale**: SC-016 requires totals to reconcile exactly. On the server, `NUMERIC` sums in SQL
+are exact, but the rate multiplication at entry happens in the service so it can be unit-tested
+(T078); on the device the local store is SQLite, which has no decimal type, so summing `amount_home`
+in SQL would sum floats. `decimal.js` gives arbitrary-precision decimal arithmetic with explicit
+rounding modes in about 30 kB, and it is the library Prisma and Drizzle's ecosystem already lean on
+for the same reason. One dependency for both apps keeps one rounding rule.
+
+**Alternatives considered**: `big.js` — smaller, rejected only because it lacks `decimal.js`'s
+rounding-mode constants and its ecosystem footprint is thinner; `currency.js` — rejected, it
+stores integer cents and loses the six-decimal rate precision; `dinero.js` v2 — rejected, still in
+alpha after several years; integer minor units — rejected because minor-unit exponents vary per
+currency and the contract already chose decimal strings.
+
+**Version**: `decimal.js@^10.6`.
+
+## D-27 — Device locale: `expo-localization`
+
+**Decision**: `getLocales()[0]` supplies the `languageTag` handed to `Intl.NumberFormat` and
+`Intl.DateTimeFormat`, the `decimalSeparator` used to parse a typed amount ("12,50" in Vienna is
+twelve euros fifty), and a sensible default currency for a new traveller's home currency. No
+i18n string library is introduced yet — the copy is English — but the module is the seam through
+which one would arrive.
+
+**Rationale**: Hermes ships `Intl` on both platforms, so formatting needs no library; what it needs
+is the right locale, and `Intl`'s default locale on Android does not reliably follow the system
+setting. `expo-localization` is first-party, versioned with the SDK, and exposes exactly these
+fields. Expo SDK 57 pins `~57.0.2`.
+
+**Alternatives considered**: `react-native-localize` — equivalent data, rejected only because it
+is not the SDK-pinned module; `Intl.NumberFormat(undefined, …)` — rejected for the Android default
+locale caveat above.
+
+**Version**: `expo-localization@~57.0.2` (Expo pin).
+
+## D-28 — FX rates: a daily BullMQ job scheduler pulling one USD-based snapshot
+
+**Decision**: The `fx_rates` table (data-model.md §6) is refreshed once a day by a BullMQ **job
+scheduler** (`Queue.upsertJobScheduler`, already available in the `bullmq` dependency) whose
+processor fetches a single USD-base snapshot from a public rate feed, validates it with a zod
+schema, and upserts one `(USD, quote, rate, as_of)` row per currency. Any cross rate is derived at
+lookup — `rate(A→B) = rate(USD→B) / rate(USD→A)` — through `decimal.js` (D-26). The feed URL is
+configuration (`FX_RATES_URL`), defaulting to the ExchangeRate-API open endpoint
+(`https://open.er-api.com/v6/latest/USD`, no key, ~160 currencies, refreshed daily, attribution
+required by its terms — the spending summary states the source). The device receives the same
+snapshot through `GET /fx-rates` (rest-api.md §11) and stores it in a local `fx_rates` cache, so an
+expense logged in aeroplane mode converts from the last snapshot (D-10). If the feed is
+unreachable or the currency is absent, the expense is stored `fx_pending` and backfilled later —
+never refused (rest-api.md §7).
+
+**Rationale**: D-10 decided _when_ rates are captured; it did not name a source or a scheduler.
+BullMQ's job schedulers are the queue this stack already runs, survive restarts, and run exactly
+once across replicas — the reason `@nestjs/schedule`'s in-process cron was not chosen. On
+coverage: a travel journal is used in Vietnam, Morocco, Peru, and Georgia, and the free ECB-based
+feeds cover about thirty currencies; the traveller's home-currency total would then be
+`pending_conversion` for most of a trip, which is the degraded state, not the normal one. There is
+no npm library that fetches rates well enough to prefer over a `fetch` plus a zod schema, so the
+"library" here is BullMQ's scheduler and `decimal.js`, and the provider is a swappable URL.
+
+**Alternatives considered**: _Frankfurter_ (ECB data, self-hostable in Docker) — the exit route
+if the public endpoint's terms or availability change, and the natural choice for a deployment that
+must run with no third-party call at all; recorded, not chosen, on coverage. _Open Exchange Rates
+free tier_ — 1,000 calls a month with a key; unnecessary at one call a day. _Converting on the
+device from a live call_ — rejected by D-10.
+
+## D-29 — System expense categories are constants shared through `@triptrackr/contracts`
+
+**Decision**: The six system categories (Food, Lodging, Transport, Activities, Shopping, Other —
+FR-023) are declared once in `@triptrackr/contracts` as `SYSTEM_EXPENSE_CATEGORIES`, each with a
+fixed UUID, and migration `0009` seeds `expense_categories` with those exact ids (`user_id IS
+NULL`). `GET /expense-categories` returns them ahead of the traveller's own; the device never has
+to fetch them to log an expense offline.
+
+**Rationale**: The sync protocol excludes system rows from the feed on purpose (sync-protocol.md
+§1), which left the device with no way to know a system category's id before its first successful
+`GET /expense-categories` — and therefore no way to log a first expense in aeroplane mode. Fixed
+ids in the shared package make the system rows reference data in the same sense as `countries`:
+known to both sides by construction. It is also what lets an expense pushed from the device carry
+a `category_id` the server recognises without a lookup or a remap (D-15).
+
+**Alternatives considered**: _Seed with random ids and sync them_ — rejected; it puts read-only
+rows into a feed designed for traveller-owned rows and breaks the write-pinning policy's premise.
+_Cache them on first online launch_ — rejected; first launch may be offline, and Constitution II
+says offline is the default.

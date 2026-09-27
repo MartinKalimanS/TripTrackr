@@ -52,16 +52,27 @@ FR-083), `@turf/great-circle` (arc densification), Sentry (FR-073, with Session 
 Feedback **disabled** — research D-18). **No web target** (research D-14): `react-native-web`,
 `react-dom`, and every `*.web.tsx` variant are removed; the app ships to iOS and Android only.
 
+_Mobile, added 2026-09-24 (research D-21 to D-27)_ — `react-hook-form` + `@hookform/resolvers`
+(every form; the resolver is the contracts' zod schema), `react-native-sortables` (drag-to-reorder
+on gesture-handler + reanimated), `@shopify/flash-list` v2 (unbounded lists, as the scroll
+container), `react-native-keyboard-controller` (`KeyboardProvider` at the root,
+`KeyboardAwareScrollView` in forms), `date-fns` v4 (local-calendar-day arithmetic), `decimal.js`
+(all money arithmetic — SC-016), `expo-localization` (locale for `Intl`, decimal separator, default
+currency). Native-module versions follow the SDK 57 `bundledNativeModules.json` pin.
+
 _Shared_ — `@triptrackr/contracts` (research D-13): the zod schemas for the sync protocol and the
 REST DTOs, consumed by both deployables so that the client and the server cannot disagree about a
-record's shape.
+record's shape — and, from 2026-09-24, the fixed-id `SYSTEM_EXPENSE_CATEGORIES` (research D-29).
 
 _Server_ — NestJS 11, Drizzle ORM for typed queries with hand-written, transactional SQL migrations
 (schema, RLS policies, and auth functions — research D-19), `postgres` (postgres.js) as the driver,
-Redis 7 (sessions, rate limits, planner cache), BullMQ (media worker), `@aws-sdk/client-s3` against
-S3-compatible storage (MinIO in development, Cloudflare R2 in production), the Anthropic SDK
-(planner), Mapbox Geocoding and Directions (place verification and walking routes), Resend
-(transactional email), Traefik (TLS and coarse rate limiting).
+Redis 7 (sessions, rate limits, planner cache), BullMQ (media worker, and the daily FX-rate job
+scheduler — research D-28), `decimal.js` (rate multiplication and rounding at entry — research
+D-26), `@aws-sdk/client-s3` against S3-compatible storage (MinIO in development, Cloudflare R2 in
+production), the Anthropic SDK (planner), Mapbox Geocoding and Directions (place verification and
+walking routes), Resend (transactional email), Traefik (TLS and coarse rate limiting). FX rates
+come from a configurable public feed (`FX_RATES_URL`, default ExchangeRate-API's open endpoint;
+research D-28).
 
 **Storage**: PostgreSQL 17 with PostGIS 3.5, self-hosted in Docker, RLS enabled on every
 traveller-owned table. Redis 7 for ephemeral state. S3-compatible object storage for photo and
@@ -96,7 +107,9 @@ with vertical headroom before any architectural change is warranted.
 **Unknowns**: None outstanding. Every `NEEDS CLARIFICATION` raised while drafting this section was
 resolved in Phase 0 — see [research.md](./research.md), decisions D-01 through D-12. The
 2026-09-23 architecture audit added D-13 through D-20 and amended this plan's Project Structure;
-the amendments are recorded in research.md rather than silently applied here.
+the amendments are recorded in research.md rather than silently applied here. The 2026-09-24
+library selection added D-21 through D-29 (forms, reordering, lists, keyboard, dates, money,
+locale, FX feed, system categories) before User Story 2 began.
 
 ---
 
@@ -190,7 +203,7 @@ a boarding pass (Principle I, FR-033).
 ```text
 specs/001-triptrackr-mvp/
 ├── plan.md                        # This file
-├── research.md                    # Phase 0 output — decisions D-01..D-12; audit D-13..D-20
+├── research.md                    # Phase 0 output — decisions D-01..D-12; audit D-13..D-20; libraries D-21..D-29
 ├── data-model.md                  # Phase 1 output — entities, columns, RLS posture
 ├── quickstart.md                  # Phase 1 output — how to run and validate
 ├── contracts/

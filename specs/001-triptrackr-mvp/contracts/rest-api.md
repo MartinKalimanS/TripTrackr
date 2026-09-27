@@ -171,6 +171,20 @@ endpoint puts the guarantee in application code, where Constitution I says it mu
   yet resolved.
 - `POST` accepts an expense with no retrievable rate, storing it with `fx_pending = true` rather than
   refusing. Refusing would fail Constitution II for a cosmetic reason.
+- `POST` also accepts the client's own `fx_rate_to_home` and `amount_home` (converted on the device
+  from its cached snapshot, research D-10) and stores them as sent; the server resolves a rate only
+  when the client sent none. Whatever is stored first is what FR-022 freezes.
+- The six system categories carry the fixed ids published in `@triptrackr/contracts` as
+  `SYSTEM_EXPENSE_CATEGORIES` (research D-29); `GET /expense-categories` returns them with
+  `user_id: null` ahead of the traveller's own rows. A `category_id` that is neither a system id
+  nor one of the caller's own rows is a validation problem, never a database error.
+- `rates_applied` lists each distinct `(currency, rate)` actually frozen on a row with how many
+  rows carry it, and `rates_source` names the feed those rates came from — the default feed's
+  terms require attribution (research D-28). `pending_conversion` reports rows still awaiting a
+  rate by their own currency, with a count, so nothing is silently omitted from the picture.
+- `PATCH /expenses/:id` does not accept `currency`: a different currency is a different
+  conversion, so it is a new expense. A patched `amount` is converted with the rate already on
+  the row (FR-022).
 
 ---
 
@@ -256,10 +270,14 @@ alike, and one predicate covers all four where four filters offer four chances t
 
 ## 11. Lookups
 
-| Method | Path                    | Access | Notes                                                             |
-| ------ | ----------------------- | ------ | ----------------------------------------------------------------- |
-| GET    | `/countries`            | public | Full list, cached aggressively                                    |
-| GET    | `/countries/:id/cities` | public | `?q=` autocomplete, accent-tolerant, ranked by prominence. FR-014 |
+| Method | Path                    | Access | Notes                                                                                                                                                                           |
+| ------ | ----------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/countries`            | public | Full list, cached aggressively                                                                                                                                                  |
+| GET    | `/countries/:id/cities` | public | `?q=` autocomplete, accent-tolerant, ranked by prominence. FR-014                                                                                                               |
+| GET    | `/fx-rates`             | owner  | **Added 2026-09-24** — the latest daily snapshot: `{base: "USD", as_of, source, rates: {EUR: "0.877372", …}}`. The device caches it so an offline expense converts (D-10, D-28) |
+
+`/fx-rates` is reference data like the geography routes but requires a session: it is fetched once
+a day per device, and an unauthenticated public route would be a free proxy for the upstream feed.
 
 ---
 
