@@ -140,18 +140,30 @@ const noteFields = {
 const anchored = (n: { country_id: number | null; city_id: number | null }) =>
   n.country_id !== null || n.city_id !== null;
 
-export const NotePushRecord = z
-  .strictObject({ ...pushMeta, ...noteFields })
-  .refine(anchored, {
+/**
+ * Exported like `tripStopDatesInOrder`: the REST `Note` derives from the
+ * unrefined pull shape and re-applies the anchor rule itself, and the mobile
+ * repository checks the same predicate before it writes a row.
+ */
+export const noteAnchored = {
+  check: anchored,
+  params: {
     message: 'A note must be anchored to a country or a city',
-    path: ['country_id'],
-  });
-export const NotePullRecord = z
-  .strictObject({ ...pullMeta, ...noteFields })
-  .refine(anchored, {
-    message: 'A note must be anchored to a country or a city',
-    path: ['country_id'],
-  });
+    path: ['country_id'] as PropertyKey[],
+  },
+};
+
+export const NotePushShape = z.strictObject({ ...pushMeta, ...noteFields });
+export const NotePullShape = z.strictObject({ ...pullMeta, ...noteFields });
+
+export const NotePushRecord = NotePushShape.refine(
+  noteAnchored.check,
+  noteAnchored.params,
+);
+export const NotePullRecord = NotePullShape.refine(
+  noteAnchored.check,
+  noteAnchored.params,
+);
 
 // ---------------------------------------------------------------------------
 // expenses — owner-only, structurally. There is no visibility field here and

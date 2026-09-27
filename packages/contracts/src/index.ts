@@ -6,6 +6,7 @@
  * schema. One definition, two consumers, no drift (research D-13).
  */
 export * from './scalars';
+export * from './money';
 export * from './sync/tables';
 export * from './sync/records';
 export * from './sync/envelope';
@@ -14,3 +15,6 @@ export * from './api/auth';
 export * from './api/users';
 export * from './api/lookups';
 export * from './api/trips';
+export * from './api/notes';
+export * from './api/expenses';
+export * from './api/fx';
