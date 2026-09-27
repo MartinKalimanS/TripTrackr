@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { ACCESS_TOKEN_ALGORITHM } from '@/common/auth/token-algorithm';
 import { loadEnv } from '@/common/config/env.schema';
@@ -89,6 +89,11 @@ export class TokenService {
     return this.jwt.signAsync({ sub: userId } satisfies AccessTokenClaims, {
       secret: env.JWT_ACCESS_SECRET,
       algorithm: ACCESS_TOKEN_ALGORITHM,
+      // A `jti` per token: two tokens minted for one traveller within the same
+      // second would otherwise be byte-identical (iat has one-second
+      // resolution), and a rotation that hands back the very token it retired
+      // is indistinguishable from one that did nothing.
+      jwtid: randomUUID(),
       // Typed through JwtSignOptions rather than `any`: the underlying library
       // accepts a `ms`-style template literal union that a plain string does not
       // satisfy, and widening to `any` there would also silence real mistakes in
