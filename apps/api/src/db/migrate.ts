@@ -28,6 +28,9 @@ import { loadMigrationEnv } from '@/common/config/env.schema';
  *   0009_us2_categories_and_fx.sql
  *                             hand-authored — the six system expense categories
  *                             with their contract-fixed ids, FX lookup index
+ *   0010_fx_backfill_from_row.sql
+ *                             hand-authored — the FX backfill converts the
+ *                             amount the row holds when it freezes the rate
  *
  * Constitution: "Migrations version-controlled ... production schema MUST NEVER
  * be hand-edited."
