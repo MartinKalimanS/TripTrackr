@@ -46,9 +46,10 @@ function filterFor(target: AnchorTarget | null): NotesFilter {
 function useNotesFilter(tripId: string) {
   const stops = useTripStops(tripId);
   const targets = useMemo(() => anchorTargets(stops.data), [stops.data]);
-  const [filterKey, setFilterKey] = useState<string>('all');
-  const activeTarget = targets.find((target) => target.key === filterKey) ?? null;
+  const [chosenKey, setFilterKey] = useState<string>('all');
+  const activeTarget = targets.find((target) => target.key === chosenKey) ?? null;
   const notes = useNotes(tripId, filterFor(activeTarget));
+  const filterKey = activeTarget?.key ?? 'all';
   return { targets, filterKey, setFilterKey, activeTarget, notes };
 }
 
