@@ -30,7 +30,10 @@ export const DecimalString = z
 /** FX rates carry more precision than amounts; six decimals matches NUMERIC(14,6). */
 export const RateString = z
   .string()
-  .regex(/^\d{1,8}(\.\d{1,6})?$/, 'Expected a positive rate with at most six decimals');
+  .regex(
+    /^(?=.*[1-9])\d{1,8}(\.\d{1,6})?$/,
+    'Expected a positive rate with at most six decimals',
+  );
 
 /** Reference-data identifiers (GeoNames-derived integers). */
 export const CityId = z.int().positive();
