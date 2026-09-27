@@ -139,4 +139,10 @@ describe('readFeedJson', () => {
     const response = jsonResponse(JSON.stringify({ pad: 'x'.repeat(500) }));
     await expect(readFeedJson(response, 100)).rejects.toThrow(/too large/i);
   });
+
+  it('refuses a response that carries no body at all, rather than reading it as a snapshot', async () => {
+    // A 204 — or a proxy that answers with headers only — has `body: null`.
+    const response = new Response(null, { status: 204 });
+    await expect(readFeedJson(response)).rejects.toThrow(/no body/i);
+  });
 });

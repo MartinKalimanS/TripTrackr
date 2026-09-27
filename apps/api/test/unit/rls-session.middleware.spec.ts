@@ -1,7 +1,13 @@
+import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { EventEmitter } from 'node:events';
 
-import { RlsSessionMiddleware } from '@/common/rls/rls-session.middleware';
+import { ACCESS_TOKEN_ALGORITHM } from '@/common/auth/token-algorithm';
+import { loadEnv, resetEnvCache } from '@/common/config/env.schema';
+import { getCurrentUserId } from '@/common/rls/rls-context';
+import { HeldResponse, RlsSessionMiddleware } from '@/common/rls/rls-session.middleware';
+
+import { applyUnitTestEnv } from '../support/env';
 
 /**
  * The request transaction and the response — the ordering guarantee behind
@@ -15,7 +21,30 @@ import { RlsSessionMiddleware } from '@/common/rls/rls-session.middleware';
  * COMMIT; a 5xx still rolls back; a client that hangs up before a response is
  * decided still rolls back; and a COMMIT that fails after a success was
  * decided becomes a 500, because nothing has been sent yet.
+ *
+ * Around that ordering, the rest of the middleware's promises (§1; research
+ * D-03; FR-072): who is asking comes from a verified access token alone and is
+ * set with `set_config(..., true)` as a bind parameter, while an empty subject
+ * or an unverifiable token sets nothing at all, so the policies fail closed. A
+ * hang-up is final even if the handler answers afterwards. A response decided
+ * before the pipeline ran still settles the transaction rather than leaving it
+ * open. A COMMIT that fails once the head has left destroys the connection
+ * rather than let a success stand, and one that fails with a non-Error is still
+ * a generic 500. The held write goes out exactly once, whatever else is called.
  */
+
+/** Nest's logger, captured rather than printed — a failed COMMIT logs by design. */
+let loggedErrors: jest.SpiedFunction<Logger['error']>;
+
+beforeEach(() => {
+  loggedErrors = jest
+    .spyOn(Logger.prototype, 'error')
+    .mockImplementation(() => undefined);
+});
+
+afterEach(() => {
+  loggedErrors.mockRestore();
+});
 
 /** A `sql.begin` whose COMMIT the test controls. */
 function fakeSql() {
@@ -159,5 +188,246 @@ describe('RlsSessionMiddleware — the response waits for COMMIT', () => {
     expect(res.statusCode).toBe(500);
     expect(String(res.sent[0]?.[0])).toMatch(/INTERNAL_ERROR/);
     expect(String(res.sent[0]?.[0])).not.toMatch(/serialize/);
+  });
+});
+
+const TRAVELLER = '11111111-1111-4111-8111-111111111111';
+
+/** A `sql.begin` that commits at once, recording each statement run on its transaction. */
+function recordingSql() {
+  const statements: { text: string; values: unknown[] }[] = [];
+  const tx = (strings: TemplateStringsArray, ...values: unknown[]) => {
+    statements.push({ text: strings.join('$'), values });
+    return Promise.resolve([]);
+  };
+  return { sql: { begin: (fn: (t: typeof tx) => Promise<void>) => fn(tx) }, statements };
+}
+
+/** A `sql.begin` whose COMMIT fails with `reason` once the handler has answered. */
+function failingCommit(reason: unknown) {
+  return {
+    begin: async (fn: (tx: unknown) => Promise<void>) => {
+      await fn(() => Promise.resolve(undefined));
+      throw reason;
+    },
+  };
+}
+
+function middlewareWith(sql: unknown, verifyAsync: jest.Mock = jest.fn()) {
+  return new RlsSessionMiddleware(sql as never, { verifyAsync } as unknown as JwtService);
+}
+
+describe('RlsSessionMiddleware — who is asking', () => {
+  const bearer = (token: string) =>
+    ({ headers: { authorization: `Bearer ${token}` } }) as never;
+
+  beforeEach(() => {
+    applyUnitTestEnv();
+  });
+
+  afterEach(() => {
+    resetEnvCache();
+  });
+
+  it('sets the verified subject on the request transaction as a bind parameter, verified with the access secret and one algorithm', async () => {
+    const { sql, statements } = recordingSql();
+    const verifyAsync = jest.fn().mockResolvedValue({ sub: TRAVELLER });
+    const res = fakeResponse([]);
+    const seen: { traveller?: string | null } = {};
+
+    await middlewareWith(sql, verifyAsync).use(
+      bearer('access-token'),
+      res as never,
+      () => {
+        seen.traveller = getCurrentUserId();
+        res.end('{}');
+      },
+    );
+
+    expect(verifyAsync).toHaveBeenCalledWith('access-token', {
+      secret: loadEnv().JWT_ACCESS_SECRET,
+      algorithms: [ACCESS_TOKEN_ALGORITHM],
+    });
+    expect(statements).toEqual([
+      { text: "SELECT set_config('app.current_user_id', $, true)", values: [TRAVELLER] },
+    ]);
+    expect(seen.traveller).toBe(TRAVELLER);
+  });
+
+  const unverified: ReadonlyArray<{
+    readonly token: string;
+    readonly verify: () => Promise<unknown>;
+  }> = [
+    {
+      token: 'a verified token with an empty subject',
+      verify: () => Promise.resolve({ sub: '' }),
+    },
+    {
+      token: 'a token that fails verification',
+      verify: () => Promise.reject(new Error('jwt expired')),
+    },
+  ];
+
+  it.each(unverified)(
+    'gives $token no identity: nothing is set — not even an empty string',
+    async ({ verify }) => {
+      const { sql, statements } = recordingSql();
+      const res = fakeResponse([]);
+      const seen: { traveller?: string | null } = {};
+
+      await middlewareWith(sql, jest.fn(verify)).use(
+        bearer('token'),
+        res as never,
+        () => {
+          seen.traveller = getCurrentUserId();
+          res.end('{}');
+        },
+      );
+
+      expect(statements).toEqual([]);
+      expect(seen.traveller).toBeNull();
+      // Not rejected here: turning "no identity" into a 401 is the guard's job.
+      expect(res.sent).toEqual([['{}']]);
+    },
+  );
+});
+
+describe('RlsSessionMiddleware — when the response and the transaction disagree', () => {
+  const req = { headers: {} } as never;
+
+  it('treats a hang-up as final: an answer the handler decides afterwards does not resurrect the transaction', async () => {
+    const { sql, events } = fakeSql();
+    const res = fakeResponse(events);
+
+    await middlewareWith(sql).use(req, res as never, () => {
+      res.emit('close'); // the client gives up...
+      res.statusCode = 201; // ...and the handler answers anyway
+      res.end('{"trip":{}}');
+    });
+
+    // Rolled back — COMMIT never started — and only then was the late answer let go.
+    expect(events).toEqual(['begin', 'end']);
+  });
+
+  it('parks nothing once the transaction has settled: a late write through a captured reference goes straight out', async () => {
+    const { sql, events } = fakeSql();
+    const res = fakeResponse(events);
+    const captured: { end?: (...args: unknown[]) => unknown } = {};
+
+    await middlewareWith(sql).use(req, res as never, () => {
+      captured.end = res.end; // what a downstream wrapper (compression, say) keeps
+      res.emit('close');
+    });
+    expect(res.sent).toEqual([]);
+
+    const returned = captured.end?.('{"late":true}');
+
+    expect(res.sent).toEqual([['{"late":true}']]);
+    expect(returned).toBe(res);
+  });
+
+  it('settles at once on a response decided before the pipeline ran, rather than wait for a decision already made', async () => {
+    const events: string[] = [];
+    const res = fakeResponse(events);
+    const sql = {
+      begin: async (fn: (tx: unknown) => Promise<void>) => {
+        events.push('begin');
+        // Nothing in this API answers this early today. Were anything to — a
+        // gateway timeout while BEGIN waits for a pooled connection, say — the
+        // transaction must settle on that answer instead of staying open.
+        res.statusCode = 503;
+        res.end('{"error":{}}');
+        await fn(() => Promise.resolve(undefined));
+        events.push('commit');
+      },
+    };
+
+    await middlewareWith(sql).use(req, res as never, () => undefined);
+
+    // A 5xx: rolled back, then released exactly as decided.
+    expect(events).toEqual(['begin', 'end']);
+    expect(res.sent).toEqual([['{"error":{}}']]);
+  });
+
+  it('destroys the connection when the COMMIT fails after the head has gone out, rather than let a success stand', async () => {
+    const res = fakeResponse([]);
+    const destroy = jest.fn();
+    res.destroy = destroy;
+
+    await middlewareWith(failingCommit(new Error('could not serialize access'))).use(
+      req,
+      res as never,
+      () => {
+        res.headersSent = true; // a streamed write already sent the status line
+        res.end('{"tail":true}');
+      },
+    );
+
+    expect(destroy).toHaveBeenCalledTimes(1);
+    // Neither the rest of the success nor a 500 body: the client sees a broken response.
+    expect(res.sent).toEqual([]);
+    expect(loggedErrors).toHaveBeenCalledWith(
+      'Request transaction failed to commit: could not serialize access',
+      expect.stringContaining('could not serialize access'),
+    );
+  });
+
+  it('still answers a generic 500 when the COMMIT fails with something that is not an Error, logged without a stack', async () => {
+    const res = fakeResponse([]);
+
+    await middlewareWith(failingCommit('connection reset by peer')).use(
+      req,
+      res as never,
+      () => {
+        res.statusCode = 201;
+        res.end('{"trip":{}}');
+      },
+    );
+
+    expect(res.statusCode).toBe(500);
+    expect(JSON.parse(String(res.sent[0]?.[0]))).toEqual({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Something went wrong on our side. Please try again.',
+      },
+    });
+    expect(loggedErrors).toHaveBeenCalledWith(
+      'Request transaction failed to commit: connection reset by peer',
+      undefined,
+    );
+  });
+});
+
+describe('HeldResponse', () => {
+  it('sends the decided response once — a second release, or a fail after it, changes nothing', () => {
+    const res = fakeResponse([]);
+    const destroy = jest.fn();
+    res.destroy = destroy;
+    const held = new HeldResponse(res as never);
+    res.statusCode = 201;
+    res.end('{"trip":{}}');
+
+    held.release();
+    held.release();
+    held.fail();
+
+    expect(res.sent).toEqual([['{"trip":{}}']]);
+    expect(res.statusCode).toBe(201);
+    // A response that has already gone out is not torn down after the fact.
+    expect(destroy).not.toHaveBeenCalled();
+  });
+
+  it('never follows the 500 of a failed COMMIT with the success it replaced', () => {
+    const res = fakeResponse([]);
+    const held = new HeldResponse(res as never);
+    res.statusCode = 201;
+    res.end('{"trip":{}}');
+
+    held.fail();
+    held.release();
+
+    expect(res.statusCode).toBe(500);
+    expect(res.sent).toHaveLength(1);
+    expect(String(res.sent[0]?.[0])).toMatch(/INTERNAL_ERROR/);
   });
 });

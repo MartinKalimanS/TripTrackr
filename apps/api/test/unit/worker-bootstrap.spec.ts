@@ -17,15 +17,30 @@ jest.mock('@/workers/fx-refresh.processor', () => ({
   refreshFxRates: jest.fn(),
 }));
 
+jest.mock('bullmq', () => ({
+  ...jest.requireActual<typeof import('bullmq')>('bullmq'),
+  // Only the default scheduler factory constructs a Queue, and a real one
+  // would dial Redis. Everything else in this file goes through the seams.
+  Queue: jest.fn(),
+}));
+
 const { refreshFxRates } = jest.requireMock<{ refreshFxRates: jest.Mock }>(
   '@/workers/fx-refresh.processor',
 );
+
+const { Queue } = jest.requireMock<{ Queue: jest.Mock }>('bullmq');
 
 /**
  * The worker's plumbing (research D-12; T081): the processor registry, the
  * job scheduler that keeps the FX refresh daily (research D-28), the failure
  * and connection listeners that keep a Redis blip from taking the process
  * down, and the drain-then-exit shutdown.
+ *
+ * Every seam also has the default the real process runs with: log lines go to
+ * the process streams (NDJSON, errors on stderr), and the scheduler is asserted
+ * through a BullMQ Queue built on the worker's one shared connection. Those
+ * defaults are pinned too — with the streams captured and the Queue
+ * constructor replaced, so nothing prints and nothing dials Redis.
  */
 function sink() {
   const lines: string[] = [];
@@ -34,6 +49,36 @@ function sink() {
     stderr: { write: (line) => void lines.push(`err ${line.trim()}`) },
   };
   return { lines, streams };
+}
+
+/** What reaches the real process streams while `run` executes — captured, not printed. */
+function captureProcessStreams(run: () => void): { out: string[]; err: string[] } {
+  const out: string[] = [];
+  const err: string[] = [];
+  const text = (chunk: string | Uint8Array) =>
+    typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8');
+  const spies = [
+    jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation((chunk: string | Uint8Array) => {
+        out.push(text(chunk));
+        return true;
+      }),
+    jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation((chunk: string | Uint8Array) => {
+        err.push(text(chunk));
+        return true;
+      }),
+  ];
+
+  try {
+    run();
+  } finally {
+    spies.forEach((spy) => spy.mockRestore());
+  }
+
+  return { out, err };
 }
 
 describe('logLine', () => {
@@ -45,6 +90,16 @@ describe('logLine', () => {
       'out {"level":"info","message":"hi"}',
       'err {"level":"error","message":"oh"}',
     ]);
+  });
+
+  it('defaults to the process streams — info on stdout, error on stderr', () => {
+    const { out, err } = captureProcessStreams(() => {
+      logLine('info', { message: 'hi' });
+      logLine('error', { message: 'oh' });
+    });
+
+    expect(out).toEqual(['{"level":"info","message":"hi"}\n']);
+    expect(err).toEqual(['{"level":"error","message":"oh"}\n']);
   });
 });
 
@@ -125,6 +180,37 @@ describe('ensureSchedulers', () => {
     listeners.error?.(new Error('ECONNREFUSED'));
     expect(lines.at(-1)).toContain('scheduler: ECONNREFUSED');
   });
+
+  it('with no seams supplied, asserts the schedule through a BullMQ Queue on the shared connection and logs its errors to stderr', async () => {
+    const { queue, listeners, upsert, close } = fakeQueue();
+    Queue.mockImplementationOnce(() => queue);
+    const connection = { status: 'ready' } as never;
+
+    await ensureSchedulers(connection);
+
+    // One queue, for the FX refresh, on the connection the workers already hold.
+    expect(Queue).toHaveBeenCalledTimes(1);
+    expect(Queue.mock.calls[0]?.[0]).toBe(QUEUE_NAMES.fxRefresh);
+    expect(Queue.mock.calls[0]?.[1]?.connection).toBe(connection);
+    expect(upsert).toHaveBeenCalledWith(
+      FX_REFRESH_SCHEDULER.id,
+      { every: FX_REFRESH_SCHEDULER.everyMs, immediately: true },
+      { name: 'refresh' },
+    );
+    expect(close).toHaveBeenCalled();
+
+    const { out, err } = captureProcessStreams(() => {
+      listeners.error?.(new Error('ECONNREFUSED'));
+    });
+
+    const line = JSON.stringify({
+      level: 'error',
+      queue: QUEUE_NAMES.fxRefresh,
+      message: 'scheduler: ECONNREFUSED',
+    });
+    expect(out).toEqual([]);
+    expect(err).toEqual([`${line}\n`]);
+  });
 });
 
 describe('startWorkers', () => {
@@ -165,6 +251,27 @@ describe('startWorkers', () => {
     expect(lines[0]).toContain('"jobId":"7"');
     expect(lines[0]).toContain('feed 503');
     expect(lines[1]).toContain('connection: socket closed');
+  });
+
+  it('defaults its failure and connection lines to stderr', () => {
+    const made: ReturnType<typeof fakeWorker>[] = [];
+    const processor: Processor = () => Promise.resolve(undefined);
+    startWorkers({ [QUEUE_NAMES.fxRefresh]: processor }, (name) => {
+      const worker = fakeWorker(name);
+      made.push(worker);
+      return worker;
+    });
+
+    const { out, err } = captureProcessStreams(() => {
+      made[0]?.emit('failed', { id: '9', attemptsMade: 1 }, new Error('feed 503'));
+      made[0]?.emit('error', new Error('socket closed'));
+    });
+
+    expect(out).toEqual([]);
+    expect(err).toHaveLength(2);
+    expect(err[0]).toContain('"jobId":"9"');
+    expect(err[0]).toContain('feed 503');
+    expect(err[1]).toContain('connection: socket closed');
   });
 });
 
