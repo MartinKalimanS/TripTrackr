@@ -1,0 +1,32 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // The repository root, not this package. The contracts mapping below pulls
+    // packages/contracts/src into this program, and tsc reports TS6059 for any
+    // source file outside rootDir even with noEmit — so a rootDir of "." fails
+    // the moment a spec imports @triptrackr/contracts. Nothing is emitted from
+    // this config, so the wider root costs nothing.
+    "rootDir": "../..",
+    "isolatedModules": true,
+    "noEmit": true,
+    // Its own build-info, so a type-check never overwrites the build's record
+    // (and vice versa) with one describing a different program.
+    "tsBuildInfoFile": "./dist/.spec.tsbuildinfo",
+    "paths": {
+      "@/*": ["./src/*"],
+      // Type-check and lint against the contracts SOURCE so neither depends on
+      // packages/contracts having been built. The build config (tsconfig.json)
+      // deliberately does not do this: it emits, and a source file outside its
+      // rootDir would be an error, so `nest build` consumes the built package.
+      "@triptrackr/contracts": ["../../packages/contracts/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*", "test/**/*"],
+  // Overridden, not inherited. The base config excludes `test/**/*` so that the
+  // build roots at ./src and `dist/main.js` lands where package.json expects it,
+  // and `exclude` beats `include` — so without restating it here this config
+  // matches no spec file at all. That failure is quiet in both directions: tsc
+  // reports nothing to check, and ESLint's type-aware rules report nothing rather
+  // than reporting something weaker.
+  "exclude": ["node_modules", "dist"]
+}

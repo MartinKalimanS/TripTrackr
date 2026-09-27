@@ -1,0 +1,12 @@
+# Maestro workspace configuration.
+#
+# `flows` is ordered deliberately: the smoke flow runs first so that a broken
+# build fails in seconds rather than after a full suite. Story flows are appended
+# as their phases land (US1 T060, US6 T140, US9 T196).
+flows:
+  - '*.yaml'
+
+# Tags let CI run the fast subset on every push and the full suite nightly.
+includeTags: []
+excludeTags:
+  - manual

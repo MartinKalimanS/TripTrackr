@@ -1,0 +1,89 @@
+# Dependabot — keeps the lockfile, the workflow actions and the container base
+# images current. Commit prefixes follow the conventional-commit rule
+# (constitution, Development Workflow).
+#
+# Expo packages are deliberately excluded from version bumps: every `expo-*`,
+# `react-native`, `react` and `jest-expo` version is pinned to the Expo SDK and
+# must move together, via `npx expo install --fix` after an SDK upgrade — one
+# package bumped alone breaks the native build.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: 'expo'
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: 'jest-expo'
+      - dependency-name: 'eslint-config-expo'
+      - dependency-name: 'react-native'
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@react-native/*'
+      - dependency-name: 'react'
+      - dependency-name: 'react-dom'
+      - dependency-name: '@types/react'
+      # One TypeScript version across the workspace (plan.md, Technical Context);
+      # majors are upgraded deliberately, not by bot.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    commit-message:
+      prefix: 'ci'
+    groups:
+      actions:
+        patterns: ['*']
+
+  # apps/api/Dockerfile (node:22-alpine) and infra/backup/Dockerfile
+  # (postgis/postgis, rclone/rclone).
+  - package-ecosystem: docker
+    directories:
+      - /apps/api
+      - /infra/backup
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    commit-message:
+      prefix: 'build'
+    ignore:
+      # Postgres majors change the on-disk format; upgrading is a migration
+      # (pg_dump / pg_restore), never a tag bump.
+      - dependency-name: 'postgis/postgis'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'node'
+        update-types: ['version-update:semver-major']
+
+  # Image tags pinned in infra/docker-compose*.yml.
+  - package-ecosystem: docker-compose
+    directory: /infra
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    commit-message:
+      prefix: 'build'
+    ignore:
+      - dependency-name: 'postgis/postgis'
+        update-types: ['version-update:semver-major']

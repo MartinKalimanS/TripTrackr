@@ -1,0 +1,20 @@
+# Normalise line endings to LF in the repository regardless of the contributor's
+# OS. Windows checkouts stop producing "LF will be replaced by CRLF" churn on
+# every commit, and shell scripts under infra/ stay executable in containers.
+* text=auto eol=lf
+
+# Binary assets — never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.p8 binary
+*.p12 binary
+*.jks binary
+*.keystore binary
