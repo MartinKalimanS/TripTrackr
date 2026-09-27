@@ -3,6 +3,7 @@ import { ExpenseResponse, FxRatesResponse } from '@triptrackr/contracts';
 import type { Sql } from 'postgres';
 import request from 'supertest';
 
+import { MIN_FEED_CURRENCIES } from '@/modules/expenses/fx-feed';
 import { refreshFxRates } from '@/workers/fx-refresh.processor';
 
 import {
@@ -34,6 +35,17 @@ const HOME = 'XRH';
 const SPEND = 'XRE';
 const NEVER_QUOTED = 'XRF';
 
+/**
+ * `XQA`…`XQT`: private filler so a feed clears the worker's plausibility floor
+ * (`MIN_FEED_CURRENCIES`) without quoting any currency another spec relies on.
+ */
+const BALLAST: Record<string, number> = Object.fromEntries(
+  Array.from({ length: MIN_FEED_CURRENCIES }, (_, i) => [
+    `XQ${String.fromCharCode(65 + i)}`,
+    1 + i,
+  ]),
+);
+
 describe('fx refresh', () => {
   let app: NestExpressApplication;
   let owner: Sql;
@@ -41,12 +53,14 @@ describe('fx refresh', () => {
   let traveller: RegisteredTraveller;
   let tripId: string;
 
-  const feed = (rates: Record<string, number>, date: string) => ({
+  const bareFeed = (rates: Record<string, number>, date: string) => ({
     result: 'success',
     base_code: 'USD',
     time_last_update_utc: `${date}T00:02:32.000Z`,
     rates,
   });
+  const feed = (rates: Record<string, number>, date: string) =>
+    bareFeed({ ...BALLAST, ...rates }, date);
 
   const fetchStub =
     (body: unknown, ok = true): typeof fetch =>
@@ -113,7 +127,10 @@ describe('fx refresh', () => {
     });
 
     // Assert — the snapshot landed…
-    expect(result).toMatchObject({ asOf: '2026-06-10', currencies: 3 });
+    expect(result).toMatchObject({
+      asOf: '2026-06-10',
+      currencies: 3 + MIN_FEED_CURRENCIES,
+    });
     expect(result.backfilled).toBeGreaterThanOrEqual(1);
     const rows = await owner<{ quote_currency: string; rate: string }[]>`
       SELECT quote_currency, rate::text FROM fx_rates
@@ -195,6 +212,21 @@ describe('fx refresh', () => {
         url: 'https://feed.example.test/latest/USD',
       }),
     ).rejects.toThrow(/503/);
+
+    const rows = await owner<{ n: string }[]>`
+      SELECT count(*)::text AS n FROM fx_rates WHERE quote_currency = ${NEVER_QUOTED}
+    `;
+    expect(rows[0]?.n).toBe('0');
+  });
+
+  it('a truncated feed is refused before anything is written', async () => {
+    await expect(
+      refreshFxRates({
+        sql: api,
+        fetch: fetchStub(bareFeed({ USD: 1, [NEVER_QUOTED]: 2 }, '2026-06-12')),
+        url: 'https://feed.example.test/latest/USD',
+      }),
+    ).rejects.toThrow(/currencies/);
 
     const rows = await owner<{ n: string }[]>`
       SELECT count(*)::text AS n FROM fx_rates WHERE quote_currency = ${NEVER_QUOTED}

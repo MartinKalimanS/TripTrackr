@@ -1,13 +1,18 @@
 import { FX_BASE_CURRENCY, convertAmount, crossRate } from '@triptrackr/contracts';
 import type { Sql } from 'postgres';
 
-import { parseFeedSnapshot } from '@/modules/expenses/fx-feed';
+import {
+  assertPlausibleSnapshot,
+  parseFeedSnapshot,
+  readFeedJson,
+} from '@/modules/expenses/fx-feed';
 
 /**
  * The daily FX refresh — tasks.md T081 (FR-021; research D-10, D-28).
  *
  * Runs in the worker as a BullMQ job scheduler's job (queue `fx-refresh`):
- * fetch one USD-based snapshot from `FX_RATES_URL`, validate its shape, upsert
+ * fetch one USD-based snapshot from `FX_RATES_URL`, validate its size, shape
+ * and plausibility (`MAX_FEED_BYTES`, `MIN_FEED_CURRENCIES`), upsert
  * one `fx_rates` row per currency for the feed's own date, then backfill
  * every expense that has been waiting for a rate. Backfill writes ONLY rows
  * with `fx_pending = true`; a row that already carries a rate is frozen and
@@ -59,7 +64,8 @@ export async function refreshFxRates({
     );
   }
 
-  const snapshot = parseFeedSnapshot(await response.json());
+  const snapshot = parseFeedSnapshot(await readFeedJson(response));
+  assertPlausibleSnapshot(snapshot);
   const entries = Object.entries(snapshot.rates);
 
   await sql.begin(async (tx) => {
