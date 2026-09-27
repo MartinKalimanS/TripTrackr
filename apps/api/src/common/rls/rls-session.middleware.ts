@@ -133,6 +133,10 @@ export class RlsSessionMiddleware implements NestMiddleware {
    * A client that disconnects before the response is decided also rolls back:
    * the traveller never learned whether it worked, so leaving it applied would
    * be a silent divergence between what they saw and what the server kept.
+   * The rollback still waits for the handler's answer: the handler is still
+   * running and may still query, and a query sent after the ROLLBACK would run
+   * on whichever request borrowed the connection next. A response decided
+   * before the pipeline ran settles at once, and the handler is never invoked.
    */
   private runPipeline(
     req: Request,
@@ -142,12 +146,13 @@ export class RlsSessionMiddleware implements NestMiddleware {
   ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       let settled = false;
-      const settle = (outcome: 'decided' | 'aborted'): void => {
+      let clientGone = false;
+      const settle = (): void => {
         if (settled) return;
         settled = true;
         res.removeListener('close', onClose);
 
-        if (outcome === 'aborted') {
+        if (clientGone) {
           reject(
             new RlsTransactionRollback(
               'client disconnected before the response completed',
@@ -167,13 +172,13 @@ export class RlsSessionMiddleware implements NestMiddleware {
       };
 
       const onClose = (): void => {
-        if (!res.writableEnded) settle('aborted');
+        if (!res.writableEnded) clientGone = true;
       };
 
-      held.onDecided(() => settle('decided'));
       res.once('close', onClose);
+      held.onDecided(settle);
 
-      next();
+      if (!settled) next();
     });
   }
 
