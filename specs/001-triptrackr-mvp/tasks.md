@@ -226,13 +226,13 @@ _Amended 2026-09-24 for the library decisions D-21..D-29: the wording below name
 
 ### Tests for User Story 3 ⚠️ Write first, confirm failing
 
-- [ ] T089 [P] [US3] Integration test — arcs derive correctly from consecutive stops, and inserting a stop mid-trip changes them with no separate maintenance — in `apps/api/test/integration/arcs.spec.ts` (FR-016)
-- [ ] T090 [P] [US3] Integration test — profile statistics return countries visited and total distance travelled — in `apps/api/test/integration/stats.spec.ts` (FR-050)
+- [x] T089 [P] [US3] Integration test — arcs derive correctly from consecutive stops, and inserting a stop mid-trip changes them with no separate maintenance — in `apps/api/test/integration/arcs.spec.ts` (FR-016) — _also pins reorder, deletion, and the per-arc derived status FR-046 styles by_
+- [x] T090 [P] [US3] Integration test — profile statistics return countries visited and total distance travelled — in `apps/api/test/integration/stats.spec.ts` (FR-050) — _expected legs recomputed from PostGIS; tombstones, other travellers and a date-line leg covered_
 - [ ] T091 [P] [US3] Component test — the globe renders a purposeful empty state for an account with no trips — in `apps/mobile/src/components/globe/__tests__/empty-state.test.tsx` (FR-051)
 
 ### Implementation for User Story 3
 
-- [ ] T092 [P] [US3] Implement travel statistics on `GET /me` using PostGIS distance aggregation in `apps/api/src/modules/users/stats.service.ts` (FR-050)
+- [x] T092 [P] [US3] Implement travel statistics on `GET /me` using PostGIS distance aggregation in `apps/api/src/modules/users/stats.service.ts` (FR-050) — _delivered with `GET /me` in User Story 1 as `apps/api/src/modules/users/travel-stats.service.ts` (`ST_Distance` over `geography`, legs paired with `LEAD`)_
 - [ ] T093 [P] [US3] Build the `@rnmapbox/maps` MapView wrapper with `projection="globe"` in `apps/mobile/src/components/globe/globe-view.tsx` (research D-06, FR-045)
 - [ ] T094 [US3] Build the arc source with `@turf/great-circle` densification in `apps/mobile/src/components/globe/arc-source.tsx` (FR-045)
 - [ ] T095 [US3] Implement per-status arc styling and the active-trip animation in `apps/mobile/src/components/globe/arc-styles.ts` (FR-046)
