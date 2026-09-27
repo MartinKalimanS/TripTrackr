@@ -1,4 +1,4 @@
-import { FX_BASE_CURRENCY, convertAmount, crossRate } from '@triptrackr/contracts';
+import { FX_BASE_CURRENCY, crossRate } from '@triptrackr/contracts';
 import type { Sql } from 'postgres';
 
 import {
@@ -88,9 +88,9 @@ async function backfillPending(
   sql: Sql,
   rates: Readonly<Record<string, string>>,
 ): Promise<number> {
-  const pending = await sql<
-    { id: string; amount: string; currency: string; home_currency: string }[]
-  >`SELECT id, amount::text, currency, home_currency FROM fx_pending_expenses()`;
+  const pending = await sql<{ id: string; currency: string; home_currency: string }[]>`
+    SELECT id, currency, home_currency FROM fx_pending_expenses()
+  `;
 
   let count = 0;
   for (const row of pending) {
@@ -98,9 +98,7 @@ async function backfillPending(
     if (rate === null) continue;
 
     const updated = await sql<{ id: string }[]>`
-      SELECT id FROM fx_backfill_expense(
-        ${row.id}::uuid, ${rate}::numeric, ${convertAmount(row.amount, rate)}::numeric
-      )
+      SELECT id FROM fx_backfill_expense(${row.id}::uuid, ${rate}::numeric)
     `;
     count += updated.length;
   }

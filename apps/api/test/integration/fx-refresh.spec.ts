@@ -34,6 +34,7 @@ import { seedGeography } from '../support/geography';
 const HOME = 'XRH';
 const SPEND = 'XRE';
 const NEVER_QUOTED = 'XRF';
+const EDITED = 'XRA';
 
 /**
  * `XQA`…`XQT`: private filler so a feed clears the worker's plausibility floor
@@ -182,6 +183,60 @@ describe('fx refresh', () => {
       SELECT fx_rate_to_home::text FROM expenses WHERE id = ${pending.id}::uuid
     `;
     expect(stillOnce?.fx_rate_to_home).toBe('0.888889');
+  });
+
+  it('freezes the amount the row holds when the rate lands, even if the traveller edited it after the worker read it (FR-022)', async () => {
+    const created = await server().post(`/v1/trips/${tripId}/expenses`).set(auth()).send({
+      category_id: FOOD,
+      amount: '9.00',
+      currency: EDITED,
+      spent_at: '2026-06-04',
+    });
+    const pending = ExpenseResponse.parse(created.body).expense;
+    expect(pending.fx_pending).toBe(true);
+
+    // The interleaving that raced: the traveller edits the amount between the
+    // worker's read of the pending rows and its backfill of them.
+    const racing = Object.assign(
+      (strings: TemplateStringsArray, ...values: never[]) => {
+        const query = api(strings, ...values);
+        if (!strings.join('').includes('fx_pending_expenses')) return query;
+        return query.then(async (rows) => {
+          const edit = await server()
+            .patch(`/v1/expenses/${pending.id}`)
+            .set(auth())
+            .send({ amount: '20.00' });
+          expect(edit.status).toBe(200);
+          return rows;
+        });
+      },
+      { begin: api.begin.bind(api) },
+    ) as unknown as Sql;
+
+    await refreshFxRates({
+      sql: racing,
+      fetch: fetchStub(feed({ USD: 1, [EDITED]: 0.9, [HOME]: 0.8 }, '2026-06-13')),
+      url: 'https://feed.example.test/latest/USD',
+    });
+
+    const [row] = await owner<
+      {
+        amount: string;
+        fx_rate_to_home: string | null;
+        amount_home: string | null;
+        fx_pending: boolean;
+      }[]
+    >`
+      SELECT amount::text, fx_rate_to_home::text, amount_home::text, fx_pending
+      FROM expenses WHERE id = ${pending.id}::uuid
+    `;
+    // 20.00 × 0.888889, never the 9.00 × 0.888889 the worker saw.
+    expect(row).toEqual({
+      amount: '20.00',
+      fx_rate_to_home: '0.888889',
+      amount_home: '17.78',
+      fx_pending: false,
+    });
   });
 
   it('GET /fx-rates serves the newest rate per currency to the device (research D-10)', async () => {
