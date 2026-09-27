@@ -54,7 +54,7 @@ updates:
         patterns: ['*']
 
   # apps/api/Dockerfile (node:22-alpine) and infra/backup/Dockerfile
-  # (postgis/postgis, quay.io/minio/mc).
+  # (postgis/postgis, rclone/rclone).
   - package-ecosystem: docker
     directories:
       - /apps/api

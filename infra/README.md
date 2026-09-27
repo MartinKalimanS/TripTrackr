@@ -8,7 +8,7 @@ required anywhere (constitution, Technology & Platform Constraints).
 infra/
 ├── docker-compose.yml        # development stack
 ├── docker-compose.prod.yml   # production overrides (TLS, limits, secrets, backup)
-├── backup/Dockerfile         # pg_dump 17 + mc image for the backup service
+├── backup/Dockerfile         # pg_dump 17 + rclone image for the backup service
 ├── scripts/                  # backup.sh, restore-rehearsal.sh, … (see scripts/README.md)
 └── secrets/                  # production secret files — gitignored (see secrets/README.md)
 ```

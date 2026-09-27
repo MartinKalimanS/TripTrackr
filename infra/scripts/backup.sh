@@ -19,14 +19,14 @@
 #   BACKUP_DIR              Destination directory (default /backups).
 #   BACKUP_RETENTION_DAYS   Local files older than this are deleted (default 14).
 #   BACKUP_S3_ENDPOINT      Optional. When set, the dump, its checksum and the
-#   BACKUP_S3_BUCKET        globals file are copied with `mc` to
+#   BACKUP_S3_BUCKET        globals file are copied with `rclone` to
 #   BACKUP_S3_ACCESS_KEY_ID <endpoint>/<bucket>/<prefix>/ — Backblaze B2, Cloudflare
 #   BACKUP_S3_SECRET_ACCESS_KEY  R2, MinIO, anything S3-compatible.
 #   BACKUP_S3_PREFIX        Optional key prefix (default "triptrackr").
 #
 # Exits non-zero on ANY failure — a backup job that fails quietly is worse than
 # none, because someone is relying on it. Runs inside the image built from
-# infra/backup/Dockerfile (pg_dump 17 + mc), or on any host whose pg_dump major
+# infra/backup/Dockerfile (pg_dump 17 + rclone), or on any host whose pg_dump major
 # version matches the server.
 #
 # Cadence and the restore rehearsal that makes this a backup at all:
@@ -103,22 +103,25 @@ if [[ -n "${BACKUP_S3_ENDPOINT:-}" ]]; then
   [[ -n "${BACKUP_S3_BUCKET:-}" ]] || die "BACKUP_S3_ENDPOINT is set but BACKUP_S3_BUCKET is not."
   [[ -n "${BACKUP_S3_ACCESS_KEY_ID:-}" && -n "${BACKUP_S3_SECRET_ACCESS_KEY:-}" ]] \
     || die "BACKUP_S3_ACCESS_KEY_ID / BACKUP_S3_SECRET_ACCESS_KEY are required for upload."
-  command -v mc >/dev/null 2>&1 || die "'mc' is not installed but BACKUP_S3_ENDPOINT is set."
+  command -v rclone >/dev/null 2>&1 || die "'rclone' is not installed but BACKUP_S3_ENDPOINT is set."
 
-  # MC_HOST_<alias> configures an alias from the environment without writing
-  # credentials to a config file. Plain http is allowed only so a local MinIO
-  # can stand in during a rehearsal; a real off-site target is https.
-  scheme="https"
-  host="${BACKUP_S3_ENDPOINT#https://}"
-  if [[ "$BACKUP_S3_ENDPOINT" == http://* ]]; then
-    scheme="http"
-    host="${BACKUP_S3_ENDPOINT#http://}"
-  fi
-  export "MC_HOST_offsite=$(printf '%s://%s:%s@%s' \
-    "$scheme" "$BACKUP_S3_ACCESS_KEY_ID" "$BACKUP_S3_SECRET_ACCESS_KEY" "$host")"
-  dest="offsite/${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX}/"
-  mc cp --quiet "$dump_path" "${dump_path}.sha256" "$globals_path" "$dest" \
-    || die "upload to ${BACKUP_S3_ENDPOINT}/${BACKUP_S3_BUCKET} failed."
+  # RCLONE_CONFIG_<REMOTE>_* defines the remote from the environment without
+  # writing credentials to a config file. Plain http is allowed only so a local
+  # S3 server can stand in during a rehearsal; a real off-site target is https.
+  # No bucket check, no destination check and no HEAD after upload, so a key
+  # that can write but not read or delete is enough.
+  export RCLONE_CONFIG_OFFSITE_TYPE=s3 \
+    RCLONE_CONFIG_OFFSITE_PROVIDER=Other \
+    RCLONE_CONFIG_OFFSITE_ENDPOINT="$BACKUP_S3_ENDPOINT" \
+    RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID="$BACKUP_S3_ACCESS_KEY_ID" \
+    RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY="$BACKUP_S3_SECRET_ACCESS_KEY" \
+    RCLONE_CONFIG_OFFSITE_NO_CHECK_BUCKET=true \
+    RCLONE_CONFIG_OFFSITE_NO_HEAD=true
+  dest="offsite:${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX}/"
+  for file in "$dump_path" "${dump_path}.sha256" "$globals_path"; do
+    rclone copy --quiet --no-check-dest "$file" "$dest" \
+      || die "upload to ${BACKUP_S3_ENDPOINT}/${BACKUP_S3_BUCKET} failed."
+  done
   log "uploaded to ${dest}"
 else
   log "BACKUP_S3_ENDPOINT not set — local copy only (fine for development, not for production)"

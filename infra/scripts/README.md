@@ -35,7 +35,7 @@ backup that has never been restored from is not a backup."_ `backup.sh` produces
 
 ## Running a backup by hand
 
-Inside the stack (production overlay), which has pg_dump 17 and `mc`:
+Inside the stack (production overlay), which has pg_dump 17 and `rclone`:
 
 ```bash
 docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml \
@@ -69,8 +69,9 @@ RESTORE_TARGET_URL=postgresql://postgres:pw@localhost:5433/postgres \
 ```
 
 Rehearse from the **off-box** copy at least once a quarter — pull it back with
-`mc cp offsite/<bucket>/triptrackr/<file> ./backups/` — so the thing being verified is the
-copy that would survive losing the server.
+`rclone copy offsite:<bucket>/triptrackr/<file> ./backups/`, using the same
+`RCLONE_CONFIG_OFFSITE_*` variables as `backup.sh` with a key that can read — so the thing
+being verified is the copy that would survive losing the server.
 
 ## Off-box copies
 
@@ -86,8 +87,9 @@ BACKUP_S3_SECRET_ACCESS_KEY=...
 Use a key that can **write but not delete** (B2 "writeFiles" without "deleteFiles"; R2 an
 object-write-only token) so a compromised box cannot destroy its own history. Bucket lifecycle
 rules do the pruning off-box; `BACKUP_RETENTION_DAYS` only governs the local copy. The key pair
-is passed to `mc` as `MC_HOST_offsite=https://<key>:<secret>@<host>`, so both values must be
-URL-safe — B2 and R2 keys are.
+reaches `rclone` through `RCLONE_CONFIG_OFFSITE_*` environment variables, never a config file,
+and uploads skip the bucket check, the destination check and the post-upload HEAD, so a
+write-only key is enough.
 
 ## Executable bits on Windows
 
