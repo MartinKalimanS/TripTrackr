@@ -52,36 +52,36 @@ jest.mock('@/components/trip/city-picker', () => {
   };
 });
 
-describe('add-trip form validation (FR-009)', () => {
-  test('an empty title is refused in words', () => {
-    const errors = validateTripForm({ title: '', home_currency: 'EUR' });
+describe('add-trip form validation (FR-009; research D-21)', () => {
+  test('an empty title is refused in words', async () => {
+    const errors = await validateTripForm({ title: '', home_currency: 'EUR' });
     expect(errors).toEqual({ title: TRIP_FORM_COPY.titleMissing });
     expect(hasTripFormErrors(errors)).toBe(true);
   });
 
-  test('a whitespace-only title is an empty title', () => {
-    expect(validateTripForm({ title: '   ', home_currency: 'EUR' }).title).toBe(
+  test('a whitespace-only title is an empty title', async () => {
+    expect((await validateTripForm({ title: '   ', home_currency: 'EUR' })).title).toBe(
       TRIP_FORM_COPY.titleMissing,
     );
   });
 
-  test('an over-long title is refused with its own message', () => {
-    expect(validateTripForm({ title: 'x'.repeat(201), home_currency: 'EUR' }).title).toBe(
-      TRIP_FORM_COPY.titleTooLong,
-    );
+  test('an over-long title is refused with its own message', async () => {
+    expect(
+      (await validateTripForm({ title: 'x'.repeat(201), home_currency: 'EUR' })).title,
+    ).toBe(TRIP_FORM_COPY.titleTooLong);
   });
 
   test.each(['eur', 'EU', 'EURO', '', 'E1R'])(
     'the currency code %p is refused',
-    (code) => {
+    async (code) => {
       expect(
-        validateTripForm({ title: 'Italy', home_currency: code }).home_currency,
+        (await validateTripForm({ title: 'Italy', home_currency: code })).home_currency,
       ).toBe(TRIP_FORM_COPY.currencyInvalid);
     },
   );
 
-  test('a valid title and code pass with no messages', () => {
-    const errors = validateTripForm({
+  test('a valid title and code pass with no messages', async () => {
+    const errors = await validateTripForm({
       title: 'Italy, spring 2026',
       home_currency: 'EUR',
     });
@@ -89,8 +89,8 @@ describe('add-trip form validation (FR-009)', () => {
     expect(hasTripFormErrors(errors)).toBe(false);
   });
 
-  test('both fields can fail at once, each with its own message', () => {
-    expect(validateTripForm({ title: '', home_currency: 'x' })).toEqual({
+  test('both fields can fail at once, each with its own message', async () => {
+    expect(await validateTripForm({ title: '', home_currency: 'x' })).toEqual({
       title: TRIP_FORM_COPY.titleMissing,
       home_currency: TRIP_FORM_COPY.currencyInvalid,
     });

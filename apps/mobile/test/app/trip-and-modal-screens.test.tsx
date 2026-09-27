@@ -104,6 +104,7 @@ const mockActions = {
   addStop: jest.fn(),
   updateStopDates: jest.fn(),
   moveStop: jest.fn(),
+  reorderStops: jest.fn(),
   removeStop: jest.fn(),
 };
 
@@ -141,6 +142,7 @@ function stop(overrides: Partial<StopWithPlace>): StopWithPlace {
     is_dirty: false,
     synced_at: '2026-04-01T10:00:00.000Z',
     city_name: 'Roma',
+    country_id: 1,
     country_name: 'Italy',
     lat: 41.9,
     lng: 12.5,
@@ -274,6 +276,33 @@ describe('<TripScreen> — trip/[id]', () => {
 
     await fireEvent.press(screen.getByTestId('stop-move-up-stop-florence'));
     expect(mockActions.moveStop).toHaveBeenCalledWith('stop-florence', 'up');
+  });
+
+  test('Acceptance Scenario 1.6: dropping a dragged stop writes the whole new order once (T071b)', async () => {
+    mockStops.data = [rome, florence];
+    await render(<TripScreen />);
+
+    // Two stops: each row carries the drag handle the sortable list supplies.
+    expect(screen.getAllByTestId('sortable-handle')).toHaveLength(2);
+    expect(screen.getAllByLabelText('Drag to reorder')).toHaveLength(2);
+
+    // The library delivers the drop as the data array in its new order.
+    const { __dropAt } = jest.requireMock('react-native-sortables') as {
+      __dropAt: (data: unknown[]) => void;
+    };
+    await act(async () => __dropAt([florence, rome]));
+
+    expect(mockActions.reorderStops).toHaveBeenCalledWith('trip-42', [
+      'stop-florence',
+      'stop-rome',
+    ]);
+    expect(mockActions.moveStop).not.toHaveBeenCalled();
+  });
+
+  test('a single stop shows no drag handle — there is nothing to reorder', async () => {
+    mockStops.data = [rome];
+    await render(<TripScreen />);
+    expect(screen.queryByTestId('sortable-handle')).toBeNull();
   });
 
   test('exposes the stop actions as accessibility actions on the row', async () => {

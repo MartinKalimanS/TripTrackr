@@ -241,6 +241,21 @@ export const cities = sqliteTable(
   (table) => [index('cities_country_ascii_idx').on(table.country_id, table.ascii_name)],
 );
 
+/**
+ * The last FX snapshot from `GET /fx-rates` (rest-api.md §11; research D-10,
+ * D-28): one row per currency, how many of it one USD buys, as a rate string.
+ * An expense logged in aeroplane mode converts from this through the same
+ * `crossRate` the server uses (research D-26) and carries the rate it used;
+ * `as_of` and `source` are shown with the conversion so the traveller knows
+ * how fresh it is and where it came from.
+ */
+export const fxRates = sqliteTable('fx_rates', {
+  quote_currency: text().primaryKey(),
+  rate: text().notNull(),
+  as_of: text().notNull(),
+  source: text().notNull(),
+});
+
 // ---------------------------------------------------------------------------
 // Sync bookkeeping (US6)
 // ---------------------------------------------------------------------------
@@ -266,6 +281,7 @@ export type PhotoRow = typeof photos.$inferSelect;
 export type DocumentRow = typeof documents.$inferSelect;
 export type CountryRow = typeof countries.$inferSelect;
 export type CityRow = typeof cities.$inferSelect;
+export type FxRateRow = typeof fxRates.$inferSelect;
 
 /**
  * Compile-time proof that a local row still satisfies its wire record: every

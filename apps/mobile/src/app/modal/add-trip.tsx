@@ -1,14 +1,16 @@
 /**
- * Add trip — tasks.md T066 (FR-009; Constitution II).
+ * Add trip — tasks.md T066 (FR-009; Constitution II); research D-21, D-24.
  *
- * Title and home currency (defaulting to the traveller's own), validated with
- * the contracts' `CreateTripRequest` so the local row is one the server will
- * accept unchanged at sync time. "Save" writes to the encrypted local store
- * FIRST — no network — and then replaces this sheet with the new trip so the
- * traveller can add stops straight away (Acceptance Scenario 1.3).
+ * Title and home currency (defaulting to the traveller's own), validated by
+ * `react-hook-form` running the contracts' `CreateTripRequest` through
+ * `zodResolver`, so the local row is one the server will accept unchanged at
+ * sync time. "Save" writes to the encrypted local store FIRST — no network —
+ * and then replaces this sheet with the new trip so the traveller can add
+ * stops straight away (Acceptance Scenario 1.3).
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -19,13 +21,14 @@ import { TextField } from '@/components/ui/text-field';
 import { Colors, Spacing } from '@/constants/theme';
 import { useSessionStore } from '@/features/auth/session-store';
 import {
+  TRIP_FIELD_COPY,
   TRIP_FORM_COPY,
-  hasTripFormErrors,
-  validateTripForm,
-  type TripFormErrors,
+  tripFormResolver,
+  type TripFormValues,
 } from '@/features/trips/trip-form';
 import { useTripActions } from '@/features/trips/use-trips';
 import { useAppearance } from '@/hooks/use-appearance';
+import { fieldMessage } from '@/lib/form-copy';
 import { Sentry } from '@/lib/sentry';
 
 export default function AddTripScreen() {
@@ -33,17 +36,16 @@ export default function AddTripScreen() {
   const { theme } = useAppearance();
   const homeCurrency = useSessionStore((session) => session.user?.home_currency ?? 'USD');
   const { createTrip } = useTripActions();
-  const [title, setTitle] = useState('');
-  const [currency, setCurrency] = useState(homeCurrency);
-  const [errors, setErrors] = useState<TripFormErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const save = () => {
-    const values = { title: title.trim(), home_currency: currency };
-    const found = validateTripForm(values);
-    setErrors(found);
-    if (hasTripFormErrors(found)) return;
+  const { control, handleSubmit } = useForm<TripFormValues>({
+    resolver: tripFormResolver,
+    defaultValues: { title: '', home_currency: homeCurrency },
+  });
 
+  // `values` are the resolver's parsed output — the title already trimmed by
+  // the schema — so what is written is exactly what the server would accept.
+  const save = handleSubmit((values) => {
     try {
       const trip = createTrip(values);
       router.replace(`/trip/${trip.id}`);
@@ -53,38 +55,43 @@ export default function AddTripScreen() {
       Sentry.captureException(error);
       setSaveError(TRIP_FORM_COPY.saveFailed);
     }
-  };
+  });
 
   return (
     // No top inset: the sheet's own chrome already clears the status bar.
     <Screen testID="add-trip-screen" edges={['bottom']}>
       <ThemedText type="subtitle">New trip</ThemedText>
 
-      <TextField
-        testID="add-trip-title"
-        label="Trip name"
-        value={title}
-        onChangeText={(text) => {
-          setTitle(text);
-          if (errors.title) setErrors((current) => ({ ...current, title: undefined }));
-        }}
-        placeholder="Italy, spring 2026"
-        autoCapitalize="words"
-        returnKeyType="done"
-        onSubmitEditing={save}
-        maxLength={200}
-        error={errors.title}
+      <Controller
+        control={control}
+        name="title"
+        render={({ field, fieldState }) => (
+          <TextField
+            testID="add-trip-title"
+            label="Trip name"
+            value={field.value}
+            onChangeText={field.onChange}
+            onBlur={field.onBlur}
+            placeholder="Italy, spring 2026"
+            autoCapitalize="words"
+            returnKeyType="done"
+            onSubmitEditing={() => void save()}
+            maxLength={200}
+            error={fieldMessage(fieldState.error, TRIP_FIELD_COPY.title)}
+          />
+        )}
       />
 
-      <CurrencyPicker
-        value={currency}
-        onChange={(code) => {
-          setCurrency(code);
-          if (errors.home_currency) {
-            setErrors((current) => ({ ...current, home_currency: undefined }));
-          }
-        }}
-        error={errors.home_currency}
+      <Controller
+        control={control}
+        name="home_currency"
+        render={({ field, fieldState }) => (
+          <CurrencyPicker
+            value={field.value}
+            onChange={field.onChange}
+            error={fieldMessage(fieldState.error, TRIP_FIELD_COPY.home_currency)}
+          />
+        )}
       />
 
       {saveError ? (
@@ -112,7 +119,7 @@ export default function AddTripScreen() {
           testID="add-trip-save"
           accessibilityLabel="Save trip"
           depth={2}
-          onPress={save}
+          onPress={() => void save()}
           style={styles.action}>
           <ThemedText type="smallBold" style={styles.centred}>
             Save trip

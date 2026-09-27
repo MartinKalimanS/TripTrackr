@@ -136,6 +136,115 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
+// react-native-sortables is built on reanimated worklets and gesture-handler
+// gestures, neither of which runs under Jest. The stand-in renders the items
+// in data order through the real `renderItem`, wraps `Sortable.Handle` in a
+// plain View, and keeps the latest `onDragEnd` so a suite can deliver a drop
+// exactly as the library would: `{ data }` already in the new order (D-22).
+jest.mock('react-native-sortables', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+  const registry: { onDragEnd: ((params: { data: unknown[] }) => void) | null } = {
+    onDragEnd: null,
+  };
+  const Grid = ({
+    data,
+    renderItem,
+    onDragEnd,
+    keyExtractor,
+  }: {
+    data: unknown[];
+    renderItem: (info: { item: unknown; index: number }) => React.ReactNode;
+    onDragEnd?: (params: { data: unknown[] }) => void;
+    keyExtractor?: (item: unknown) => string;
+  }) => {
+    registry.onDragEnd = onDragEnd ?? null;
+    return React.createElement(
+      View,
+      { testID: 'sortable-grid' },
+      data.map((item, index) =>
+        React.createElement(
+          View,
+          { key: keyExtractor ? keyExtractor(item) : String(index) },
+          renderItem({ item, index }),
+        ),
+      ),
+    );
+  };
+  const Handle = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(View, { testID: 'sortable-handle' }, children);
+  const Layer = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(View, null, children);
+  return {
+    __esModule: true,
+    default: { Grid, Handle, Layer, Flex: Layer },
+    __dropAt: (data: unknown[]) => registry.onDragEnd?.({ data }),
+  };
+});
+
+// react-native-keyboard-controller reads keyboard frames natively; the library
+// ships its own Jest double in which `KeyboardAwareScrollView` is a ScrollView.
+jest.mock('react-native-keyboard-controller', () =>
+  require('react-native-keyboard-controller/jest'),
+);
+
+// FlashList measures its viewport natively. This mirrors the library's own
+// `jestSetup.js` — `FlashList` becomes the un-animated `RecyclerView` and the
+// layout measurements are stubbed so every item renders in the test tree
+// (D-23). Inlined rather than required because the setup shipped with the
+// SDK-pinned 2.0.2 reads `RecyclerView` off the package root, where that
+// version does not export it; the class lives one directory down.
+jest.mock('@shopify/flash-list', () => {
+  const actual = jest.requireActual('@shopify/flash-list');
+  const { RecyclerView } = jest.requireActual(
+    '@shopify/flash-list/dist/recyclerview/RecyclerView',
+  );
+  return { ...actual, FlashList: RecyclerView };
+});
+
+jest.mock('@shopify/flash-list/dist/recyclerview/utils/measureLayout', () => {
+  const actual = jest.requireActual(
+    '@shopify/flash-list/dist/recyclerview/utils/measureLayout',
+  );
+  const viewport = { x: 0, y: 0, width: 400, height: 900 };
+  return {
+    ...actual,
+    measureParentSize: jest.fn(() => viewport),
+    measureFirstChildLayout: jest.fn(() => viewport),
+    measureItemLayout: jest.fn(() => ({ x: 0, y: 0, width: 400, height: 100 })),
+  };
+});
+
+// The device locale is what `Intl` formats money and dates in (D-27). A fixed
+// en-GB locale keeps assertions on "€12.50" and "12 May 2026" stable wherever
+// the suite runs; a test about another separator overrides `getLocales`.
+jest.mock('expo-localization', () => {
+  const locale = {
+    languageTag: 'en-GB',
+    languageCode: 'en',
+    regionCode: 'GB',
+    textDirection: 'ltr',
+    decimalSeparator: '.',
+    digitGroupingSeparator: ',',
+    currencyCode: 'GBP',
+    currencySymbol: '£',
+    measurementSystem: 'metric',
+    temperatureUnit: 'celsius',
+  };
+  return {
+    getLocales: jest.fn(() => [locale]),
+    useLocales: jest.fn(() => [locale]),
+    getCalendars: jest.fn(() => [
+      {
+        calendar: 'gregory',
+        timeZone: 'Europe/London',
+        uses24hourClock: true,
+        firstWeekday: 2,
+      },
+    ]),
+  };
+});
+
 // Screen-capture blocking (FR-032, documents) has no meaning off-device.
 jest.mock('expo-screen-capture', () => ({
   preventScreenCaptureAsync: jest.fn(async () => undefined),

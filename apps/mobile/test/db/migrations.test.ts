@@ -105,6 +105,16 @@ describe('local migration 0000', () => {
     const applied = sqlite.native
       .prepare('SELECT COUNT(*) AS n FROM __drizzle_migrations')
       .get() as { n: number };
-    expect(applied.n).toBe(1);
+    // One ledger row per generated migration, however many times the migrator ran.
+    expect(applied.n).toBe(Object.keys(migrations.migrations).length);
+  });
+});
+
+describe('local migration 0001 (US2)', () => {
+  test('adds the fx_rates snapshot cache — one row per currency, never pushed (research D-10)', () => {
+    expect(tables()).toContain('fx_rates');
+    expect(columnsOf('fx_rates')).toEqual(['quote_currency', 'rate', 'as_of', 'source']);
+    // Reference data carries no sync bookkeeping.
+    expect(columnsOf('fx_rates')).not.toContain('is_dirty');
   });
 });

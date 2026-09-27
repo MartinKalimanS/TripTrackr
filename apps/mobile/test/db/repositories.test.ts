@@ -11,7 +11,12 @@ import { TripStopPullRecord, TripPullRecord } from '@triptrackr/contracts';
 import { randomUUID } from 'expo-crypto';
 
 import { geographyRepository } from '@/db/repositories/geography';
-import { StopDatesError, reorderStops, stopsRepository } from '@/db/repositories/stops';
+import {
+  StopDatesError,
+  reorderStops,
+  reorderStopsTo,
+  stopsRepository,
+} from '@/db/repositories/stops';
 import { tripsRepository } from '@/db/repositories/trips';
 import { tripStops, trips } from '@/db/schema';
 
@@ -315,6 +320,73 @@ describe('stopsRepository', () => {
     expect(() => addStop(randomUUID(), rome.id, '2026-05-10', '2026-05-12')).toThrow(
       /FOREIGN KEY/i,
     );
+  });
+
+  test('reorder applies a dragged order in one write, dirtying only the rows that moved (T071b)', () => {
+    const trip = newTrip();
+    const a = addStop(trip.id, rome.id, '2026-05-10', '2026-05-12');
+    const b = addStop(trip.id, florence.id, '2026-05-12', '2026-05-15');
+    const c = addStop(trip.id, madrid.id, '2026-05-15', '2026-05-18');
+    sqlite.native.prepare('UPDATE trip_stops SET is_dirty = 0').run();
+
+    // Acceptance Scenario 1.6: the third stop dragged to the front.
+    stopsRepository.reorder(sqlite.db, trip.id, [c.id, a.id, b.id]);
+
+    const rows = stopsRepository.forTripQuery(sqlite.db, trip.id).all();
+    expect(rows.map((row) => row.id)).toEqual([c.id, a.id, b.id]);
+    expect(rows.map((row) => row.sort_order)).toEqual([0, 1, 2]);
+    expect(rows.map((row) => row.is_dirty)).toEqual([true, true, true]);
+
+    // Dropped where it started: nothing is written, nothing re-dirtied.
+    sqlite.native.prepare('UPDATE trip_stops SET is_dirty = 0').run();
+    stopsRepository.reorder(sqlite.db, trip.id, [c.id, a.id, b.id]);
+    expect(
+      stopsRepository
+        .forTripQuery(sqlite.db, trip.id)
+        .all()
+        .map((row) => row.is_dirty),
+    ).toEqual([false, false, false]);
+  });
+
+  test('reorder ignores ids that are not live stops of the trip and keeps any it was not told about', () => {
+    const trip = newTrip();
+    const a = addStop(trip.id, rome.id, '2026-05-10', '2026-05-12');
+    const b = addStop(trip.id, florence.id, '2026-05-12', '2026-05-15');
+    const c = addStop(trip.id, madrid.id, '2026-05-15', '2026-05-18');
+    stopsRepository.remove(sqlite.db, b.id);
+
+    // A stale list still naming the removed stop, and missing `a` entirely.
+    stopsRepository.reorder(sqlite.db, trip.id, [c.id, b.id, 'not-a-stop']);
+
+    const rows = stopsRepository.forTripQuery(sqlite.db, trip.id).all();
+    expect(rows.map((row) => [row.id, row.sort_order])).toEqual([
+      [c.id, 0],
+      [a.id, 1],
+    ]);
+  });
+});
+
+describe('reorderStopsTo (pure)', () => {
+  const stops = [
+    { id: 'a', sort_order: 0 },
+    { id: 'b', sort_order: 1 },
+    { id: 'c', sort_order: 2 },
+  ];
+
+  test('reports only the rows whose position changed', () => {
+    expect(reorderStopsTo(stops, ['a', 'c', 'b'])).toEqual([
+      { id: 'c', sort_order: 1 },
+      { id: 'b', sort_order: 2 },
+    ]);
+    expect(reorderStopsTo(stops, ['a', 'b', 'c'])).toEqual([]);
+  });
+
+  test('a duplicate id counts once and an unknown id is dropped', () => {
+    expect(reorderStopsTo(stops, ['c', 'c', 'x', 'a', 'b'])).toEqual([
+      { id: 'c', sort_order: 0 },
+      { id: 'a', sort_order: 1 },
+      { id: 'b', sort_order: 2 },
+    ]);
   });
 });
 

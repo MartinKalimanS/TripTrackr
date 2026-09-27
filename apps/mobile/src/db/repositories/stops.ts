@@ -43,6 +43,7 @@ export type MoveDirection = 'up' | 'down';
 /** A stop with its place names from the geography cache — null if never cached. */
 export type StopWithPlace = TripStopRow & {
   city_name: string | null;
+  country_id: number | null;
   country_name: string | null;
   lat: number | null;
   lng: number | null;
@@ -83,12 +84,41 @@ export function reorderStops(
     .filter((entry, position) => entry.sort_order !== next[position]!.sort_order);
 }
 
+/**
+ * Pure: the contiguous `sort_order` a trip's live stops should have once the
+ * traveller has dragged them into `orderedIds` (T071b, research D-22). Ids
+ * that are not live stops of the trip are ignored; live stops the caller did
+ * not mention keep their relative order at the end, so a drop from a stale
+ * list can never lose a stop. As with `reorderStops`, only the entries whose
+ * `sort_order` differs from the current value are returned.
+ */
+export function reorderStopsTo(
+  current: readonly { id: string; sort_order: number }[],
+  orderedIds: readonly string[],
+): { id: string; sort_order: number }[] {
+  const known = new Map(current.map((stop) => [stop.id, stop.sort_order]));
+  const seen = new Set<string>();
+  const next: string[] = [];
+  for (const id of orderedIds) {
+    if (known.has(id) && !seen.has(id)) {
+      next.push(id);
+      seen.add(id);
+    }
+  }
+  for (const stop of current) if (!seen.has(stop.id)) next.push(stop.id);
+
+  return next
+    .map((id, position) => ({ id, sort_order: position }))
+    .filter((entry) => known.get(entry.id) !== entry.sort_order);
+}
+
 /** Live stops of a trip, in order, with their cached place names. Live-queryable. */
 function forTripQuery(db: AppDatabase, tripId: string) {
   return db
     .select({
       ...getTableColumns(tripStops),
       city_name: cities.name,
+      country_id: cities.country_id,
       country_name: countries.name,
       lat: cities.lat,
       lng: cities.lng,
@@ -155,14 +185,11 @@ function updateDates(db: AppDatabase, id: string, dates: StopDates): void {
     .run();
 }
 
-/** Move a stop one position within its trip. A no-op at either end. */
-function move(db: AppDatabase, id: string, direction: MoveDirection): void {
-  const [stop] = db.select().from(tripStops).where(eq(tripStops.id, id)).all();
-  if (!stop || stop.deleted_at !== null) return;
-
-  const changes = reorderStops(liveStopsOf(db, stop.trip_id), id, direction);
+function writeOrder(
+  db: AppDatabase,
+  changes: readonly { id: string; sort_order: number }[],
+) {
   if (changes.length === 0) return;
-
   const now = nowIso();
   db.transaction((tx) => {
     for (const change of changes) {
@@ -172,6 +199,19 @@ function move(db: AppDatabase, id: string, direction: MoveDirection): void {
         .run();
     }
   });
+}
+
+/** Move a stop one position within its trip. A no-op at either end. */
+function move(db: AppDatabase, id: string, direction: MoveDirection): void {
+  const [stop] = db.select().from(tripStops).where(eq(tripStops.id, id)).all();
+  if (!stop || stop.deleted_at !== null) return;
+
+  writeOrder(db, reorderStops(liveStopsOf(db, stop.trip_id), id, direction));
+}
+
+/** Put a trip's stops in the order the traveller dragged them into (T071b). */
+function reorder(db: AppDatabase, tripId: string, orderedIds: readonly string[]): void {
+  writeOrder(db, reorderStopsTo(liveStopsOf(db, tripId), orderedIds));
 }
 
 /** Tombstone. The row stays until the server has been told (FR-039). */
@@ -189,5 +229,6 @@ export const stopsRepository = {
   add,
   updateDates,
   move,
+  reorder,
   remove,
 };

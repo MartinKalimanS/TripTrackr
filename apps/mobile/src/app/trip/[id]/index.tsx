@@ -18,7 +18,8 @@ import {
   type StopEditorMode,
   type StopEditorValues,
 } from '@/components/trip/stop-editor';
-import { StopRow, describePlace } from '@/components/trip/stop-row';
+import { StopList } from '@/components/trip/stop-list';
+import { describePlace } from '@/components/trip/stop-row';
 import { PressableSurface } from '@/components/ui/pressable-surface';
 import { Screen } from '@/components/ui/screen';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
@@ -139,6 +140,26 @@ export default function TripScreen() {
 
       {trip.data ? (
         <>
+          {/* The daily-use loop (US2): notes and spending for this trip. */}
+          <View style={styles.links}>
+            <PressableSurface
+              testID="trip-open-notes"
+              accessibilityLabel="Notes for this trip"
+              treatment="raised"
+              onPress={() => router.push(`/trip/${tripId}/notes`)}
+              style={styles.link}>
+              <ThemedText type="smallBold">Notes</ThemedText>
+            </PressableSurface>
+            <PressableSurface
+              testID="trip-open-expenses"
+              accessibilityLabel="Spending for this trip"
+              treatment="raised"
+              onPress={() => router.push(`/trip/${tripId}/expenses`)}
+              style={styles.link}>
+              <ThemedText type="smallBold">Spending</ThemedText>
+            </PressableSurface>
+          </View>
+
           <View style={styles.sectionHeader}>
             <ThemedText type="smallBold">Stops</ThemedText>
             <PressableSurface
@@ -164,21 +185,17 @@ export default function TripScreen() {
               detail="Add the first city you are going to, with its dates."
             />
           ) : (
-            <View style={styles.stops} testID="trip-stops">
-              {stops.data.map((stop, index) => (
-                <StopRow
-                  key={stop.id}
-                  stop={stop}
-                  position={index + 1}
-                  isFirst={index === 0}
-                  isLast={index === stops.data.length - 1}
-                  onMoveUp={() => attempt(() => actions.moveStop(stop.id, 'up'))}
-                  onMoveDown={() => attempt(() => actions.moveStop(stop.id, 'down'))}
-                  onEdit={() => openEdit(stop)}
-                  onRemove={() => confirmRemove(stop)}
-                />
-              ))}
-            </View>
+            <StopList
+              stops={stops.data}
+              onMove={(stopId, direction) =>
+                attempt(() => actions.moveStop(stopId, direction))
+              }
+              onReorder={(orderedIds) =>
+                attempt(() => actions.reorderStops(tripId, orderedIds))
+              }
+              onEdit={openEdit}
+              onRemove={confirmRemove}
+            />
           )}
 
           {writeError ? (
@@ -221,6 +238,16 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     flexWrap: 'wrap',
   },
+  links: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  link: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -230,8 +257,5 @@ const styles = StyleSheet.create({
   addStop: {
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-  },
-  stops: {
-    gap: Spacing.three,
   },
 });

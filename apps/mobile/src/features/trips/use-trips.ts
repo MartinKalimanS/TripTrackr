@@ -109,6 +109,8 @@ export interface TripActions {
   addStop: (input: Omit<AddStopInput, 'id'>) => TripStopRow;
   updateStopDates: (stopId: string, dates: StopDates) => void;
   moveStop: (stopId: string, direction: MoveDirection) => void;
+  /** The whole order at once — what a drag-and-drop yields (T071b). */
+  reorderStops: (tripId: string, orderedIds: readonly string[]) => void;
   removeStop: (stopId: string) => void;
 }
 
@@ -126,6 +128,8 @@ export function useTripActions(): TripActions {
       addStop: (input) => stopsRepository.add(db, { id: randomUUID(), ...input }),
       updateStopDates: (stopId, dates) => stopsRepository.updateDates(db, stopId, dates),
       moveStop: (stopId, direction) => stopsRepository.move(db, stopId, direction),
+      reorderStops: (tripId, orderedIds) =>
+        stopsRepository.reorder(db, tripId, orderedIds),
       removeStop: (stopId) => stopsRepository.remove(db, stopId),
     }),
     [db],

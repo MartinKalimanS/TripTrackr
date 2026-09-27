@@ -1,0 +1,240 @@
+# User Story 2 — keep private notes and track spending per trip (tasks.md T088).
+#
+# The story's Independent Test, end to end: on an existing trip, write one
+# country-level note and one city-level note, log three expenses in two
+# different currencies, confirm the summary totals are correct in the home
+# currency, then move the country-level note into a specific city and confirm
+# it reappears under that city (FR-017, FR-018, FR-020, FR-021, FR-025,
+# FR-026).
+#
+# Everything here is LOCAL (Constitution II): notes and expenses are written to
+# the device's SQLCipher database and the summary is computed from it, so the
+# flow proves the local-first path. The API is needed only for registration,
+# the city lookups, and — for the EUR→CHF conversion to resolve rather than
+# read "awaiting a rate" — one prior `GET /fx-rates`, which the spending screen
+# fetches when it opens.
+#
+# PREREQUISITES
+# -------------
+# - Those of 01-account-and-trip.yaml (development build, reachable API,
+#   geography catalogue with Italy: Rome and Florence).
+# - The API worker has run the FX refresh at least once (it runs on first
+#   boot), so `GET /fx-rates` answers with a snapshot that quotes EUR and CHF.
+#
+# The arithmetic: home currency CHF; 10.00 CHF + 5.50 CHF + 9.00 EUR. With the
+# live snapshot the EUR amount converts at whatever the day's rate is, so the
+# flow asserts the exact CHF-only figures (15.50 across the two CHF rows) and
+# that the EUR row shows a converted CHF figure rather than the pending text.
+appId: com.triptrackr.app
+tags:
+  - us2
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    id: 'welcome-screen'
+
+# --- Register and create a trip with two stops (as 01) -----------------------
+- evalScript: ${output.email = 'maestro-us2-' + Date.now() + '@example.com'}
+- tapOn:
+    id: 'welcome-create-account'
+- tapOn:
+    id: 'register-display-name'
+- inputText: 'Maestro Spender'
+- tapOn:
+    id: 'register-email'
+- inputText: ${output.email}
+- tapOn:
+    id: 'register-password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'register-confirm-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register-submit'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+- tapOn:
+    id: 'tab-trips'
+- tapOn:
+    id: 'trips-plan-trip'
+- tapOn:
+    id: 'add-trip-title'
+- inputText: 'Swiss notes'
+- hideKeyboard
+- tapOn:
+    id: 'currency-CHF'
+- tapOn:
+    id: 'add-trip-save'
+- assertVisible:
+    id: 'trip-screen'
+
+- tapOn:
+    id: 'trip-add-stop'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Italy'
+- tapOn:
+    id: 'city-picker-country-IT'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'Rom'
+- tapOn:
+    text: 'Rom(a|e)'
+- tapOn:
+    id: 'stop-editor-save'
+- tapOn:
+    id: 'trip-add-stop'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Italy'
+- tapOn:
+    id: 'city-picker-country-IT'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'F'
+- tapOn:
+    text: '(Firenze|Florence)'
+- tapOn:
+    id: 'stop-editor-save'
+
+# --- Notes: one at country level, one at city level (FR-017) ----------------
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible:
+    id: 'notes-screen'
+- assertVisible: 'No notes yet'
+
+- tapOn:
+    id: 'notes-add'
+- assertVisible:
+    id: 'note-editor'
+- tapOn:
+    id: 'anchor-country:*'
+- tapOn:
+    id: 'note-editor-title'
+- inputText: 'Cheese'
+- tapOn:
+    id: 'note-editor-body'
+- inputText: 'Try the raclette.'
+- hideKeyboard
+- tapOn:
+    id: 'note-editor-save'
+- assertVisible: 'Cheese'
+
+- tapOn:
+    id: 'notes-add'
+- assertVisible:
+    id: 'note-editor'
+- tapOn:
+    text: '(Firenze|Florence), Italy'
+- tapOn:
+    id: 'note-editor-body'
+- inputText: 'Gelato at Vivoli.'
+- hideKeyboard
+- tapOn:
+    id: 'note-editor-save'
+- assertVisible: 'Gelato at Vivoli.'
+
+# The country-level note is not under Florence yet.
+- tapOn:
+    text: 'Show (Firenze|Florence), Italy'
+- assertVisible: 'Gelato at Vivoli.'
+- assertNotVisible: 'Cheese'
+- tapOn:
+    id: 'notes-filter-all'
+
+# --- Expenses: three, in two currencies (FR-020, FR-021) --------------------
+- tapOn:
+    text: 'Back'
+- tapOn:
+    id: 'trip-open-expenses'
+- assertVisible:
+    id: 'expenses-screen'
+- assertVisible: 'Nothing logged yet'
+
+- tapOn:
+    id: 'expenses-add'
+- assertVisible:
+    id: 'add-expense-screen'
+- tapOn:
+    id: 'add-expense-amount'
+- inputText: '10'
+- hideKeyboard
+- tapOn:
+    id: 'add-expense-save'
+
+- tapOn:
+    id: 'expenses-add'
+- tapOn:
+    id: 'add-expense-amount'
+- inputText: '5.50'
+- hideKeyboard
+- tapOn:
+    text: 'Transport'
+- tapOn:
+    id: 'add-expense-save'
+
+- tapOn:
+    id: 'expenses-add'
+- tapOn:
+    id: 'add-expense-amount'
+- inputText: '9'
+- hideKeyboard
+- tapOn:
+    id: 'currency-EUR'
+- tapOn:
+    id: 'add-expense-save'
+
+# --- Summary: correct in the home currency, rates disclosed (FR-025, FR-026) --
+- assertVisible:
+    id: 'spending-summary'
+# Transport is entirely CHF: 5.50 exactly.
+- assertVisible: '.*5\.50.*'
+# Two CHF rows on the first day total 15.50 plus the converted EUR row; the EUR
+# row shows a CHF figure, and the rate that produced it is disclosed.
+- assertVisible:
+    id: 'summary-rates'
+- assertVisible: '1 EUR = .* CHF'
+- assertNotVisible: 'Awaiting a rate'
+
+# --- Move the country-level note into Florence (FR-018) ----------------------
+- tapOn:
+    text: 'Back'
+- tapOn:
+    id: 'trip-open-notes'
+- tapOn:
+    text: 'Edit Cheese'
+- assertVisible:
+    id: 'note-editor'
+- tapOn:
+    text: '(Firenze|Florence), Italy'
+- tapOn:
+    id: 'note-editor-save'
+- tapOn:
+    text: 'Show (Firenze|Florence), Italy'
+- assertVisible: 'Cheese'
+- assertVisible: 'Try the raclette.'
+- assertVisible: 'Gelato at Vivoli.'
+
+# --- Relaunch: everything persists locally (Constitution II) ------------------
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+- tapOn:
+    id: 'tab-trips'
+- tapOn: 'Swiss notes'
+- tapOn:
+    id: 'trip-open-expenses'
+- assertVisible:
+    id: 'spending-summary'
+- assertVisible: '.*5\.50.*'

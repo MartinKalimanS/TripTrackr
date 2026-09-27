@@ -1,12 +1,15 @@
 /**
- * One stop in the trip's ordered list — tasks.md T068 (FR-010, FR-012).
+ * One stop in the trip's ordered list — tasks.md T068, T071b (FR-010, FR-012).
  *
- * Reordering is explicit "Move up" / "Move down" controls rather than a drag
- * handle: they work one-handed, with a screen reader, with a switch, and
- * under every appearance adaptation. The same four actions are also exposed
- * as `accessibilityActions`, so an assistive-technology user can act on the
- * row itself without hunting for the small buttons.
+ * Reordering has two paths. The explicit "Move up" / "Move down" controls
+ * work one-handed, with a screen reader, with a switch, and under every
+ * appearance adaptation; the same four actions are also exposed as
+ * `accessibilityActions`, so an assistive-technology user can act on the row
+ * itself without hunting for the small buttons. The optional `handle` is the
+ * drag affordance the list supplies (research D-22) — additive, never the
+ * only way — and this row knows nothing about the gesture behind it.
  */
+import type { ReactNode } from 'react';
 import { StyleSheet, View, type AccessibilityActionEvent } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -26,6 +29,8 @@ export type StopRowProps = {
   onMoveDown: () => void;
   onEdit: () => void;
   onRemove: () => void;
+  /** A drag affordance rendered beside the stop number; omitted when there is nothing to drag. */
+  handle?: ReactNode;
 };
 
 /** A stop whose city is not in the cache yet still has a name a traveller can follow. */
@@ -44,6 +49,7 @@ export function StopRow({
   onMoveDown,
   onEdit,
   onRemove,
+  handle,
 }: StopRowProps) {
   const place = describePlace(stop);
   const dates = `${formatIsoDate(stop.arrive_date)} → ${formatIsoDate(stop.depart_date)}`;
@@ -84,9 +90,12 @@ export function StopRow({
       onAccessibilityAction={onAccessibilityAction}
       style={styles.row}>
       <View style={styles.main}>
-        <ThemedText type="small" themeColor="textMuted">
-          Stop {position}
-        </ThemedText>
+        <View style={styles.heading}>
+          <ThemedText type="small" themeColor="textMuted">
+            Stop {position}
+          </ThemedText>
+          {handle}
+        </View>
         <ThemedText type="default" style={styles.place}>
           {place}
         </ThemedText>
@@ -155,6 +164,13 @@ const styles = StyleSheet.create({
   main: {
     gap: Spacing.half,
     alignItems: 'flex-start',
+  },
+  heading: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
   },
   place: {
     fontWeight: 600,

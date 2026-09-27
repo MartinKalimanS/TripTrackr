@@ -1,39 +1,35 @@
 /**
- * Stop dates — tasks.md T069 (FR-011, FR-015).
+ * Stop dates — tasks.md T069 (FR-011, FR-015); research D-25.
  *
- * Pure calendar arithmetic on the wire's `IsoDate` strings (`YYYY-MM-DD`).
- * Everything works on the LOCAL calendar day: a traveller picking "12 May" at
- * 23:30 in Rome means 12 May, and a UTC conversion would quietly turn it into
- * 11 May. Dates never carry a time, so there is nothing to lose by staying in
+ * Calendar arithmetic on the wire's `IsoDate` strings (`YYYY-MM-DD`) through
+ * `date-fns`. Everything works on the LOCAL calendar day: a traveller picking
+ * "12 May" at 23:30 in Rome means 12 May, and a UTC conversion would quietly
+ * turn it into 11 May. `parseISO` of a date-only string yields local midnight
+ * and `formatISO` reads the local fields back, which is exactly that rule;
+ * dates never carry a time, so there is nothing to lose by staying in
  * calendar space.
  */
 import { tripStopDatesInOrder } from '@triptrackr/contracts';
+import { addDays as addDaysTo, formatISO, isValid, parseISO } from 'date-fns';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-function pad(value: number): string {
-  return String(value).padStart(2, '0');
-}
-
 /** Local calendar day of `date` as `YYYY-MM-DD`. */
 export function toIsoDate(date: Date): string {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return formatISO(date, { representation: 'date' });
 }
 
 /** Local midnight of the given calendar day. */
 export function fromIsoDate(iso: string): Date {
-  const [year, month, day] = iso.split('-').map(Number);
-  return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
+  return parseISO(iso);
 }
 
 export function isIsoDate(value: string): boolean {
-  return ISO_DATE.test(value) && !Number.isNaN(fromIsoDate(value).getTime());
+  return ISO_DATE.test(value) && isValid(fromIsoDate(value));
 }
 
 export function addDays(iso: string, days: number): string {
-  const date = fromIsoDate(iso);
-  date.setDate(date.getDate() + days);
-  return toIsoDate(date);
+  return toIsoDate(addDaysTo(fromIsoDate(iso), days));
 }
 
 export function todayIso(): string {

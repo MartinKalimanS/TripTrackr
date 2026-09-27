@@ -28,6 +28,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { LocalStoreProvider, useOpenDatabase } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
@@ -115,35 +116,38 @@ function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      {/* testID is the anchor for the Maestro flows (e2e/00-smoke.yaml). */}
-      <View testID="app-root" style={[styles.root, { backgroundColor: tokens.canvas }]}>
-        <QueryClientProvider client={queryClient}>
-          <LocalStoreProvider value={store}>
-            <ThemeProvider value={navigationTheme}>
-              {/* FR-023: the status bar follows the theme with the rest of the UI. */}
-              <StatusBar style={isDark ? 'light' : 'dark'} />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: tokens.canvas },
-                }}>
-                <Stack.Protected guard={status === 'signed-out'}>
-                  <Stack.Screen name="(auth)" />
-                </Stack.Protected>
+      {/* Keyboard frames for every form's KeyboardAwareScrollView (research D-24). */}
+      <KeyboardProvider>
+        {/* testID is the anchor for the Maestro flows (e2e/00-smoke.yaml). */}
+        <View testID="app-root" style={[styles.root, { backgroundColor: tokens.canvas }]}>
+          <QueryClientProvider client={queryClient}>
+            <LocalStoreProvider value={store}>
+              <ThemeProvider value={navigationTheme}>
+                {/* FR-023: the status bar follows the theme with the rest of the UI. */}
+                <StatusBar style={isDark ? 'light' : 'dark'} />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: tokens.canvas },
+                  }}>
+                  <Stack.Protected guard={status === 'signed-out'}>
+                    <Stack.Screen name="(auth)" />
+                  </Stack.Protected>
 
-                <Stack.Protected guard={status === 'signed-in'}>
-                  <Stack.Screen name="(tabs)" />
-                  <Stack.Screen name="trip/[id]" />
-                  <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                </Stack.Protected>
+                  <Stack.Protected guard={status === 'signed-in'}>
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen name="trip/[id]" />
+                    <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                  </Stack.Protected>
 
-                {/* Reachable in either state: a bad link is not a reason to sign in. */}
-                <Stack.Screen name="+not-found" />
-              </Stack>
-            </ThemeProvider>
-          </LocalStoreProvider>
-        </QueryClientProvider>
-      </View>
+                  {/* Reachable in either state: a bad link is not a reason to sign in. */}
+                  <Stack.Screen name="+not-found" />
+                </Stack>
+              </ThemeProvider>
+            </LocalStoreProvider>
+          </QueryClientProvider>
+        </View>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

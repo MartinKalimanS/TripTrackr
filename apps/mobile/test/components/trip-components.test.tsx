@@ -178,6 +178,7 @@ describe('<StopRow>', () => {
     is_dirty: false,
     synced_at: 'x',
     city_name: 'Roma',
+    country_id: 1,
     country_name: 'Italy',
     lat: 41.9,
     lng: 12.5,
