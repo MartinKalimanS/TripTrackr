@@ -239,16 +239,24 @@ type CityFieldProps = {
   onSelect: (cityId: number | null) => void;
 };
 
-function CityField({ stops, cityId, onSelect }: CityFieldProps) {
-  if (stops.length === 0) return null;
-  const options: PillOption[] = [{ id: null as number | null, label: 'No city' }]
-    .concat(stops.map((stop) => ({ id: stop.city_id, label: describePlace(stop) })))
+/** "No city", then each city the trip visits, once, in the order first visited. */
+function cityOptions(stops: readonly StopWithPlace[]): PillOption[] {
+  const visited = stops.filter(
+    (stop, index) => stops.findIndex((other) => other.city_id === stop.city_id) === index,
+  );
+  return [{ id: null as number | null, label: 'No city' }]
+    .concat(visited.map((stop) => ({ id: stop.city_id, label: describePlace(stop) })))
     .map((option) => ({
       key: cityKey(option.id),
       label: option.label,
       testID: `add-expense-city-${cityKey(option.id)}`,
       accessibilityLabel: option.label,
     }));
+}
+
+function CityField({ stops, cityId, onSelect }: CityFieldProps) {
+  if (stops.length === 0) return null;
+  const options = cityOptions(stops);
 
   return (
     <View style={styles.cities}>
