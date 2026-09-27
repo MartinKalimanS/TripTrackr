@@ -548,6 +548,29 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
     );
   });
 
+  test('a city the trip visits twice is offered once, and selecting it selects one pill', async () => {
+    const romeAgain: StopWithPlace = {
+      ...rome,
+      id: 'stop-rome-again',
+      sort_order: 2,
+      arrive_date: '2026-05-15',
+      depart_date: '2026-05-17',
+    };
+    mockStops.data = [rome, florence, romeAgain];
+    try {
+      await render(<AddExpenseScreen />);
+
+      expect(screen.getAllByTestId('add-expense-city-100')).toHaveLength(1);
+      expect(screen.getAllByLabelText('Roma')).toHaveLength(1);
+      await fireEvent.press(screen.getByTestId('add-expense-city-100'));
+      expect(
+        screen.getByTestId('add-expense-city-100').props.accessibilityState,
+      ).toMatchObject({ selected: true, checked: true });
+    } finally {
+      mockStops.data = [rome, florence];
+    }
+  });
+
   test('a new custom category is created on the spot and selected (FR-024)', async () => {
     await render(<AddExpenseScreen />);
 
