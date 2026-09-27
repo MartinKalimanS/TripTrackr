@@ -4,7 +4,7 @@ import { EventEmitter } from 'node:events';
 
 import { ACCESS_TOKEN_ALGORITHM } from '@/common/auth/token-algorithm';
 import { loadEnv, resetEnvCache } from '@/common/config/env.schema';
-import { getCurrentUserId } from '@/common/rls/rls-context';
+import { getCurrentUserId, requireRlsTransaction } from '@/common/rls/rls-context';
 import { HeldResponse, RlsSessionMiddleware } from '@/common/rls/rls-session.middleware';
 
 import { applyUnitTestEnv } from '../support/env';
@@ -156,16 +156,41 @@ describe('RlsSessionMiddleware — the response waits for COMMIT', () => {
     expect(res.sent).toEqual([['{"error":{}}']]);
   });
 
-  it('rolls back when the client hangs up before a response is decided', async () => {
-    const { sql, events } = fakeSql();
+  it('rolls back when the client hangs up before a response is decided — once the handler has answered, never while it can still query', async () => {
+    const events: string[] = [];
+    const tx = () => {
+      events.push('query');
+      return Promise.resolve([]);
+    };
+    const sql = {
+      begin: async (fn: (t: unknown) => Promise<void>) => {
+        events.push('begin');
+        try {
+          await fn(tx);
+        } catch (error) {
+          events.push('rollback');
+          throw error;
+        }
+        events.push('commit');
+      },
+    };
     const res = fakeResponse(events);
+    let handlerDone: Promise<void> = Promise.resolve();
 
     await middleware(sql).use(req, res as never, () => {
-      res.emit('close');
+      handlerDone = (async () => {
+        res.emit('close'); // the client gives up mid-handler...
+        await flush(); // ...while the handler is still awaiting something...
+        await requireRlsTransaction()`SELECT 1`; // ...and then queries
+        res.statusCode = 201;
+        res.end('{"trip":{}}'); // Nest answers even when nobody is listening
+      })();
     });
+    await handlerDone;
 
-    expect(events).toEqual(['begin']);
-    expect(res.sent).toEqual([]);
+    // A query after the ROLLBACK would run on whichever request borrowed the
+    // connection next; it has to land inside the transaction or not at all.
+    expect(events).toEqual(['begin', 'query', 'rollback', 'end']);
   });
 
   it('turns a failed COMMIT into a 500 rather than confirming a write that did not happen', async () => {
@@ -317,12 +342,13 @@ describe('RlsSessionMiddleware — when the response and the transaction disagre
     await middlewareWith(sql).use(req, res as never, () => {
       captured.end = res.end; // what a downstream wrapper (compression, say) keeps
       res.emit('close');
+      res.end('{"answer":true}');
     });
-    expect(res.sent).toEqual([]);
+    expect(res.sent).toEqual([['{"answer":true}']]);
 
     const returned = captured.end?.('{"late":true}');
 
-    expect(res.sent).toEqual([['{"late":true}']]);
+    expect(res.sent).toEqual([['{"answer":true}'], ['{"late":true}']]);
     expect(returned).toBe(res);
   });
 
@@ -342,11 +368,14 @@ describe('RlsSessionMiddleware — when the response and the transaction disagre
       },
     };
 
-    await middlewareWith(sql).use(req, res as never, () => undefined);
+    const handler = jest.fn();
+    await middlewareWith(sql).use(req, res as never, handler);
 
-    // A 5xx: rolled back, then released exactly as decided.
+    // A 5xx: rolled back, then released exactly as decided — and the handler
+    // never ran against a transaction that was already settling.
     expect(events).toEqual(['begin', 'end']);
     expect(res.sent).toEqual([['{"error":{}}']]);
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('destroys the connection when the COMMIT fails after the head has gone out, rather than let a success stand', async () => {
