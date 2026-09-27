@@ -22,6 +22,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CityPicker } from '@/components/trip/city-picker';
 import { DateField } from '@/components/trip/date-field';
+import { FormActions } from '@/components/ui/form-actions';
 import { PressableSurface } from '@/components/ui/pressable-surface';
 import { Surface } from '@/components/ui/surface';
 import { Spacing } from '@/constants/theme';
@@ -62,7 +63,7 @@ function initialDates(mode: StopEditorMode): { arrive: string; depart: string } 
   return { arrive, depart: suggestDeparture(arrive) };
 }
 
-function StopEditorForm({ mode, onCancel, onSubmit }: Omit<StopEditorProps, 'visible'>) {
+function useStopEditorForm(mode: StopEditorMode, onSubmit: StopEditorProps['onSubmit']) {
   const [place, setPlace] = useState<Place | null>(null);
   const [{ arrive, depart }, setDates] = useState(() => initialDates(mode));
 
@@ -77,10 +78,93 @@ function StopEditorForm({ mode, onCancel, onSubmit }: Omit<StopEditorProps, 'vis
     }));
   };
 
+  const changeDeparture = (next: string) =>
+    setDates((current) => ({ ...current, depart: next }));
+
   const submit = () => {
     if (cityId === null || dateError !== null) return;
     onSubmit({ city_id: cityId, arrive_date: arrive, depart_date: depart });
   };
+
+  return {
+    place,
+    setPlace,
+    arrive,
+    depart,
+    dateError,
+    canSave,
+    changeArrival,
+    changeDeparture,
+    submit,
+  };
+}
+
+type PlaceSectionProps = {
+  mode: StopEditorMode;
+  place: Place | null;
+  onChange: (place: Place | null) => void;
+};
+
+function PlaceSection({ mode, place, onChange }: PlaceSectionProps) {
+  if (mode.kind === 'edit') {
+    return <ThemedText testID="stop-editor-place">{mode.placeName}</ThemedText>;
+  }
+  if (!place) {
+    return <CityPicker onSelect={(city, country) => onChange({ city, country })} />;
+  }
+  return (
+    <Surface treatment="recessed" radius="md" style={styles.chosen}>
+      <View style={styles.chosenText}>
+        <ThemedText type="smallBold" testID="stop-editor-place">
+          {place.city.name}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textMuted">
+          {place.country.name}
+        </ThemedText>
+      </View>
+      <PressableSurface
+        testID="stop-editor-change-city"
+        accessibilityLabel="Change city"
+        treatment="flat"
+        onPress={() => onChange(null)}
+        style={styles.inlineAction}>
+        <ThemedText type="smallBold">Change</ThemedText>
+      </PressableSurface>
+    </Surface>
+  );
+}
+
+type StopDatesProps = {
+  arrive: string;
+  depart: string;
+  error: string | null;
+  onArrive: (next: string) => void;
+  onDepart: (next: string) => void;
+};
+
+function StopDates({ arrive, depart, error, onArrive, onDepart }: StopDatesProps) {
+  return (
+    <>
+      <DateField
+        testID="stop-editor-arrive"
+        label="Arrival"
+        value={arrive}
+        onChange={onArrive}
+      />
+      <DateField
+        testID="stop-editor-depart"
+        label="Departure"
+        value={depart}
+        minimumDate={arrive}
+        onChange={onDepart}
+        error={error ?? undefined}
+      />
+    </>
+  );
+}
+
+function StopEditorForm({ mode, onCancel, onSubmit }: Omit<StopEditorProps, 'visible'>) {
+  const form = useStopEditorForm(mode, onSubmit);
 
   return (
     <View style={styles.form}>
@@ -88,73 +172,25 @@ function StopEditorForm({ mode, onCancel, onSubmit }: Omit<StopEditorProps, 'vis
         {mode.kind === 'add' ? 'Add stop' : 'Edit dates'}
       </ThemedText>
 
-      {mode.kind === 'edit' ? (
-        <ThemedText testID="stop-editor-place">{mode.placeName}</ThemedText>
-      ) : place ? (
-        <Surface treatment="recessed" radius="md" style={styles.chosen}>
-          <View style={styles.chosenText}>
-            <ThemedText type="smallBold" testID="stop-editor-place">
-              {place.city.name}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textMuted">
-              {place.country.name}
-            </ThemedText>
-          </View>
-          <PressableSurface
-            testID="stop-editor-change-city"
-            accessibilityLabel="Change city"
-            treatment="flat"
-            onPress={() => setPlace(null)}
-            style={styles.inlineAction}>
-            <ThemedText type="smallBold">Change</ThemedText>
-          </PressableSurface>
-        </Surface>
-      ) : (
-        <CityPicker onSelect={(city, country) => setPlace({ city, country })} />
-      )}
+      <PlaceSection mode={mode} place={form.place} onChange={form.setPlace} />
 
-      {mode.kind === 'edit' || place ? (
-        <>
-          <DateField
-            testID="stop-editor-arrive"
-            label="Arrival"
-            value={arrive}
-            onChange={changeArrival}
-          />
-          <DateField
-            testID="stop-editor-depart"
-            label="Departure"
-            value={depart}
-            minimumDate={arrive}
-            onChange={(next) => setDates((current) => ({ ...current, depart: next }))}
-            error={dateError ?? undefined}
-          />
-        </>
+      {mode.kind === 'edit' || form.place ? (
+        <StopDates
+          arrive={form.arrive}
+          depart={form.depart}
+          error={form.dateError}
+          onArrive={form.changeArrival}
+          onDepart={form.changeDeparture}
+        />
       ) : null}
 
-      <View style={styles.actions}>
-        <PressableSurface
-          testID="stop-editor-cancel"
-          accessibilityLabel="Cancel"
-          treatment="flat"
-          onPress={onCancel}
-          style={styles.action}>
-          <ThemedText type="smallBold" style={styles.centred}>
-            Cancel
-          </ThemedText>
-        </PressableSurface>
-        <PressableSurface
-          testID="stop-editor-save"
-          accessibilityLabel={mode.kind === 'add' ? 'Save stop' : 'Save dates'}
-          depth={2}
-          disabled={!canSave}
-          onPress={submit}
-          style={styles.action}>
-          <ThemedText type="smallBold" style={styles.centred}>
-            {mode.kind === 'add' ? 'Save stop' : 'Save dates'}
-          </ThemedText>
-        </PressableSurface>
-      </View>
+      <FormActions
+        testIDPrefix="stop-editor"
+        saveLabel={mode.kind === 'add' ? 'Save stop' : 'Save dates'}
+        onCancel={onCancel}
+        onSave={form.submit}
+        saveDisabled={!form.canSave}
+      />
     </View>
   );
 }
@@ -196,16 +232,4 @@ const styles = StyleSheet.create({
   },
   chosenText: { flex: 1, gap: Spacing.half },
   inlineAction: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
-  actions: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  action: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-  },
-  centred: { textAlign: 'center' },
 });

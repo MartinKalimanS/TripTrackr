@@ -26,27 +26,20 @@ import {
   useSpendingSummary,
 } from '@/features/expenses/use-expenses';
 import { useFxRates } from '@/features/expenses/use-fx-rates';
-import { useTrip } from '@/features/trips/use-trips';
-import { Sentry } from '@/lib/sentry';
+import { useTrip, type LiveResult } from '@/features/trips/use-trips';
+import { useWriteAttempt } from '@/hooks/use-write-attempt';
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default function ExpensesScreen() {
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string | string[] }>();
-  const tripId = firstParam(id) ?? '';
-
+function useTripSpending(tripId: string) {
   const trip = useTrip(tripId);
   const homeCurrency = trip.data?.home_currency ?? 'USD';
   const expenses = useExpenses(tripId);
   const categories = useExpenseCategories();
   const summary = useSpendingSummary(expenses, homeCurrency);
   const snapshot = useFxSnapshotInfo();
-  const actions = useExpenseActions();
-  const [showSummary, setShowSummary] = useState(true);
-  const [writeError, setWriteError] = useState<string | null>(null);
 
   // Keeps the cached snapshot fresh while the screen is open; never blocks it.
   useFxRates();
@@ -54,49 +47,29 @@ export default function ExpensesScreen() {
   const categoryName = (categoryId: string) =>
     categories.data.find((option) => option.id === categoryId)?.name ?? 'Other';
 
+  return { trip, homeCurrency, expenses, summary, snapshot, categoryName };
+}
+
+function useExpenseRemoval() {
+  const actions = useExpenseActions();
+  const { writeError, attempt } = useWriteAttempt(EXPENSE_FORM_COPY.saveFailed);
+
   const confirmRemove = (expense: ExpenseRecord) => {
     Alert.alert('Delete this expense?', 'It is removed from this trip.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
-          try {
-            setWriteError(null);
-            actions.removeExpense(expense.id);
-          } catch (error) {
-            Sentry.captureException(error);
-            setWriteError(EXPENSE_FORM_COPY.saveFailed);
-          }
-        },
+        onPress: () => attempt(() => actions.removeExpense(expense.id)),
       },
     ]);
   };
 
-  const renderItem = ({ item }: { item: ExpenseRecord }) => (
-    <ExpenseRow
-      expense={item}
-      categoryName={categoryName(item.category_id)}
-      homeCurrency={homeCurrency}
-      onRemove={() => confirmRemove(item)}
-    />
-  );
+  return { writeError, confirmRemove };
+}
 
-  const header = (
-    <ExpensesHeader
-      tripTitle={trip.data?.title ?? null}
-      summary={summary.data}
-      summaryLoading={summary.loading}
-      ratesAsOf={snapshot.asOf}
-      showSummary={showSummary}
-      writeError={writeError}
-      onBack={() => router.back()}
-      onAdd={() => router.push({ pathname: '/modal/add-expense', params: { tripId } })}
-      onToggleSummary={() => setShowSummary((current) => !current)}
-    />
-  );
-
-  const empty = expenses.error ? (
+function ExpensesEmpty({ expenses }: { expenses: LiveResult<ExpenseRecord[]> }) {
+  return expenses.error ? (
     <ErrorState
       title="Couldn’t read the expenses"
       detail="The local store did not answer."
@@ -109,15 +82,48 @@ export default function ExpensesScreen() {
       detail="Add the first expense — it stays on this device until it syncs."
     />
   );
+}
+
+export default function ExpensesScreen() {
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string | string[] }>();
+  const tripId = firstParam(id) ?? '';
+
+  const spending = useTripSpending(tripId);
+  const removal = useExpenseRemoval();
+  const [showSummary, setShowSummary] = useState(true);
+
+  const renderItem = ({ item }: { item: ExpenseRecord }) => (
+    <ExpenseRow
+      expense={item}
+      categoryName={spending.categoryName(item.category_id)}
+      homeCurrency={spending.homeCurrency}
+      onRemove={() => removal.confirmRemove(item)}
+    />
+  );
+
+  const header = (
+    <ExpensesHeader
+      tripTitle={spending.trip.data?.title ?? null}
+      summary={spending.summary.data}
+      summaryLoading={spending.summary.loading}
+      ratesAsOf={spending.snapshot.asOf}
+      showSummary={showSummary}
+      writeError={removal.writeError}
+      onBack={() => router.back()}
+      onAdd={() => router.push({ pathname: '/modal/add-expense', params: { tripId } })}
+      onToggleSummary={() => setShowSummary((current) => !current)}
+    />
+  );
 
   return (
     <ListScreen
       testID="expenses-screen"
-      data={expenses.data}
+      data={spending.expenses.data}
       keyExtractor={(expense) => expense.id}
       renderItem={renderItem}
       header={header}
-      empty={empty}
+      empty={<ExpensesEmpty expenses={spending.expenses} />}
     />
   );
 }

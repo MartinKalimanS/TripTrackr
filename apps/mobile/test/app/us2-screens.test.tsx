@@ -518,6 +518,36 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
     expect(mockBack).toHaveBeenCalled();
   });
 
+  test('the city pills are one radio group, and "No city" files the expense without one', async () => {
+    await render(<AddExpenseScreen />);
+
+    await fireEvent.press(screen.getByTestId('add-expense-city-101'));
+    expect(
+      screen.getByTestId('add-expense-city-101').props.accessibilityState,
+    ).toMatchObject({ selected: true, checked: true });
+    expect(screen.getByLabelText('Firenze')).toBe(
+      screen.getByTestId('add-expense-city-101'),
+    );
+
+    await fireEvent.press(screen.getByTestId('add-expense-city-none'));
+    expect(
+      screen.getByTestId('add-expense-city-none').props.accessibilityState,
+    ).toMatchObject({ selected: true, checked: true });
+    expect(
+      screen.getByTestId('add-expense-city-101').props.accessibilityState,
+    ).toMatchObject({ selected: false, checked: false });
+
+    await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '4');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('add-expense-save'));
+    });
+    await waitFor(() =>
+      expect(mockExpenseActions.createExpense).toHaveBeenCalledWith(
+        expect.objectContaining({ city_id: null, amount: '4.00' }),
+      ),
+    );
+  });
+
   test('a new custom category is created on the spot and selected (FR-024)', async () => {
     await render(<AddExpenseScreen />);
 

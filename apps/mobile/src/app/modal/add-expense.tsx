@@ -17,7 +17,13 @@ import {
 } from '@triptrackr/contracts';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import {
+  Controller,
+  useForm,
+  useWatch,
+  type Control,
+  type UseFormSetValue,
+} from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,10 +34,12 @@ import { CategoryPicker } from '@/components/trip/category-picker';
 import { CurrencyPicker } from '@/components/trip/currency-picker';
 import { DateField } from '@/components/trip/date-field';
 import { describePlace } from '@/components/trip/stop-row';
-import { PressableSurface } from '@/components/ui/pressable-surface';
+import { FormActions } from '@/components/ui/form-actions';
+import { InlineError } from '@/components/ui/inline-error';
+import { PillGroup, type PillOption } from '@/components/ui/pill-group';
 import { EmptyState } from '@/components/ui/state-view';
 import { TextField } from '@/components/ui/text-field';
-import { Colors, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import {
   EXPENSE_FIELD_COPY,
@@ -45,7 +53,6 @@ import {
 } from '@/features/expenses/use-expenses';
 import { todayIso } from '@/features/trips/stop-dates';
 import { useTrip, useTripStops } from '@/features/trips/use-trips';
-import { useAppearance } from '@/hooks/use-appearance';
 import { fieldMessage } from '@/lib/form-copy';
 import { deviceLocale } from '@/lib/locale';
 import { Sentry } from '@/lib/sentry';
@@ -69,13 +76,37 @@ type FormProps = {
   onDone: () => void;
 };
 
-function AddExpenseForm({ tripId, homeCurrency, stops, onDone }: FormProps) {
-  const { theme } = useAppearance();
-  const categories = useExpenseCategories();
+type ExpenseControl = Control<ExpenseFormValues, unknown, CreateExpenseRequest>;
+
+const NO_CITY = 'none';
+
+function cityKey(cityId: number | null): string {
+  return cityId === null ? NO_CITY : String(cityId);
+}
+
+function cityIdOf(key: string): number | null {
+  return key === NO_CITY ? null : Number(key);
+}
+
+function initialValues(
+  homeCurrency: string,
+  stops: readonly StopWithPlace[],
+  today: string,
+): ExpenseFormValues {
+  return {
+    amount: '',
+    currency: homeCurrency,
+    category_id: SYSTEM_EXPENSE_CATEGORIES[0].id,
+    spent_at: today,
+    city_id: stopOn(stops, today)?.city_id ?? null,
+    note: '',
+  };
+}
+
+function useAddExpenseForm({ tripId, homeCurrency, stops, onDone }: FormProps) {
   const actions = useExpenseActions();
   const [saveError, setSaveError] = useState<string | null>(null);
   const today = useMemo(() => todayIso(), []);
-  const { decimalSeparator } = deviceLocale();
 
   const { control, handleSubmit, setValue } = useForm<
     ExpenseFormValues,
@@ -83,14 +114,7 @@ function AddExpenseForm({ tripId, homeCurrency, stops, onDone }: FormProps) {
     CreateExpenseRequest
   >({
     resolver: expenseFormResolver,
-    defaultValues: {
-      amount: '',
-      currency: homeCurrency,
-      category_id: SYSTEM_EXPENSE_CATEGORIES[0].id,
-      spent_at: today,
-      city_id: stopOn(stops, today)?.city_id ?? null,
-      note: '',
-    },
+    defaultValues: initialValues(homeCurrency, stops, today),
   });
   const cityId = useWatch({ control, name: 'city_id' });
 
@@ -115,152 +139,185 @@ function AddExpenseForm({ tripId, homeCurrency, stops, onDone }: FormProps) {
     }
   });
 
+  return { control, setValue, cityId, save, saveError, actions };
+}
+
+function AmountField({ control }: { control: ExpenseControl }) {
+  const { decimalSeparator } = deviceLocale();
+  return (
+    <Controller
+      control={control}
+      name="amount"
+      render={({ field, fieldState }) => (
+        <TextField
+          testID="add-expense-amount"
+          label="Amount"
+          value={field.value}
+          onChangeText={field.onChange}
+          onBlur={field.onBlur}
+          placeholder={`12${decimalSeparator}50`}
+          keyboardType="decimal-pad"
+          autoFocus
+          error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.amount)}
+        />
+      )}
+    />
+  );
+}
+
+function CurrencyField({ control }: { control: ExpenseControl }) {
+  return (
+    <Controller
+      control={control}
+      name="currency"
+      render={({ field, fieldState }) => (
+        <CurrencyPicker
+          value={field.value}
+          onChange={field.onChange}
+          error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.currency)}
+        />
+      )}
+    />
+  );
+}
+
+type CategoryFieldProps = {
+  control: ExpenseControl;
+  onCreate: (name: string) => string;
+};
+
+function CategoryField({ control, onCreate }: CategoryFieldProps) {
+  const categories = useExpenseCategories();
+  return (
+    <Controller
+      control={control}
+      name="category_id"
+      render={({ field, fieldState }) => (
+        <CategoryPicker
+          options={categories.data}
+          value={field.value}
+          onChange={field.onChange}
+          onCreate={onCreate}
+          error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.category_id)}
+        />
+      )}
+    />
+  );
+}
+
+type PaidOnFieldProps = {
+  control: ExpenseControl;
+  stops: readonly StopWithPlace[];
+  setValue: UseFormSetValue<ExpenseFormValues>;
+};
+
+function PaidOnField({ control, stops, setValue }: PaidOnFieldProps) {
+  return (
+    <Controller
+      control={control}
+      name="spent_at"
+      render={({ field, fieldState }) => (
+        <DateField
+          testID="add-expense-date"
+          label="Paid on"
+          value={field.value}
+          onChange={(iso) => {
+            field.onChange(iso);
+            const stop = stopOn(stops, iso);
+            if (stop) setValue('city_id', stop.city_id);
+          }}
+          error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.spent_at)}
+        />
+      )}
+    />
+  );
+}
+
+type CityFieldProps = {
+  stops: readonly StopWithPlace[];
+  cityId: number | null;
+  onSelect: (cityId: number | null) => void;
+};
+
+function CityField({ stops, cityId, onSelect }: CityFieldProps) {
+  if (stops.length === 0) return null;
+  const options: PillOption[] = [{ id: null as number | null, label: 'No city' }]
+    .concat(stops.map((stop) => ({ id: stop.city_id, label: describePlace(stop) })))
+    .map((option) => ({
+      key: cityKey(option.id),
+      label: option.label,
+      testID: `add-expense-city-${cityKey(option.id)}`,
+      accessibilityLabel: option.label,
+    }));
+
+  return (
+    <View style={styles.cities}>
+      <ThemedText type="small">City</ThemedText>
+      <PillGroup
+        options={options}
+        selectedKey={cityKey(cityId)}
+        onSelect={(key) => onSelect(cityIdOf(key))}
+      />
+    </View>
+  );
+}
+
+function NoteField({ control }: { control: ExpenseControl }) {
+  return (
+    <Controller
+      control={control}
+      name="note"
+      render={({ field, fieldState }) => (
+        <TextField
+          testID="add-expense-note"
+          label="Note (optional)"
+          value={field.value}
+          onChangeText={field.onChange}
+          onBlur={field.onBlur}
+          placeholder="Lunch by the lake"
+          maxLength={500}
+          error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.note)}
+        />
+      )}
+    />
+  );
+}
+
+function AddExpenseForm(props: FormProps) {
+  const { control, setValue, cityId, save, saveError, actions } =
+    useAddExpenseForm(props);
+
   return (
     <View style={styles.form}>
       <ThemedText type="subtitle">New expense</ThemedText>
 
-      <Controller
+      <AmountField control={control} />
+
+      <CurrencyField control={control} />
+
+      <CategoryField
         control={control}
-        name="amount"
-        render={({ field, fieldState }) => (
-          <TextField
-            testID="add-expense-amount"
-            label="Amount"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            placeholder={`12${decimalSeparator}50`}
-            keyboardType="decimal-pad"
-            autoFocus
-            error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.amount)}
-          />
-        )}
+        onCreate={(name) => actions.createCategory({ name }).id}
       />
 
-      <Controller
-        control={control}
-        name="currency"
-        render={({ field, fieldState }) => (
-          <CurrencyPicker
-            value={field.value}
-            onChange={field.onChange}
-            error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.currency)}
-          />
-        )}
+      <PaidOnField control={control} stops={props.stops} setValue={setValue} />
+
+      <CityField
+        stops={props.stops}
+        cityId={cityId}
+        onSelect={(id) => setValue('city_id', id)}
       />
 
-      <Controller
-        control={control}
-        name="category_id"
-        render={({ field, fieldState }) => (
-          <CategoryPicker
-            options={categories.data}
-            value={field.value}
-            onChange={field.onChange}
-            onCreate={(name) => actions.createCategory({ name }).id}
-            error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.category_id)}
-          />
-        )}
+      <NoteField control={control} />
+
+      <InlineError testID="add-expense-error" message={saveError} />
+
+      <FormActions
+        testIDPrefix="add-expense"
+        saveLabel="Save expense"
+        onCancel={props.onDone}
+        onSave={() => void save()}
       />
-
-      <Controller
-        control={control}
-        name="spent_at"
-        render={({ field, fieldState }) => (
-          <DateField
-            testID="add-expense-date"
-            label="Paid on"
-            value={field.value}
-            onChange={(iso) => {
-              field.onChange(iso);
-              const stop = stopOn(stops, iso);
-              if (stop) setValue('city_id', stop.city_id);
-            }}
-            error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.spent_at)}
-          />
-        )}
-      />
-
-      {stops.length > 0 ? (
-        <View style={styles.cities}>
-          <ThemedText type="small">City</ThemedText>
-          <View style={styles.pills} accessibilityRole="radiogroup">
-            {[{ id: null as number | null, label: 'No city' }]
-              .concat(
-                stops.map((stop) => ({ id: stop.city_id, label: describePlace(stop) })),
-              )
-              .map((option) => {
-                const selected = option.id === cityId;
-                return (
-                  <PressableSurface
-                    key={option.id ?? 'none'}
-                    testID={`add-expense-city-${option.id ?? 'none'}`}
-                    accessibilityLabel={option.label}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected, checked: selected }}
-                    treatment={selected ? 'recessed' : 'raised'}
-                    radius="pill"
-                    onPress={() => setValue('city_id', option.id)}
-                    style={styles.pill}>
-                    <ThemedText type={selected ? 'smallBold' : 'small'}>
-                      {option.label}
-                    </ThemedText>
-                  </PressableSurface>
-                );
-              })}
-          </View>
-        </View>
-      ) : null}
-
-      <Controller
-        control={control}
-        name="note"
-        render={({ field, fieldState }) => (
-          <TextField
-            testID="add-expense-note"
-            label="Note (optional)"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            placeholder="Lunch by the lake"
-            maxLength={500}
-            error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.note)}
-          />
-        )}
-      />
-
-      {saveError ? (
-        <ThemedText
-          testID="add-expense-error"
-          type="small"
-          accessibilityRole="alert"
-          style={{ color: Colors[theme].danger }}>
-          {saveError}
-        </ThemedText>
-      ) : null}
-
-      <View style={styles.actions}>
-        <PressableSurface
-          testID="add-expense-cancel"
-          accessibilityLabel="Cancel"
-          treatment="flat"
-          onPress={onDone}
-          style={styles.action}>
-          <ThemedText type="smallBold" style={styles.centred}>
-            Cancel
-          </ThemedText>
-        </PressableSurface>
-        <PressableSurface
-          testID="add-expense-save"
-          accessibilityLabel="Save expense"
-          depth={2}
-          onPress={() => void save()}
-          style={styles.action}>
-          <ThemedText type="smallBold" style={styles.centred}>
-            Save expense
-          </ThemedText>
-        </PressableSurface>
-      </View>
     </View>
   );
 }
@@ -303,14 +360,4 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, padding: Spacing.four },
   form: { gap: Spacing.three },
   cities: { gap: Spacing.two },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  pill: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
-  actions: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.two },
-  action: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-  },
-  centred: { textAlign: 'center' },
 });
