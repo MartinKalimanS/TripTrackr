@@ -22,85 +22,102 @@ const commaSeparated = z.string().transform((value) =>
     .filter((part) => part.length > 0),
 );
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().positive().default(3000),
 
-  // PostgreSQL + PostGIS — the API-role connection string (research D-20,
-  // contracts/data-access-policy.md §1 "Deployment obligation").
-  //
-  // DATABASE_URL names `triptrackr_api`: non-superuser, owns nothing,
-  // NOBYPASSRLS (0003_api_role.sql). Every request the API and the worker make
-  // runs as this role, which is what makes the policies in 0005 real rather
-  // than decorative. Pointing it at the owner leaves every policy in place and
-  // silently stops enforcing them — adversarial test 17 exists for exactly that.
-  //
-  // The owner's URL is deliberately NOT part of this schema: the API process
-  // has no legitimate use for it, and a variable the process does not declare
-  // is a variable a compose file never has to hand it. See `migrationEnvSchema`.
-  DATABASE_URL: z.string().url(),
+    // PostgreSQL + PostGIS — the API-role connection string (research D-20,
+    // contracts/data-access-policy.md §1 "Deployment obligation").
+    //
+    // DATABASE_URL names `triptrackr_api`: non-superuser, owns nothing,
+    // NOBYPASSRLS (0003_api_role.sql). Every request the API and the worker make
+    // runs as this role, which is what makes the policies in 0005 real rather
+    // than decorative. Pointing it at the owner leaves every policy in place and
+    // silently stops enforcing them — adversarial test 17 exists for exactly that.
+    //
+    // The owner's URL is deliberately NOT part of this schema: the API process
+    // has no legitimate use for it, and a variable the process does not declare
+    // is a variable a compose file never has to hand it. See `migrationEnvSchema`.
+    DATABASE_URL: z.string().url(),
 
-  // Redis: sessions, rate limits, planner cache, BullMQ transport.
-  REDIS_URL: z.string().url(),
+    // Redis: sessions, rate limits, planner cache, BullMQ transport.
+    REDIS_URL: z.string().url(),
 
-  // Tokens.
-  JWT_ACCESS_SECRET: z.string().min(32),
-  JWT_REFRESH_SECRET: z.string().min(32),
-  JWT_ACCESS_TTL: z.string().default('15m'),
-  JWT_REFRESH_TTL: z.string().default('30d'),
+    // Tokens.
+    JWT_ACCESS_SECRET: z.string().min(32),
+    JWT_REFRESH_SECRET: z.string().min(32),
+    JWT_ACCESS_TTL: z.string().default('15m'),
+    JWT_REFRESH_TTL: z.string().default('30d'),
 
-  // S3-compatible object storage. Private buckets only — never a public policy.
-  S3_ENDPOINT: z.string().url(),
-  S3_REGION: z.string().default('auto'),
-  S3_ACCESS_KEY_ID: z.string().min(1),
-  S3_SECRET_ACCESS_KEY: z.string().min(1),
-  S3_BUCKET_PHOTOS: z.string().min(1),
-  S3_BUCKET_DOCUMENTS: z.string().min(1),
-  S3_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+    // S3-compatible object storage. Private buckets only — never a public policy.
+    S3_ENDPOINT: z.string().url(),
+    S3_REGION: z.string().default('auto'),
+    S3_ACCESS_KEY_ID: z.string().min(1),
+    S3_SECRET_ACCESS_KEY: z.string().min(1),
+    S3_BUCKET_PHOTOS: z.string().min(1),
+    S3_BUCKET_DOCUMENTS: z.string().min(1),
+    S3_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
 
-  // Envelope encryption master key for documents (FR-033, research D-04).
-  // Base64-encoded 32 bytes. `DOCUMENT_MASTER_KEY_ID` names it so keys can rotate.
-  DOCUMENT_MASTER_KEY: z.string().min(44),
-  DOCUMENT_MASTER_KEY_ID: z.string().min(1).default('v1'),
+    // Envelope encryption master key for documents (FR-033, research D-04).
+    // Base64-encoded 32 bytes. `DOCUMENT_MASTER_KEY_ID` names it so keys can rotate.
+    DOCUMENT_MASTER_KEY: z.string().min(44),
+    DOCUMENT_MASTER_KEY_ID: z.string().min(1).default('v1'),
 
-  // The trip allowance is a business-tunable value, not a constant in code (FR-074).
-  FREE_TRIP_ALLOWANCE: z.coerce.number().int().positive().default(5),
+    // The trip allowance is a business-tunable value, not a constant in code (FR-074).
+    FREE_TRIP_ALLOWANCE: z.coerce.number().int().positive().default(5),
 
-  // Tombstone grace window before hard deletion (sync-protocol.md §5).
-  TOMBSTONE_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
+    // Tombstone grace window before hard deletion (sync-protocol.md §5).
+    TOMBSTONE_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
 
-  // Metered external services.
-  MAPBOX_ACCESS_TOKEN: z.string().min(1),
-  ANTHROPIC_API_KEY: z.string().min(1),
-  RESEND_API_KEY: z.string().min(1),
+    // Metered external services.
+    MAPBOX_ACCESS_TOKEN: z.string().min(1),
+    ANTHROPIC_API_KEY: z.string().min(1),
+    RESEND_API_KEY: z.string().min(1),
 
-  // Transactional email (T056). `EMAIL_FROM` is the envelope sender Resend is
-  // asked to use; `APP_PUBLIC_URL` is where the verification and reset links
-  // point — a web origin, because a `triptrackr://` link in an email client
-  // is dead on a device without the app, and universal links map the origin
-  // to the app where it is installed.
-  EMAIL_FROM: z.string().min(3).default('TripTrackr <no-reply@triptrackr.app>'),
-  APP_PUBLIC_URL: z.string().url().default('https://triptrackr.app'),
+    // Transactional email (T056). `EMAIL_FROM` is the envelope sender Resend is
+    // asked to use; `APP_PUBLIC_URL` is where the verification and reset links
+    // point — a web origin, because a `triptrackr://` link in an email client
+    // is dead on a device without the app, and universal links map the origin
+    // to the app where it is installed.
+    EMAIL_FROM: z.string().min(3).default('TripTrackr <no-reply@triptrackr.app>'),
+    APP_PUBLIC_URL: z.string().url().default('https://triptrackr.app'),
 
-  // OAuth audiences (FR-002). Comma-separated client ids: one per platform for
-  // Google, the app's bundle id (and any Services ID) for Apple. Optional on
-  // purpose — a deployment without a provider configured refuses that
-  // provider's tokens with 503 OAUTH_PROVIDER_UNAVAILABLE rather than
-  // accepting a token it could not have checked against any audience.
-  GOOGLE_OAUTH_CLIENT_IDS: commaSeparated.optional(),
-  APPLE_OAUTH_CLIENT_IDS: commaSeparated.optional(),
+    // OAuth audiences (FR-002). Comma-separated client ids: one per platform for
+    // Google, the app's bundle id (and any Services ID) for Apple. Optional on
+    // purpose — a deployment without a provider configured refuses that
+    // provider's tokens with 503 OAUTH_PROVIDER_UNAVAILABLE rather than
+    // accepting a token it could not have checked against any audience.
+    GOOGLE_OAUTH_CLIENT_IDS: commaSeparated.optional(),
+    APPLE_OAUTH_CLIENT_IDS: commaSeparated.optional(),
 
-  // Planner quota (FR-069) and cache window (FR-070).
-  PLANNER_DAILY_REQUEST_LIMIT: z.coerce.number().int().positive().default(10),
-  PLANNER_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86400),
+    // Planner quota (FR-069) and cache window (FR-070).
+    PLANNER_DAILY_REQUEST_LIMIT: z.coerce.number().int().positive().default(10),
+    PLANNER_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86400),
 
-  // Billing (research D-07). Webhook secret verifies provider signatures.
-  REVENUECAT_API_KEY: z.string().min(1),
-  REVENUECAT_WEBHOOK_SECRET: z.string().min(1),
+    // FX rates (FR-021; research D-10, D-28). One USD-based snapshot a day is
+    // pulled from FX_RATES_URL into `fx_rates`; FX_RATES_SOURCE is the attribution
+    // the default feed's terms require, shown with every spending summary.
+    FX_RATES_URL: z.string().url().default('https://open.er-api.com/v6/latest/USD'),
+    FX_RATES_SOURCE: z.string().min(1).default('https://www.exchangerate-api.com'),
 
-  // Observability (FR-073).
-  SENTRY_DSN: z.string().url().optional(),
-});
+    // Billing (research D-07). Webhook secret verifies provider signatures.
+    REVENUECAT_API_KEY: z.string().min(1),
+    REVENUECAT_WEBHOOK_SECRET: z.string().min(1),
+
+    // Observability (FR-073).
+    SENTRY_DSN: z.string().url().optional(),
+  })
+  .superRefine((env, ctx) => {
+    if (env.NODE_ENV === 'production' && !env.FX_RATES_URL.startsWith('https://')) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['FX_RATES_URL'],
+        message:
+          'must be an https:// URL in production; rates feed a stored money conversion',
+      });
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

@@ -49,10 +49,18 @@ describe('integration harness', () => {
         >`SELECT id FROM trips WHERE owner_id = ${harness.accountA.id}::uuid`,
     );
 
-    // Assert
-    expect(rows.map((r) => r.id).sort()).toEqual(
-      [harness.accountA.privateTripId, harness.accountA.publicTripId].sort(),
+    // Assert — both of this fixture's trips, and only A's. Every spec file
+    // builds its own harness against the shared database, so A may own more
+    // trips than these two by the time this runs; none of them may be B's.
+    const ids = rows.map((r) => r.id);
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        harness.accountA.privateTripId,
+        harness.accountA.publicTripId,
+      ]),
     );
+    expect(ids).not.toContain(harness.accountB.privateTripId);
+    expect(ids).not.toContain(harness.accountB.publicTripId);
   });
 
   it("does not give traveller B traveller A's private trip", async () => {

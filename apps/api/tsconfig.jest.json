@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.spec.json",
+  "compilerOptions": {
+    // ts-jest (29.4+) picks its mode from this flag. Isolated, it transpiles one
+    // file at a time and cannot tell whether an imported name is a class, so
+    // `emitDecoratorMetadata` wraps every injected or decorated parameter type in
+    // `typeof X === "undefined" ? Object : X`. One side of that ternary can never
+    // run, and istanbul counts both: ~200 phantom branches that pulled the 80%
+    // branch floor down to 74.6% while the real branches stood at 82%. With the
+    // whole program in view TypeScript emits the bare class and the phantoms go.
+    // tsconfig.spec.json keeps `isolatedModules: true` for `tsc --noEmit`, where
+    // it still guarantees every file is safe to transpile on its own.
+    "isolatedModules": false
+  }
+}

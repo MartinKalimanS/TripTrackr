@@ -16,6 +16,19 @@ export const QUEUE_NAMES = {
   storageSweep: 'storage-sweep',
   /** Builds the traveller's data export archive. FR-007. */
   accountExport: 'account-export',
+  /** The daily FX snapshot refresh and pending-conversion backfill. T081, research D-28. */
+  fxRefresh: 'fx-refresh',
+} as const;
+
+/**
+ * The job scheduler that keeps `fx-refresh` running once a day
+ * (`Queue.upsertJobScheduler`, idempotent by this id). `every` rather than a
+ * cron pattern, with `immediately`, so a fresh deployment has rates within
+ * seconds of the worker's first start instead of at the next calendar tick.
+ */
+export const FX_REFRESH_SCHEDULER = {
+  id: 'fx-refresh-daily',
+  everyMs: 24 * 60 * 60 * 1_000,
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

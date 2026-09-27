@@ -11,15 +11,18 @@ import { RedisModule } from '@/common/redis/redis.module';
 import { RlsModule } from '@/common/rls/rls.module';
 import { StorageModule } from '@/common/storage/storage.module';
 import { AuthModule } from '@/modules/auth/auth.module';
+import { ExpensesModule } from '@/modules/expenses/expenses.module';
 import { HealthModule } from '@/modules/health/health.module';
 import { LookupsModule } from '@/modules/lookups/lookups.module';
+import { NotesModule } from '@/modules/notes/notes.module';
 import { TripsModule } from '@/modules/trips/trips.module';
 import { UsersModule } from '@/modules/users/users.module';
 
 /**
  * Root module. Feature modules are registered here as their user-story phases
- * land: auth, users, trips and lookups with User Story 1; notes, expenses,
- * photos, documents, sync, planner, social and billing with theirs.
+ * land: auth, users, trips and lookups with User Story 1; notes and expenses
+ * with User Story 2; photos, documents, sync, planner, social and billing with
+ * theirs.
  *
  * The infrastructure modules are all `@Global()` and all imported here, once.
  * The scaffold imported only three of them, which meant the pino logger, the
@@ -63,6 +66,8 @@ import { UsersModule } from '@/modules/users/users.module';
     AuthModule,
     UsersModule,
     TripsModule,
+    NotesModule,
+    ExpensesModule,
     LookupsModule,
     HealthModule,
   ],

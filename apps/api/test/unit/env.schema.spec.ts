@@ -104,4 +104,35 @@ describe('env schema', () => {
       expect(() => loadMigrationEnv(source)).toThrow(/API_DB_PASSWORD/);
     });
   });
+
+  describe('FX_RATES_URL transport', () => {
+    it('refuses a plain-http feed in production', () => {
+      applyUnitTestEnv({
+        NODE_ENV: 'production',
+        FX_RATES_URL: 'http://feed.example/usd',
+      });
+
+      expect(() => loadEnv()).toThrow(/FX_RATES_URL/);
+    });
+
+    it('accepts an https feed in production', () => {
+      applyUnitTestEnv({
+        NODE_ENV: 'production',
+        FX_RATES_URL: 'https://feed.example/usd',
+      });
+
+      expect(() => loadEnv()).not.toThrow();
+    });
+
+    it('allows a plain-http feed in development and test', () => {
+      applyUnitTestEnv({
+        NODE_ENV: 'development',
+        FX_RATES_URL: 'http://localhost:8080/usd',
+      });
+      expect(() => loadEnv()).not.toThrow();
+
+      applyUnitTestEnv({ NODE_ENV: 'test', FX_RATES_URL: 'http://localhost:8080/usd' });
+      expect(() => loadEnv()).not.toThrow();
+    });
+  });
 });

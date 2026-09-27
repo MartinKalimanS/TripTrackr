@@ -44,7 +44,7 @@ export async function seedGeography(sql: Sql): Promise<void> {
       (${COUNTRY.france}, 'FR', 'France', 'Europe'),
       (${COUNTRY.japan}, 'JP', 'Japan', 'Asia'),
       (${COUNTRY.unitedStates}, 'US', 'United States', 'North America')
-    ON CONFLICT (id) DO NOTHING
+    ON CONFLICT DO NOTHING
   `;
 
   await sql`
@@ -59,7 +59,7 @@ export async function seedGeography(sql: Sql): Promise<void> {
        ST_SetSRID(ST_MakePoint(-95.5555, 33.6609), 4326)::geography, 'America/Chicago', 24171),
       (${CITY.parthenay}, ${COUNTRY.france}, 'Parthenay', 'Parthenay',
        ST_SetSRID(ST_MakePoint(-0.2469, 46.6486), 4326)::geography, 'Europe/Paris', 10187)
-    ON CONFLICT (id) DO NOTHING
+    ON CONFLICT DO NOTHING
   `;
 
   // serial columns do not advance when ids are supplied explicitly, so the next

@@ -25,6 +25,9 @@ import { loadMigrationEnv } from '@/common/config/env.schema';
  *                             hand-authored — sync columns, write pinning
  *   0008_us1_auth.sql         hand-authored — registration and OAuth keyholes,
  *                             email-verification and password-reset tokens
+ *   0009_us2_categories_and_fx.sql
+ *                             hand-authored — the six system expense categories
+ *                             with their contract-fixed ids, FX lookup index
  *
  * Constitution: "Migrations version-controlled ... production schema MUST NEVER
  * be hand-edited."

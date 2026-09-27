@@ -23,9 +23,10 @@ const base = {
   // that `dist/main.js` stays where package.json expects it; the test config
   // roots at the repository so a spec and the source it imports can share one
   // program. Pointing ts-jest at the build config makes TypeScript infer a root
-  // of ./test and fail (TS5011).
+  // of ./test and fail (TS5011). tsconfig.jest.json extends it and turns off
+  // isolatedModules so coverage counts no decorator-metadata branches.
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.jest.json' }],
   },
 };
 
