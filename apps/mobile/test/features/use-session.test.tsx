@@ -213,19 +213,25 @@ describe('useSignOut (FR-004)', () => {
     });
   });
 
-  test('still signs out locally when offline, without reporting the expected failure', async () => {
-    apiFetch.mockRejectedValueOnce(
-      new ApiRequestError(0, { code: 'NETWORK', message: 'Offline' }),
-    );
-    const { result } = await renderHook(() => useSignOut(), { wrapper });
+  test.each([
+    ['offline', 'NETWORK'],
+    ['the server never answers', 'TIMEOUT'],
+  ])(
+    'still signs out locally when %s, without reporting the expected failure',
+    async (_case, code) => {
+      apiFetch.mockRejectedValueOnce(
+        new ApiRequestError(0, { code, message: 'No answer' }),
+      );
+      const { result } = await renderHook(() => useSignOut(), { wrapper });
 
-    result.current.mutate();
+      result.current.mutate();
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    await expect(getSession()).resolves.toBeNull();
-    expect(useSessionStore.getState().status).toBe('signed-out');
-    expect(Sentry.captureException).not.toHaveBeenCalled();
-  });
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      await expect(getSession()).resolves.toBeNull();
+      expect(useSessionStore.getState().status).toBe('signed-out');
+      expect(Sentry.captureException).not.toHaveBeenCalled();
+    },
+  );
 
   test('reports an unexpected server failure to Sentry and still signs out — never swallowed, never blocking', async () => {
     apiFetch.mockRejectedValueOnce(

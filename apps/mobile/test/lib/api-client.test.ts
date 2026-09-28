@@ -11,7 +11,7 @@ import { AuthTokens, CountriesResponse } from '@triptrackr/contracts';
 import { z } from 'zod';
 
 import { useSessionStore } from '@/features/auth/session-store';
-import { ApiRequestError, apiFetch } from '@/lib/api-client';
+import { ApiRequestError, REQUEST_TIMEOUT_MS, apiFetch } from '@/lib/api-client';
 import { SECURE_KEYS, getSession, setSession } from '@/lib/secure-store';
 import { Sentry } from '@/lib/sentry';
 
@@ -207,6 +207,77 @@ describe('apiFetch — failures', () => {
     expect(error.name).toBe('ApiRequestError');
     expect(error.message).toBe('Trip does not exist or you do not have access.');
     expect(error.code).toBe('TRIP_NOT_FOUND');
+  });
+});
+
+describe('apiFetch — a server that never answers', () => {
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
+  /**
+   * A fetch that settles only when its signal aborts — React Native's own
+   * networking sets no timeout, so a stalled exchange otherwise waits forever
+   * and the screen that asked spins with no error.
+   */
+  function neverAnswers() {
+    fetchMock.mockImplementation(
+      (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal;
+          const abort = () => reject(new DOMException('Aborted', 'AbortError'));
+          if (signal?.aborted) abort();
+          else signal?.addEventListener('abort', abort);
+        }),
+    );
+  }
+
+  test('gives up with status 0 / TIMEOUT instead of waiting forever', async () => {
+    jest.useFakeTimers();
+    neverAnswers();
+
+    const pending = apiFetch(CountriesResponse, '/countries');
+    const outcome = expect(pending).rejects.toMatchObject({ status: 0, code: 'TIMEOUT' });
+    await jest.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+    await outcome;
+  });
+
+  test('does not give up a moment early', async () => {
+    jest.useFakeTimers();
+    neverAnswers();
+
+    let settled = false;
+    const pending = apiFetch(CountriesResponse, '/countries').catch(() => {
+      settled = true;
+    });
+    await jest.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS - 1);
+    expect(settled).toBe(false);
+
+    await jest.advanceTimersByTimeAsync(1);
+    await pending;
+    expect(settled).toBe(true);
+  });
+
+  test('a request that answers in time leaves no timer behind', async () => {
+    jest.useFakeTimers();
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { countries: [] }));
+
+    await apiFetch(CountriesResponse, '/countries');
+
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  test('a caller’s own cancellation is not reported as a timeout', async () => {
+    neverAnswers();
+    const controller = new AbortController();
+
+    const pending = apiFetch(CountriesResponse, '/countries', {
+      signal: controller.signal,
+    });
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ status: 0, code: 'NETWORK' });
   });
 });
 

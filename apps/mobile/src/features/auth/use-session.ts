@@ -87,11 +87,10 @@ export function useAppleSignIn() {
 }
 
 /** Failures that are expected on the way out and change nothing about the outcome. */
+const EXPECTED_SIGN_OUT_FAILURES = new Set(['NETWORK', 'TIMEOUT', 'SESSION_EXPIRED']);
+
 function isExpectedSignOutFailure(error: unknown): boolean {
-  return (
-    error instanceof ApiRequestError &&
-    (error.code === 'NETWORK' || error.code === 'SESSION_EXPIRED')
-  );
+  return error instanceof ApiRequestError && EXPECTED_SIGN_OUT_FAILURES.has(error.code);
 }
 
 /**
