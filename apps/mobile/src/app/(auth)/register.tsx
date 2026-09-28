@@ -5,12 +5,14 @@
  * composition rule (contracts/api/auth.ts explains why). The confirmation
  * check is purely local and is said in words, not shown as a red border
  * alone (FR-010). API refusals — an email that already has an account, a
- * rate limit — become plain sentences through `describeAuthError`.
+ * rate limit — become plain sentences through `describeAuthError`. Google and
+ * Apple (FR-002) are offered under the form (`SocialSignIn`).
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { SocialSignIn } from '@/components/auth/social-sign-in';
 import { ThemedText } from '@/components/themed-text';
 import { PressableSurface } from '@/components/ui/pressable-surface';
 import { Screen } from '@/components/ui/screen';
@@ -135,6 +137,8 @@ export default function RegisterScreen() {
           {register.isPending ? 'Creating your account…' : 'Create account'}
         </ThemedText>
       </PressableSurface>
+
+      <SocialSignIn disabled={register.isPending} />
     </Screen>
   );
 }

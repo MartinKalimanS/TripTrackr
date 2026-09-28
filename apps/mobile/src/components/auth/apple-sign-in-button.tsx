@@ -2,12 +2,7 @@
  * Sign in with Apple — tasks.md T064 (FR-002).
  *
  * Verified against https://docs.expo.dev/versions/v57.0.0/sdk/apple-authentication.md:
- *   - iOS only; render the native `AppleAuthenticationButton` only after
- *     `isAvailableAsync()` resolves true (the page: "You should only attempt
- *     to render this if isAvailableAsync() resolves to true").
- *   - `style` must carry height and width or the button does not appear; it
- *     must NOT set `backgroundColor` or `borderRadius` — `buttonStyle` and
- *     `cornerRadius` are the sanctioned knobs (App Store Guidelines).
+ *   - iOS only; offer it only after `isAvailableAsync()` resolves true.
  *   - `signInAsync` rejects with `ERR_REQUEST_CANCELED` when the traveller
  *     dismisses the sheet; that is not an error to show.
  *   - The name arrives only on the FIRST authorisation; it is forwarded so the
@@ -16,25 +11,23 @@
  * The capability itself is `ios.usesAppleSignIn: true` + the config plugin in
  * app.config.ts.
  *
+ * The button is the app's round logo button (`ProviderButton`) rather than
+ * the native `AppleAuthenticationButton`, which cannot be round or take the
+ * app's palette. `signInAsync` starts the same sheet either way. Apple's
+ * rules for custom buttons still apply before release
+ * (docs/release/store-readiness.md).
+ *
  * Where there is no native sheet — Android, or an iOS device that says it is
- * unavailable — a disabled "Coming soon" placeholder stands in
- * (`UnavailableSignInButton`). While iOS is still being asked, nothing is
- * shown, so the placeholder never flashes before the real button.
+ * unavailable — the button shows disabled, as coming soon. While iOS is still
+ * being asked, a spacer holds its place, so nothing flashes or jumps.
  */
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 
-import { MinTouchTarget, Radius } from '@/constants/theme';
 import type { AppleSignInInput } from '@/features/auth/use-session';
-import { useAppearance } from '@/hooks/use-appearance';
 
-import { UnavailableSignInButton } from './unavailable-sign-in-button';
-
-export type AppleSignInButtonProps = {
-  onCredential: (input: AppleSignInInput) => void;
-  onError: (error: unknown) => void;
-};
+import { ProviderButton, ProviderButtonSpacer } from './provider-button';
 
 function isCancellation(error: unknown): boolean {
   return (
@@ -57,9 +50,12 @@ export function displayNameFrom(
   return joined.length > 0 ? joined : undefined;
 }
 
-export function AppleSignInButton({ onCredential, onError }: AppleSignInButtonProps) {
-  const { theme, fontScale } = useAppearance();
-  // `null` while iOS is being asked; elsewhere the answer is already no.
+/**
+ * Can this device offer Sign in with Apple? `null` while iOS is being asked;
+ * elsewhere the answer is already no. A failed probe counts as no, and is
+ * handed to `onError`.
+ */
+export function useAppleSignInAvailability(onError: (error: unknown) => void) {
   const [available, setAvailable] = useState<boolean | null>(
     Platform.OS === 'ios' ? null : false,
   );
@@ -82,8 +78,29 @@ export function AppleSignInButton({ onCredential, onError }: AppleSignInButtonPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (available === null) return null;
-  if (!available) return <UnavailableSignInButton provider="apple" />;
+  return available;
+}
+
+export type AppleSignInButtonProps = {
+  /** From `useAppleSignInAvailability`. */
+  available: boolean | null;
+  onCredential: (input: AppleSignInInput) => void;
+  onError: (error: unknown) => void;
+  /** The Apple sign-in mutation is in flight. */
+  busy?: boolean;
+  /** Something else on the screen is in flight. */
+  disabled?: boolean;
+};
+
+export function AppleSignInButton({
+  available,
+  onCredential,
+  onError,
+  busy,
+  disabled,
+}: AppleSignInButtonProps) {
+  if (available === null) return <ProviderButtonSpacer />;
+  if (!available) return <ProviderButton provider="apple" />;
 
   const signIn = async () => {
     try {
@@ -107,21 +124,11 @@ export function AppleSignInButton({ onCredential, onError }: AppleSignInButtonPr
   };
 
   return (
-    <AppleAuthentication.AppleAuthenticationButton
-      testID="welcome-apple-sign-in"
-      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-      buttonStyle={
-        theme === 'dark'
-          ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-          : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-      }
-      cornerRadius={Radius.md}
-      style={[styles.button, { height: MinTouchTarget * fontScale }]}
+    <ProviderButton
+      provider="apple"
+      busy={busy}
+      disabled={disabled}
       onPress={() => void signIn()}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  button: { width: '100%' },
-});

@@ -21,6 +21,7 @@
  * half-ready screen. A failure renders a designed error state and is reported
  * (FR-073); a blank screen is not an outcome this layout can produce.
  */
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -44,6 +45,13 @@ initSentry();
 // splash is up, so the globe rarely has to wait for it. The globe itself still
 // waits on the result (`useMapboxReady`); this only starts the work early.
 void configureMapbox();
+
+// The Google and Apple buttons on Sign in and Create account draw Ionicons
+// glyphs, and an icon whose font is not loaded yet paints nothing. Loading it
+// behind the splash means those round buttons never appear empty.
+Ionicons.loadFont().catch((error: unknown) => {
+  Sentry.captureException(error);
+});
 
 // Keep the native splash up until the session has been read (v57 SplashScreen
 // reference: call in global scope, without awaiting). A rejection here means

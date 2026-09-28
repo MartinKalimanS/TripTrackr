@@ -5,11 +5,13 @@
  * translated to plain language (`describeAuthError`) and shown as text under
  * the form, never as colour alone (FR-010). On success the session store
  * flips and the root gate swaps this group for the tabs — nothing to navigate.
+ * Google and Apple (FR-002) are offered under the form (`SocialSignIn`).
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { SocialSignIn } from '@/components/auth/social-sign-in';
 import { ThemedText } from '@/components/themed-text';
 import { PressableSurface } from '@/components/ui/pressable-surface';
 import { Screen } from '@/components/ui/screen';
@@ -107,6 +109,8 @@ export default function LoginScreen() {
           {login.isPending ? 'Signing in…' : 'Sign in'}
         </ThemedText>
       </PressableSurface>
+
+      <SocialSignIn disabled={login.isPending} />
     </Screen>
   );
 }

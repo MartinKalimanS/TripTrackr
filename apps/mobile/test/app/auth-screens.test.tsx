@@ -4,16 +4,17 @@
  * The mockMutations (`use-session.ts`) are mocked: their own suite proves what
  * they persist. What is pinned here is the screens' behaviour — validation
  * mirrors the contracts and is said in words (FR-010), a busy control while a
- * request is in flight, API refusals shown as plain language, and the OAuth
- * buttons appearing only where they can work.
+ * request is in flight, API refusals shown as plain language, and where the
+ * Google and Apple section sits: on Sign in and Create account, not on the
+ * welcome screen. What that section does is pinned by its own suite
+ * (src/components/auth/__tests__/social-sign-in.test.tsx).
  *
  * `expo-router` is replaced with a recording router: the screens' job is to
  * ask for a navigation, and the root layout suite covers what the real router
  * does with it.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { Platform } from 'react-native';
 
 import LoginScreen from '@/app/(auth)/login';
 import RegisterScreen from '@/app/(auth)/register';
@@ -57,18 +58,15 @@ jest.mock('@/features/auth/use-session', () => ({
 jest.mock('expo-apple-authentication', () => ({
   isAvailableAsync: jest.fn(async () => false),
   signInAsync: jest.fn(),
-  AppleAuthenticationButton: (props: Record<string, unknown>) => {
-    const { Pressable, Text } = jest.requireActual('react-native');
-    return (
-      <Pressable testID={props.testID as string} onPress={props.onPress as () => void}>
-        <Text>Sign in with Apple</Text>
-      </Pressable>
-    );
-  },
-  AppleAuthenticationButtonType: { SIGN_IN: 0 },
-  AppleAuthenticationButtonStyle: { BLACK: 0, WHITE: 1 },
   AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
 }));
+
+jest.mock('@expo/vector-icons/Ionicons', () => {
+  const { Text } = jest.requireActual('react-native');
+  return function MockIonicons({ name }: { name: string }) {
+    return <Text testID={`icon-${name}`}>{name}</Text>;
+  };
+});
 
 const mockPromptAsync = jest.fn();
 let mockGoogleResponse: {
@@ -118,160 +116,21 @@ describe('<WelcomeScreen>', () => {
     expect(mockPush).toHaveBeenCalledWith('/register');
   });
 
-  test('where Sign in with Apple is unavailable, shows it disabled and marked "Coming soon"', async () => {
+  test('offers no provider sign-in of its own: that lives on Sign in and Create account', async () => {
     await render(<WelcomeScreen />);
-    await waitFor(() => expect(AppleAuthentication.isAvailableAsync).toHaveBeenCalled());
-
-    const placeholder = await screen.findByTestId('welcome-apple-sign-in-unavailable');
-    expect(placeholder.props.accessibilityState).toMatchObject({ disabled: true });
-    expect(placeholder.props.accessibilityLabel).toBe('Continue with Apple, coming soon');
-    expect(placeholder).toHaveTextContent(/Continue with Apple\s*Coming soon/);
-    expect(screen.queryByTestId('welcome-apple-sign-in')).toBeNull();
-
-    await fireEvent.press(placeholder);
-    expect(AppleAuthentication.signInAsync).not.toHaveBeenCalled();
-    expect(mockMutations.apple.mutate).not.toHaveBeenCalled();
-  });
-
-  test('on Android, where Apple offers no native sign-in, the placeholder shows without asking', async () => {
-    const os = jest.replaceProperty(Platform, 'OS', 'android');
-    try {
-      await render(<WelcomeScreen />);
-
-      expect(screen.getByTestId('welcome-apple-sign-in-unavailable')).toBeTruthy();
-      expect(AppleAuthentication.isAvailableAsync).not.toHaveBeenCalled();
-    } finally {
-      os.restore();
-    }
-  });
-
-  test('if asking the platform fails, the placeholder stands in and the failure is still reported', async () => {
-    (AppleAuthentication.isAvailableAsync as jest.Mock).mockRejectedValue(
-      new Error('native module unavailable'),
-    );
-    await render(<WelcomeScreen />);
-
-    expect(await screen.findByTestId('welcome-apple-sign-in-unavailable')).toBeTruthy();
-    expect(screen.queryByTestId('welcome-apple-sign-in')).toBeNull();
-    expect(screen.getByTestId('welcome-error')).toHaveTextContent(/Something went wrong/);
-  });
-
-  test('on iOS, nothing flashes while the platform is still being asked', async () => {
-    (AppleAuthentication.isAvailableAsync as jest.Mock).mockReturnValue(
-      new Promise(() => {}),
-    );
-    await render(<WelcomeScreen />);
-
-    expect(screen.queryByTestId('welcome-apple-sign-in')).toBeNull();
-    expect(screen.queryByTestId('welcome-apple-sign-in-unavailable')).toBeNull();
-  });
-
-  test('shows Sign in with Apple on iOS when available and forwards the identity token and name', async () => {
-    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
-    (AppleAuthentication.signInAsync as jest.Mock).mockResolvedValue({
-      identityToken: 'apple-jwt',
-      fullName: { givenName: 'Ana', familyName: 'Rossi' },
-    });
-    await render(<WelcomeScreen />);
-
-    const button = await screen.findByTestId('welcome-apple-sign-in');
-    expect(screen.queryByTestId('welcome-apple-sign-in-unavailable')).toBeNull();
-    await fireEvent.press(button);
-
-    await waitFor(() =>
-      expect(mockMutations.apple.mutate).toHaveBeenCalledWith({
-        identityToken: 'apple-jwt',
-        displayName: 'Ana Rossi',
-      }),
-    );
-  });
-
-  test('a cancelled Apple sheet is not an error', async () => {
-    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
-    (AppleAuthentication.signInAsync as jest.Mock).mockRejectedValue(
-      Object.assign(new Error('cancelled'), { code: 'ERR_REQUEST_CANCELED' }),
-    );
-    await render(<WelcomeScreen />);
-
-    await fireEvent.press(await screen.findByTestId('welcome-apple-sign-in'));
-
-    await waitFor(() => expect(AppleAuthentication.signInAsync).toHaveBeenCalled());
-    expect(screen.queryByTestId('welcome-error')).toBeNull();
-    expect(mockMutations.apple.mutate).not.toHaveBeenCalled();
-  });
-
-  test('an Apple failure other than cancellation is shown in words', async () => {
-    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
-    (AppleAuthentication.signInAsync as jest.Mock).mockRejectedValue(new Error('boom'));
-    await render(<WelcomeScreen />);
-
-    await fireEvent.press(await screen.findByTestId('welcome-apple-sign-in'));
-
-    expect(await screen.findByTestId('welcome-error')).toHaveTextContent(
-      /Something went wrong/,
-    );
-  });
-
-  test('until a client id for this platform is configured, shows Continue with Google disabled and marked "Coming soon"', async () => {
-    await render(<WelcomeScreen />);
-
-    const placeholder = screen.getByTestId('welcome-google-sign-in-unavailable');
-    expect(placeholder.props.accessibilityState).toMatchObject({ disabled: true });
-    expect(placeholder.props.accessibilityLabel).toBe(
-      'Continue with Google, coming soon',
-    );
-    expect(placeholder).toHaveTextContent(/Continue with Google\s*Coming soon/);
-    expect(screen.queryByTestId('welcome-google-sign-in')).toBeNull();
-
-    await fireEvent.press(placeholder);
-    expect(mockPromptAsync).not.toHaveBeenCalled();
-    expect(mockMutations.google.mutate).not.toHaveBeenCalled();
-  });
-
-  test('shows Continue with Google when configured and forwards the id_token from the response', async () => {
-    process.env[
-      Platform.OS === 'ios'
-        ? 'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID'
-        : 'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID'
-    ] = 'client-id';
-    mockGoogleResponse = { type: 'success', params: { id_token: 'google-jwt' } };
-
-    await render(<WelcomeScreen />);
-
-    expect(screen.queryByTestId('welcome-google-sign-in-unavailable')).toBeNull();
-    await fireEvent.press(screen.getByTestId('welcome-google-sign-in'));
-    expect(mockPromptAsync).toHaveBeenCalled();
-    await waitFor(() =>
-      expect(mockMutations.google.mutate).toHaveBeenCalledWith('google-jwt'),
-    );
-  });
-
-  test('a Google response without an id_token is shown as a failure, not sent to the API', async () => {
-    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID = 'client-id';
-    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID = 'client-id';
-    mockGoogleResponse = { type: 'success', params: {} };
-
-    await render(<WelcomeScreen />);
-
-    expect(await screen.findByTestId('welcome-error')).toHaveTextContent(
-      /Something went wrong/,
-    );
-    expect(mockMutations.google.mutate).not.toHaveBeenCalled();
-  });
-
-  test('shows an API refusal of an OAuth sign-in in plain language', async () => {
-    mockMutations.google.error = new ApiRequestError(401, {
-      code: 'OAUTH_TOKEN_INVALID',
-      message: 'Bad token.',
-    });
-    await render(<WelcomeScreen />);
-    expect(screen.getByTestId('welcome-error')).toHaveTextContent(
-      /could not be verified/,
-    );
+    expect(screen.queryByTestId('social-sign-in')).toBeNull();
+    expect(screen.queryByLabelText(/Continue with (Google|Apple)/)).toBeNull();
   });
 });
 
 describe('<LoginScreen>', () => {
+  test('offers Google and Apple below the email form (FR-002)', async () => {
+    await render(<LoginScreen />);
+    const section = screen.getByTestId('social-sign-in');
+    expect(within(section).getByLabelText(/Continue with Google/)).toBeTruthy();
+    expect(await within(section).findByLabelText(/Continue with Apple/)).toBeTruthy();
+  });
+
   test('renders an email and a password field with the right keyboard behaviour', async () => {
     await render(<LoginScreen />);
     expect(screen.getByLabelText('Email').props.keyboardType).toBe('email-address');
@@ -334,6 +193,13 @@ describe('<LoginScreen>', () => {
 });
 
 describe('<RegisterScreen>', () => {
+  test('offers Google and Apple below the email form (FR-002)', async () => {
+    await render(<RegisterScreen />);
+    const section = screen.getByTestId('social-sign-in');
+    expect(within(section).getByLabelText(/Continue with Google/)).toBeTruthy();
+    expect(await within(section).findByLabelText(/Continue with Apple/)).toBeTruthy();
+  });
+
   const fill = async (overrides: Partial<Record<string, string>> = {}) => {
     const values = {
       Name: 'Ana',
