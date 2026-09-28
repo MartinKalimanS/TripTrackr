@@ -228,20 +228,22 @@ _Amended 2026-09-24 for the library decisions D-21..D-29: the wording below name
 
 - [x] T089 [P] [US3] Integration test — arcs derive correctly from consecutive stops, and inserting a stop mid-trip changes them with no separate maintenance — in `apps/api/test/integration/arcs.spec.ts` (FR-016) — _also pins reorder, deletion, and the per-arc derived status FR-046 styles by_
 - [x] T090 [P] [US3] Integration test — profile statistics return countries visited and total distance travelled — in `apps/api/test/integration/stats.spec.ts` (FR-050) — _expected legs recomputed from PostGIS; tombstones, other travellers and a date-line leg covered_
-- [ ] T091 [P] [US3] Component test — the globe renders a purposeful empty state for an account with no trips — in `apps/mobile/src/components/globe/__tests__/empty-state.test.tsx` (FR-051)
+- [x] T091 [P] [US3] Component test — the globe renders a purposeful empty state for an account with no trips — in `apps/mobile/src/components/globe/__tests__/empty-state.test.tsx` (FR-051) — _also covers the trips-without-a-stop state (spec Edge Cases, Globe)_
 
 ### Implementation for User Story 3
 
+_Amended 2026-09-28 for research D-30: the globe derives its arcs, markers and statistics on the device from the local store, and the densification is `apps/mobile/src/features/globe/great-circle.ts` rather than `@turf/great-circle`, whose date-line and polar output was found defective. The pure derivation lives in `apps/mobile/src/features/globe/` (`globe-data.ts`, `travel-stats.ts`, the live `use-globe.ts`), with tests beside it in `__tests__/` and `apps/mobile/test/features/use-globe.test.tsx`._
+
 - [x] T092 [P] [US3] Implement travel statistics on `GET /me` using PostGIS distance aggregation in `apps/api/src/modules/users/stats.service.ts` (FR-050) — _delivered with `GET /me` in User Story 1 as `apps/api/src/modules/users/travel-stats.service.ts` (`ST_Distance` over `geography`, legs paired with `LEAD`)_
-- [ ] T093 [P] [US3] Build the `@rnmapbox/maps` MapView wrapper with `projection="globe"` in `apps/mobile/src/components/globe/globe-view.tsx` (research D-06, FR-045)
-- [ ] T094 [US3] Build the arc source with `@turf/great-circle` densification in `apps/mobile/src/components/globe/arc-source.tsx` (FR-045)
-- [ ] T095 [US3] Implement per-status arc styling and the active-trip animation in `apps/mobile/src/components/globe/arc-styles.ts` (FR-046)
-- [ ] T096 [US3] Implement arc tap handling opening the correct trip in `apps/mobile/src/components/globe/use-arc-press.ts` (FR-047)
-- [ ] T097 [P] [US3] Build the statistics overlay in `apps/mobile/src/components/globe/stats-overlay.tsx` (FR-050)
-- [ ] T098 [P] [US3] Build the no-trips empty state in `apps/mobile/src/components/globe/empty-state.tsx` (FR-051)
-- [ ] T099 [US3] Make the globe the home screen in `apps/mobile/src/app/(tabs)/index.tsx`, relocating the trip list
-- [ ] T100 [US3] Verify 60fps with 50+ arcs on a mid-tier device and record the measurement in `specs/001-triptrackr-mvp/perf-notes.md` (SC-002)
-- [ ] T101 [US3] Write the Maestro flow `apps/mobile/e2e/03-globe.yaml` covering three trips in three statuses and arc tap navigation
+- [x] T093 [P] [US3] Build the `@rnmapbox/maps` MapView wrapper with `projection="globe"` in `apps/mobile/src/components/globe/globe-view.tsx` (research D-06, FR-045) — _Mapbox Standard basemap, `faded`, `lightPreset` following the theme; token and telemetry in `apps/mobile/src/lib/mapbox.ts`; a build without a token shows a designed error state (D-30)_
+- [x] T094 [US3] Build the arc source with `@turf/great-circle` densification in `apps/mobile/src/components/globe/arc-source.tsx` (FR-045) — _densification is `features/globe/great-circle.ts` (D-30); the GeoJSON is built in `components/globe/arc-features.ts`, with a marker per placed stop so a single-stop trip shows_
+- [x] T095 [US3] Implement per-status arc styling and the active-trip animation in `apps/mobile/src/components/globe/arc-styles.ts` (FR-046) — _the moving beacon is `components/globe/beacon.tsx`; the `GlobeColors` palette has its own contrast gate in `apps/mobile/test/theme/globe-contrast-gate.test.ts`; the beacon rests under reduced motion and pauses off-screen_
+- [x] T096 [US3] Implement arc tap handling opening the correct trip in `apps/mobile/src/components/globe/use-arc-press.ts` (FR-047)
+- [x] T097 [P] [US3] Build the statistics overlay in `apps/mobile/src/components/globe/stats-overlay.tsx` (FR-050)
+- [x] T098 [P] [US3] Build the no-trips empty state in `apps/mobile/src/components/globe/empty-state.tsx` (FR-051)
+- [x] T099 [US3] Make the globe the home screen in `apps/mobile/src/app/(tabs)/index.tsx`, relocating the trip list — _the list already lived on the Trips tab (R009), which stays the accessible path to every trip_
+- [ ] T100 [US3] Verify 60fps with 50+ arcs on a mid-tier device and record the measurement in `specs/001-triptrackr-mvp/perf-notes.md` (SC-002) — _needs a dev-client build on a physical device_
+- [ ] T101 [US3] Write the Maestro flow `apps/mobile/e2e/03-globe.yaml` covering three trips in three statuses and arc tap navigation — _flow written, not yet run: needs a dev-client build on a device with a Mapbox token_
 
 **Checkpoint**: The product's identity surface is live.
 

@@ -91,6 +91,16 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
   `expo-router` `Tabs` with a custom bar, not native tabs (D-17).
 - Local writes go to the SQLCipher-encrypted SQLite store first; the network is a background
   reconciler. A record is not "saved" until its bytes are uploaded.
+- **The globe** (research D-30) is ONE `MapView` in `components/globe/globe-view.tsx`; User Story 4
+  extends it rather than adding a second map. Its arcs, markers and statistics derive on the device
+  from the local store (`features/globe/`), never from `GET /trips/:id/arcs`. Great-circle geometry
+  comes from `features/globe/great-circle.ts`: do not re-add `@turf/great-circle` (defective at the
+  date line and poles). Map colours are the `GlobeColors` tokens with their own contrast gate; no
+  map mounts before `useMapboxReady()` says `ready` (token set, telemetry off).
+- Mapbox under Jest: `jest.setup.ts` turns each Mapbox component into a View tagged
+  `mapbox-<Kind>-<id>` carrying its props (a layer's `style` arrives as `layerStyle`), so suites
+  read a source's `shape` or fire its `onPress`. To assert on a component's own timer, spy on
+  `setInterval`: `jest.getTimerCount()` also counts React's internal timers.
 
 ## Libraries — use these, do not hand-roll (research D-21..D-29)
 
