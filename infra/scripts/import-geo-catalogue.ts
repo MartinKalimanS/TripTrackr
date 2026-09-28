@@ -5,9 +5,10 @@ import { importGeoCatalogue } from '../../apps/api/src/db/geo-catalogue';
  * Loads the reference geography catalogue (T038, research D-11, FR-014).
  *
  * ```sh
- * # from the repository root; MIGRATION_DATABASE_URL must be set (the import
- * # alters the catalogue tables, which the API role may not do)
- * npm run geo:import -w apps/api -- --countries ./data/countryInfo.txt --cities ./data/cities15000.txt
+ * # from the repository root. MIGRATION_DATABASE_URL (the owner: the import
+ * # alters the catalogue tables, which the API role may not do) is read from
+ * # the root .env by the npm script. It runs in apps/api, so paths are absolute.
+ * npm run geo:import -w apps/api -- --countries "$PWD/data/countryInfo.txt" --cities "$PWD/data/cities15000.txt"
  * ```
  *
  * Extracts come from https://download.geonames.org/export/dump/ (CC BY 4.0):

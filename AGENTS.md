@@ -29,9 +29,14 @@ npm run test:cov -w apps/mobile          # 80% floor enforced by jest.config.js
 npm run test:unit -w apps/api            # no Docker needed
 npm run test:integration -w apps/api     # Testcontainers: Docker MUST be running
 npm run test:privacy -w apps/api         # adversarial suite — required before any release
-npm run db:migrate -w apps/api           # reads MIGRATION_DATABASE_URL (owner) + API_DB_PASSWORD
+npm run db:migrate -w apps/api           # owner URL + API_DB_PASSWORD, from the root .env
+npm run start:dev -w apps/api            # API on :3000, also configured by the root .env
 npm run infra:up                         # dev stack; infra/README.md for production
 ```
+
+The API's `start:dev`, `db:migrate` and `geo:import` load the root `.env` themselves (Node's
+`--env-file`); a variable already set in the shell wins. Expo does not read it: the app's
+`EXPO_PUBLIC_*` values belong in `apps/mobile/.env.local` (`apps/mobile/README.md`).
 
 Do not run `npm run test -w apps/api` (or `test:cov`, `test:contract`, `test:integration`,
 `test:privacy`) without Docker: those projects boot a real PostGIS and have no mock path.

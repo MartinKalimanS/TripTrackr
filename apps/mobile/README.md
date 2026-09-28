@@ -25,12 +25,15 @@ APP_VARIANT=development npx expo run:android
 eas build --profile development --platform ios
 eas build --profile development --platform android
 
-# 3. Start the bundler; the dev client connects to it
-npm run mobile                        # from the repo root, = `expo start` here
+# 3. Start the bundler with the same variant; the dev client connects to it
+APP_VARIANT=development npm run mobile   # from the repo root, = `expo start` here
 ```
 
 `APP_VARIANT=development` gives the dev build its own identifier (`com.triptrackr.app.dev`) so it
-can sit next to a store build. On Windows use `npx cross-env APP_VARIANT=development …`.
+can sit next to a store build. The bundler needs it too: without it, `expo start` looks for
+`com.triptrackr.app` and reports that no development build is installed. On Windows use
+`npx cross-env APP_VARIANT=development …`, or in PowerShell `$env:APP_VARIANT = "development"`
+first.
 
 Release-style builds: `eas build --profile preview` (internal distribution) and
 `eas build --profile production` (auto-incremented build number, store distribution).
@@ -38,18 +41,22 @@ Release-style builds: `eas build --profile preview` (internal distribution) and
 ## Environment variables
 
 Only `EXPO_PUBLIC_*` variables reach the JavaScript bundle; everything else stays on the build
-machine. Local values go in the repository-root `.env` (git-ignored; `.env.example` lists them).
+machine. Expo CLI reads `.env` files from this directory only, not the repository root, so the
+app's values go in `apps/mobile/.env.local` (git-ignored); the root `.env` keeps the API's and
+the build's. `.env.example` lists them all. From the repository root, copy the public ones with
+`grep '^EXPO_PUBLIC_' .env > apps/mobile/.env.local` (PowerShell:
+`Select-String -Path .env -Pattern '^EXPO_PUBLIC_' | ForEach-Object Line | Set-Content apps/mobile/.env.local`).
 
-| Variable                                                                   | Purpose                                                                                                                                                                                                                                                               |
-| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `EXPO_PUBLIC_API_URL`                                                      | Base URL of the API (`apps/api`), without `/v1` — the client appends it (`src/lib/api-client.ts`). A physical device needs your machine's LAN address, not `localhost`. Required: the client fails loudly (`CONFIG`) when unset                                       |
-| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | Google OAuth client ids (iOS / Android client types) for "Continue with Google" (`src/components/auth/google-sign-in-button.tsx`). Public identifiers, not secrets. Optional — the button is hidden on a platform whose id is unset. The API must accept the same ids |
-| `EXPO_PUBLIC_SENTRY_DSN`                                                   | Crash reporting. Optional — unset disables reporting (`src/lib/sentry.ts`)                                                                                                                                                                                            |
-| `EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN`                                          | Public Mapbox token for the globe (US3)                                                                                                                                                                                                                               |
-| `EXPO_PUBLIC_REVENUECAT_IOS_KEY`, `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`     | RevenueCat public SDK keys (US9)                                                                                                                                                                                                                                      |
-| `SENTRY_AUTH_TOKEN`                                                        | Build-time only: source-map upload                                                                                                                                                                                                                                    |
-| `MAPBOX_DOWNLOADS_TOKEN` / `RNMAPBOX_MAPS_DOWNLOAD_TOKEN`                  | Build-time only, and only if Mapbox's SDK fetch requires it (see STORE_COMPLIANCE.md)                                                                                                                                                                                 |
-| `APP_VARIANT`                                                              | Build-time only: `development` switches the app identifier                                                                                                                                                                                                            |
+| Variable                                                                   | Purpose                                                                                                                                                                                                                                                                                            |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_API_URL`                                                      | Base URL of the API (`apps/api`), without `/v1` — the client appends it (`src/lib/api-client.ts`). A physical device needs your machine's LAN address, not `localhost` (over USB, `adb reverse tcp:3000 tcp:3000` makes `localhost` work). Required: the client fails loudly (`CONFIG`) when unset |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | Google OAuth client ids (iOS / Android client types) for "Continue with Google" (`src/components/auth/google-sign-in-button.tsx`). Public identifiers, not secrets. Optional — the button is hidden on a platform whose id is unset. The API must accept the same ids                              |
+| `EXPO_PUBLIC_SENTRY_DSN`                                                   | Crash reporting. Optional — unset disables reporting (`src/lib/sentry.ts`)                                                                                                                                                                                                                         |
+| `EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN`                                          | Public Mapbox token for the globe (US3)                                                                                                                                                                                                                                                            |
+| `EXPO_PUBLIC_REVENUECAT_IOS_KEY`, `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`     | RevenueCat public SDK keys (US9)                                                                                                                                                                                                                                                                   |
+| `SENTRY_AUTH_TOKEN`                                                        | Build-time only: source-map upload                                                                                                                                                                                                                                                                 |
+| `MAPBOX_DOWNLOADS_TOKEN` / `RNMAPBOX_MAPS_DOWNLOAD_TOKEN`                  | Build-time only, and only if Mapbox's SDK fetch requires it (see STORE_COMPLIANCE.md)                                                                                                                                                                                                              |
+| `APP_VARIANT`                                                              | Build-time only: `development` switches the app identifier                                                                                                                                                                                                                                         |
 
 ## Checks
 

@@ -77,11 +77,10 @@ Reset everything, including data: `docker compose -f infra/docker-compose.yml do
 The country/city picker needs the GeoNames extracts loaded once (and refreshed occasionally):
 
 ```bash
-# from the repository root, with the dev stack up (5432 is published in development);
-# the script runs with apps/api as its working directory, so pass absolute paths
-MIGRATION_DATABASE_URL=postgresql://triptrackr:triptrackr@localhost:5432/triptrackr \
-  npm run geo:import -w apps/api -- \
-    --countries "$PWD/data/countryInfo.txt" --cities "$PWD/data/cities15000.txt"
+# from the repository root, with the dev stack up (5432 is published in development).
+# MIGRATION_DATABASE_URL is read from the root .env. The script runs with apps/api as its
+# working directory, so pass absolute paths ($PWD expands in bash and PowerShell alike).
+npm run geo:import -w apps/api -- --countries "$PWD/data/countryInfo.txt" --cities "$PWD/data/cities15000.txt"
 ```
 
 The import connects as the **owner** (it alters reference tables). In production 5432 is not
