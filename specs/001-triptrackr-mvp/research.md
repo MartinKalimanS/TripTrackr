@@ -143,6 +143,11 @@ zoomed-in map. Arcs are `LineString` features densified to roughly 64 points alo
 (Turf `greatCircle()`); style varies by trip status; a `SymbolLayer` beacon animates along the
 active trip's arc. Offline packs come from `Mapbox.offlineManager.createPack()`.
 
+_Amended 2026-09-28 (D-30): the densification is a local great-circle interpolation rather than
+Turf `greatCircle()`, whose date-line and polar output was found defective, and the beacon is a
+CircleLayer moved by a JavaScript timer rather than a SymbolLayer. The single-`MapView` decision is
+unchanged._
+
 **Rationale**: FR-048 requires a continuous transition from globe to local map "with no visible break
 between two separate views". Mapbox's globe projection interpolates to Mercator automatically past
 roughly zoom 5, which means the requirement is met by using one view rather than by writing a
@@ -705,3 +710,98 @@ a `category_id` the server recognises without a lookup or a remap (D-15).
 rows into a feed designed for traveller-owned rows and breaks the write-pinning policy's premise.
 _Cache them on first online launch_ — rejected; first launch may be offline, and Constitution II
 says offline is the default.
+
+---
+
+## Globe build — 2026-09-28
+
+User Story 3's server half shipped with User Story 1 (`GET /trips/:id/arcs`, the `stats` on
+`GET /me`) and was pinned by T089/T090. Before the mobile half, the libraries D-06 named were
+exercised against the inputs a travel journal actually produces — date-line legs, polar routes,
+a return to the same city, a trip that arrived from another device — and the installed
+`@rnmapbox/maps` 10.3.5 was read for what it really exposes. D-30 records what that changed.
+
+## D-30 — The globe draws from the device
+
+**Decision**: The home globe reads nothing from the network. Its connections, city markers and
+statistics are derived on the device, on every change, from the encrypted local store the trip list
+already reads: live trips, their live stops in `(sort_order, created_at, id)` order — the pairing
+order of `arcs.service.ts` and `travel-stats.service.ts` — and each stop's coordinates and country
+from the `cities` cache. `GET /trips/:id/arcs` and `GET /me` `stats` remain the server's view; the
+app does not call them. In detail:
+
+1. **Densification** is a great-circle interpolation written in `features/globe/great-circle.ts`,
+   not `@turf/great-circle`. Observed on turf 7.4.0 (engine `arc` 0.2.0): the date-line split leaves
+   a gap of up to ~1.8° because the code that adds the ±180° points is dead (`arc`
+   `great-circle.js` L164–184); New York → Hong Kong comes back at 64 points as one LineString with a
+   345° jump — drawn the long way round the map; exact antipodes throw, near-antipodes put half the
+   points on each end, and two positions that convert to the same radians return NaN. The local
+   version splits wherever consecutive longitudes differ by more than 180°, closes both parts exactly
+   on ±180° at the interpolated latitude, draws nothing between two stops in the same city, and routes
+   an exactly antipodal pair through a pole (every meridian is a valid great circle; a pole is a
+   deterministic one). Segments are at most 100 km — the server's `SEGMENT_LENGTH_METRES` — and at
+   most 64 per leg, D-06's "roughly 64 points". `@turf/great-circle` and `@turf/helpers` were never
+   imported and leave the mobile workspace.
+2. **Distance** is haversine on the mean-radius sphere (6,371.0088 km, the radius turf also uses):
+   within about 0.5% of PostGIS `ST_Distance` over geography (measured: London–Paris −0.11%,
+   Tokyo–San Francisco −0.23%, north–south legs up to +0.55%). The overlay rounds to whole kilometres
+   — or miles where the device's measurement system says so — so it reads as the summary it is.
+3. **Countries visited** counts the stops of every live trip, planned ones included, exactly as the
+   server's `TravelStatsService` does (T090), so the two never disagree about what the number means.
+   A stop whose city this device has not cached yet counts for nothing and has no connections until
+   the city is known — nothing is drawn at a guessed position (Constitution IV).
+4. **Styling** is one line layer per status, so FR-046's "distinguishable at a glance" is carried by
+   more than hue (feature 002 FR-010): past trips thin and muted, planned trips dashed, active trips
+   thick and solid. Every connection is drawn over a casing line, so its contrast is guaranteed
+   against the casing whatever the imagery beneath. The colours are a separate token group,
+   `GlobeColors`, with its own exhaustive gate (contract C3), because they sit on map imagery rather
+   than on the canvas. Custom layers set emissive strength 1 so the basemap's night lighting cannot
+   dim a token colour away from what the gate measured.
+5. **Animation** is a small circle — the beacon — travelling leg by leg along each animated trip, one
+   leg every 2.4 s, driven by a 30 fps JavaScript timer that rewrites one small `ShapeSource`. It
+   runs only while the globe tab is focused and the app is in the foreground. rnmapbox's native
+   `__experimental.MovePointShapeAnimator` was rejected: it is experimental and TurboModule-backed,
+   with an open crash report on the New Architecture (rnmapbox/maps#4003), the only architecture this
+   app runs. D-06 named a SymbolLayer beacon; a CircleLayer needs no image asset and takes its colours
+   straight from tokens.
+6. **Which trips move**: every active trip; with none, the planned trip that starts soonest — the
+   spec's "the current or next trip is animated" (clarified in spec Edge Cases, "Globe"). Under the
+   device's reduced-motion setting the beacon rests at the stop covering today, or the trip's first
+   stop (feature 002 FR-015's intent; WCAG 2.3.3).
+7. **Basemap** is Mapbox Standard (`mapbox://styles/mapbox/standard`) with the `faded` theme, so the
+   connections rather than the basemap are the subject (feature 002 FR-024), and a `lightPreset` that
+   follows the app theme — `day` or `night` — live (FR-023). Standard also carries the 3D buildings
+   User Story 4 needs at close zoom. The Mapbox logo and attribution stay visible, as Mapbox's terms
+   require. Start-up is one ordered step, begun by the root layout at launch: the token is set, then
+   Mapbox telemetry is switched off, and no `MapView` mounts until both have happened
+   (`useMapboxReady`) — so the privacy policy's Mapbox row, tile requests only, stays true from the
+   first frame. On iOS the switch sets the `MGLMapboxMetricsEnabled` user default the SDK honours;
+   the session "turnstile" Mapbox bills by is not telemetry and is always sent (mapbox-maps-ios#1964).
+   On Android it goes through a map view's attribution delegate, whose effect on SDK 11 could not be
+   proven without a device, so a network capture is a release check
+   (docs/release/store-readiness.md). A switch that fails is reported, not fatal: telemetry
+   carries no traveller data, and the globe is the home screen.
+8. **Tapping**: one handler on both the connection and marker sources; a feature without a
+   `trip_id` is ignored; where trips overlap, active opens before planned before past; the hit box is
+   the platform's minimum touch target (FR-011). A native map is not reachable by a screen reader, so
+   the globe announces a summary and the Trips tab stays the accessible path to every trip.
+9. **Empty and failure states**: no trips → the designed empty state with "Plan a trip" and no
+   `MapView` mounted at all (FR-051's "not a blank sphere", and a cheaper first launch for SC-001);
+   trips but nothing to draw → an empty state that sends the traveller to the Trips tab; no
+   `EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN` in the build → a designed error state, never a blank map.
+
+**Rationale**: Principle II — the home screen must be interactive offline, and SC-001 counts from
+cold, not from "cold with signal". Until User Story 6 there is also no sync, so the server knows
+nothing about a trip created on the device; and one `GET /trips/:id/arcs` per trip would be N round
+trips on every launch. The derivation is pure, fast (60 arcs in under 5 ms in Node), and uses the
+server's pairing order and the same derived status (FR-013, `trip-status.ts`), so the two views agree
+by construction. Privacy is unchanged: the per-account local store (T041) holds only the signed-in
+traveller's own rows, so there is nothing on the device for the globe to disclose.
+
+**Alternatives considered**: _Fetch the arcs and statistics from the API_ — rejected on Principle II
+and the missing sync above. _Keep `@turf/great-circle` behind guards_ — rejected: closing the gap,
+splitting polar jumps, routing antipodes and trapping NaN is most of the code the library was meant
+to save, around defects that live upstream. _Unwrapped longitudes beyond ±180° instead of a split_ —
+rejected as unverifiable without a device: a MultiLineString split exactly at ±180° is plain RFC 7946
+§3.1.9 GeoJSON that every renderer draws. _Vincenty or Karney distances_ — a 0.5% refinement of a
+rounded summary does not justify an iterative solver with its own antipodal convergence failures.

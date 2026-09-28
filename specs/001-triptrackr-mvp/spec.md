@@ -239,6 +239,16 @@ Stories 1–5, 8, and 9 have no such gate and may be reordered on delivery groun
 - A traveller deletes a trip that has notes, expenses, photos, and documents attached — all associated content must go with it, including stored files.
 - A traveller records a stop in a city that spans an unusual time zone or crosses the date line.
 
+**Globe** _(clarified 2026-09-28, research D-30)_
+
+- No trip is active — the next planned trip (the one starting soonest) is the one animated, so the eye still has somewhere to go first; with neither an active nor a planned trip, nothing moves.
+- The traveller has asked their device for reduced motion — the trip that would be animated is still marked, but its marker rests at the day's stop (or the trip's first stop) instead of travelling along the route.
+- A connection crosses the date line or passes near a pole — it is drawn the short way round, unbroken, never as a line sweeping across the whole map.
+- Two consecutive stops are in the same city — no connection is drawn between them; the city itself is marked.
+- A stop names a city this device has not stored yet (a trip that arrived from another device, for instance) — the connections touching that stop are left out until the city is known, and the city does not count towards the statistics; nothing is ever drawn at a guessed position.
+- The traveller has trips but none of them has a stop yet — the home screen invites them to add a stop rather than showing a bare globe.
+- Connections of two trips overlap where the traveller taps — the active trip opens first, then a planned one, then a past one.
+
 **Money**
 
 - An expense is logged in a currency for which no conversion rate can be retrieved at that moment.

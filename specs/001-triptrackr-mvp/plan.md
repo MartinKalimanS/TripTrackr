@@ -119,13 +119,13 @@ _GATE: evaluated before Phase 0 research, and re-evaluated after Phase 1 design.
 
 ### Principle I — Privacy Is Structural, Not Conditional (NON-NEGOTIABLE)
 
-| Gate                                            | Status   | How the design satisfies it                                                                                                                                                                |
-| ----------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Expenses and documents carry no visibility flag | **PASS** | The `expenses` and `documents` tables have no `visibility` column in [data-model.md](./data-model.md). There is nothing to set wrongly.                                                    |
-| Visibility enforced at the data-access layer    | **PASS** | RLS policies on every owned table, driven by an `app.current_user_id` session variable set per request. Specified in [contracts/data-access-policy.md](./contracts/data-access-policy.md). |
-| Client-side filtering never the only barrier    | **PASS** | The globe component renders whatever arcs the API returned and knows nothing about privacy. The API returns nothing private.                                                               |
-| Independent per-object visibility               | **PASS** | `trips.is_public`, `notes.is_public`, and `photos.is_public` are separate columns on separate tables. No global switch exists in the schema or the API.                                    |
-| New surfaces state their visibility posture     | **PASS** | Every table in the data model carries an explicit posture line; every endpoint in [contracts/rest-api.md](./contracts/rest-api.md) states its access rule.                                 |
+| Gate                                            | Status   | How the design satisfies it                                                                                                                                                                             |
+| ----------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Expenses and documents carry no visibility flag | **PASS** | The `expenses` and `documents` tables have no `visibility` column in [data-model.md](./data-model.md). There is nothing to set wrongly.                                                                 |
+| Visibility enforced at the data-access layer    | **PASS** | RLS policies on every owned table, driven by an `app.current_user_id` session variable set per request. Specified in [contracts/data-access-policy.md](./contracts/data-access-policy.md).              |
+| Client-side filtering never the only barrier    | **PASS** | The globe knows nothing about privacy: it draws whatever the traveller's own per-account local store holds, and that store only ever receives rows RLS let through (amended 2026-09-28, research D-30). |
+| Independent per-object visibility               | **PASS** | `trips.is_public`, `notes.is_public`, and `photos.is_public` are separate columns on separate tables. No global switch exists in the schema or the API.                                                 |
+| New surfaces state their visibility posture     | **PASS** | Every table in the data model carries an explicit posture line; every endpoint in [contracts/rest-api.md](./contracts/rest-api.md) states its access rule.                                              |
 
 ### Principle II — Offline Is the Default Assumption
 
@@ -203,7 +203,7 @@ a boarding pass (Principle I, FR-033).
 ```text
 specs/001-triptrackr-mvp/
 ├── plan.md                        # This file
-├── research.md                    # Phase 0 output — decisions D-01..D-12; audit D-13..D-20; libraries D-21..D-29
+├── research.md                    # Phase 0 output — decisions D-01..D-12; audit D-13..D-20; libraries D-21..D-29; globe D-30
 ├── data-model.md                  # Phase 1 output — entities, columns, RLS posture
 ├── quickstart.md                  # Phase 1 output — how to run and validate
 ├── contracts/
