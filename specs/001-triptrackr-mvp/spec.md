@@ -306,6 +306,8 @@ Stories 1–5, 8, and 9 have no such gate and may be reordered on delivery groun
 - Someone registers with an email that already has an account created via Google or Apple sign-in.
 - A sign-in session that has already been revoked is presented again.
 - A traveller deletes their account while an operation is still queued.
+- A sign-in provider cannot work on this build or platform yet (Google with no client configured; Apple on Android, which offers no native sign-in): its button is still shown, disabled and marked "Coming soon", so the way in is discoverable before it works. It never looks like it will sign anyone in.
+- The server does not answer a sign-up or sign-in request at all: after a bounded wait the traveller is told, in words, that it took too long, never left watching a spinner. If the account was in fact created, trying again says so and points to signing in.
 
 ---
 

@@ -118,10 +118,52 @@ describe('<WelcomeScreen>', () => {
     expect(mockPush).toHaveBeenCalledWith('/register');
   });
 
-  test('hides Sign in with Apple when the platform says it is unavailable', async () => {
+  test('where Sign in with Apple is unavailable, shows it disabled and marked "Coming soon"', async () => {
     await render(<WelcomeScreen />);
     await waitFor(() => expect(AppleAuthentication.isAvailableAsync).toHaveBeenCalled());
+
+    const placeholder = await screen.findByTestId('welcome-apple-sign-in-unavailable');
+    expect(placeholder.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(placeholder.props.accessibilityLabel).toBe('Continue with Apple, coming soon');
+    expect(placeholder).toHaveTextContent(/Continue with Apple\s*Coming soon/);
     expect(screen.queryByTestId('welcome-apple-sign-in')).toBeNull();
+
+    await fireEvent.press(placeholder);
+    expect(AppleAuthentication.signInAsync).not.toHaveBeenCalled();
+    expect(mockMutations.apple.mutate).not.toHaveBeenCalled();
+  });
+
+  test('on Android, where Apple offers no native sign-in, the placeholder shows without asking', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      await render(<WelcomeScreen />);
+
+      expect(screen.getByTestId('welcome-apple-sign-in-unavailable')).toBeTruthy();
+      expect(AppleAuthentication.isAvailableAsync).not.toHaveBeenCalled();
+    } finally {
+      os.restore();
+    }
+  });
+
+  test('if asking the platform fails, the placeholder stands in and the failure is still reported', async () => {
+    (AppleAuthentication.isAvailableAsync as jest.Mock).mockRejectedValue(
+      new Error('native module unavailable'),
+    );
+    await render(<WelcomeScreen />);
+
+    expect(await screen.findByTestId('welcome-apple-sign-in-unavailable')).toBeTruthy();
+    expect(screen.queryByTestId('welcome-apple-sign-in')).toBeNull();
+    expect(screen.getByTestId('welcome-error')).toHaveTextContent(/Something went wrong/);
+  });
+
+  test('on iOS, nothing flashes while the platform is still being asked', async () => {
+    (AppleAuthentication.isAvailableAsync as jest.Mock).mockReturnValue(
+      new Promise(() => {}),
+    );
+    await render(<WelcomeScreen />);
+
+    expect(screen.queryByTestId('welcome-apple-sign-in')).toBeNull();
+    expect(screen.queryByTestId('welcome-apple-sign-in-unavailable')).toBeNull();
   });
 
   test('shows Sign in with Apple on iOS when available and forwards the identity token and name', async () => {
@@ -133,6 +175,7 @@ describe('<WelcomeScreen>', () => {
     await render(<WelcomeScreen />);
 
     const button = await screen.findByTestId('welcome-apple-sign-in');
+    expect(screen.queryByTestId('welcome-apple-sign-in-unavailable')).toBeNull();
     await fireEvent.press(button);
 
     await waitFor(() =>
@@ -169,9 +212,20 @@ describe('<WelcomeScreen>', () => {
     );
   });
 
-  test('hides Continue with Google until a client id for this platform is configured', async () => {
+  test('until a client id for this platform is configured, shows Continue with Google disabled and marked "Coming soon"', async () => {
     await render(<WelcomeScreen />);
+
+    const placeholder = screen.getByTestId('welcome-google-sign-in-unavailable');
+    expect(placeholder.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(placeholder.props.accessibilityLabel).toBe(
+      'Continue with Google, coming soon',
+    );
+    expect(placeholder).toHaveTextContent(/Continue with Google\s*Coming soon/);
     expect(screen.queryByTestId('welcome-google-sign-in')).toBeNull();
+
+    await fireEvent.press(placeholder);
+    expect(mockPromptAsync).not.toHaveBeenCalled();
+    expect(mockMutations.google.mutate).not.toHaveBeenCalled();
   });
 
   test('shows Continue with Google when configured and forwards the id_token from the response', async () => {
@@ -184,6 +238,7 @@ describe('<WelcomeScreen>', () => {
 
     await render(<WelcomeScreen />);
 
+    expect(screen.queryByTestId('welcome-google-sign-in-unavailable')).toBeNull();
     await fireEvent.press(screen.getByTestId('welcome-google-sign-in'));
     expect(mockPromptAsync).toHaveBeenCalled();
     await waitFor(() =>

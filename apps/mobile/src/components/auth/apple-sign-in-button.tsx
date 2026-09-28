@@ -15,6 +15,11 @@
  *
  * The capability itself is `ios.usesAppleSignIn: true` + the config plugin in
  * app.config.ts.
+ *
+ * Where there is no native sheet — Android, or an iOS device that says it is
+ * unavailable — a disabled "Coming soon" placeholder stands in
+ * (`UnavailableSignInButton`). While iOS is still being asked, nothing is
+ * shown, so the placeholder never flashes before the real button.
  */
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
@@ -23,6 +28,8 @@ import { Platform, StyleSheet } from 'react-native';
 import { MinTouchTarget, Radius } from '@/constants/theme';
 import type { AppleSignInInput } from '@/features/auth/use-session';
 import { useAppearance } from '@/hooks/use-appearance';
+
+import { UnavailableSignInButton } from './unavailable-sign-in-button';
 
 export type AppleSignInButtonProps = {
   onCredential: (input: AppleSignInInput) => void;
@@ -52,7 +59,10 @@ export function displayNameFrom(
 
 export function AppleSignInButton({ onCredential, onError }: AppleSignInButtonProps) {
   const { theme, fontScale } = useAppearance();
-  const [available, setAvailable] = useState(false);
+  // `null` while iOS is being asked; elsewhere the answer is already no.
+  const [available, setAvailable] = useState<boolean | null>(
+    Platform.OS === 'ios' ? null : false,
+  );
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -61,7 +71,10 @@ export function AppleSignInButton({ onCredential, onError }: AppleSignInButtonPr
       .then((result) => {
         if (active) setAvailable(result);
       })
-      .catch(onError);
+      .catch((error: unknown) => {
+        if (active) setAvailable(false);
+        onError(error);
+      });
     return () => {
       active = false;
     };
@@ -69,7 +82,8 @@ export function AppleSignInButton({ onCredential, onError }: AppleSignInButtonPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!available) return null;
+  if (available === null) return null;
+  if (!available) return <UnavailableSignInButton provider="apple" />;
 
   const signIn = async () => {
     try {

@@ -3,8 +3,10 @@
  *
  * Four ways in: create an account, sign in with email, Sign in with Apple
  * (iOS, when available), Continue with Google (when a client id is
- * configured). The OAuth routes create an account transparently on first use
- * (Acceptance Scenario 1.2), so they sit here rather than behind "Sign in".
+ * configured). A provider that cannot work on this build or platform is shown
+ * disabled and marked "Coming soon" rather than hidden (spec Edge Cases,
+ * Authentication). The OAuth routes create an account transparently on first
+ * use (Acceptance Scenario 1.2), so they sit here rather than behind "Sign in".
  *
  * On success nothing is navigated: the session store flips and the root
  * layout's `Stack.Protected` swaps this group for the tabs

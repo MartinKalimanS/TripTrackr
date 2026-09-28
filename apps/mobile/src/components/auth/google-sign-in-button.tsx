@@ -20,8 +20,9 @@
  * Client ids are public identifiers, read from `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID`
  * — written out in full each time, as https://docs.expo.dev/guides/environment-variables.md
  * requires for build-time inlining. When the current platform's id is absent
- * the button is not rendered at all: the hook throws on a missing client id,
- * so the check must happen BEFORE the hook is called (hence two components).
+ * a disabled "Coming soon" placeholder stands in (`UnavailableSignInButton`):
+ * the hook throws on a missing client id, so the check must happen BEFORE the
+ * hook is called (hence two components).
  */
 import * as Google from 'expo-auth-session/providers/google';
 import { useEffect, useRef } from 'react';
@@ -30,6 +31,8 @@ import { Platform, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { PressableSurface } from '@/components/ui/pressable-surface';
 import { Spacing } from '@/constants/theme';
+
+import { UnavailableSignInButton } from './unavailable-sign-in-button';
 
 function clientIds(): {
   iosClientId: string | undefined;
@@ -93,7 +96,7 @@ function ConfiguredGoogleSignInButton({
 }
 
 export function GoogleSignInButton(props: GoogleSignInButtonProps) {
-  if (!isGoogleSignInConfigured()) return null;
+  if (!isGoogleSignInConfigured()) return <UnavailableSignInButton provider="google" />;
   return <ConfiguredGoogleSignInButton {...props} />;
 }
 
