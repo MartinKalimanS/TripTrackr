@@ -11,8 +11,6 @@
     "@shopify/flash-list": "2.0.2",
     "@tanstack/react-query": "^5.102.8",
     "@triptrackr/contracts": "*",
-    "@turf/great-circle": "^7.4.0",
-    "@turf/helpers": "^7.4.0",
     "date-fns": "^4.4.0",
     "decimal.js": "^10.6.0",
     "drizzle-orm": "^0.45.2",

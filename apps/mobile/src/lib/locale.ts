@@ -10,6 +10,8 @@
  */
 import { getLocales } from 'expo-localization';
 
+export type MeasurementSystem = 'metric' | 'us' | 'uk';
+
 export interface DeviceLocale {
   /** BCP 47, e.g. "de-AT". */
   languageTag: string;
@@ -17,6 +19,8 @@ export interface DeviceLocale {
   decimalSeparator: string;
   /** The region's currency, or null when the platform cannot say. */
   currencyCode: string | null;
+  /** How the region measures; travel distances are miles in `us` and `uk`. */
+  measurementSystem: MeasurementSystem;
 }
 
 export function deviceLocale(): DeviceLocale {
@@ -25,6 +29,7 @@ export function deviceLocale(): DeviceLocale {
     languageTag: first?.languageTag ?? 'en',
     decimalSeparator: first?.decimalSeparator ?? '.',
     currencyCode: first?.currencyCode ?? null,
+    measurementSystem: first?.measurementSystem ?? 'metric',
   };
 }
 
@@ -60,4 +65,35 @@ export function formatMoney(
 /** "1 EUR = 0.888889 CHF" — the disclosure FR-026 asks for. */
 export function describeRate(from: string, rate: string, to: string): string {
   return `1 ${from} = ${rate} ${to}`;
+}
+
+const KM_PER_MILE = 1.609344;
+
+export interface FormattedDistance {
+  /** "12,346 km" — for the screen. */
+  text: string;
+  /** "12,346 kilometres" — for a screen reader, which may spell "km" out letter by letter. */
+  spoken: string;
+}
+
+/**
+ * A travel distance in whole units of the device's measurement system (FR-050,
+ * research D-30), grouped in its locale. The unit is appended rather than
+ * formatted with `Intl`'s `unit` style, whose support varies across Hermes
+ * builds; grouping is all `Intl` is asked for.
+ */
+export function formatDistance(
+  km: number,
+  locale: DeviceLocale = deviceLocale(),
+): FormattedDistance {
+  const miles = locale.measurementSystem !== 'metric';
+  const value = Math.round(miles ? km / KM_PER_MILE : km);
+  const figure = new Intl.NumberFormat(locale.languageTag, {
+    maximumFractionDigits: 0,
+  }).format(value);
+  const word = miles ? 'mile' : 'kilometre';
+  return {
+    text: `${figure} ${miles ? 'mi' : 'km'}`,
+    spoken: `${figure} ${value === 1 ? word : `${word}s`}`,
+  };
 }

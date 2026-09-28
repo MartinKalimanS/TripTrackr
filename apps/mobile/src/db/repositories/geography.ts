@@ -11,7 +11,7 @@
  * via `ascii_name`, ranked by population so well-known cities come first.
  */
 import type { City, Country } from '@triptrackr/contracts';
-import { and, asc, desc, eq, like, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, like, or, sql } from 'drizzle-orm';
 
 import type { AppDatabase } from '@/db/client';
 import { cities, countries, type CityRow, type CountryRow } from '@/db/schema';
@@ -103,9 +103,20 @@ function searchCities(db: AppDatabase, countryId: number, query: string): CityRo
     .all();
 }
 
+/**
+ * How many cities are cached. The value hardly matters: as a live query it
+ * re-runs whenever the `cities` table changes, which is what tells a screen
+ * whose own query joins `cities` — the globe — to re-read (`useLiveQuery`
+ * subscribes to a query's FROM table only).
+ */
+function cityCountQuery(db: AppDatabase) {
+  return db.select({ count: count() }).from(cities);
+}
+
 export const geographyRepository = {
   cacheCountries,
   cacheCities,
   listCountries,
   searchCities,
+  cityCountQuery,
 };

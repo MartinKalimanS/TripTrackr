@@ -155,6 +155,7 @@ describe('locale (research D-27)', () => {
       languageTag: 'en-GB',
       decimalSeparator: '.',
       currencyCode: 'GBP',
+      measurementSystem: 'metric',
     });
   });
 

@@ -252,18 +252,56 @@ jest.mock('expo-screen-capture', () => ({
   usePreventScreenCapture: jest.fn(),
 }));
 
-// Mapbox draws through a native view; the globe suites assert on props, not pixels.
-jest.mock('@rnmapbox/maps', () => ({
-  __esModule: true,
-  default: { setAccessToken: jest.fn() },
-  MapView: 'MapView',
-  Camera: 'Camera',
-  ShapeSource: 'ShapeSource',
-  LineLayer: 'LineLayer',
-  CircleLayer: 'CircleLayer',
-  SymbolLayer: 'SymbolLayer',
-  StyleURL: { Dark: 'mapbox://styles/mapbox/dark-v11' },
-}));
+// Mapbox draws through native views; the globe suites assert on the props the
+// app hands it, not on pixels. Each component becomes a View tagged
+// `mapbox-<Kind>-<id>` (or the testID it was given) carrying every prop, so a
+// suite can read a source's `shape` or a layer's `filter` and fire `onPress`
+// with the `{ features }` payload the native side delivers. A layer's `style`
+// is Mapbox style properties, not a React Native style, so it travels as
+// `layerStyle`. `setAccessToken` resolves with the token, as the native module
+// does (@rnmapbox/maps 10.3.5, RNMBXModule.setAccessToken).
+jest.mock('@rnmapbox/maps', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+  // Untyped on purpose: the stand-in forwards Mapbox props a View does not declare.
+  const Host = View as unknown as React.ComponentType<Record<string, unknown>>;
+  const standIn = (kind: string) => {
+    const StandIn = ({
+      children,
+      style,
+      testID,
+      ...props
+    }: {
+      children?: React.ReactNode;
+      style?: unknown;
+      testID?: string;
+      id?: string;
+    }) =>
+      React.createElement(
+        Host,
+        {
+          ...props,
+          testID: testID ?? (props.id ? `mapbox-${kind}-${props.id}` : `mapbox-${kind}`),
+          ...(kind === 'MapView' ? { style } : { layerStyle: style }),
+        },
+        children,
+      );
+    StandIn.displayName = kind;
+    return StandIn;
+  };
+  const Mapbox = {
+    setAccessToken: jest.fn(async (token: string | null) => token),
+    setTelemetryEnabled: jest.fn(),
+    MapView: standIn('MapView'),
+    Camera: standIn('Camera'),
+    StyleImport: standIn('StyleImport'),
+    ShapeSource: standIn('ShapeSource'),
+    LineLayer: standIn('LineLayer'),
+    CircleLayer: standIn('CircleLayer'),
+    SymbolLayer: standIn('SymbolLayer'),
+  };
+  return { __esModule: true, default: Mapbox, ...Mapbox };
+});
 
 afterEach(() => {
   jest.clearAllMocks();

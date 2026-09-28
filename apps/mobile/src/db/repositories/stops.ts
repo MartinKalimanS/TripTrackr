@@ -139,6 +139,36 @@ function allActiveQuery(db: AppDatabase) {
     .orderBy(asc(tripStops.trip_id), asc(tripStops.sort_order));
 }
 
+/**
+ * Every live stop with its cached city's position and country — what the
+ * globe draws (research D-30). Ordered as the server pairs stops into arcs
+ * (arcs.service.ts: `sort_order, created_at, id`), so both sides draw the same
+ * legs even when two stops share a position. Null place columns mean the city
+ * is not cached on this device. Live-queryable.
+ */
+function allWithPlaceQuery(db: AppDatabase) {
+  return db
+    .select({
+      id: tripStops.id,
+      trip_id: tripStops.trip_id,
+      city_id: tripStops.city_id,
+      arrive_date: tripStops.arrive_date,
+      depart_date: tripStops.depart_date,
+      country_id: cities.country_id,
+      lat: cities.lat,
+      lng: cities.lng,
+    })
+    .from(tripStops)
+    .leftJoin(cities, eq(cities.id, tripStops.city_id))
+    .where(isNull(tripStops.deleted_at))
+    .orderBy(
+      asc(tripStops.trip_id),
+      asc(tripStops.sort_order),
+      asc(tripStops.created_at),
+      asc(tripStops.id),
+    );
+}
+
 function liveStopsOf(db: AppDatabase, tripId: string): TripStopRow[] {
   return db
     .select()
@@ -226,6 +256,7 @@ function remove(db: AppDatabase, id: string): void {
 export const stopsRepository = {
   forTripQuery,
   allActiveQuery,
+  allWithPlaceQuery,
   add,
   updateDates,
   move,

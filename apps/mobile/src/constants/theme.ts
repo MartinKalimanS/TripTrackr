@@ -149,3 +149,64 @@ export const SplashBackground = '#208AEF';
 
 /** Platform minimum touch target, independent of visible decoration (FR-011). */
 export const MinTouchTarget = Platform.select({ ios: 44, android: 48 }) ?? 44;
+
+/**
+ * The globe palette — feature 001 User Story 3, research D-30.
+ *
+ * A separate group from `Colors` because these tones sit on map imagery, not
+ * on the canvas, and imagery has no single colour to measure against. Every
+ * connection is therefore drawn over a `casing` line, and the gate
+ * (test/theme/globe-contrast-gate.test.ts) measures each status colour against
+ * that casing: 3:1 for a graphical object (WCAG 1.4.11), whatever lies beneath.
+ * Keys match the trip statuses so a layer can index by status directly.
+ */
+export const GlobeColors = {
+  light: {
+    casing: '#FFFFFF',
+    active: '#2456C7', //  6.50:1 vs casing
+    planning: '#9A5B00', //  5.43:1 vs casing
+    past: '#6B7482', //  4.72:1 vs casing
+  },
+  dark: {
+    casing: '#101318',
+    active: '#7FA8FF', //  7.93:1 vs casing
+    planning: '#F2B45C', // 10.15:1 vs casing
+    past: '#8C96A5', //  6.22:1 vs casing
+  },
+} as const;
+
+/**
+ * Globe geometry, in points. Status is carried by more than hue (feature 002
+ * FR-010): past trips are the thinnest line, planned trips are dashed, active
+ * trips are the thickest — and the one that animates carries the beacon.
+ */
+export const GlobeGeometry = {
+  arcWidth: { past: 1.5, planning: 2.5, active: 3.5 },
+  /** Casing visible on EACH side of a line. */
+  casingWidth: 1.5,
+  /** Dash and gap, in line widths. Round caps take one width out of each gap. */
+  planningDash: [2, 2],
+  markerRadius: 4,
+  markerRing: 1.5,
+  beaconRadius: 7,
+  beaconRing: 2,
+} as const;
+
+/**
+ * The basemap (research D-30): Mapbox Standard, `faded` so the connections
+ * rather than the map are the subject (feature 002 FR-024), lit to follow the
+ * app theme (FR-023). The URL is Mapbox's v11 Standard style; rnmapbox's own
+ * `StyleURL` enum still names the v10-era styles.
+ */
+export const GlobeBasemap = {
+  styleURL: 'mapbox://styles/mapbox/standard',
+  theme: 'faded',
+  lightPreset: { light: 'day', dark: 'night' },
+} as const;
+
+/** Where the globe opens: the whole sphere in view, the animated trip centred. */
+export const GlobeCamera = {
+  zoomLevel: 1.4,
+  /** Only when nothing is placed — the home screen does not mount the map then. */
+  fallbackCenter: [0, 20] as [number, number],
+} as const;

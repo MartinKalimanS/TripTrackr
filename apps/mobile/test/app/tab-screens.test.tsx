@@ -1,10 +1,12 @@
 /**
- * The `(tabs)` screens: home (globe placeholder), trips (T066), profile (T065).
+ * The `(tabs)` screens: home (the globe, T099), trips (T066), profile (T065).
  *
- * The live-query hooks are mocked; their own suite runs them against a real
- * database. What is pinned here is presentation: every state is designed
- * (FR-027), the status is text + icon (FR-010/FR-013), a locally written trip
- * carries the pending marker, and the profile can sign out.
+ * The live-query hooks are mocked; their own suites run them against a real
+ * database, and the globe itself has its own suite
+ * (src/components/globe/__tests__/globe-view.test.tsx). What is pinned here
+ * is presentation: every state is designed (FR-027), the status is text + icon
+ * (FR-010/FR-013), a locally written trip carries the pending marker, and the
+ * profile can sign out.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
@@ -12,14 +14,43 @@ import HomeScreen from '@/app/(tabs)/index';
 import ProfileScreen from '@/app/(tabs)/profile';
 import TripsScreen from '@/app/(tabs)/trips';
 import { useSessionStore } from '@/features/auth/session-store';
+import type { GlobeTrip } from '@/features/globe/globe-data';
+import type { GlobeData } from '@/features/globe/use-globe';
 import type { TripSummary } from '@/features/trips/use-trips';
 
 // `mock`-prefixed so Jest's hoisted factory may reference it.
 const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush, back: jest.fn(), replace: jest.fn() }),
+  useRouter: () => ({
+    push: mockPush,
+    navigate: mockNavigate,
+    back: jest.fn(),
+    replace: jest.fn(),
+  }),
 }));
+
+const mockGlobe: { data: GlobeData; loading: boolean; error: Error | null } = {
+  data: { trips: [], focus: [], summary: { countriesVisited: 0, distanceKm: 0 } },
+  loading: false,
+  error: null,
+};
+
+jest.mock('@/features/globe/use-globe', () => ({
+  useGlobe: () => mockGlobe,
+}));
+
+// The map is native; its own suite asserts what it hands Mapbox. Here it is a
+// marker carrying the props the screen chose.
+jest.mock('@/components/globe/globe-view', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+  return {
+    GlobeView: (props: Record<string, unknown>) =>
+      React.createElement(View, { testID: 'globe-view', ...props }),
+  };
+});
 
 // A mutable stand-in so one suite can cover both an embedded config and its
 // absence without `jest.resetModules()`, which would load a second React and
@@ -97,34 +128,97 @@ function summary(
   };
 }
 
+function globeTrip(id: string, placed: boolean): GlobeTrip {
+  return {
+    id,
+    title: id,
+    status: 'active',
+    stops: [
+      {
+        id: `${id}-stop`,
+        cityId: 1,
+        countryId: placed ? 39 : null,
+        arriveDate: '2026-05-10',
+        departDate: '2026-05-12',
+        coordinate: placed ? [12.4964, 41.9028] : null,
+      },
+    ],
+  };
+}
+
 beforeEach(() => {
   mockConstants.expoConfig = { version: '1.2.3', ios: { buildNumber: '45' } };
   mockTrips.data = [];
   mockTrips.loading = false;
   mockTrips.error = null;
+  mockGlobe.data = {
+    trips: [],
+    focus: [],
+    summary: { countriesVisited: 0, distanceKm: 0 },
+  };
+  mockGlobe.loading = false;
+  mockGlobe.error = null;
+  mockPush.mockReset();
+  mockNavigate.mockReset();
   mockSignOut.mutate.mockReset();
   mockSignOut.isPending = false;
   mockSignOut.error = null;
   useSessionStore.setState({ status: 'signed-in', user: profile });
 });
 
-describe('<HomeScreen> — globe placeholder', () => {
-  test('shows a designed empty state rather than a blank canvas (FR-027)', async () => {
+describe('<HomeScreen> — the globe (T099, FR-045, FR-051)', () => {
+  test('shows a designed loading state while the store has not answered (FR-027)', async () => {
+    mockGlobe.loading = true;
     await render(<HomeScreen />);
-    expect(screen.getByText('Your globe is waiting for its first trip')).toBeTruthy();
+    expect(screen.getByLabelText('Loading your globe')).toBeTruthy();
+    expect(screen.queryByTestId('globe-view')).toBeNull();
   });
 
-  test('offers "Plan a trip" and opens the add-trip modal', async () => {
+  test('shows a designed error state, never the raw error', async () => {
+    mockGlobe.error = new Error('database is locked');
     await render(<HomeScreen />);
+    expect(screen.getByText('Couldn’t read your trips')).toBeTruthy();
+    expect(screen.queryByText('database is locked')).toBeNull();
+  });
+
+  test('with no trips, invites the first one instead of a blank sphere (FR-051)', async () => {
+    await render(<HomeScreen />);
+    expect(screen.getByText('Your globe is waiting for its first trip')).toBeTruthy();
+    expect(screen.queryByTestId('globe-view')).toBeNull();
+
     await fireEvent.press(screen.getByLabelText('Plan a trip'));
     expect(mockPush).toHaveBeenCalledWith('/modal/add-trip');
   });
 
-  test('does not mount a MapView yet — the globe arrives in US3 (T093)', () => {
-    const source = jest
-      .requireActual('fs')
-      .readFileSync(require.resolve('@/app/(tabs)/index'), 'utf8') as string;
-    expect(source).not.toMatch(/@rnmapbox\/maps|MapView/);
+  test('with trips but nothing to place, sends the traveller to add a stop', async () => {
+    mockGlobe.data = { ...mockGlobe.data, trips: [globeTrip('no-city-yet', false)] };
+    await render(<HomeScreen />);
+    expect(screen.getByText('Your trips need a first stop')).toBeTruthy();
+    expect(screen.queryByTestId('globe-view')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('home-open-trips'));
+    expect(mockNavigate).toHaveBeenCalledWith('/trips');
+  });
+
+  test('with something to place, is the globe with its statistics (FR-045, FR-050)', async () => {
+    const trips = [globeTrip('italy', true), globeTrip('elsewhere', false)];
+    mockGlobe.data = {
+      trips,
+      focus: ['italy'],
+      summary: { countriesVisited: 1, distanceKm: 230.9 },
+    };
+    await render(<HomeScreen />);
+
+    const globe = screen.getByTestId('globe-view');
+    expect(globe.props.trips).toBe(trips);
+    expect(globe.props.focus).toEqual(['italy']);
+    // The same calendar day the statuses were derived with (useGlobe(today)).
+    expect(globe.props.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(globe.props.accessibilityLabel).toBe(
+      'Globe showing 2 trips across 1 country. Every trip is also listed in the Trips tab.',
+    );
+    expect(screen.getByTestId('globe-stat-countries')).toHaveTextContent('1');
+    expect(screen.getByTestId('globe-stat-distance')).toHaveTextContent('231 km');
   });
 });
 

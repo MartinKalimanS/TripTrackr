@@ -1,0 +1,341 @@
+/**
+ * The globe — T093 (one MapView, globe projection), T094 (the arc source),
+ * T095 (per-status layers and the animated trip), T096 (tap to open);
+ * FR-045 to FR-047, research D-06 and D-30.
+ *
+ * Mapbox renders natively, so these suites assert on what the app HANDS it:
+ * the props of each Mapbox component, stood in for by tagged views in
+ * jest.setup.ts. Pixels are the Maestro flow's job (e2e/03-globe.yaml).
+ */
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+
+import {
+  Colors,
+  GlobeBasemap,
+  GlobeCamera,
+  GlobeColors,
+  MinTouchTarget,
+} from '@/constants/theme';
+import {
+  toGlobeTrips,
+  type GlobeStopRow,
+  type GlobeTrip,
+} from '@/features/globe/globe-data';
+import type { AppearanceContext } from '@/hooks/use-appearance';
+
+import { arcCollection, cameraCenter, markerCollection } from '../arc-features';
+import { BEACON_FRAME_MS, LEG_DURATION_MS } from '../arc-styles';
+import { GlobeView } from '../globe-view';
+
+jest.mock('@/hooks/use-appearance');
+jest.mock('@/lib/sentry', () => ({
+  Sentry: { captureException: jest.fn() },
+  initSentry: jest.fn(),
+}));
+
+const mockPush = jest.fn();
+const mockFocus = { focused: true, appActive: true };
+
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: mockPush }),
+  useIsFocused: () => mockFocus.focused,
+}));
+
+jest.mock('@/hooks/use-app-active', () => ({
+  useAppActive: () => mockFocus.appActive,
+}));
+
+// Start-up itself (token, then telemetry) is pinned in test/lib/mapbox.test.ts
+// and the waiting in src/hooks/use-mapbox-ready.test.ts; here it is a switch.
+const mockMapbox: { state: 'starting' | 'ready' | 'unavailable' } = { state: 'ready' };
+
+jest.mock('@/hooks/use-mapbox-ready', () => ({
+  useMapboxReady: () => mockMapbox.state,
+}));
+
+const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
+  useAppearance: jest.Mock<AppearanceContext, []>;
+};
+
+function mockAppearance(overrides: Partial<AppearanceContext> = {}) {
+  const theme = overrides.theme ?? 'light';
+  useAppearance.mockReturnValue({
+    theme,
+    prefersMoreContrast: false,
+    prefersLessMotion: false,
+    prefersLessTransparency: false,
+    fontScale: 1,
+    elevationProfile: 'full',
+    tokens: Colors[theme],
+    ...overrides,
+  } as AppearanceContext);
+}
+
+const TODAY = '2026-05-10';
+const ROME = { city_id: 1, country_id: 39, lng: 12.4964, lat: 41.9028 };
+const FLORENCE = { city_id: 2, country_id: 39, lng: 11.2558, lat: 43.7696 };
+const VENICE = { city_id: 3, country_id: 39, lng: 12.3155, lat: 45.4408 };
+const PARIS = { city_id: 4, country_id: 33, lng: 2.3522, lat: 48.8566 };
+
+let n = 0;
+function stop(
+  tripId: string,
+  city: typeof ROME,
+  arrive: string,
+  depart = arrive,
+): GlobeStopRow {
+  n += 1;
+  return {
+    id: `s${n}`,
+    trip_id: tripId,
+    arrive_date: arrive,
+    depart_date: depart,
+    ...city,
+  };
+}
+
+/** An active Italian trip (animated) and a past French one (static). */
+function sampleTrips(): GlobeTrip[] {
+  return toGlobeTrips(
+    [
+      { id: 'italy', title: 'Italy' },
+      { id: 'france', title: 'France' },
+    ],
+    [
+      stop('italy', ROME, '2026-05-08', '2026-05-09'),
+      stop('italy', FLORENCE, '2026-05-09', '2026-05-12'),
+      stop('italy', VENICE, '2026-05-12', '2026-05-14'),
+      stop('france', PARIS, '2025-03-01'),
+      stop('france', ROME, '2025-03-04'),
+    ],
+    TODAY,
+  );
+}
+
+const LABEL = 'Globe of your travels: 2 trips.';
+
+async function renderGlobe(trips = sampleTrips(), focus = ['italy']) {
+  return render(
+    <GlobeView trips={trips} focus={focus} accessibilityLabel={LABEL} today={TODAY} />,
+  );
+}
+
+const beaconCoordinates = () =>
+  screen
+    .getByTestId('mapbox-ShapeSource-globe-beacons')
+    .props.shape.features.map(
+      (f: { geometry: { coordinates: number[] } }) => f.geometry.coordinates,
+    );
+
+/**
+ * The beacon's own interval, told apart from React's internal timers by its
+ * frame period — `jest.getTimerCount()` counts those too.
+ */
+function watchBeaconTimer() {
+  const set = jest.spyOn(global, 'setInterval');
+  const clear = jest.spyOn(global, 'clearInterval');
+  return {
+    started: () =>
+      set.mock.calls.flatMap((call, i) =>
+        call[1] === BEACON_FRAME_MS ? [set.mock.results[i]!.value] : [],
+      ),
+    cleared: () => clear.mock.calls.map(([id]) => id),
+    restore: () => {
+      set.mockRestore();
+      clear.mockRestore();
+    },
+  };
+}
+
+beforeEach(() => {
+  mockAppearance();
+  mockPush.mockReset();
+  mockFocus.focused = true;
+  mockFocus.appActive = true;
+  mockMapbox.state = 'ready';
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+describe('<GlobeView> — the map (T093, FR-045)', () => {
+  test('is ONE MapView with the globe projection on the Standard basemap', async () => {
+    await renderGlobe();
+    const maps = screen.getAllByTestId('globe-map');
+    expect(maps).toHaveLength(1);
+    expect(maps[0]!.props.projection).toBe('globe');
+    expect(maps[0]!.props.styleURL).toBe(GlobeBasemap.styleURL);
+  });
+
+  test('keeps the Mapbox logo and attribution, as Mapbox’s terms require', async () => {
+    await renderGlobe();
+    const map = screen.getByTestId('globe-map');
+    expect(map.props.logoEnabled).not.toBe(false);
+    expect(map.props.attributionEnabled).not.toBe(false);
+  });
+
+  test.each([
+    ['light', 'day'],
+    ['dark', 'night'],
+  ] as const)(
+    'the %s theme lights the basemap for %s (FR-023)',
+    async (theme, preset) => {
+      mockAppearance({ theme });
+      await renderGlobe();
+      expect(screen.getByTestId('mapbox-StyleImport-basemap').props).toMatchObject({
+        existing: true,
+        config: { lightPreset: preset, theme: GlobeBasemap.theme },
+      });
+    },
+  );
+
+  test('opens centred on the animated trip', async () => {
+    const trips = sampleTrips();
+    await renderGlobe(trips);
+    expect(screen.getByTestId('mapbox-Camera').props.defaultSettings).toEqual({
+      centerCoordinate: cameraCenter(trips, ['italy']),
+      zoomLevel: GlobeCamera.zoomLevel,
+    });
+  });
+
+  test('is announced as one summarised image, because a screen reader cannot enter a map', async () => {
+    await renderGlobe();
+    const map = screen.getByTestId('globe-map');
+    expect(map.props.accessible).toBe(true);
+    expect(map.props.accessibilityRole).toBe('image');
+    expect(map.props.accessibilityLabel).toBe(LABEL);
+  });
+
+  test('mounts no map until Mapbox is configured — token set, telemetry off', async () => {
+    mockMapbox.state = 'starting';
+    await renderGlobe();
+    expect(screen.queryByTestId('globe-map')).toBeNull();
+    expect(screen.getByLabelText('Preparing the globe')).toBeTruthy();
+  });
+
+  test('without a usable Mapbox token, shows a designed error instead of a blank map', async () => {
+    mockMapbox.state = 'unavailable';
+    await renderGlobe();
+    expect(screen.queryByTestId('globe-map')).toBeNull();
+    expect(screen.getByText('The globe can’t load in this build')).toBeTruthy();
+  });
+});
+
+describe('<GlobeView> — the arc source and its layers (T094, T095)', () => {
+  test('draws the derived arcs and stop markers, tappable across a full touch target', async () => {
+    const trips = sampleTrips();
+    await renderGlobe(trips);
+
+    const arcs = screen.getByTestId('mapbox-ShapeSource-globe-arcs');
+    const markers = screen.getByTestId('mapbox-ShapeSource-globe-markers');
+    expect(arcs.props.shape).toEqual(arcCollection(trips));
+    expect(markers.props.shape).toEqual(markerCollection(trips));
+    for (const source of [arcs, markers]) {
+      expect(source.props.hitbox).toEqual({
+        width: MinTouchTarget,
+        height: MinTouchTarget,
+      });
+    }
+  });
+
+  test('stacks casing, then past, planned and active lines, so the active trip is on top', async () => {
+    await renderGlobe();
+    const layers = screen
+      .getAllByTestId(/^mapbox-LineLayer-/)
+      .map((node) => node.props.id);
+    expect(layers).toEqual([
+      'globe-arc-casing',
+      'globe-arc-past',
+      'globe-arc-planning',
+      'globe-arc-active',
+    ]);
+    expect(
+      screen.getByTestId('mapbox-LineLayer-globe-arc-planning').props.filter,
+    ).toEqual(['==', ['get', 'status'], 'planning']);
+  });
+
+  test('uses the globe palette of the current theme', async () => {
+    mockAppearance({ theme: 'dark' });
+    await renderGlobe();
+    expect(
+      screen.getByTestId('mapbox-LineLayer-globe-arc-active').props.layerStyle.lineColor,
+    ).toBe(GlobeColors.dark.active);
+  });
+});
+
+describe('<GlobeView> — tapping opens the trip (T096, FR-047)', () => {
+  test('a tap on an arc opens that trip', async () => {
+    await renderGlobe();
+    await fireEvent(screen.getByTestId('mapbox-ShapeSource-globe-arcs'), 'press', {
+      features: [{ type: 'Feature', properties: { trip_id: 'france', status: 'past' } }],
+    });
+    expect(mockPush).toHaveBeenCalledWith('/trip/france');
+  });
+
+  test('a tap on a stop marker opens that trip too — a single-stop trip has nothing else', async () => {
+    await renderGlobe();
+    await fireEvent(screen.getByTestId('mapbox-ShapeSource-globe-markers'), 'press', {
+      features: [{ type: 'Feature', properties: { trip_id: 'italy', status: 'active' } }],
+    });
+    expect(mockPush).toHaveBeenCalledWith('/trip/italy');
+  });
+});
+
+describe('<GlobeView> — the animated trip (T095, FR-046)', () => {
+  test('its beacon travels along the route while the globe is on screen', async () => {
+    jest.useFakeTimers();
+    await renderGlobe();
+    const start = beaconCoordinates();
+    expect(start).toEqual([[12.4964, 41.9028]]);
+
+    await act(async () => {
+      jest.advanceTimersByTime(LEG_DURATION_MS / 2);
+    });
+    expect(beaconCoordinates()).not.toEqual(start);
+  });
+
+  test('stops its timer when the globe unmounts', async () => {
+    jest.useFakeTimers();
+    const timer = watchBeaconTimer();
+    const view = await renderGlobe();
+    const [id] = timer.started();
+    expect(timer.started()).toHaveLength(1);
+
+    await view.unmount();
+    expect(timer.cleared()).toContain(id);
+    timer.restore();
+  });
+
+  test('under reduced motion, rests at today’s stop and never starts a timer', async () => {
+    jest.useFakeTimers();
+    const timer = watchBeaconTimer();
+    mockAppearance({ prefersLessMotion: true });
+    await renderGlobe();
+
+    expect(beaconCoordinates()).toEqual([[11.2558, 43.7696]]);
+    await act(async () => {
+      jest.advanceTimersByTime(LEG_DURATION_MS);
+    });
+    expect(beaconCoordinates()).toEqual([[11.2558, 43.7696]]);
+    expect(timer.started()).toEqual([]);
+    timer.restore();
+  });
+
+  test.each([
+    ['another tab is showing', { focused: false, appActive: true }],
+    ['the app is in the background', { focused: true, appActive: false }],
+  ])('pauses while %s', async (_case, state) => {
+    jest.useFakeTimers();
+    const timer = watchBeaconTimer();
+    Object.assign(mockFocus, state);
+    await renderGlobe();
+    expect(timer.started()).toEqual([]);
+    timer.restore();
+  });
+
+  test('with nothing to animate, no beacon is drawn at all', async () => {
+    await renderGlobe(sampleTrips(), []);
+    expect(screen.queryByTestId('mapbox-ShapeSource-globe-beacons')).toBeNull();
+  });
+});

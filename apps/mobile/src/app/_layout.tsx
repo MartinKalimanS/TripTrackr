@@ -33,11 +33,17 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { LocalStoreProvider, useOpenDatabase } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useAppearance } from '@/hooks/use-appearance';
+import { configureMapbox } from '@/lib/mapbox';
 import { Sentry, initSentry } from '@/lib/sentry';
 
 // FR-073. Called at module scope so that a crash during the first render is
 // still captured — an init inside a component runs too late to see it.
 initSentry();
+
+// Research D-30: hand Mapbox its token and switch its telemetry off while the
+// splash is up, so the globe rarely has to wait for it. The globe itself still
+// waits on the result (`useMapboxReady`); this only starts the work early.
+void configureMapbox();
 
 // Keep the native splash up until the session has been read (v57 SplashScreen
 // reference: call in global scope, without awaiting). A rejection here means
