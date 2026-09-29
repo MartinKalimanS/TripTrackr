@@ -10,6 +10,12 @@
  * SDK puts them — Mapbox's terms require both — and nothing is drawn over the
  * map but the connections themselves (feature 002 contract C12).
  *
+ * Close in (User Story 4), terrain relief rises from city scale
+ * (`TerrainLayers`), the basemap stands its 3D buildings up at street level,
+ * and the camera tilts to show them once it settles (`useAutoPitch`,
+ * camera.ts) — all inside the same view, so nothing swaps as the traveller
+ * descends.
+ *
  * A screen reader cannot enter a native map, so the map is one summarised
  * image to assistive technology, and the Trips tab remains the accessible
  * path to every trip (D-30).
@@ -38,6 +44,8 @@ import {
 } from './arc-features';
 import { ArcSource } from './arc-source';
 import { Beacons } from './beacon';
+import { useAutoPitch } from './camera';
+import { TerrainLayers } from './terrain-layers';
 import { useArcPress } from './use-arc-press';
 
 export type GlobeViewProps = {
@@ -91,6 +99,7 @@ function GlobeMap({
   const focused = useIsFocused();
   const foreground = useAppActive();
   const onPress = useArcPress();
+  const { cameraRef, onMapIdle } = useAutoPitch(!prefersLessMotion);
   const { arcs, markers, beacons, centre } = useGlobeShapes(trips, focus, today);
   const palette = GlobeColors[theme];
 
@@ -101,6 +110,9 @@ function GlobeMap({
       projection="globe"
       styleURL={GlobeBasemap.styleURL}
       scaleBarEnabled={false}
+      pitchEnabled
+      maxPitch={GlobeCamera.maxPitch}
+      onMapIdle={onMapIdle}
       accessible
       accessibilityRole="image"
       accessibilityLabel={accessibilityLabel}>
@@ -110,11 +122,16 @@ function GlobeMap({
         config={{
           theme: GlobeBasemap.theme,
           lightPreset: GlobeBasemap.lightPreset[theme],
+          show3dObjects: true,
         }}
       />
       <Camera
+        ref={cameraRef}
+        minZoomLevel={GlobeCamera.minZoomLevel}
+        maxZoomLevel={GlobeCamera.maxZoomLevel}
         defaultSettings={{ centerCoordinate: centre, zoomLevel: GlobeCamera.zoomLevel }}
       />
+      <TerrainLayers />
       <ArcSource arcs={arcs} markers={markers} palette={palette} onPress={onPress} />
       {beacons.length > 0 ? (
         <Beacons

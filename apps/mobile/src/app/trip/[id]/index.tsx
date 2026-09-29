@@ -158,6 +158,15 @@ export default function TripScreen() {
               style={styles.link}>
               <ThemedText type="smallBold">Spending</ThemedText>
             </PressableSurface>
+            {/* Preparing to travel (US4, T105): each city's map saved for use offline. */}
+            <PressableSurface
+              testID="trip-open-offline-maps"
+              accessibilityLabel="Offline maps for this trip"
+              treatment="raised"
+              onPress={() => router.push(`/trip/${tripId}/offline-maps`)}
+              style={styles.link}>
+              <ThemedText type="smallBold">Offline maps</ThemedText>
+            </PressableSurface>
           </View>
 
           <View style={styles.sectionHeader}>
@@ -238,12 +247,16 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     flexWrap: 'wrap',
   },
+  // Three links share the row; at large text sizes they wrap onto a second
+  // line rather than squeeze their labels (FR-016).
   links: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.three,
   },
   link: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 'auto',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,

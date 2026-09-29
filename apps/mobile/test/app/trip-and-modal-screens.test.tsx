@@ -20,6 +20,7 @@ import { Sentry } from '@/lib/sentry';
 
 // `mock`-prefixed so Jest's hoisted factory may reference them.
 const mockBack = jest.fn();
+const mockPush = jest.fn();
 const mockReplace = jest.fn();
 let mockParams: Record<string, string | string[]> = { id: 'trip-42' };
 
@@ -27,7 +28,7 @@ jest.mock('expo-router', () => {
   const { Pressable, Text } = require('react-native');
   return {
     useRouter: () => ({
-      push: jest.fn(),
+      push: mockPush,
       back: mockBack,
       replace: mockReplace,
       canGoBack: () => true,
@@ -256,6 +257,18 @@ describe('<TripScreen> — trip/[id]', () => {
     await render(<TripScreen />);
     await fireEvent.press(screen.getByLabelText('Back'));
     expect(mockBack).toHaveBeenCalled();
+  });
+
+  test('"Offline maps" opens the trip’s offline maps (T105, FR-044)', async () => {
+    mockStops.data = [rome];
+    await render(<TripScreen />);
+
+    const link = screen.getByTestId('trip-open-offline-maps');
+    expect(link.props.accessibilityLabel).toBe('Offline maps for this trip');
+    expect(link).toHaveTextContent('Offline maps');
+
+    await fireEvent.press(link);
+    expect(mockPush).toHaveBeenCalledWith('/trip/trip-42/offline-maps');
   });
 
   test('move up / move down call the repository and are disabled at the ends (FR-012)', async () => {

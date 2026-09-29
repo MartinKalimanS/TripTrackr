@@ -209,4 +209,40 @@ export const GlobeCamera = {
   zoomLevel: 1.4,
   /** Only when nothing is placed — the home screen does not mount the map then. */
   fallbackCenter: [0, 20] as [number, number],
+  /**
+   * How far the one camera may travel (FR-048): from the whole sphere down to
+   * the streets, where the basemap's buildings stand (FR-049).
+   */
+  minZoomLevel: 1,
+  maxZoomLevel: 18,
+  maxPitch: 60,
+} as const;
+
+/**
+ * The tilt that follows the traveller in (FR-048, FR-049): none on the globe
+ * and at country scale, rising through city scale so terrain and buildings
+ * read as relief at street level. Applied only once the camera settles, and
+ * only to a tilt the app set itself (`components/globe/camera.ts`).
+ */
+export const GlobePitch = {
+  startZoom: 12,
+  fullZoom: 16,
+  max: 50,
+  /** Out at the globe the camera is flattened again, whoever tilted it. */
+  flattenBelowZoom: 6,
+  durationMs: 600,
+} as const;
+
+/**
+ * Terrain relief (FR-049): Mapbox's elevation tiles, flat from afar so the
+ * globe and country scale stay uncluttered, and full relief from city scale.
+ */
+export const GlobeTerrain = {
+  demURL: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+  tileSize: 512,
+  /** The tileset's own maximum; the renderer overzooms beyond it. */
+  maxZoomLevel: 14,
+  startZoom: 9,
+  fullZoom: 12,
+  exaggeration: 1.2,
 } as const;

@@ -259,7 +259,14 @@ jest.mock('expo-screen-capture', () => ({
 // with the `{ features }` payload the native side delivers. A layer's `style`
 // is Mapbox style properties, not a React Native style, so it travels as
 // `layerStyle`. `setAccessToken` resolves with the token, as the native module
-// does (@rnmapbox/maps 10.3.5, RNMBXModule.setAccessToken).
+// does (@rnmapbox/maps 10.3.5, RNMBXModule.setAccessToken); `clearData`, which
+// empties the ambient cache, resolves once done, as both native modules do.
+//
+// `Camera` also answers its ref: every camera shares the recorders on
+// `__camera`, so a suite asserts the stops the app asked for. `offlineManager`
+// keeps packs in memory; `__emitProgress` / `__emitError` play the native
+// download events to the listeners the app registered, and `__reset` empties
+// it between tests (module mocks outlive a single test).
 jest.mock('@rnmapbox/maps', () => {
   const React = require('react') as typeof import('react');
   const { View } = require('react-native') as typeof import('react-native');
@@ -289,16 +296,131 @@ jest.mock('@rnmapbox/maps', () => {
     StandIn.displayName = kind;
     return StandIn;
   };
+
+  const camera = {
+    setCamera: jest.fn(),
+    flyTo: jest.fn(),
+    moveTo: jest.fn(),
+    zoomTo: jest.fn(),
+    fitBounds: jest.fn(),
+  };
+  const CameraView = standIn('Camera');
+  const Camera = React.forwardRef<typeof camera, Record<string, unknown>>(
+    function Camera(props, ref) {
+      React.useImperativeHandle(ref, () => camera);
+      return React.createElement(CameraView, props);
+    },
+  );
+
+  type MockStatus = {
+    name: string;
+    state: number;
+    percentage: number;
+    completedResourceCount: number;
+    completedResourceSize: number;
+    completedTileCount: number;
+    completedTileSize: number;
+    requiredResourceCount: number;
+  };
+  // No parameter names: jest.mock's hoisting check reads them as variables.
+  type MockListener = (...args: unknown[]) => void;
+  type MockPack = {
+    name: string;
+    bounds: string;
+    metadata: unknown;
+    current: MockStatus;
+    status: () => Promise<MockStatus>;
+    pause: () => Promise<void>;
+    resume: () => Promise<void>;
+  };
+  const packs = new Map<string, MockPack>();
+  const listeners = new Map<string, { progress: MockListener; error?: MockListener }>();
+  const makePack = (options: { name: string; bounds: unknown; metadata?: unknown }) => {
+    const pack: MockPack = {
+      name: options.name,
+      bounds: JSON.stringify(options.bounds),
+      metadata: options.metadata ?? {},
+      current: {
+        name: options.name,
+        state: 1,
+        percentage: 0,
+        completedResourceCount: 0,
+        completedResourceSize: 0,
+        completedTileCount: 0,
+        completedTileSize: 0,
+        requiredResourceCount: 0,
+      },
+      status: async () => pack.current,
+      pause: jest.fn(async () => undefined),
+      resume: jest.fn(async () => undefined),
+    };
+    return pack;
+  };
+  const offlineManager = {
+    createPack: jest.fn(
+      async (
+        options: { name: string; bounds: unknown; metadata?: unknown },
+        progress: MockListener,
+        error?: MockListener,
+      ) => {
+        if (packs.has(options.name)) {
+          throw new Error(`Offline pack with name ${options.name} already exists.`);
+        }
+        packs.set(options.name, makePack(options));
+        listeners.set(options.name, { progress, error });
+      },
+    ),
+    getPacks: jest.fn(async () => [...packs.values()]),
+    getPack: jest.fn(async (name: string) => packs.get(name)),
+    deletePack: jest.fn(async (name: string) => {
+      packs.delete(name);
+      listeners.delete(name);
+    }),
+    invalidatePack: jest.fn(async () => undefined),
+    subscribe: jest.fn(
+      async (name: string, progress: MockListener, error?: MockListener) => {
+        listeners.set(name, { progress, error });
+      },
+    ),
+    unsubscribe: jest.fn((name: string) => {
+      listeners.delete(name);
+    }),
+    setTileCountLimit: jest.fn(),
+    setProgressEventThrottle: jest.fn(),
+    resetDatabase: jest.fn(async () => {
+      packs.clear();
+      listeners.clear();
+    }),
+    __emitProgress: (name: string, update: Partial<MockStatus>) => {
+      const pack = packs.get(name);
+      if (!pack) return;
+      pack.current = { ...pack.current, ...update };
+      listeners.get(name)?.progress(pack, pack.current);
+    },
+    __emitError: (name: string, message: string) => {
+      listeners.get(name)?.error?.(packs.get(name), { name, message });
+    },
+    __reset: () => {
+      packs.clear();
+      listeners.clear();
+    },
+  };
+
   const Mapbox = {
     setAccessToken: jest.fn(async (token: string | null) => token),
     setTelemetryEnabled: jest.fn(),
+    clearData: jest.fn(async () => undefined),
     MapView: standIn('MapView'),
-    Camera: standIn('Camera'),
+    Camera,
     StyleImport: standIn('StyleImport'),
     ShapeSource: standIn('ShapeSource'),
     LineLayer: standIn('LineLayer'),
     CircleLayer: standIn('CircleLayer'),
     SymbolLayer: standIn('SymbolLayer'),
+    RasterDemSource: standIn('RasterDemSource'),
+    Terrain: standIn('Terrain'),
+    offlineManager,
+    __camera: camera,
   };
   return { __esModule: true, default: Mapbox, ...Mapbox };
 });

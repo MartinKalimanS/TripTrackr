@@ -14,6 +14,8 @@ import {
   GlobeBasemap,
   GlobeCamera,
   GlobeColors,
+  GlobePitch,
+  GlobeTerrain,
   MinTouchTarget,
 } from '@/constants/theme';
 import {
@@ -26,6 +28,7 @@ import type { AppearanceContext } from '@/hooks/use-appearance';
 import { arcCollection, cameraCenter, markerCollection } from '../arc-features';
 import { BEACON_FRAME_MS, LEG_DURATION_MS } from '../arc-styles';
 import { GlobeView } from '../globe-view';
+import { TERRAIN_SOURCE_ID } from '../terrain-layers';
 
 jest.mock('@/hooks/use-appearance');
 jest.mock('@/lib/sentry', () => ({
@@ -219,6 +222,90 @@ describe('<GlobeView> — the map (T093, FR-045)', () => {
     await renderGlobe();
     expect(screen.queryByTestId('globe-map')).toBeNull();
     expect(screen.getByText('The globe can’t load in this build')).toBeTruthy();
+  });
+});
+
+/** What the native side reports once the camera settles (rnmapbox 10.3.5 `MapState`). */
+function settledAt(zoom: number, pitch = 0) {
+  return {
+    properties: {
+      center: [ROME.lng, ROME.lat],
+      bounds: { ne: [ROME.lng + 1, ROME.lat + 1], sw: [ROME.lng - 1, ROME.lat - 1] },
+      zoom,
+      heading: 0,
+      pitch,
+    },
+    gestures: { isGestureActive: false },
+  };
+}
+
+const camera = () =>
+  (jest.requireMock('@rnmapbox/maps') as { __camera: { setCamera: jest.Mock } }).__camera;
+
+describe('<GlobeView> — close range (T103, T104; FR-048, FR-049)', () => {
+  test('adds terrain relief from Mapbox’s elevation data, flat from afar', async () => {
+    await renderGlobe();
+
+    const dem = screen.getByTestId(`mapbox-RasterDemSource-${TERRAIN_SOURCE_ID}`);
+    expect(dem.props).toMatchObject({
+      url: GlobeTerrain.demURL,
+      tileSize: GlobeTerrain.tileSize,
+      maxZoomLevel: GlobeTerrain.maxZoomLevel,
+    });
+    const terrain = screen.getByTestId('mapbox-Terrain');
+    expect(terrain.props.sourceID).toBe(TERRAIN_SOURCE_ID);
+    expect(terrain.props.layerStyle.exaggeration).toEqual([
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      GlobeTerrain.startZoom,
+      0,
+      GlobeTerrain.fullZoom,
+      GlobeTerrain.exaggeration,
+    ]);
+  });
+
+  test('asks the basemap for its 3D buildings (Acceptance Scenario 4.2)', async () => {
+    await renderGlobe();
+    expect(screen.getByTestId('mapbox-StyleImport-basemap').props.config).toMatchObject({
+      show3dObjects: true,
+    });
+  });
+
+  test('tilts toward street level once the traveller stops zooming in', async () => {
+    await renderGlobe();
+
+    await act(async () => {
+      screen.getByTestId('globe-map').props.onMapIdle(settledAt(GlobePitch.fullZoom));
+    });
+
+    expect(camera().setCamera).toHaveBeenCalledTimes(1);
+    expect(camera().setCamera).toHaveBeenCalledWith({
+      pitch: GlobePitch.max,
+      animationMode: 'easeTo',
+      animationDuration: GlobePitch.durationMs,
+    });
+  });
+
+  test('leaves a tilt the traveller chose by hand alone', async () => {
+    await renderGlobe();
+
+    await act(async () => {
+      screen.getByTestId('globe-map').props.onMapIdle(settledAt(GlobePitch.fullZoom, 20));
+    });
+
+    expect(camera().setCamera).not.toHaveBeenCalled();
+  });
+
+  test('never moves the camera by itself for a traveller who prefers less motion', async () => {
+    mockAppearance({ prefersLessMotion: true });
+    await renderGlobe();
+
+    await act(async () => {
+      screen.getByTestId('globe-map').props.onMapIdle(settledAt(GlobePitch.fullZoom));
+    });
+
+    expect(camera().setCamera).not.toHaveBeenCalled();
   });
 });
 

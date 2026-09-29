@@ -24,6 +24,7 @@ import { z } from 'zod';
 
 import { useSessionStore } from '@/features/auth/session-store';
 import { ApiRequestError, apiFetch } from '@/lib/api-client';
+import { clearOfflineMaps } from '@/lib/mapbox';
 import { clearSession, getSession, setSession } from '@/lib/secure-store';
 import { Sentry } from '@/lib/sentry';
 
@@ -98,7 +99,11 @@ function isExpectedSignOutFailure(error: unknown): boolean {
  * refresh token; if the device is offline the local session is still ended
  * (the server-side token simply ages out) and anything unexpected is reported
  * rather than swallowed. The traveller's local database is left in place —
- * see `db/client.ts` for why.
+ * see `db/client.ts` for why — but the offline city maps are not: Mapbox keeps
+ * them device-wide rather than per account (`clearOfflineMaps`). They go
+ * first, while the session still stands, so a sign-out cut short leaves either
+ * the session or a recorded wipe behind — never an ended session over another
+ * account's saved cities.
  */
 export function useSignOut() {
   return useMutation({
@@ -114,6 +119,7 @@ export function useSignOut() {
           if (!isExpectedSignOutFailure(error)) Sentry.captureException(error);
         }
       }
+      await clearOfflineMaps();
       await clearSession();
       useSessionStore.getState().signOut();
     },

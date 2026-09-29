@@ -3,7 +3,8 @@
  *
  * Everything that must survive an app restart but must never sit in plain
  * storage goes through here: the token pair, the traveller's own profile (it
- * contains their email), and the key that encrypts the local database. The
+ * contains their email), the key that encrypts the local database, and a
+ * sign-out's pending wipe of the offline maps, which must outlive the session. The
  * API client (T039), the session store, and the database client (T041) all
  * import this module rather than `expo-secure-store` directly, so the key
  * names and the "what counts as a session" rule live in exactly one place.
@@ -29,6 +30,7 @@ export const SECURE_KEYS = {
   refreshToken: 'triptrackr.refresh_token',
   dbKey: 'triptrackr.db_key',
   user: 'triptrackr.user',
+  offlineMapsWipe: 'triptrackr.offline_maps_wipe',
 } as const;
 
 export interface StoredTokens {
@@ -111,6 +113,23 @@ export async function clearSession(): Promise<void> {
     SecureStore.deleteItemAsync(SECURE_KEYS.refreshToken, options),
     SecureStore.deleteItemAsync(SECURE_KEYS.user, options),
   ]);
+}
+
+/**
+ * A sign-out's request to wipe this device's offline maps, kept until the
+ * wipe is confirmed (`lib/mapbox.ts`). Deliberately not part of the session:
+ * a sign-out the app closed part-way through is finished at the next start-up.
+ */
+export async function markOfflineMapsWipePending(): Promise<void> {
+  await SecureStore.setItemAsync(SECURE_KEYS.offlineMapsWipe, 'pending', options);
+}
+
+export async function isOfflineMapsWipePending(): Promise<boolean> {
+  return (await SecureStore.getItemAsync(SECURE_KEYS.offlineMapsWipe, options)) !== null;
+}
+
+export async function clearOfflineMapsWipePending(): Promise<void> {
+  await SecureStore.deleteItemAsync(SECURE_KEYS.offlineMapsWipe, options);
 }
 
 function toHex(bytes: Uint8Array): string {

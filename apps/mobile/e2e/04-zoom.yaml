@@ -1,0 +1,189 @@
+# User Story 4 — zoom from the globe into street-level detail (tasks.md T106).
+#
+# The story's Independent Test, end to end: from the globe, zoom continuously
+# into a city with a recorded stop and confirm that the transition is
+# unbroken (FR-048) and that terrain and buildings appear at close range
+# (FR-049). It is the same MapView throughout: `globe-map` is asserted at
+# every step, and no other map ever appears.
+#
+# PREREQUISITES
+# -------------
+# - Those of 03-globe.yaml: a development build with
+#   EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN set, a reachable API, and a geography
+#   catalogue holding Rome (IT).
+# - ANDROID, English device language (the date steps are the suggested
+#   dates, so none are picked here).
+#
+# HOW IT ZOOMS
+# ------------
+# Maestro has no pinch, so the flow double-taps the middle of the map: each
+# double tap zooms in one level around the tapped point. The globe opens
+# centred on the only stop of the active trip (`cameraCenter`: a trip with no
+# route centres on its placed stop), so fifteen double taps land on Rome at
+# street level. A double tap is not a tap: Mapbox reports a map press only
+# for a confirmed single tap, so the stop's marker does not open the trip.
+#
+# OFFLINE
+# -------
+# The last part saves Rome from the trip's offline-maps screen (FR-044), then
+# turns on airplane mode and returns to the globe, still at street level over
+# Rome: the map must keep drawing from the saved pack. Airplane mode is
+# switched back off at the end; a run interrupted there leaves the device
+# offline.
+#
+# WHAT THIS CANNOT PROVE
+# ----------------------
+# That the relief and the buildings LOOK right, or that the offline map is
+# drawn from the pack rather than a cache: the map is native and draws nothing
+# into the accessibility tree. The screenshots `04-zoom-*` and `04-offline-*`
+# are the evidence to review by eye; what the app hands Mapbox (terrain source
+# and exaggeration, 3D objects, the zoom range, the tilt, the pack's bounds and
+# zoom range) is pinned by the unit suites under src/components/globe/__tests__/
+# and test/features/offline-packs.test.ts.
+appId: com.triptrackr.app
+tags:
+  - us4
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    id: 'welcome-screen'
+
+# --- Register ---------------------------------------------------------------
+- evalScript: ${output.email = 'maestro-us4-' + Date.now() + '@example.com'}
+- tapOn:
+    id: 'welcome-create-account'
+- tapOn:
+    id: 'register-display-name'
+- inputText: 'Maestro Street Walker'
+- tapOn:
+    id: 'register-email'
+- inputText: ${output.email}
+- tapOn:
+    id: 'register-password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'register-confirm-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register-submit'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+
+# --- An active trip with one stop in Rome, starting today --------------------
+- tapOn:
+    id: 'home-plan-trip'
+- tapOn:
+    id: 'add-trip-title'
+- inputText: 'Rome weekend'
+- hideKeyboard
+- tapOn:
+    id: 'currency-EUR'
+- tapOn:
+    id: 'add-trip-save'
+- tapOn:
+    id: 'trip-add-stop'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Italy'
+- tapOn:
+    id: 'city-picker-country-IT'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'Rom'
+- tapOn:
+    text: 'Rom(a|e)'
+- tapOn:
+    id: 'stop-editor-save'
+- assertVisible: 'Active'
+- tapOn: 'Back'
+
+# --- The globe, centred on Rome ---------------------------------------------
+- tapOn:
+    id: 'tab-index'
+- extendedWaitUntil:
+    visible:
+      id: 'globe-map'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 04-zoom-globe
+
+# --- Down to the streets, one view all the way (FR-048) ----------------------
+- repeat:
+    times: 6
+    commands:
+      - doubleTapOn:
+          id: 'globe-map'
+          point: '50%,50%'
+- assertVisible:
+    id: 'globe-map'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 04-zoom-country
+- repeat:
+    times: 5
+    commands:
+      - doubleTapOn:
+          id: 'globe-map'
+          point: '50%,50%'
+- assertVisible:
+    id: 'globe-map'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 04-zoom-city-terrain
+- repeat:
+    times: 4
+    commands:
+      - doubleTapOn:
+          id: 'globe-map'
+          point: '50%,50%'
+- assertVisible:
+    id: 'globe-map'
+# Settling tilts the camera toward the buildings (camera.ts `nextPitch`).
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: 04-zoom-street-buildings
+# Still the globe screen, not a second map screen.
+- assertVisible:
+    id: 'tab-bar'
+- assertNotVisible:
+    id: 'trip-screen'
+
+# --- Preparing to travel: save Rome for use offline (Acceptance 4.3) ---------
+- tapOn:
+    id: 'tab-trips'
+- tapOn: 'Rome weekend'
+- tapOn:
+    id: 'trip-open-offline-maps'
+- assertVisible:
+    id: 'offline-maps-screen'
+- tapOn:
+    id: 'offline-download-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'offline-status-.*'
+      text: 'Ready offline.*'
+    timeout: 180000
+- takeScreenshot: 04-offline-ready
+
+# --- No connection: the city still draws, from the saved pack (4.4) ---------
+- setAirplaneMode: enabled
+- tapOn: 'Back'
+- tapOn: 'Back'
+- tapOn:
+    id: 'tab-index'
+- extendedWaitUntil:
+    visible:
+      id: 'globe-map'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: 04-offline-street
+- setAirplaneMode: disabled

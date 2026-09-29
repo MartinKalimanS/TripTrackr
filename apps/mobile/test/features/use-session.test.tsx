@@ -32,7 +32,13 @@ jest.mock('@/lib/sentry', () => ({
   initSentry: jest.fn(),
 }));
 
+// What clearing does, and that it never throws, is pinned in test/lib/mapbox.test.ts.
+jest.mock('@/lib/mapbox', () => ({ clearOfflineMaps: jest.fn(async () => undefined) }));
+
 const { apiFetch } = jest.requireMock('@/lib/api-client') as { apiFetch: jest.Mock };
+const { clearOfflineMaps } = jest.requireMock('@/lib/mapbox') as {
+  clearOfflineMaps: jest.Mock;
+};
 const secureStore = jest.requireMock('expo-secure-store') as { __reset: () => void };
 
 const profile = {
@@ -211,6 +217,31 @@ describe('useSignOut (FR-004)', () => {
       status: 'signed-out',
       user: null,
     });
+  });
+
+  test('forgets the offline cities saved on this device, which are not per account', async () => {
+    apiFetch.mockResolvedValueOnce(undefined);
+    const { result } = await renderHook(() => useSignOut(), { wrapper });
+
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(clearOfflineMaps).toHaveBeenCalledTimes(1);
+  });
+
+  test('forgets them before the session ends, so a sign-out cut short leaves nothing behind', async () => {
+    apiFetch.mockResolvedValueOnce(undefined);
+    let sessionWhileClearing: unknown = 'never cleared';
+    clearOfflineMaps.mockImplementationOnce(async () => {
+      sessionWhileClearing = await getSession();
+    });
+    const { result } = await renderHook(() => useSignOut(), { wrapper });
+
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(sessionWhileClearing).toMatchObject({ refreshToken: 'refresh' });
+    await expect(getSession()).resolves.toBeNull();
   });
 
   test.each([

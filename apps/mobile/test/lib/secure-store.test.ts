@@ -12,9 +12,12 @@ import * as SecureStore from 'expo-secure-store';
 
 import {
   SECURE_KEYS,
+  clearOfflineMapsWipePending,
   clearSession,
   getOrCreateDatabaseKey,
   getSession,
+  isOfflineMapsWipePending,
+  markOfflineMapsWipePending,
   setSession,
   setTokens,
 } from '@/lib/secure-store';
@@ -49,6 +52,7 @@ describe('secure-store — key names', () => {
       refreshToken: 'triptrackr.refresh_token',
       dbKey: 'triptrackr.db_key',
       user: 'triptrackr.user',
+      offlineMapsWipe: 'triptrackr.offline_maps_wipe',
     });
     for (const key of Object.values(SECURE_KEYS)) {
       expect(key).toMatch(/^[A-Za-z0-9._-]+$/);
@@ -118,6 +122,25 @@ describe('secure-store — session', () => {
     secureStore.getItemAsync.mockRejectedValueOnce(new Error('Keychain unavailable'));
 
     await expect(getSession()).rejects.toThrow('Keychain unavailable');
+  });
+});
+
+describe('secure-store — a pending wipe of the offline maps (research D-06)', () => {
+  test('is recorded until it is cleared, and survives a sign-out', async () => {
+    await expect(isOfflineMapsWipePending()).resolves.toBe(false);
+
+    await markOfflineMapsWipePending();
+    await clearSession();
+    await expect(isOfflineMapsWipePending()).resolves.toBe(true);
+
+    await clearOfflineMapsWipePending();
+    await expect(isOfflineMapsWipePending()).resolves.toBe(false);
+  });
+
+  test('propagates a keychain failure instead of swallowing it', async () => {
+    secureStore.setItemAsync.mockRejectedValueOnce(new Error('Keychain unavailable'));
+
+    await expect(markOfflineMapsWipePending()).rejects.toThrow('Keychain unavailable');
   });
 });
 
