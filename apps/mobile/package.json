@@ -69,8 +69,8 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "prebuild": "expo prebuild",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
