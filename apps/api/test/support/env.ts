@@ -37,11 +37,20 @@ const UNIT_DEFAULTS: Readonly<Record<string, string>> = {
   REVENUECAT_WEBHOOK_SECRET: 't',
 };
 
-/** The variables Jest's globalSetup provisions from the Testcontainers database. */
+/**
+ * The variables Jest's globalSetup provisions from the Testcontainers database and
+ * object store (test/setup.ts).
+ */
 const PROVISIONED_BY_GLOBAL_SETUP = [
   'DATABASE_URL',
   'MIGRATION_DATABASE_URL',
   'API_DB_PASSWORD',
+  'S3_ENDPOINT',
+  'S3_REGION',
+  'S3_ACCESS_KEY_ID',
+  'S3_SECRET_ACCESS_KEY',
+  'S3_BUCKET_PHOTOS',
+  'S3_BUCKET_DOCUMENTS',
 ] as const;
 
 /**
@@ -54,9 +63,9 @@ export function applyUnitTestEnv(overrides: Readonly<Record<string, string>> = {
 }
 
 /**
- * The same, but keeps the three connection variables `test/setup.ts` pointed at
- * the real container. For suites that boot the application against PostgreSQL
- * and need everything else merely present.
+ * The same, but keeps the connection variables `test/setup.ts` pointed at the
+ * real containers. For suites that boot the application against PostgreSQL and
+ * the object store and need everything else merely present.
  */
 export function applyDatabaseTestEnv(
   overrides: Readonly<Record<string, string>> = {},

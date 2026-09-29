@@ -25,13 +25,18 @@ export interface SignedUpload {
 /**
  * Pre-signed access to private object storage (rest-api.md §5–6, research D-12).
  *
- * Bytes never pass through the API. A photo or document is uploaded by the device
- * straight to the object store with a pre-signed PUT, and read back with a
+ * A photo's bytes never pass through the API. The device uploads them straight
+ * to the object store with a pre-signed PUT, and reads them back with a
  * short-lived pre-signed GET. That keeps a 12 MB upload from occupying a request
  * handler for its whole duration (SC-003), and it is why the buckets can stay
  * private with no public read policy whatsoever — the signature *is* the read
  * path, so revoking access is a matter of not signing rather than of editing a
  * bucket policy.
+ *
+ * Documents are the exception, and have no pre-signed URL at all: the API seals
+ * them before they reach the bucket and opens them on the way out
+ * (research D-32), through {@link putObject} and {@link getObject}. The media
+ * worker uses the same two to read an original and write its thumbnail.
  *
  * Two properties are load-bearing:
  *
@@ -53,23 +58,20 @@ export interface SignedUpload {
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
+  /** Round trips: the address the API itself reaches the store by. */
   private readonly client: S3Client;
+  /**
+   * Pre-signing only, never a round trip. A SigV4 signature covers the host, so
+   * a URL handed to a phone must be signed for a host the phone can reach —
+   * `S3_PUBLIC_ENDPOINT` in development, the same endpoint in production.
+   */
+  private readonly signer: S3Client;
 
   constructor() {
     const env = loadEnv();
 
-    this.client = new S3Client({
-      endpoint: env.S3_ENDPOINT,
-      region: env.S3_REGION,
-      // MinIO in development and R2 in production both address buckets by path
-      // rather than by DNS subdomain (research D-12). Virtual-hosted style would
-      // resolve `bucket.localhost` in development, which does not exist.
-      forcePathStyle: true,
-      credentials: {
-        accessKeyId: env.S3_ACCESS_KEY_ID,
-        secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-      },
-    });
+    this.client = createClient(env.S3_ENDPOINT);
+    this.signer = createClient(env.S3_PUBLIC_ENDPOINT ?? env.S3_ENDPOINT);
   }
 
   /**
@@ -89,7 +91,7 @@ export class StorageService {
     const storageKey = buildKey(ownerId);
 
     const url = await getSignedUrl(
-      this.client,
+      this.signer,
       new PutObjectCommand({
         Bucket: this.bucketName(bucket),
         Key: storageKey,
@@ -104,10 +106,48 @@ export class StorageService {
   /** A short-lived pre-signed GET. FR-030. */
   async createDownloadUrl(bucket: StorageBucket, storageKey: string): Promise<string> {
     return getSignedUrl(
-      this.client,
+      this.signer,
       new GetObjectCommand({ Bucket: this.bucketName(bucket), Key: storageKey }),
       { expiresIn: loadEnv().S3_SIGNED_URL_TTL_SECONDS },
     );
+  }
+
+  /**
+   * Writes bytes the API holds — a sealed document, or a thumbnail the media
+   * worker made. A failed write throws: the caller must not record a row for
+   * an object that is not there.
+   */
+  async putObject(
+    bucket: StorageBucket,
+    storageKey: string,
+    body: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucketName(bucket),
+        Key: storageKey,
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+  }
+
+  /**
+   * The object's bytes, or null when it is not there. Any other failure —
+   * the store unreachable, a refused credential — throws rather than reading
+   * as "absent", which would turn an outage into missing data.
+   */
+  async getObject(bucket: StorageBucket, storageKey: string): Promise<Buffer | null> {
+    try {
+      const object = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucketName(bucket), Key: storageKey }),
+      );
+      return object.Body ? Buffer.from(await object.Body.transformToByteArray()) : null;
+    } catch (error: unknown) {
+      if (isNotFound(error)) return null;
+      throw error;
+    }
   }
 
   /**
@@ -154,6 +194,33 @@ export class StorageService {
     const env = loadEnv();
     return bucket === 'photos' ? env.S3_BUCKET_PHOTOS : env.S3_BUCKET_DOCUMENTS;
   }
+}
+
+function createClient(endpoint: string): S3Client {
+  const env = loadEnv();
+
+  return new S3Client({
+    endpoint,
+    region: env.S3_REGION,
+    // RustFS in development and R2 in production both address buckets by path
+    // rather than by DNS subdomain (research D-12, D-31). Virtual-hosted style
+    // would resolve `bucket.localhost` in development, which does not exist.
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: env.S3_ACCESS_KEY_ID,
+      secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+    },
+  });
+}
+
+/** `NoSuchKey` from GetObject, `NotFound` from HeadObject, or a bare 404. */
+function isNotFound(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const { name, $metadata } = error as {
+    name?: unknown;
+    $metadata?: { httpStatusCode?: unknown };
+  };
+  return name === 'NoSuchKey' || name === 'NotFound' || $metadata?.httpStatusCode === 404;
 }
 
 /**

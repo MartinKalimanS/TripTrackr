@@ -9,6 +9,18 @@
 /** The non-superuser role the API connects as (0003_api_role.sql). */
 export const API_ROLE = 'triptrackr_api';
 
+/** The dev object store, pinned exactly as in infra/docker-compose.yml (research D-31). */
+export const RUSTFS_IMAGE =
+  'rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff';
+
+/** Credentials, region and buckets of the test object store. */
+export const TEST_S3 = {
+  accessKeyId: 'triptrackr-test',
+  secretAccessKey: 'triptrackr-test-secret',
+  region: 'us-east-1',
+  buckets: { photos: 'test-photos', documents: 'test-documents' },
+} as const;
+
 /**
  * Password the migration runner sets on that role under test. Long enough to
  * satisfy the `API_DB_PASSWORD` minimum the environment schema enforces, so the

@@ -15,7 +15,7 @@
 #      connection strings in .env point at `localhost` so the API can run on the
 #      host; inside a container `localhost` is the container itself. Every
 #      service below therefore OVERRIDES the connection strings with service
-#      hostnames (postgres, redis, minio) in `environment:`, which Compose
+#      hostnames (postgres, redis, rustfs) in `environment:`, which Compose
 #      applies on top of env_file.
 #
 #   2. `${VAR:-default}` interpolation in THIS file is resolved by Compose from
@@ -64,7 +64,10 @@ x-api-env: &api-env
   # values the process never reads are inert. `migrate` gets the owner's URL
   # explicitly below.
   REDIS_URL: redis://redis:6379
-  S3_ENDPOINT: http://minio:9000
+  # In-network only. URLs signed for a phone use S3_PUBLIC_ENDPOINT from .env
+  # (research D-31): a SigV4 signature covers the host, and `rustfs` resolves
+  # only inside this network.
+  S3_ENDPOINT: http://rustfs:9000
 
 services:
   # -------------------------------------------------------------------------
@@ -115,42 +118,67 @@ services:
       timeout: 5s
       retries: 10
 
-  # S3-compatible object storage for development. Cloudflare R2 replaces this in
-  # production (docker-compose.prod.yml). Buckets are private in both.
-  # MinIO stopped publishing to Docker Hub after this release; quay.io is the
-  # registry that still serves it.
-  minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+  # S3-compatible object storage for development (research D-31). Cloudflare R2
+  # replaces this in production (docker-compose.prod.yml). Buckets are private in
+  # both. MinIO withdrew its public images in 2026-09; RustFS (Apache-2.0) takes
+  # its place with the same single-container model. Its region is us-east-1, so
+  # S3_REGION in .env says so; R2 takes `auto`.
+  rustfs:
+    image: rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff
     restart: unless-stopped
     logging: *default-logging
-    command: ['server', '/data', '--console-address', ':9001']
+    depends_on:
+      rustfs-volume-owner:
+        condition: service_completed_successfully
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-triptrackr}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-triptrackr-dev-secret}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ENABLE: 'false'
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID:-triptrackr}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY:-triptrackr-dev-secret}
     ports:
       - '9000:9000'
-      - '9001:9001'
     volumes:
-      - minio-data:/data
+      - rustfs-data:/data
     healthcheck:
-      test: ['CMD', 'mc', 'ready', 'local']
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:9000/health']
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 20s
 
-  # Creates the two private buckets on first run. Explicitly does NOT set a public
-  # download policy — objects are reachable only through signed URLs.
-  minio-init:
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+  # One-shot. RustFS runs as UID 10001 and must own its data volume; a fresh
+  # named volume is created root-owned. Uses the rclone image the backup
+  # service already pins rather than pulling another.
+  rustfs-volume-owner:
+    image: rclone/rclone:1.75.1@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5
     logging: *default-logging
+    restart: 'no'
+    user: '0:0'
+    entrypoint: ['chown', '-R', '10001:10001', '/data']
+    volumes:
+      - rustfs-data:/data
+
+  # Creates the two private buckets on first run, through the S3 API. Explicitly
+  # does NOT set a public policy — objects are reachable only through signed URLs.
+  rustfs-init:
+    image: rclone/rclone:1.75.1@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5
+    logging: *default-logging
+    restart: 'no'
     depends_on:
-      minio:
+      rustfs:
         condition: service_healthy
+    environment:
+      RCLONE_CONFIG_DEV_TYPE: s3
+      RCLONE_CONFIG_DEV_PROVIDER: Other
+      RCLONE_CONFIG_DEV_ENDPOINT: http://rustfs:9000
+      RCLONE_CONFIG_DEV_REGION: us-east-1
+      RCLONE_CONFIG_DEV_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-triptrackr}
+      RCLONE_CONFIG_DEV_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-triptrackr-dev-secret}
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:-triptrackr} ${S3_SECRET_ACCESS_KEY:-triptrackr-dev-secret} &&
-      mc mb --ignore-existing local/${S3_BUCKET_PHOTOS:-triptrackr-photos} &&
-      mc mb --ignore-existing local/${S3_BUCKET_DOCUMENTS:-triptrackr-documents} &&
+      rclone mkdir dev:${S3_BUCKET_PHOTOS:-triptrackr-photos} &&
+      rclone mkdir dev:${S3_BUCKET_DOCUMENTS:-triptrackr-documents} &&
       echo 'Buckets ready (private).'
       "
 
@@ -270,4 +298,4 @@ services:
 volumes:
   postgres-data:
   redis-data:
-  minio-data:
+  rustfs-data:

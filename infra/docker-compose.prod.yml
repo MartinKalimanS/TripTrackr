@@ -12,7 +12,7 @@
 # Differences from development:
 #   - No default passwords. A missing POSTGRES_PASSWORD or API_DB_PASSWORD
 #     aborts `up` with a message instead of silently using "triptrackr".
-#   - Object storage is Cloudflare R2 (or any S3-compatible bucket), so MinIO
+#   - Object storage is Cloudflare R2 (or any S3-compatible bucket), so RustFS
 #     is not started and S3_ENDPOINT comes from .env untouched.
 #   - Traefik terminates TLS (Let's Encrypt, TLS-ALPN challenge), redirects
 #     HTTP to HTTPS permanently, and adds security headers.
@@ -72,10 +72,13 @@ services:
     mem_limit: 256m
     cpus: 0.5
 
-  minio:
+  rustfs:
     profiles: ['donotstart']
 
-  minio-init:
+  rustfs-volume-owner:
+    profiles: ['donotstart']
+
+  rustfs-init:
     profiles: ['donotstart']
 
   migrate:
@@ -92,7 +95,7 @@ services:
     cpus: 1
     environment:
       DATABASE_URL: postgresql://triptrackr_api:${API_DB_PASSWORD:?API_DB_PASSWORD must be set in .env for production}@postgres:5432/${POSTGRES_DB:-triptrackr}
-      # Development pinned this to MinIO; production reads the R2 endpoint from .env.
+      # Development pinned this to RustFS; production reads the R2 endpoint from .env.
       S3_ENDPOINT: !reset null
       NODE_ENV: production
     secrets:

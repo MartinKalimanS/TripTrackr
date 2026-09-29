@@ -153,8 +153,8 @@ Native modules (`flash-list`, `keyboard-controller`, `expo-localization`) follow
   every release (`infra/scripts/README.md`). CI runs it on every PR.
 - Redis runs with `maxmemory-policy noeviction` because BullMQ jobs must never be evicted.
 - Store submission checklist: `docs/release/store-readiness.md`.
-- **Known issue (2026-09):** MinIO withdrew its public images, so `quay.io/minio/minio` and
-  `quay.io/minio/mc` in `infra/docker-compose.yml` no longer pull and `npm run infra:up` fails
-  until a replacement dev S3 server is chosen (a research decision). Meanwhile start only what you
-  need: `docker compose --env-file .env -f infra/docker-compose.yml up -d postgres redis`. The
-  backup image already moved to `rclone`.
+- **Object storage (research D-31):** RustFS replaced MinIO, whose public images were withdrawn in
+  2026-09. It runs in `infra/docker-compose.yml` (buckets created by an `rclone` one-shot) and as a
+  second Testcontainers service in the API's database projects (`apps/api/test/setup.ts`), which
+  create both buckets. Against RustFS, `S3_REGION` is `us-east-1`; a phone needs signed URLs for a
+  host it can reach, so set `S3_PUBLIC_ENDPOINT` to this machine's LAN address to test uploads.
