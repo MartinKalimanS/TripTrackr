@@ -138,6 +138,12 @@ Native modules (`flash-list`, `keyboard-controller`, `expo-localization`) follow
 - **Quality bar**: functions < 50 lines, files < 800 lines, nesting < 4, errors handled
   explicitly, no debug output, prefer new values over mutation.
 - **Formatting**: `npm run format` (Prettier, single quotes, width 90). CI runs `format:check`.
+  Prettier reads `(`, `)`, `[`, `]` in a path as glob syntax, so route files need character
+  classes: `npx prettier --write "src/app/[(]auth[)]/login.tsx" "src/app/trip/[[]id[]]/index.tsx"`.
+- **Jest module factories**: `jest.mock(...)` factories may only reference names prefixed `mock`,
+  and babel-plugin-jest-hoist also counts type-alias names and function-type parameter names
+  inside the factory. Name those types `Mock…` and leave function-type parameters unnamed
+  (`(...args: unknown[]) => void`), as the Mapbox stand-in in `apps/mobile/jest.setup.ts` does.
 - **Do not touch** `docs/travelappblueprint.md` or `docs/travelappfullspec.md`; they are
   preserved verbatim.
 

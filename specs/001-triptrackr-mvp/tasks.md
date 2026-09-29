@@ -257,14 +257,14 @@ _Amended 2026-09-28 for research D-30: the globe derives its arcs, markers and s
 
 ### Tests for User Story 4 ⚠️ Write first, confirm failing
 
-- [ ] T102 [P] [US4] Component test — a single MapView instance persists across the full zoom range, proving there is no second view to break between — in `apps/mobile/src/components/globe/__tests__/continuous-zoom.test.tsx` (FR-048)
+- [x] T102 [P] [US4] Component test — a single MapView instance persists across the full zoom range, proving there is no second view to break between — in `apps/mobile/src/components/globe/__tests__/continuous-zoom.test.tsx` (FR-048)
 
 ### Implementation for User Story 4
 
-- [ ] T103 [US4] Add the terrain source and 3D building extrusion layers in `apps/mobile/src/components/globe/terrain-layers.tsx` (FR-049)
-- [ ] T104 [US4] Tune the camera zoom curve and pitch transition in `apps/mobile/src/components/globe/camera.ts` (FR-048)
-- [ ] T105 [P] [US4] Implement offline map pack download for a city in `apps/mobile/src/features/trips/use-offline-pack.ts` with a management screen in `apps/mobile/src/app/trip/[id]/offline-maps.tsx` (FR-044)
-- [ ] T106 [US4] Write the Maestro flow `apps/mobile/e2e/04-zoom.yaml` covering the continuous globe-to-street zoom
+- [x] T103 [US4] Add the terrain source and 3D building extrusion layers in `apps/mobile/src/components/globe/terrain-layers.tsx` (FR-049) — _buildings are the Standard basemap's own 3D objects (`show3dObjects`), not an extrusion layer (research D-06, amended 2026-09-29)_
+- [x] T104 [US4] Tune the camera zoom curve and pitch transition in `apps/mobile/src/components/globe/camera.ts` (FR-048)
+- [x] T105 [P] [US4] Implement offline map pack download for a city in `apps/mobile/src/features/trips/use-offline-pack.ts` with a management screen in `apps/mobile/src/app/trip/[id]/offline-maps.tsx` (FR-044) — _packs are device-wide in Mapbox, so sign-out clears them (`clearOfflineMaps`, research D-06 amended 2026-09-29); the download-then-airplane-mode check is in `e2e/04-zoom.yaml`, not yet run on a device_
+- [ ] T106 [US4] Write the Maestro flow `apps/mobile/e2e/04-zoom.yaml` covering the continuous globe-to-street zoom — _flow written, not yet run: needs a dev-client build on a device with a Mapbox token_
 
 **Checkpoint**: The globe's full promise is delivered.
 
