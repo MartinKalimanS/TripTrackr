@@ -44,6 +44,37 @@ const WRITE_FAILED = 'That change could not be saved on this device. Please try 
 
 type Editor = { mode: StopEditorMode; stopId: string | null } | null;
 
+/**
+ * Where the rest of a trip lives, each its own screen: the daily-use loop
+ * (US2), photos and travel documents (US5), and preparing to travel (US4).
+ */
+const TRIP_LINKS = [
+  { segment: 'notes', label: 'Notes for this trip', text: 'Notes' },
+  { segment: 'expenses', label: 'Spending for this trip', text: 'Spending' },
+  { segment: 'photos', label: 'Photos for this trip', text: 'Photos' },
+  { segment: 'documents', label: 'Travel documents for this trip', text: 'Documents' },
+  { segment: 'offline-maps', label: 'Offline maps for this trip', text: 'Offline maps' },
+] as const;
+
+function TripLinks({ tripId }: { tripId: string }) {
+  const router = useRouter();
+  return (
+    <View style={styles.links}>
+      {TRIP_LINKS.map(({ segment, label, text }) => (
+        <PressableSurface
+          key={segment}
+          testID={`trip-open-${segment}`}
+          accessibilityLabel={label}
+          treatment="raised"
+          onPress={() => router.push(`/trip/${tripId}/${segment}`)}
+          style={styles.link}>
+          <ThemedText type="smallBold">{text}</ThemedText>
+        </PressableSurface>
+      ))}
+    </View>
+  );
+}
+
 export default function TripScreen() {
   const router = useRouter();
   const { theme } = useAppearance();
@@ -140,34 +171,7 @@ export default function TripScreen() {
 
       {trip.data ? (
         <>
-          {/* The daily-use loop (US2): notes and spending for this trip. */}
-          <View style={styles.links}>
-            <PressableSurface
-              testID="trip-open-notes"
-              accessibilityLabel="Notes for this trip"
-              treatment="raised"
-              onPress={() => router.push(`/trip/${tripId}/notes`)}
-              style={styles.link}>
-              <ThemedText type="smallBold">Notes</ThemedText>
-            </PressableSurface>
-            <PressableSurface
-              testID="trip-open-expenses"
-              accessibilityLabel="Spending for this trip"
-              treatment="raised"
-              onPress={() => router.push(`/trip/${tripId}/expenses`)}
-              style={styles.link}>
-              <ThemedText type="smallBold">Spending</ThemedText>
-            </PressableSurface>
-            {/* Preparing to travel (US4, T105): each city's map saved for use offline. */}
-            <PressableSurface
-              testID="trip-open-offline-maps"
-              accessibilityLabel="Offline maps for this trip"
-              treatment="raised"
-              onPress={() => router.push(`/trip/${tripId}/offline-maps`)}
-              style={styles.link}>
-              <ThemedText type="smallBold">Offline maps</ThemedText>
-            </PressableSurface>
-          </View>
+          <TripLinks tripId={tripId} />
 
           <View style={styles.sectionHeader}>
             <ThemedText type="smallBold">Stops</ThemedText>
@@ -247,8 +251,8 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     flexWrap: 'wrap',
   },
-  // Three links share the row; at large text sizes they wrap onto a second
-  // line rather than squeeze their labels (FR-016).
+  // The links share rows; at large text sizes they wrap onto further lines
+  // rather than squeeze their labels (FR-016).
   links: {
     flexDirection: 'row',
     flexWrap: 'wrap',

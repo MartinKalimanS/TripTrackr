@@ -259,17 +259,26 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(mockBack).toHaveBeenCalled();
   });
 
-  test('"Offline maps" opens the trip’s offline maps (T105, FR-044)', async () => {
-    mockStops.data = [rome];
-    await render(<TripScreen />);
+  test.each([
+    ['notes', 'Notes', 'Notes for this trip'],
+    ['expenses', 'Spending', 'Spending for this trip'],
+    ['photos', 'Photos', 'Photos for this trip'],
+    ['documents', 'Documents', 'Travel documents for this trip'],
+    ['offline-maps', 'Offline maps', 'Offline maps for this trip'],
+  ])(
+    '"%s" opens the trip’s own screen for it (US2, US4, US5)',
+    async (segment, text, label) => {
+      mockStops.data = [rome];
+      await render(<TripScreen />);
 
-    const link = screen.getByTestId('trip-open-offline-maps');
-    expect(link.props.accessibilityLabel).toBe('Offline maps for this trip');
-    expect(link).toHaveTextContent('Offline maps');
+      const link = screen.getByTestId(`trip-open-${segment}`);
+      expect(link.props.accessibilityLabel).toBe(label);
+      expect(link).toHaveTextContent(text);
 
-    await fireEvent.press(link);
-    expect(mockPush).toHaveBeenCalledWith('/trip/trip-42/offline-maps');
-  });
+      await fireEvent.press(link);
+      expect(mockPush).toHaveBeenCalledWith(`/trip/trip-42/${segment}`);
+    },
+  );
 
   test('move up / move down call the repository and are disabled at the ends (FR-012)', async () => {
     mockStops.data = [rome, florence];
