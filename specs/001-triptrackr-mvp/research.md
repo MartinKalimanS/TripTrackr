@@ -148,6 +148,26 @@ Turf `greatCircle()`, whose date-line and polar output was found defective, and 
 CircleLayer moved by a JavaScript timer rather than a SymbolLayer. The single-`MapView` decision is
 unchanged._
 
+_Amended 2026-09-29 (User Story 4): the close-range detail stays inside the same view and inside
+Mapbox's free tier, with no added library.
+
+- **Terrain:** a `RasterDemSource` on Mapbox Terrain-DEM v1 feeds `Terrain`. Its exaggeration is a
+  zoom expression, flat until zoom 9 and full by zoom 12, so the globe and country scale stay
+  uncluttered.
+- **Buildings:** the Standard basemap's own 3D objects (`show3dObjects` on its import), not a
+  hand-built extrusion layer.
+- **Tilt:** set only after the camera settles (`onMapIdle`) and only over a tilt the app set itself,
+  so it never fights a gesture or overrides a hand-chosen tilt. It is off for reduced motion.
+- **Offline packs:** one per city (`city-<id>`, holding public tiles and the city's id and name
+  only), over roughly 15 km around the city at zoom 10–16. Maps SDK v11 caps a device at 750 tile
+  packs across all cities, so a phone holds a handful of cities, and the app never calls
+  `setTileCountLimit` (Mapbox's terms forbid raising it). Packs are device-wide, not per account,
+  so signing out clears them and the browsing cache (`clearData`): the next account must not learn
+  which cities the last one saved. The wipe goes pack by pack and counts what is left, because
+  `resetDatabase` resolves before its removals finish (@rnmapbox/maps 10.3.5), and it is recorded
+  in the keychain before it begins, so a sign-out the app closes on is finished at the next start-up
+  before any map mounts._
+
 **Rationale**: FR-048 requires a continuous transition from globe to local map "with no visible break
 between two separate views". Mapbox's globe projection interpolates to Mercator automatically past
 roughly zoom 5, which means the requirement is met by using one view rather than by writing a
