@@ -250,6 +250,9 @@ jest.mock('expo-screen-capture', () => ({
   preventScreenCaptureAsync: jest.fn(async () => undefined),
   allowScreenCaptureAsync: jest.fn(async () => undefined),
   usePreventScreenCapture: jest.fn(),
+  // iOS only on the device (v57 reference); resolves on every platform here.
+  enableAppSwitcherProtectionAsync: jest.fn(async () => undefined),
+  disableAppSwitcherProtectionAsync: jest.fn(async () => undefined),
 }));
 
 // Mapbox draws through native views; the globe suites assert on the props the
