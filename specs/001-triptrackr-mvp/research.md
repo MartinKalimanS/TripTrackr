@@ -115,6 +115,10 @@ master key, which never lives in the database.
   read, and the credential is what leaks.
 - _`pgcrypto` column encryption with a key in the database_ — rejected as circular.
 
+_Amended 2026-09-29 by D-32 and D-33: the API is the object store's client that seals — a document
+reaches it over TLS and only ciphertext reaches the bucket — and the extracted boarding-pass fields
+are sealed under the same per-document key._
+
 ---
 
 ## D-05 — Screenshot and screen-recording prevention: `expo-screen-capture`
@@ -354,7 +358,7 @@ governed by the blueprint, the full specification, or the constitution rather th
 | Backend framework          | NestJS, with the planner as a separable module                | `docs/travelappfullspec.md` §2                |
 | Database                   | PostgreSQL + PostGIS, self-hosted in Docker                   | Constitution; `docs/travelappfullspec.md` §3  |
 | Cache, queues, rate limits | Redis                                                         | `docs/travelappfullspec.md` §2                |
-| Object storage             | MinIO in development, Cloudflare R2 in production             | `docs/travelappfullspec.md` §9.5              |
+| Object storage             | RustFS in development (D-31), Cloudflare R2 in production     | `docs/travelappfullspec.md` §9.5              |
 | Hosting                    | A single Hetzner VPS running Docker Compose                   | Constitution, "no hyperscaler"                |
 | Server state on the client | TanStack Query; Zustand for ephemeral UI state                | `docs/travelappfullspec.md` §5.2              |
 | Token storage              | `expo-secure-store` (Keychain / Keystore), never AsyncStorage | `docs/travelappfullspec.md` §5.2              |
@@ -825,3 +829,128 @@ to save, around defects that live upstream. _Unwrapped longitudes beyond ±180°
 rejected as unverifiable without a device: a MultiLineString split exactly at ±180° is plain RFC 7946
 §3.1.9 GeoJSON that every renderer draws. _Vincenty or Karney distances_ — a 0.5% refinement of a
 rounded summary does not justify an iterative solver with its own antipodal convergence failures.
+
+---
+
+## Media build — 2026-09-29
+
+Before User Story 5, the scaffold's media pieces were read against each other and found to disagree:
+`StorageService` says bytes never pass through the API, `EnvelopeService.seal` returns ciphertext for
+the API to upload, and rest-api.md §6 offers documents a pre-signed PUT — which would put a
+boarding pass in the bucket in the clear. MinIO had also withdrawn its images, leaving no dev object
+store, and nothing named how photos are screened. D-31..D-34 settle all four, and amend D-04 and
+rest-api.md §5–6.
+
+## D-31 — Development and test object storage: RustFS
+
+**Decision**: `rustfs/rustfs:1.0.0` (pinned by digest) replaces MinIO in `infra/docker-compose.yml`
+and runs as a second Testcontainers service beside PostGIS in the API's database projects, which
+create the two private buckets through the S3 API. Compose creates them with the `rclone` image the
+backup service already pins. Production stays on Cloudflare R2.
+
+- `S3_REGION` is `us-east-1` against RustFS; R2 takes `auto`.
+- `S3_PUBLIC_ENDPOINT` (optional, defaults to `S3_ENDPOINT`) is the host signed URLs are issued for.
+  A SigV4 signature covers the host, and a phone cannot reach the compose hostname `rustfs` or the
+  API host's `localhost`; in production both are R2's public endpoint and the variable is unset.
+
+**Rationale**: Apache-2.0, generally available since 2026-09, a single container with MinIO's
+deployment model, and it answers the S3 calls the API makes — pre-signed PUT and GET, `HeadObject`,
+`PutObject`, `GetObject`, `DeleteObject` — so the upload and encryption tests exercise real signing
+rather than a stub.
+
+**Alternatives considered**: _`pgsty/silo`_, a maintained MinIO fork — the smallest compose change,
+but it carries forward a codebase its upstream archived. _A faked `StorageService` in tests_ — rejected:
+nothing would prove a signature, a `HeadObject` size check or a round trip.
+
+## D-32 — Documents are sealed by the API (amends D-04)
+
+**Decision**: A document's bytes reach the API over TLS as base64 in a JSON body
+(`POST /trips/:tripId/documents`), are sealed with `EnvelopeService` under a fresh per-document key
+bound to the document's id, and only the ciphertext is written to the documents bucket. They are read
+back through the API (`GET /documents/:id/content`), which unwraps the key, decrypts, and answers with
+`Cache-Control: no-store`. Documents have no pre-signed URL of any kind. Photos keep D-12's direct
+pre-signed upload.
+
+- The bytes the device sends are an image — the camera frame or a picked image re-encoded as JPEG on
+  the device, which also drops its EXIF. The API accepts `image/jpeg` and `image/png`, checked
+  against the leading bytes as well as the declared type, up to `MAX_DOCUMENT_BYTES` (10 MiB) in
+  `@triptrackr/contracts`. A route-specific JSON limit admits that body on this route alone; every
+  other route keeps the 1 MB limit.
+- The object is written before the row. If the row cannot be written, the object is deleted; a
+  retried upload with the same client `id` answers with the stored document rather than writing a
+  second object.
+- On the device, a document file never rests in the clear: it is encrypted with AES-GCM
+  (`expo-crypto`, SDK 57) under a device key held in the keychain, beside the database key. The
+  camera's and the image editor's temporary plaintext files are deleted as soon as they are sealed.
+
+**Rationale**: FR-033 makes the server's store the adversary's prize, so the server should guarantee
+the property rather than trust that every client encrypted before uploading — the same reason RLS,
+not the app, is the privacy authority (Constitution I). `EnvelopeService` already does this and is
+tested. A boarding pass is small, so base64 in JSON costs a third more bytes on a rare upload and
+needs no multipart parser; the device already speaks JSON through `apiFetch`.
+
+**Alternatives considered**: _Encrypt on the device and hand the key to the API to wrap_ — one upload
+path for photos and documents and no bytes through the API, but the server cannot tell a client
+that skipped encryption from one that did. _Multipart upload_ — a second parser and a temporary
+plaintext file on the device to build the body from.
+
+## D-33 — Boarding-pass fields: parsed on the device, sealed at rest
+
+**Decision**: The barcode is decoded on the device by `expo-camera` (PDF417, Aztec, QR — live or
+from a picked image) and parsed by `parseBoardingPass()` in `@triptrackr/contracts`, one pure
+implementation of IATA Resolution 792 (BCBP, format `M`) that both apps import. It extracts exactly
+the three fields FR-035 names: flight number (operating carrier and number, leading zeros dropped),
+flight date (BCBP carries only the day of the year, so the year is the one that puts the date nearest
+the scan), and passenger name as printed. The booking reference, seat and sequence number are never
+extracted, stored or sent. A payload that is not BCBP yields `null` — manual entry, not an error
+(spec Edge Cases).
+
+- The device offers the fields for confirmation straight after the scan, offline. The upload carries
+  them as proposed (`parsed_json`) or confirmed (`confirmed: true`); `PATCH /documents/:id` confirms
+  or corrects them later. Nothing unconfirmed is presented as fact (Constitution IV).
+- At rest the fields are `documents.parsed_sealed`: AES-256-GCM under the document's own key, with
+  the associated data `<document id>:parsed`, so a database dump shows neither a name nor a flight
+  and the sealed fields cannot be swapped with the sealed image. `parsed_json JSONB` is dropped. The
+  API decrypts for the owner on read, and the sync wire keeps `parsed_json` between the owner's
+  devices and the API over TLS.
+
+**Rationale**: Constitution II — confirmation cannot wait for a connection at the gate. One parser in
+the shared package means the device and the API cannot disagree about a pass. Sealing the fields
+closes the gap FR-033 left open: the passenger name was the most personal thing in a plaintext
+column.
+
+**Alternatives considered**: _Send the raw barcode for the API to parse_ — the payload carries the
+booking reference, which is enough to manage the booking, for no gain over parsing locally. _Keep
+`parsed_json` in plaintext_ — a dump would reveal who flew where.
+
+## D-34 — Photos: resized on the device, screening deferred and fail-closed
+
+**Decision**:
+
+- **Capture** (`expo-image-picker`): EXIF time and position are read before the photo is re-encoded
+  as JPEG, at most 2048 px on the long edge, by `expo-image-manipulator` — which drops EXIF, so the
+  uploaded bytes carry no location. The time and position travel as fields on registration
+  (FR-029). A small local thumbnail is made at the same time so the gallery never decodes full
+  images (Acceptance 5.6).
+- **Upload**: `POST /trips/:tripId/photos/upload-url` signs a PUT for a server-chosen key;
+  registration confirms the object exists, belongs to the caller's key prefix and fits
+  `MAX_PHOTO_BYTES` (15 MiB) before the row is `uploaded`, then enqueues the media job.
+- **Media worker** (BullMQ `media` queue): makes a 512 px JPEG thumbnail with `sharp` (orientation
+  applied, metadata stripped), reads EXIF with `exifr` only when registration carried none, and files
+  a photo with no city under the nearest city among its trip's stops within 50 km of its position
+  (Acceptance 5.2). A filing the traveller made is never overwritten. It reaches the policed
+  `photos` table only through narrow `SECURITY DEFINER` functions (the D-28 pattern), because it runs
+  as no traveller.
+- **Screening** (FR-056): the worker calls a `PhotoScreening` port whose only implementation until a
+  provider is chosen returns `pending`. Every photo therefore stays `moderation_state = 'pending'`,
+  and the `photos_public_read` policy keeps it unreachable to anyone but its owner. **Choosing the
+  provider is a precondition of User Story 7**, the first story that can make a photo public.
+
+**Rationale**: No photo can be public before User Story 7 exists, so SC-014 holds with no provider
+at all, and no traveller photo is sent to a third party before one is chosen deliberately, with its
+privacy-policy and processor terms. Resizing on the device keeps uploads small on hotel Wi-Fi and
+strips location from the bytes; the worker keeps thumbnailing off the request path (D-12).
+
+**Alternatives considered**: _A self-hosted classifier now_ — a model dependency and CPU cost for a
+gate nothing can reach yet. _A third-party screening API now_ — sends every private photo out of our
+infrastructure months before any can be shared.

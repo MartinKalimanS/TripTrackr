@@ -278,22 +278,30 @@ _Amended 2026-09-28 for research D-30: the globe derives its arcs, markers and s
 
 ### Tests for User Story 5 ⚠️ Write first, confirm failing
 
+_Amended 2026-09-29 for research D-31..D-34: documents are sealed by the API from a base64 JSON body and have no pre-signed URL (D-32); the boarding-pass parser is shared in `@triptrackr/contracts`, runs on the device, and its three fields are sealed at rest (D-33); photos are resized on the device, which sends their EXIF as fields, and screening is deferred and fail-closed until before User Story 7 (D-34); RustFS is the dev and test object store (D-31). T108 is split into two files so the photo and document halves can be built in parallel._
+
 - [ ] T107 [P] [US5] Contract test — setting a photo public while moderation is pending succeeds, and the photo remains publicly unreachable — in `apps/api/test/contract/moderation-gate.spec.ts` (contract test 8, FR-056)
-- [ ] T108 [P] [US5] Privacy test — account B cannot read A's documents by any available route, nor A's pending-moderation photo — in `apps/api/test/privacy/documents-and-photos.spec.ts` (adversarial rows 4 and 6, SC-012, SC-014)
+- [ ] T108 [P] [US5] Privacy test — account B cannot read A's documents by any available route (list, content, patch, delete, a guessed id) — in `apps/api/test/privacy/documents.spec.ts` (adversarial row 4, SC-012); and account B cannot read A's pending-moderation photo, even one A set public on a public trip — in `apps/api/test/privacy/photos-moderation.spec.ts` (adversarial row 6, SC-014)
 - [ ] T109 [P] [US5] Integration test — the upload-URL, byte-upload, register-metadata sequence transitions `upload_state` correctly and a record is not clean until the object store confirms — in `apps/api/test/integration/uploads.spec.ts` (FR-041)
-- [ ] T110 [P] [US5] Integration test — a document row read directly from the database yields ciphertext, not readable content — in `apps/api/test/integration/document-encryption.spec.ts` (FR-033)
-- [ ] T111 [P] [US5] Unit test — boarding-pass barcode parsing populates `parsed_json` and leaves `parsed_confirmed_at` null until confirmed — in `apps/api/test/unit/boarding-pass.spec.ts` (FR-035, Constitution IV)
+- [ ] T110 [P] [US5] Integration test — a document row and its object read directly from the database and the bucket yield ciphertext, not readable content, and the owner's `GET /documents/:id/content` returns the original bytes — in `apps/api/test/integration/document-encryption.spec.ts` (FR-033)
+- [ ] T111 [P] [US5] Unit test — the documents service seals proposed fields with `parsed_confirmed_at` null until confirmed, and `parseBoardingPass()` extracts exactly flight number, date and passenger name from BCBP — in `apps/api/test/unit/boarding-pass.spec.ts` and `packages/contracts/test/boarding-pass.spec.ts` (FR-035, Constitution IV)
 
 ### Implementation for User Story 5
 
-- [ ] T112 [US5] Implement the photos module — upload URL, metadata registration, listing with short-lived signed thumbnail URLs, visibility patch, tombstone delete — in `apps/api/src/modules/photos/photos.controller.ts` (FR-028, FR-030)
-- [ ] T113 [US5] Implement the media worker performing thumbnail generation, EXIF extraction, and content moderation in `apps/api/src/workers/media.processor.ts` (FR-029, FR-030, FR-056, research D-12)
-- [ ] T114 [US5] Implement the documents module with per-row envelope encryption on write and unwrap on read in `apps/api/src/modules/documents/documents.controller.ts` — no visibility parameter accepted anywhere (FR-031, FR-032, FR-033)
-- [ ] T115 [US5] Implement boarding-pass barcode extraction into `parsed_json` and the confirmation patch setting `parsed_confirmed_at` in `apps/api/src/modules/documents/boarding-pass.service.ts` (FR-035)
-- [ ] T116 [P] [US5] Build photo capture and selection with client-side resizing in `apps/mobile/src/features/photos/use-capture.ts`
+- [ ] T207 [US5] Contracts for the story in `packages/contracts/src/api/photos.ts`, `packages/contracts/src/api/documents.ts`, and `packages/contracts/src/boarding-pass.ts` — upload-URL, registration, photo, patch shapes; document upload, document, content, patch shapes; `DocumentParsedFields`; `MAX_PHOTO_BYTES`, `MAX_DOCUMENT_BYTES`; `parseBoardingPass()` (IATA Resolution 792) — with tests in `packages/contracts/test/`; the document DTOs are strict and refuse any visibility key (FR-032, research D-32, D-33)
+- [ ] T208 [US5] Object storage for the story: `StorageService.putObject`/`getObject` and `S3_PUBLIC_ENDPOINT` signing in `apps/api/src/common/storage/storage.service.ts`; RustFS and an `rclone` bucket job in `infra/docker-compose.yml`; RustFS as a Testcontainers service creating both buckets in `apps/api/test/setup.ts` (research D-31)
+- [ ] T209 [US5] Migration `apps/api/src/db/migrations/0011_us5_documents_sealed.sql` — `documents.content_type`, `documents.byte_size`, `documents.parsed_sealed`, and `parsed_json` dropped (research D-32, D-33)
+- [ ] T210 [US5] Migration `apps/api/src/db/migrations/0012_us5_media_worker.sql` — the media worker's `SECURITY DEFINER` keyholes: read one uploaded, live photo for processing, and record its thumbnail, missing EXIF, and nearest-stop city without replacing a filing (research D-28 pattern, D-34)
+- [ ] T112 [US5] Implement the photos module — upload URL, metadata registration confirming the object and the caller's key prefix, listing with short-lived signed thumbnail URLs, the original on request, visibility and city patch, tombstone delete — in `apps/api/src/modules/photos/photos.controller.ts` (FR-028, FR-030)
+- [ ] T113 [US5] Implement the media worker — `sharp` thumbnail, `exifr` fallback when registration carried no EXIF, nearest-stop city filing, and the fail-closed `PhotoScreening` port that leaves every photo `pending` — in `apps/api/src/workers/media.processor.ts` (FR-029, FR-030, FR-056, research D-12, D-34)
+- [ ] T114 [US5] Implement the documents module — base64 upload sealed by `EnvelopeService` under a per-document key bound to its id, ciphertext-only storage, content read back decrypted with `Cache-Control: no-store`, a route-specific body limit — in `apps/api/src/modules/documents/documents.controller.ts` — no visibility parameter accepted anywhere (FR-031, FR-032, FR-033, research D-32)
+- [ ] T115 [US5] Implement sealing and unsealing of the extracted fields and the confirmation patch setting `parsed_confirmed_at` in `apps/api/src/modules/documents/boarding-pass.service.ts` (FR-035, research D-33)
+- [ ] T211 [US5] Local-first repositories and live hooks for photos and documents in `apps/mobile/src/db/repositories/photos.ts`, `apps/mobile/src/db/repositories/documents.ts`, `apps/mobile/src/features/photos/use-photos.ts`, and `apps/mobile/src/features/documents/use-documents.ts` — every write dirties the row (Constitution II)
+- [ ] T212 [US5] Keep document files encrypted at rest on the device — AES-GCM (`expo-crypto`) under a device key in the keychain — in `apps/mobile/src/features/documents/document-vault.ts`, deleting the camera's and editor's temporary plaintext files once sealed (data-model.md §10, research D-32)
+- [ ] T116 [P] [US5] Build photo capture and selection with client-side resizing, EXIF read before re-encoding, a local thumbnail, and the upload-then-register path in `apps/mobile/src/features/photos/use-capture.ts` (FR-029, research D-34)
 - [ ] T117 [US5] Build the trip photo gallery with an explicit pending treatment for un-uploaded bytes in `apps/mobile/src/app/trip/[id]/photos.tsx` (FR-041)
-- [ ] T118 [US5] Build the document list, scan flow, and extracted-field confirmation form in `apps/mobile/src/app/trip/[id]/documents.tsx` and `apps/mobile/src/components/trip/document-confirm-form.tsx` (FR-035)
-- [ ] T119 [US5] Apply `expo-screen-capture` prevention while any document is displayed in `apps/mobile/src/features/documents/use-screen-capture-guard.ts` (FR-034, research D-05)
+- [ ] T118 [US5] Build the document list, scan flow (live barcode or picked image), and extracted-field confirmation form in `apps/mobile/src/app/trip/[id]/documents.tsx` and `apps/mobile/src/components/trip/document-confirm-form.tsx` (FR-035, research D-33)
+- [ ] T119 [US5] Apply `expo-screen-capture` prevention while any document is displayed in `apps/mobile/src/features/documents/use-screen-capture-guard.ts`, and app-switcher protection on iOS for the signed-in shell (FR-034, research D-05)
 - [ ] T120 [US5] Write the Maestro flow `apps/mobile/e2e/05-photos-and-documents.yaml` covering three photos, one boarding pass, extraction confirmation, and the absence of any document share affordance
 
 **Checkpoint**: The file-handling path exists, which the offline layer must now account for.
@@ -346,7 +354,7 @@ _Amended 2026-09-28 for research D-30: the globe derives its arcs, markers and s
 
 **Goal**: An opt-in social layer where publishing is a per-object act and nothing private is reachable by any route.
 
-**⚠️ Blocked on T141.**
+**⚠️ Blocked on T141.** Also blocked on choosing the photo-screening provider (research D-34): until one replaces the fail-closed `PhotoScreening` port, every photo stays `pending` and no photo can be published.
 
 **Independent Test**: From account A, publish a trip with one note public and one note private. From account B, which does not follow A, open A's public trip and confirm only the public note appears, no expenses or documents are reachable by any route, and the private note is absent.
 
