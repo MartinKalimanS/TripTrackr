@@ -18,3 +18,6 @@ export * from './api/trips';
 export * from './api/notes';
 export * from './api/expenses';
 export * from './api/fx';
+export * from './api/photos';
+export * from './api/documents';
+export * from './boarding-pass';

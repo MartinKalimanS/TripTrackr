@@ -32,6 +32,7 @@
  * column without a local one — or drifting a type — fails `tsc`, not a sync.
  */
 import type {
+  DocumentParsedFields,
   DocumentPullRecord,
   ExpenseCategoryPullRecord,
   ExpensePullRecord,
@@ -202,7 +203,7 @@ export const documents = sqliteTable(
       .notNull()
       .references(() => trips.id, { onDelete: 'cascade' }),
     type: text({ enum: documentType }).notNull(),
-    parsed_json: text({ mode: 'json' }).$type<Record<string, unknown> | null>(),
+    parsed_json: text({ mode: 'json' }).$type<DocumentParsedFields | null>(),
     parsed_confirmed_at: text(),
     upload_state: text({ enum: uploadState }).notNull().default('pending'),
     ...localMeta,
