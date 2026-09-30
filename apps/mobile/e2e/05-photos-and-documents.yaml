@@ -1,0 +1,228 @@
+# User Story 5 — store photos and travel documents against a trip (tasks.md T120).
+#
+# The story's Independent Test, end to end: add three photos and one boarding
+# pass to a trip; confirm the photos appear in the trip gallery, confirm the
+# boarding pass's flight details were extracted and can be confirmed, and
+# confirm no interface anywhere offers to share the document (FR-028, FR-029,
+# FR-032, FR-035, FR-041; Acceptance Scenarios 5.1, 5.3, 5.5).
+#
+# PREREQUISITES
+# -------------
+# - Those of 01-account-and-trip.yaml (development build, reachable API,
+#   geography catalogue with Italy: Rome) and a running object store (RustFS
+#   in `npm run infra:up`), with `S3_PUBLIC_ENDPOINT` set to an address the
+#   device can reach, so the uploads in step 2 can complete.
+# - ANDROID, English device language. The system photo picker is owned by the
+#   OS and its markup varies by version: the steps that drive it (`Photo taken
+#   on.*`, `Add`) are the ones most likely to need adjusting on a new image.
+#
+# FIXTURES (fixtures/)
+# --------------------
+# `addMedia` puts them in the device gallery so the picker has something to
+# offer. Three solid-colour JPEGs stamped with EXIF GPS around Rome, and a
+# PDF417 barcode of IATA Resolution 792's worked example
+# (`M1DESMARAIS/LUC       EABC123 YULFRAAC 0834 326J001A0025 100`), so the
+# extraction path runs with a real decode: `scanFromURLAsync` reads the image
+# and `parseBoardingPass()` proposes AC834 and DESMARAIS/LUC. The live-camera
+# scan (a barcode held in front of the lens) is the one path this cannot
+# drive: an emulator's virtual scene shows no barcode. That is covered by the
+# unit suite (test/app/document-screens.test.tsx), not here.
+#
+# WHAT THIS CANNOT PROVE
+# ----------------------
+# That screen capture is blocked while a document is on screen. On Android
+# that is FLAG_SECURE, which the accessibility tree does not report and which
+# makes Maestro's own screenshots black: no screenshot is taken on a document
+# screen. That `usePreventScreenCapture` is called for every document screen
+# is pinned by the unit suite; what the OS does with it is a device check
+# (docs/release/store-readiness.md).
+appId: com.triptrackr.app
+tags:
+  - us5
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    id: 'welcome-screen'
+
+# --- Register ---------------------------------------------------------------
+- evalScript: ${output.email = 'maestro-us5-' + Date.now() + '@example.com'}
+- tapOn:
+    id: 'welcome-create-account'
+- tapOn:
+    id: 'register-display-name'
+- inputText: 'Maestro Archivist'
+- tapOn:
+    id: 'register-email'
+- inputText: ${output.email}
+- tapOn:
+    id: 'register-password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'register-confirm-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register-submit'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+
+# --- A trip with one stop in Rome, so the photos have a city to be filed under
+- tapOn:
+    id: 'home-plan-trip'
+- tapOn:
+    id: 'add-trip-title'
+- inputText: 'Rome archive'
+- hideKeyboard
+- tapOn:
+    id: 'currency-EUR'
+- tapOn:
+    id: 'add-trip-save'
+- tapOn:
+    id: 'trip-add-stop'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Italy'
+- tapOn:
+    id: 'city-picker-country-IT'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'Rom'
+- tapOn:
+    text: 'Rom(a|e)'
+- tapOn:
+    id: 'stop-editor-save'
+- assertVisible:
+    id: 'trip-screen'
+
+# --- Three photos from the library (Acceptance 5.1) ---------------------------
+- addMedia:
+    - 'fixtures/rome-colosseum.jpg'
+    - 'fixtures/rome-trastevere.jpg'
+    - 'fixtures/rome-vatican.jpg'
+- tapOn:
+    id: 'trip-open-photos'
+- assertVisible:
+    id: 'photos-title'
+- assertVisible: 'No photos yet'
+- assertVisible: 'Private — only you can see your photos.'
+- tapOn: 'Add photos from your library'
+- tapOn:
+    text: 'Photo taken on.*'
+    index: 0
+- tapOn:
+    text: 'Photo taken on.*'
+    index: 1
+- tapOn:
+    text: 'Photo taken on.*'
+    index: 2
+- tapOn: 'Add'
+- extendedWaitUntil:
+    visible:
+      id: 'photos-capture-message'
+      text: '3 photos added.'
+    timeout: 30000
+- assertVisible:
+    id: 'photo-thumbnail-.*'
+- assertNotVisible: 'No photos yet'
+
+# The bytes reach the account (FR-041): "Waiting to upload" clears once the
+# object store has confirmed each object, and nothing says "Upload failed".
+- extendedWaitUntil:
+    notVisible: 'Waiting to upload'
+    timeout: 90000
+- assertNotVisible: 'Upload failed'
+
+# One photo in full: private, filed under Rome, and nothing offers to share it.
+- tapOn:
+    id: 'photo-open-.*'
+    index: 0
+- assertVisible:
+    id: 'photo-viewer'
+- assertVisible: 'Uploaded to your account.'
+- assertVisible: 'Private — only you can see your photos.'
+- assertNotVisible: '(?i)(share|make public|publish)( .*)?'
+- tapOn: 'Close photo'
+- assertNotVisible:
+    id: 'photo-viewer'
+
+# --- One boarding pass (Acceptance 5.3) --------------------------------------
+- tapOn: 'Back'
+- addMedia:
+    - 'fixtures/boarding-pass-pdf417.png'
+- tapOn:
+    id: 'trip-open-documents'
+- assertVisible:
+    id: 'documents-title'
+- assertVisible: 'No documents yet'
+- assertVisible:
+    id: 'documents-privacy'
+- tapOn:
+    id: 'documents-add'
+- tapOn:
+    id: 'document-capture-library'
+- tapOn:
+    text: 'Photo taken on.*'
+    index: 0
+- tapOn: 'Add'
+
+# The barcode was decoded from the picked image: its fields are proposed, not
+# asserted as fact, and the traveller confirms them.
+- extendedWaitUntil:
+    visible:
+      id: 'document-confirm-form'
+    timeout: 20000
+- assertVisible:
+    id: 'document-confirm-flight-number'
+    text: 'AC834'
+- assertVisible:
+    id: 'document-confirm-passenger-name'
+    text: 'DESMARAIS/LUC'
+- tapOn:
+    id: 'document-confirm-save'
+- assertNotVisible:
+    id: 'document-confirm-form'
+- assertVisible:
+    id: 'document-fields-status'
+    text: 'Confirmed'
+- assertVisible:
+    id: 'document-field-flight-number'
+    text: 'AC834'
+
+# --- Nothing anywhere offers to share the document (FR-032, Acceptance 5.5) --
+# The whole label must be one of these verbs (optionally followed by an
+# object): the privacy line on the list may say a document is never shared, and
+# that must not trip a check for a control that does.
+- assertNotVisible: '(?i)(share|export|copy|publish|make public|send|download|print)( .*)?'
+- tapOn: 'Back'
+- assertVisible:
+    id: 'document-row-.*'
+- assertVisible: 'Boarding pass'
+- assertVisible: 'AC834 · .*'
+- assertNotVisible: '(?i)(share|export|copy|publish|make public|send|download|print)( .*)?'
+
+# --- Relaunch: photos and the document persist locally (Constitution II) -----
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+- tapOn:
+    id: 'tab-trips'
+- tapOn: 'Rome archive'
+- tapOn:
+    id: 'trip-open-photos'
+- assertVisible:
+    id: 'photo-thumbnail-.*'
+- tapOn: 'Back'
+- tapOn:
+    id: 'trip-open-documents'
+- assertVisible:
+    id: 'document-row-.*'
+- assertVisible: 'Boarding pass'
