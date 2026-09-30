@@ -17,6 +17,7 @@
  */
 import type { PropsWithChildren } from 'react';
 import { ScrollView, StyleSheet, type ViewStyle } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
@@ -32,6 +33,12 @@ export type ScreenProps = PropsWithChildren<{
    * sheet's own chrome does.
    */
   edges?: Edge[];
+  /**
+   * The screen holds a form that is filled in place rather than in a sheet:
+   * scroll the focused field above the keyboard (research D-24). Off by
+   * default — most screens have no input to protect.
+   */
+  keyboardAware?: boolean;
 }>;
 
 export function Screen({
@@ -39,17 +46,32 @@ export function Screen({
   testID,
   style,
   edges = ['top', 'bottom'],
+  keyboardAware = false,
 }: ScreenProps) {
+  const content = (
+    <SafeAreaView edges={edges} style={[styles.safeArea, style]}>
+      {children}
+    </SafeAreaView>
+  );
+
   return (
     <ThemedView type="canvas" style={styles.canvas} testID={testID}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled">
-        <SafeAreaView edges={edges} style={[styles.safeArea, style]}>
-          {children}
-        </SafeAreaView>
-      </ScrollView>
+      {keyboardAware ? (
+        <KeyboardAwareScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          bottomOffset={Spacing.four}>
+          {content}
+        </KeyboardAwareScrollView>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled">
+          {content}
+        </ScrollView>
+      )}
     </ThemedView>
   );
 }

@@ -1,11 +1,12 @@
 /**
- * T040 — the typed keychain wrapper (FR-003).
+ * T040 — the typed keychain wrapper (FR-003); T212 — the device documents key.
  *
- * Everything the API client, the session store, and the local database key
- * derive from the keychain goes through this module, so what is pinned here
- * is the contract they rely on: the fixed key names, the round trip of a
- * session, that a half-written session is treated as no session, and that the
- * database key is created exactly once and never regenerated.
+ * Everything the API client, the session store, the local database key, and
+ * the document vault derive from the keychain goes through this module, so
+ * what is pinned here is the contract they rely on: the fixed key names, the
+ * round trip of a session, that a half-written session is treated as no
+ * session, and that the database and documents keys are each created exactly
+ * once and never regenerated.
  */
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
@@ -15,6 +16,7 @@ import {
   clearOfflineMapsWipePending,
   clearSession,
   getOrCreateDatabaseKey,
+  getOrCreateDocumentsKey,
   getSession,
   isOfflineMapsWipePending,
   markOfflineMapsWipePending,
@@ -51,6 +53,7 @@ describe('secure-store — key names', () => {
       accessToken: 'triptrackr.access_token',
       refreshToken: 'triptrackr.refresh_token',
       dbKey: 'triptrackr.db_key',
+      documentsKey: 'triptrackr.documents_key',
       user: 'triptrackr.user',
       offlineMapsWipe: 'triptrackr.offline_maps_wipe',
     });
@@ -174,5 +177,59 @@ describe('secure-store — database key', () => {
     await SecureStore.setItemAsync(SECURE_KEYS.dbKey, 'short');
 
     await expect(getOrCreateDatabaseKey()).rejects.toThrow(/database key/i);
+  });
+});
+
+describe('secure-store — documents key (T212, research D-32)', () => {
+  test('creates a 32-byte key for AES-256, hex encoded, from expo-crypto, kept after first unlock', async () => {
+    const key = await getOrCreateDocumentsKey();
+
+    expect(key).toMatch(/^[0-9a-f]{64}$/);
+    expect(Crypto.getRandomBytesAsync).toHaveBeenCalledWith(32);
+    expect(secureStore.setItemAsync).toHaveBeenCalledWith(SECURE_KEYS.documentsKey, key, {
+      keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+    });
+  });
+
+  test('returns the same key on every subsequent call — a regenerated key is every sealed document lost', async () => {
+    const first = await getOrCreateDocumentsKey();
+    const second = await getOrCreateDocumentsKey();
+
+    expect(second).toBe(first);
+    expect(secureStore.setItemAsync).toHaveBeenCalledTimes(1);
+  });
+
+  test('two concurrent first calls share one key', async () => {
+    const [a, b] = await Promise.all([
+      getOrCreateDocumentsKey(),
+      getOrCreateDocumentsKey(),
+    ]);
+
+    expect(a).toBe(b);
+    expect(Crypto.getRandomBytesAsync).toHaveBeenCalledTimes(1);
+  });
+
+  test('is its own key, never the database key, and survives a sign-out', async () => {
+    await setSession({ accessToken: 'access', refreshToken: 'refresh', user: profile });
+    const databaseKey = await getOrCreateDatabaseKey();
+    const documentsKey = await getOrCreateDocumentsKey();
+
+    await clearSession();
+
+    expect(documentsKey).not.toBe(databaseKey);
+    await expect(getOrCreateDocumentsKey()).resolves.toBe(documentsKey);
+  });
+
+  test('refuses a stored key that is not 64 hex characters rather than sealing with it', async () => {
+    await SecureStore.setItemAsync(SECURE_KEYS.documentsKey, 'short');
+
+    await expect(getOrCreateDocumentsKey()).rejects.toThrow(/documents key/i);
+  });
+
+  test('propagates a keychain failure, and the next call tries again', async () => {
+    secureStore.getItemAsync.mockRejectedValueOnce(new Error('Keychain unavailable'));
+
+    await expect(getOrCreateDocumentsKey()).rejects.toThrow('Keychain unavailable');
+    await expect(getOrCreateDocumentsKey()).resolves.toMatch(/^[0-9a-f]{64}$/);
   });
 });

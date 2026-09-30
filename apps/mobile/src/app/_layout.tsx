@@ -1,5 +1,5 @@
 /**
- * Root layout — tasks.md R009, T041, T043; research D-17.
+ * Root layout — tasks.md R009, T041, T043, T119; research D-05, D-17.
  *
  * One `Stack` at the root so the `(auth)` group, the `(tabs)` group, the
  * per-trip stack, and the modal group can all mount; the scaffold rendered a
@@ -20,6 +20,11 @@
  * traveller — the store is open or has failed, so the first frame is never a
  * half-ready screen. A failure renders a designed error state and is reported
  * (FR-073); a blank screen is not an outcome this layout can produce.
+ *
+ * The signed-in state is decided here, so this is also where the signed-in
+ * shell asks iOS to blur its app-switcher snapshot (`useAppSwitcherProtection`,
+ * FR-034): a boarding pass on screen must not stay legible in the switcher.
+ * It is lifted on sign-out; Android's FLAG_SECURE covers its recents preview.
  */
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -33,6 +38,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { LocalStoreProvider, useOpenDatabase } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
+import { useAppSwitcherProtection } from '@/features/documents/use-screen-capture-guard';
 import { useAppearance } from '@/hooks/use-appearance';
 import { configureMapbox } from '@/lib/mapbox';
 import { Sentry, initSentry } from '@/lib/sentry';
@@ -82,6 +88,7 @@ function RootLayout() {
   const userId = useSessionStore((session) => session.user?.id ?? null);
   const hydrate = useSessionStore((session) => session.hydrate);
   const store = useOpenDatabase(status === 'signed-in' ? userId : null);
+  useAppSwitcherProtection(status === 'signed-in');
 
   useEffect(() => {
     // The store fails closed on its own; reporting is this layer's job.

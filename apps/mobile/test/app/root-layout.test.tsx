@@ -13,10 +13,12 @@
  * their content — so what is under test is which group the router lands on,
  * and when the splash comes down.
  */
+import { act } from '@testing-library/react-native';
 import { renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import * as ScreenCapture from 'expo-screen-capture';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SQLite from 'expo-sqlite';
-import { Text } from 'react-native';
+import { Platform, Text } from 'react-native';
 
 import { useSessionStore } from '@/features/auth/session-store';
 import { SECURE_KEYS, setSession } from '@/lib/secure-store';
@@ -212,6 +214,51 @@ describe('root layout — auth gate (R009, D-17)', () => {
       .requireActual('fs')
       .readFileSync(require.resolve('@/app/_layout'), 'utf8') as string;
     expect(source).toMatch(/Ionicons\.loadFont\(\)\s*\.catch\(/);
+  });
+});
+
+describe('root layout — app-switcher protection for the signed-in shell (T119, research D-05)', () => {
+  test('on iOS, a signed-in traveller’s app is blurred in the app switcher, and signing out lifts it', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'ios');
+    try {
+      await signedIn();
+      await renderApp();
+      expect(await screen.findByText('home-screen')).toBeTruthy();
+      expect(ScreenCapture.enableAppSwitcherProtectionAsync).toHaveBeenCalledWith(1);
+      expect(ScreenCapture.disableAppSwitcherProtectionAsync).not.toHaveBeenCalled();
+
+      await act(async () => {
+        useSessionStore.getState().signOut();
+      });
+
+      expect(await screen.findByText('welcome-screen')).toBeTruthy();
+      expect(ScreenCapture.disableAppSwitcherProtectionAsync).toHaveBeenCalledTimes(1);
+    } finally {
+      os.restore();
+    }
+  });
+
+  test('a signed-out traveller’s app is left alone', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'ios');
+    try {
+      await renderApp();
+      expect(await screen.findByText('welcome-screen')).toBeTruthy();
+      expect(ScreenCapture.enableAppSwitcherProtectionAsync).not.toHaveBeenCalled();
+    } finally {
+      os.restore();
+    }
+  });
+
+  test('on Android it is never asked for: FLAG_SECURE covers the recents preview', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      await signedIn();
+      await renderApp();
+      expect(await screen.findByText('home-screen')).toBeTruthy();
+      expect(ScreenCapture.enableAppSwitcherProtectionAsync).not.toHaveBeenCalled();
+    } finally {
+      os.restore();
+    }
   });
 });
 
