@@ -17,6 +17,7 @@ import { HealthModule } from '@/modules/health/health.module';
 import { LookupsModule } from '@/modules/lookups/lookups.module';
 import { NotesModule } from '@/modules/notes/notes.module';
 import { PhotosModule } from '@/modules/photos/photos.module';
+import { SyncModule } from '@/modules/sync/sync.module';
 import { TripsModule } from '@/modules/trips/trips.module';
 import { UsersModule } from '@/modules/users/users.module';
 
@@ -72,6 +73,7 @@ import { UsersModule } from '@/modules/users/users.module';
     ExpensesModule,
     PhotosModule,
     DocumentsModule,
+    SyncModule,
     LookupsModule,
     HealthModule,
   ],
