@@ -6,7 +6,6 @@ import {
   doublePrecision,
   index,
   integer,
-  jsonb,
   pgTable,
   smallint,
   text,
@@ -121,13 +120,18 @@ export const photos = pgTable(
 );
 
 /**
- * Documents.
+ * Documents (data-model.md §5; 0011_us5_documents_sealed.sql).
  *
  * **Visibility posture: owner-only, structurally.** There is no `is_public`
  * column here and there is no public-read policy for this table (FR-032). The
  * guarantee is enforced by the absence of a mechanism rather than by a flag that
  * application code must remember to check. Adding either is a constitutional
  * violation (Principle I), not a feature.
+ *
+ * Nothing readable lives here either (FR-033, research D-32, D-33): the object
+ * at `storage_key` is ciphertext, the key that opens it is wrapped, and the
+ * extracted fields are sealed. The text-enum columns below type the values the
+ * CHECK constraints admit; they change no SQL.
  */
 export const documents = pgTable(
   'documents',
@@ -136,8 +140,15 @@ export const documents = pgTable(
     tripId: uuid('trip_id')
       .notNull()
       .references(() => trips.id, { onDelete: 'cascade' }),
-    type: text('type').notNull().default('other'),
+    type: text('type', { enum: ['boarding_pass', 'booking', 'other'] })
+      .notNull()
+      .default('other'),
+    /** Object key of the CIPHERTEXT, in the private documents bucket. */
     storageKey: text('storage_key').notNull(),
+    /** The image type the device sent, served back with the decrypted bytes (D-32). */
+    contentType: text('content_type', { enum: ['image/jpeg', 'image/png'] }).notNull(),
+    /** Plaintext size, for the list. The object is larger by a nonce and a tag. */
+    byteSize: integer('byte_size').notNull(),
     /**
      * FR-033, envelope encryption. The per-row data key, wrapped by a master key
      * held as a Docker secret and never stored in PostgreSQL. A database dump
@@ -146,14 +157,21 @@ export const documents = pgTable(
     wrappedDek: bytea('wrapped_dek').notNull(),
     /** Which master key wrapped it, so keys can rotate without a re-encrypt sweep. */
     dekKeyId: text('dek_key_id').notNull(),
-    /** Extracted barcode fields (FR-035). Null when unreadable — not an error state. */
-    parsedJson: jsonb('parsed_json'),
+    /**
+     * Extracted barcode fields (FR-035) — flight number, flight date, passenger
+     * name — sealed under this row's own data key with the associated data
+     * `<id>:parsed` (research D-33). Null when there are none: an unreadable
+     * barcode is not an error state.
+     */
+    parsedSealed: bytea('parsed_sealed'),
     /**
      * Constitution IV. Distinguishes extracted-but-unconfirmed from
      * traveller-confirmed: unconfirmed extraction must never be presented as fact.
      */
     parsedConfirmedAt: timestamp('parsed_confirmed_at', { withTimezone: true }),
-    uploadState: text('upload_state').notNull().default('pending'),
+    uploadState: text('upload_state', { enum: ['pending', 'uploaded', 'failed'] })
+      .notNull()
+      .default('pending'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -168,6 +186,19 @@ export const documents = pgTable(
     check(
       'documents_upload_state_check',
       sql`${t.uploadState} IN ('pending', 'uploaded', 'failed')`,
+    ),
+    check(
+      'documents_content_type_check',
+      sql`${t.contentType} IN ('image/jpeg', 'image/png')`,
+    ),
+    check('documents_byte_size_check', sql`${t.byteSize} > 0`),
+    check(
+      'documents_parsed_boarding_pass_check',
+      sql`${t.parsedSealed} IS NULL OR ${t.type} = 'boarding_pass'`,
+    ),
+    check(
+      'documents_confirmed_has_fields_check',
+      sql`${t.parsedConfirmedAt} IS NULL OR ${t.parsedSealed} IS NOT NULL`,
     ),
   ],
 );

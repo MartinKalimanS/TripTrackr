@@ -127,4 +127,160 @@ describe('EnvelopeService', () => {
       /32 bytes/,
     );
   });
+
+  it('does not keep the data key once the document is sealed', () => {
+    // Arrange — seal hands its fresh DEK to wrapDek; the spy keeps a reference.
+    const wrap = jest.spyOn(service, 'wrapDek');
+
+    // Act
+    service.seal(Buffer.from('boarding pass'), service.documentAad('id'));
+
+    // Assert — wrapped and used, then wiped: nothing lingers on the heap.
+    const dek = wrap.mock.calls[0]?.[0];
+    expect(dek?.length).toBe(32);
+    expect(dek?.every((byte) => byte === 0)).toBe(true);
+  });
+});
+
+/**
+ * The extracted boarding-pass fields (research D-33): sealed under the
+ * document's OWN data key, reached through its existing wrapped key, with the
+ * associated data `<id>:parsed`. The adversary is the same write-capable one
+ * as above, and the rearrangements that matter are between a row's two blobs
+ * — the image and the fields — as well as between rows.
+ */
+describe('EnvelopeService — a document’s extracted fields', () => {
+  const DOCUMENT_ID = '5a1f1b3e-0000-4000-8000-0000000000a1';
+  const OTHER_ID = '5a1f1b3e-0000-4000-8000-0000000000b2';
+  const FIELDS = Buffer.from(
+    '{"flight_number":"AC834","flight_date":"2026-06-02","passenger_name":"DESMARAIS/LUC"}',
+    'utf8',
+  );
+  const IMAGE = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x01, 0x02, 0x03, 0x04]);
+
+  let service: EnvelopeService;
+
+  beforeEach(() => {
+    withEnv();
+    service = new EnvelopeService();
+  });
+
+  afterAll(() => resetEnvCache());
+
+  /** One uploaded document: the sealed image, and the key the row stores. */
+  function uploaded(documentId: string = DOCUMENT_ID) {
+    return service.seal(IMAGE, service.documentAad(documentId));
+  }
+
+  it('binds the fields to `<id>:parsed`, apart from the image’s `<id>`', () => {
+    expect(service.parsedAad(DOCUMENT_ID).toString('utf8')).toBe(`${DOCUMENT_ID}:parsed`);
+    expect(service.parsedAad(DOCUMENT_ID).equals(service.documentAad(DOCUMENT_ID))).toBe(
+      false,
+    );
+  });
+
+  it('round-trips the fields under the document’s existing wrapped key', () => {
+    // Arrange
+    const document = uploaded();
+
+    // Act
+    const sealed = service.sealParsed(document, DOCUMENT_ID, FIELDS);
+    const opened = service.openParsed(document, DOCUMENT_ID, sealed);
+
+    // Assert — and a dump of the column shows neither a name nor a flight.
+    expect(opened.equals(FIELDS)).toBe(true);
+    expect(sealed.includes(Buffer.from('DESMARAIS'))).toBe(false);
+    expect(sealed.includes(Buffer.from('AC834'))).toBe(false);
+  });
+
+  it('refuses to open the sealed fields as the image', () => {
+    // Arrange — the attacker copies the fields blob over the object.
+    const document = uploaded();
+    const sealed = service.sealParsed(document, DOCUMENT_ID, FIELDS);
+
+    // Act + Assert — same key, same row, wrong associated data.
+    expect(() =>
+      service.open({ ...document, ciphertext: sealed }, service.documentAad(DOCUMENT_ID)),
+    ).toThrow();
+  });
+
+  it('refuses to open the image as the sealed fields', () => {
+    // Arrange — and the other way round: the object copied into the column.
+    const document = uploaded();
+
+    // Act + Assert
+    expect(() =>
+      service.openParsed(document, DOCUMENT_ID, document.ciphertext),
+    ).toThrow();
+  });
+
+  it('refuses to open the fields under another document’s id', () => {
+    // Arrange
+    const document = uploaded();
+    const sealed = service.sealParsed(document, DOCUMENT_ID, FIELDS);
+
+    // Act + Assert — the wrapped key is bound to its id, so it will not unwrap.
+    expect(() => service.openParsed(document, OTHER_ID, sealed)).toThrow();
+  });
+
+  it('refuses the fields moved onto another document’s row, key and all', () => {
+    // Arrange — B's row, with A's sealed fields pasted into its column.
+    const victim = uploaded(DOCUMENT_ID);
+    const other = uploaded(OTHER_ID);
+    const sealed = service.sealParsed(victim, DOCUMENT_ID, FIELDS);
+
+    // Act + Assert — B's key is genuine, but it is not the key that sealed them.
+    expect(() => service.openParsed(other, OTHER_ID, sealed)).toThrow();
+  });
+
+  it('refuses fields whose sealed bytes were altered', () => {
+    // Arrange
+    const document = uploaded();
+    const tampered = Buffer.from(service.sealParsed(document, DOCUMENT_ID, FIELDS));
+    const target = tampered.length - 20;
+    tampered.writeUInt8(tampered.readUInt8(target) ^ 0x01, target);
+
+    // Act + Assert
+    expect(() => service.openParsed(document, DOCUMENT_ID, tampered)).toThrow();
+  });
+
+  it('seals the same fields differently every time — a fresh nonce under the one key', () => {
+    const document = uploaded();
+
+    const first = service.sealParsed(document, DOCUMENT_ID, FIELDS);
+    const second = service.sealParsed(document, DOCUMENT_ID, FIELDS);
+
+    expect(first.equals(second)).toBe(false);
+  });
+
+  it.each(['sealParsed', 'openParsed'] as const)(
+    'wipes the unwrapped data key when %s returns',
+    (method) => {
+      // Arrange
+      const document = uploaded();
+      const sealed = service.sealParsed(document, DOCUMENT_ID, FIELDS);
+      const unwrap = jest.spyOn(service, 'unwrapDek');
+
+      // Act
+      if (method === 'sealParsed') service.sealParsed(document, DOCUMENT_ID, FIELDS);
+      else service.openParsed(document, DOCUMENT_ID, sealed);
+
+      // Assert
+      const dek = unwrap.mock.results[0]?.value as Buffer | undefined;
+      expect(dek?.length).toBe(32);
+      expect(dek?.every((byte) => byte === 0)).toBe(true);
+    },
+  );
+
+  it('wipes the data key even when the fields fail to open', () => {
+    const document = uploaded();
+    const unwrap = jest.spyOn(service, 'unwrapDek');
+
+    expect(() =>
+      service.openParsed(document, DOCUMENT_ID, Buffer.alloc(40, 7)),
+    ).toThrow();
+
+    const dek = unwrap.mock.results[0]?.value as Buffer | undefined;
+    expect(dek?.every((byte) => byte === 0)).toBe(true);
+  });
 });

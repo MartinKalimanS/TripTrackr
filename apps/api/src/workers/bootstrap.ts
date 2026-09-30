@@ -8,8 +8,11 @@ import {
   QUEUE_NAMES,
   type QueueName,
 } from '@/common/queue/queue.constants';
+import { StorageService } from '@/common/storage/storage.service';
 
 import { refreshFxRates } from './fx-refresh.processor';
+import { processPhoto, type MediaStorage } from './media.processor';
+import { FailClosedPhotoScreening, type PhotoScreening } from './photo-screening';
 
 /**
  * Everything the worker process is made of, apart from starting it — so that
@@ -24,8 +27,8 @@ import { refreshFxRates } from './fx-refresh.processor';
  * The database connection is the API role's (`DATABASE_URL`), exactly as the
  * API's own pool — never the owner (research D-20). A processor that must
  * touch a policed table without a traveller identity goes through a SECURITY
- * DEFINER keyhole (the FX backfill, 0009), which is the same rule the request
- * path follows for registration.
+ * DEFINER keyhole (the FX backfill, 0009; the media worker, 0012), which is the
+ * same rule the request path follows for registration.
  */
 
 /** Where a log line goes; injectable so a test can read it. */
@@ -79,6 +82,15 @@ export interface ProcessorDeps {
   readonly sql: Sql;
   readonly fetch: typeof fetch;
   readonly fxRatesUrl: string;
+  /**
+   * The object store the media worker reads originals from and writes
+   * thumbnails to (T113). `bootstrapWorker` always supplies it; a registry
+   * built without one fails every media job, loudly, rather than letting the
+   * queue fill with jobs nothing can run.
+   */
+  readonly storage?: MediaStorage;
+  /** Photo screening (research D-34); the fail-closed port when absent. */
+  readonly screening?: PhotoScreening;
   readonly streams?: WorkerStreams;
 }
 
@@ -89,6 +101,8 @@ export interface ProcessorDeps {
 export function buildProcessors(
   deps: ProcessorDeps,
 ): Partial<Record<QueueName, Processor>> {
+  const screening = deps.screening ?? new FailClosedPhotoScreening();
+
   return {
     [QUEUE_NAMES.fxRefresh]: async () => {
       const result = await refreshFxRates({
@@ -97,6 +111,22 @@ export function buildProcessors(
         url: deps.fxRatesUrl,
       });
       logLine('info', { queue: QUEUE_NAMES.fxRefresh, ...result }, deps.streams);
+      return result;
+    },
+    [QUEUE_NAMES.media]: async (job) => {
+      if (!deps.storage) {
+        throw new Error(
+          'The media processor was built without object storage; bootstrapWorker supplies it.',
+        );
+      }
+      const result = await processPhoto(job.data, {
+        sql: deps.sql,
+        storage: deps.storage,
+        screening,
+      });
+      // The only trace a finished media job leaves: the job itself is removed
+      // on completion (modules/photos/media-job.producer.ts).
+      logLine('info', { queue: QUEUE_NAMES.media, ...result }, deps.streams);
       return result;
     },
   };
@@ -267,7 +297,14 @@ export function bootstrapWorker(connection: Redis): void {
   const sql = createWorkerDatabase(env.DATABASE_URL);
 
   const workers = startWorkers(
-    buildProcessors({ sql, fetch, fxRatesUrl: env.FX_RATES_URL }),
+    buildProcessors({
+      sql,
+      fetch,
+      fxRatesUrl: env.FX_RATES_URL,
+      // Reads the S3_* variables loadEnv() has just validated.
+      storage: new StorageService(),
+      screening: new FailClosedPhotoScreening(),
+    }),
     bullWorkerFactory(connection),
   );
 

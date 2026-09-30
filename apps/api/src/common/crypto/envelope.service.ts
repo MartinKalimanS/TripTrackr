@@ -46,15 +46,28 @@ export interface SealedDocument extends WrappedKey {
  * re-wraps a few thousand 32-byte keys rather than re-encrypting every document.
  * `dekKeyId` records which master key wrapped a given row so that both keys can
  * coexist while a rotation is in flight.
+ *
+ * A document's extracted boarding-pass fields are sealed under the same DEK
+ * (research D-33, {@link sealParsed}), with associated data of their own, so a
+ * database dump shows neither a name nor a flight and the two blobs of one row
+ * cannot stand in for each other.
+ *
+ * The DEK is wiped as soon as the call that needed it returns. It is the one
+ * value here that opens a document by itself, so it does not wait on the
+ * garbage collector.
  */
 @Injectable()
 export class EnvelopeService {
   /** Encrypts document bytes and returns everything the row and the object need. */
   seal(plaintext: Buffer, aad: Buffer): SealedDocument {
     const dek = randomBytes(KEY_BYTES);
-    const ciphertext = encrypt(dek, plaintext, aad);
 
-    return { ciphertext, ...this.wrapDek(dek, aad) };
+    try {
+      const ciphertext = encrypt(dek, plaintext, aad);
+      return { ciphertext, ...this.wrapDek(dek, aad) };
+    } finally {
+      dek.fill(0);
+    }
   }
 
   /** Reverses {@link seal}. Throws if the ciphertext or the AAD was altered. */
@@ -99,6 +112,55 @@ export class EnvelopeService {
     }
 
     return decrypt(masterKey(), wrapped.wrappedDek, aad);
+  }
+
+  /**
+   * Seals a small plaintext belonging to a document — its extracted
+   * boarding-pass fields — under that document's EXISTING data key
+   * (research D-33): unwrapped with {@link documentAad}, used with
+   * {@link parsedAad}, wiped before returning.
+   *
+   * No second key: the fields live and die with the document they were read
+   * from, and a rotation that re-wraps the DEK carries them along for free.
+   * Each call draws a fresh nonce, so re-sealing corrected fields under the one
+   * key is safe; a document is sealed a handful of times in its life, nowhere
+   * near GCM's random-nonce bound.
+   */
+  sealParsed(wrapped: WrappedKey, documentId: string, plaintext: Buffer): Buffer {
+    const dek = this.unwrapDek(wrapped, this.documentAad(documentId));
+
+    try {
+      return encrypt(dek, plaintext, this.parsedAad(documentId));
+    } finally {
+      dek.fill(0);
+    }
+  }
+
+  /**
+   * Reverses {@link sealParsed}. Throws if the blob was altered, belongs to
+   * another document, or is the document's image rather than its fields.
+   */
+  openParsed(wrapped: WrappedKey, documentId: string, sealed: Buffer): Buffer {
+    const dek = this.unwrapDek(wrapped, this.documentAad(documentId));
+
+    try {
+      return decrypt(dek, sealed, this.parsedAad(documentId));
+    } finally {
+      dek.fill(0);
+    }
+  }
+
+  /**
+   * Associated data for a document's extracted fields: `<id>:parsed`.
+   *
+   * Distinct from {@link documentAad} because the image and the fields are
+   * sealed under the same DEK. With one associated data for both, someone
+   * holding the stores could copy the fields blob over the object, or the
+   * object into the column, and each would decrypt as the other. The two can
+   * never coincide: a document id is a uuid, which cannot end in `:parsed`.
+   */
+  parsedAad(documentId: string): Buffer {
+    return Buffer.from(`${documentId}:parsed`, 'utf8');
   }
 
   /**
