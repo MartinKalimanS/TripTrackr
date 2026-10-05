@@ -6,6 +6,7 @@ import { loadEnv } from '@/common/config/env.schema';
 import {
   FX_REFRESH_SCHEDULER,
   QUEUE_NAMES,
+  TOMBSTONE_PURGE_SCHEDULER,
   type QueueName,
 } from '@/common/queue/queue.constants';
 import { StorageService } from '@/common/storage/storage.service';
@@ -13,6 +14,7 @@ import { StorageService } from '@/common/storage/storage.service';
 import { refreshFxRates } from './fx-refresh.processor';
 import { processPhoto, type MediaStorage } from './media.processor';
 import { FailClosedPhotoScreening, type PhotoScreening } from './photo-screening';
+import { purgeTombstones, type PurgeStorage } from './tombstone-purge.processor';
 
 /**
  * Everything the worker process is made of, apart from starting it — so that
@@ -89,6 +91,14 @@ export interface ProcessorDeps {
    * queue fill with jobs nothing can run.
    */
   readonly storage?: MediaStorage;
+  /**
+   * The object store as the tombstone purge removes from it (T129): the strict
+   * `removeObject`, which throws where `deleteObject` — part of
+   * {@link MediaStorage} — logs and carries on. `bootstrapWorker` passes the
+   * same `StorageService` for both; a registry built without it fails every
+   * purge job, loudly, rather than deleting rows whose bytes it cannot remove.
+   */
+  readonly purgeStorage?: PurgeStorage;
   /** Photo screening (research D-34); the fail-closed port when absent. */
   readonly screening?: PhotoScreening;
   readonly streams?: WorkerStreams;
@@ -129,6 +139,17 @@ export function buildProcessors(
       logLine('info', { queue: QUEUE_NAMES.media, ...result }, deps.streams);
       return result;
     },
+    [QUEUE_NAMES.tombstonePurge]: async () => {
+      if (!deps.purgeStorage) {
+        throw new Error(
+          'The tombstone purge was built without object removal; bootstrapWorker supplies it.',
+        );
+      }
+      const result = await purgeTombstones({ sql: deps.sql, storage: deps.purgeStorage });
+      // Counts only: the purge never writes a key, an id or a traveller to a log.
+      logLine('info', { queue: QUEUE_NAMES.tombstonePurge, ...result }, deps.streams);
+      return result;
+    },
   };
 }
 
@@ -153,10 +174,68 @@ export interface SchedulerQueue {
   close(): Promise<void>;
 }
 
+/** One recurring job: the queue it runs on, and the scheduler that keeps it running. */
+interface Schedule {
+  readonly queue: QueueName;
+  readonly assert: (queue: SchedulerQueue) => Promise<unknown>;
+}
+
+const SCHEDULES: readonly Schedule[] = [
+  {
+    queue: QUEUE_NAMES.fxRefresh,
+    // `immediately` gives a fresh deployment rates on first boot.
+    assert: (queue) =>
+      queue.upsertJobScheduler(
+        FX_REFRESH_SCHEDULER.id,
+        { every: FX_REFRESH_SCHEDULER.everyMs, immediately: true },
+        { name: 'refresh' },
+      ),
+  },
+  {
+    queue: QUEUE_NAMES.tombstonePurge,
+    // No `immediately`: a fresh deployment has nothing old enough to purge
+    // (queue.constants.ts), so the first run is the next interval boundary.
+    assert: (queue) =>
+      queue.upsertJobScheduler(
+        TOMBSTONE_PURGE_SCHEDULER.id,
+        { every: TOMBSTONE_PURGE_SCHEDULER.everyMs },
+        { name: 'purge' },
+      ),
+  },
+];
+
+async function assertSchedule(
+  schedule: Schedule,
+  streams: WorkerStreams,
+  makeQueue: (name: QueueName) => SchedulerQueue,
+): Promise<void> {
+  // Built here rather than through `createQueue`: that helper logs through
+  // the Nest Logger, and this process has no Nest application to bind it to.
+  const queue = makeQueue(schedule.queue);
+  queue.on('error', (error: Error) => {
+    logLine(
+      'error',
+      { queue: schedule.queue, message: `scheduler: ${error.message}` },
+      streams,
+    );
+  });
+
+  try {
+    await schedule.assert(queue);
+  } finally {
+    await queue.close();
+  }
+}
+
 /**
  * Makes sure the recurring jobs exist. `upsertJobScheduler` is idempotent by
- * id, so every worker start re-asserts the same schedule and never creates a
- * second one; `immediately` gives a fresh deployment rates on first boot.
+ * id, so every worker start re-asserts the same schedules and never creates a
+ * second one.
+ *
+ * Each schedule is asserted whatever became of the one before it, so that a
+ * failure on one queue cannot leave another without its job; the function
+ * still rejects afterwards, naming every schedule that failed, so the caller
+ * logs it and the next start retries.
  */
 export async function ensureSchedulers(
   connection: Redis,
@@ -164,25 +243,21 @@ export async function ensureSchedulers(
   makeQueue: (name: QueueName) => SchedulerQueue = (name) =>
     new Queue(name, { connection }),
 ): Promise<void> {
-  // Built here rather than through `createQueue`: that helper logs through
-  // the Nest Logger, and this process has no Nest application to bind it to.
-  const queue = makeQueue(QUEUE_NAMES.fxRefresh);
-  queue.on('error', (error: Error) => {
-    logLine(
-      'error',
-      { queue: QUEUE_NAMES.fxRefresh, message: `scheduler: ${error.message}` },
-      streams,
-    );
-  });
+  const failures: Error[] = [];
 
-  try {
-    await queue.upsertJobScheduler(
-      FX_REFRESH_SCHEDULER.id,
-      { every: FX_REFRESH_SCHEDULER.everyMs, immediately: true },
-      { name: 'refresh' },
+  for (const schedule of SCHEDULES) {
+    try {
+      await assertSchedule(schedule, streams, makeQueue);
+    } catch (error: unknown) {
+      failures.push(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new AggregateError(
+      failures,
+      failures.map((failure) => failure.message).join('; '),
     );
-  } finally {
-    await queue.close();
   }
 }
 
@@ -296,13 +371,18 @@ export function bootstrapWorker(connection: Redis): void {
   const env = loadEnv();
   const sql = createWorkerDatabase(env.DATABASE_URL);
 
+  // Reads the S3_* variables loadEnv() has just validated. One instance for
+  // both roles it plays: the media worker's best-effort store and the purge's
+  // strict `removeObject`.
+  const storage = new StorageService();
+
   const workers = startWorkers(
     buildProcessors({
       sql,
       fetch,
       fxRatesUrl: env.FX_RATES_URL,
-      // Reads the S3_* variables loadEnv() has just validated.
-      storage: new StorageService(),
+      storage,
+      purgeStorage: storage,
       screening: new FailClosedPhotoScreening(),
     }),
     bullWorkerFactory(connection),

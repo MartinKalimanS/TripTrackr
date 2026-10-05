@@ -180,13 +180,34 @@ export class StorageService {
    */
   async deleteObject(bucket: StorageBucket, storageKey: string): Promise<void> {
     try {
-      await this.client.send(
-        new DeleteObjectCommand({ Bucket: this.bucketName(bucket), Key: storageKey }),
-      );
+      await this.removeObject(bucket, storageKey);
     } catch (error: unknown) {
       this.logger.warn(
         `Could not delete ${bucket}/${storageKey}; the sweep will retry it. ${String(error)}`,
       );
+    }
+  }
+
+  /**
+   * Removes an object and **throws if it cannot say it is gone**.
+   *
+   * {@link deleteObject} is best-effort: it logs a failure and returns, which
+   * suits clean-up after a request that has already decided its outcome. It is
+   * the wrong contract for a caller about to destroy the only record of where
+   * the object was — the tombstone purge removes a row *after* its bytes, and
+   * a refused or unreachable delete that looked like success would take the key
+   * with it and leave the bytes in a private bucket for good (Constitution V,
+   * tasks.md T129). An object that is already absent is success: a retry after
+   * a partial run must not fail on the work it already did.
+   */
+  async removeObject(bucket: StorageBucket, storageKey: string): Promise<void> {
+    try {
+      await this.client.send(
+        new DeleteObjectCommand({ Bucket: this.bucketName(bucket), Key: storageKey }),
+      );
+    } catch (error: unknown) {
+      if (isNotFound(error)) return;
+      throw error;
     }
   }
 
