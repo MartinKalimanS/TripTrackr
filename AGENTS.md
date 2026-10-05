@@ -153,6 +153,14 @@ Native modules (`flash-list`, `keyboard-controller`, `expo-localization`) follow
   every release (`infra/scripts/README.md`). CI runs it on every PR.
 - Redis runs with `maxmemory-policy noeviction` because BullMQ jobs must never be evicted.
 - Store submission checklist: `docs/release/store-readiness.md`.
+- **Offline-sync gate (T140/T141):** the Maestro suite is dispatched in phases across two devices;
+  the ordered run and the row-to-file table are in `apps/mobile/e2e/offline/README.md`. Build the
+  dev client against the API over the network (LAN address, or `10.0.2.2` on an emulator), never
+  through `adb reverse`, which survives airplane mode and silently turns "offline" steps online.
+  Nothing there counts as passing until a real two-device run is recorded in `gate-evidence.md`.
+- **Tombstone purge (T129):** a daily BullMQ scheduler in the worker calls the two keyholes of
+  migration 0013 (SECURITY DEFINER functions) inside one transaction, removing a row's bytes before
+  the row. The 90-day floor lives in the SQL (`GREATEST`) and in `TOMBSTONE_RETENTION_DAYS`.
 - **Object storage (research D-31):** RustFS replaced MinIO, whose public images were withdrawn in
   2026-09. It runs in `infra/docker-compose.yml` (buckets created by an `rclone` one-shot) and as a
   second Testcontainers service in the API's database projects (`apps/api/test/setup.ts`), which
