@@ -11,7 +11,7 @@ import { TripsService } from '@/modules/trips/trips.service';
 
 import { ExpensesRepository, type ExpenseRow } from './expenses.repository';
 import { convertAmount } from '@triptrackr/contracts';
-import { FxService } from './fx.service';
+import { FxService, conversionForEntry } from './fx.service';
 
 /** The one not-found for every `/expenses/:id` route — contracts/README.md rule 1. */
 export const expenseNotFound = () => notFound('EXPENSE_NOT_FOUND', 'Expense');
@@ -68,10 +68,9 @@ export class ExpensesService {
 
     await this.assertReferences(request.city_id, request.category_id);
 
-    const conversion =
-      request.fx_rate_to_home != null && request.amount_home != null
-        ? { fxRateToHome: request.fx_rate_to_home, amountHome: request.amount_home }
-        : await this.fx.convert(request.amount, request.currency, trip.home_currency);
+    const conversion = await conversionForEntry(request, () =>
+      this.fx.convert(request.amount, request.currency, trip.home_currency),
+    );
 
     const row = await this.repository.insert({
       id: request.id,

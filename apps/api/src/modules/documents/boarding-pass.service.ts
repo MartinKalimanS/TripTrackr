@@ -169,8 +169,17 @@ function confirmationFor(
   return current.confirmed ? 'keep' : 'now';
 }
 
+/**
+ * Only a boarding pass carries extracted fields (rest-api.md §6). The pure
+ * predicate, shared with `POST /sync/push`, which must hold the same rule on
+ * the record a device pushes and answer it in its own words (`invalid`).
+ */
+export function fieldsBelongOn(type: DocumentType, hasFields: boolean): boolean {
+  return !hasFields || type === 'boarding_pass';
+}
+
 function assertFieldsBelong(type: DocumentType, hasFields: boolean): void {
-  if (hasFields && type !== 'boarding_pass') {
+  if (!fieldsBelongOn(type, hasFields)) {
     throw documentInvalid('parsed_json', ONLY_ON_BOARDING_PASS);
   }
 }

@@ -40,6 +40,32 @@ const TRIP_COLUMNS = {
   updatedAt: trips.updatedAt,
 };
 
+/**
+ * Tombstones every live child of a trip that carries a tombstone (FR-039):
+ * stops, notes, photos, documents, expenses. Each is a synchronised table and
+ * each must be told, on the next pull, that it is gone.
+ *
+ * Shared by the REST delete ({@link TripsRepository.tombstoneTrip}) and by a
+ * trip tombstone arriving through `POST /sync/push`, so that a trip deleted
+ * offline takes its children with it exactly as one deleted online does.
+ *
+ * Dynamic identifiers through postgres.js's `sql(name)`, from a fixed list: one
+ * statement shape for five tables, with the policies of each deciding which
+ * rows the caller may touch. A generic Drizzle update over a union of table
+ * types does not type-check cleanly, and this reads as what it is.
+ */
+export async function tombstoneTripChildren(tripId: string): Promise<void> {
+  const tx = requireRlsTransaction();
+
+  for (const table of TOMBSTONED_CHILD_TABLES) {
+    await tx`
+      UPDATE ${tx(table)}
+      SET deleted_at = now(), updated_at = now()
+      WHERE trip_id = ${tripId}::uuid AND deleted_at IS NULL
+    `;
+  }
+}
+
 export type TripRow = Pick<typeof trips.$inferSelect, keyof typeof TRIP_COLUMNS>;
 
 /**
@@ -192,18 +218,7 @@ export class TripsRepository {
 
     if (deleted.length === 0) return false;
 
-    // Dynamic identifiers through postgres.js's `sql(name)`, from a fixed list:
-    // one statement shape for five tables, with the policies of each deciding
-    // which rows the caller may touch. A generic Drizzle update over a union
-    // of table types does not type-check cleanly, and this reads as what it is.
-    const tx = requireRlsTransaction();
-    for (const table of TOMBSTONED_CHILD_TABLES) {
-      await tx`
-        UPDATE ${tx(table)}
-        SET deleted_at = now(), updated_at = now()
-        WHERE trip_id = ${tripId}::uuid AND deleted_at IS NULL
-      `;
-    }
+    await tombstoneTripChildren(tripId);
 
     return true;
   }
