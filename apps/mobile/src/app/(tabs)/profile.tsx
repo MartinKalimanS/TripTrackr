@@ -6,6 +6,10 @@
  * and ends the local session (FR-004); the local database stays on disk,
  * encrypted, for when they return (Constitution V — see db/client.ts).
  *
+ * Sign out pushes first (T137): if changes would be left that the server has
+ * not acknowledged, the row shows an explicit warning with two choices, "Stay
+ * signed in" and "Sign out anyway", instead of signing out quietly.
+ *
  * Still here on purpose before any account data exists:
  *
  *   - The app version, read from the embedded config
@@ -24,6 +28,7 @@
 import Constants from 'expo-constants';
 import { StyleSheet, View } from 'react-native';
 
+import { SignOutWarning } from '@/components/auth/sign-out-warning';
 import { ThemedText } from '@/components/themed-text';
 import { PressableSurface } from '@/components/ui/pressable-surface';
 import { Screen } from '@/components/ui/screen';
@@ -31,7 +36,7 @@ import { Surface } from '@/components/ui/surface';
 import { Colors, Spacing } from '@/constants/theme';
 import { describeAuthError } from '@/features/auth/auth-errors';
 import { useSessionStore } from '@/features/auth/session-store';
-import { useSignOut } from '@/features/auth/use-session';
+import { isUnsyncedChangesError, useSignOut } from '@/features/auth/use-sign-out';
 import { useAppearance } from '@/hooks/use-appearance';
 
 /**
@@ -51,6 +56,8 @@ export default function ProfileScreen() {
   const { theme } = useAppearance();
   const user = useSessionStore((session) => session.user);
   const signOut = useSignOut();
+  // The guard (T137) stopped the sign-out because changes are not backed up.
+  const unsynced = isUnsyncedChangesError(signOut.error) ? signOut.error : null;
 
   return (
     <Screen testID="profile-screen" edges={['top']}>
@@ -92,7 +99,13 @@ export default function ProfileScreen() {
             {signOut.isPending ? 'Signing out…' : 'Sign out'}
           </ThemedText>
         </PressableSurface>
-        {signOut.error ? (
+        {unsynced ? (
+          <SignOutWarning
+            error={unsynced}
+            onStay={() => signOut.reset()}
+            onSignOutAnyway={() => signOut.mutate({ force: true })}
+          />
+        ) : signOut.error ? (
           <ThemedText
             type="small"
             accessibilityRole="alert"

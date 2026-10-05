@@ -33,6 +33,7 @@ import {
 } from '@/features/documents/document-copy';
 import { DOCUMENT_FORM_COPY } from '@/features/documents/document-form';
 import { formatIsoDate, todayIso } from '@/features/trips/stop-dates';
+import { StorageFullError } from '@/lib/disk-space';
 import { Sentry } from '@/lib/sentry';
 
 const mockBack = jest.fn();
@@ -512,8 +513,28 @@ describe('<DocumentCaptureScreen> — scan or pick (T118, research D-33)', () =>
     await waitFor(() => expect(mockActions.store).toHaveBeenCalled());
   });
 
+  test('a capture on a full device says so in words, is not reported, and the camera comes back (T139)', async () => {
+    mockActions.store.mockRejectedValueOnce(new StorageFullError());
+    await render(<DocumentCaptureScreen />);
+    await cameraReady();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('document-capture-shutter'));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('document-capture-error')).toHaveTextContent(
+        DOCUMENT_CAPTURE_COPY.noSpace,
+      ),
+    );
+    // The traveller's circumstance, not a defect.
+    expect(Sentry.captureException).not.toHaveBeenCalled();
+    expect(screen.getByTestId('camera-view')).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
   test('a capture that cannot be saved is said in words and reported, and the camera comes back', async () => {
-    const failure = new Error('ENOSPC');
+    const failure = new Error('The vault could not seal the file');
     mockActions.store.mockRejectedValueOnce(failure);
     await render(<DocumentCaptureScreen />);
     await cameraReady();

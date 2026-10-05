@@ -31,19 +31,25 @@ import { useRef, useState, type RefObject } from 'react';
 
 import type { DocumentRow } from '@/db/schema';
 import { todayIso } from '@/features/trips/stop-dates';
+import { StorageFullError, isOutOfSpaceError } from '@/lib/disk-space';
 import { Sentry } from '@/lib/sentry';
 
 import { fieldsFromScans, pickDocumentImage, scanImageForPass } from './capture';
 import { DOCUMENT_CAPTURE_COPY } from './document-copy';
 import { useDocumentActions } from './use-documents';
 
-/** What went wrong, if anything, in the words of `DOCUMENT_CAPTURE_COPY`. */
-export type CaptureProblem = 'capture' | 'save' | 'library';
+/**
+ * What went wrong, if anything, in the words of `DOCUMENT_CAPTURE_COPY`.
+ * `space` (T139) is the device being full: the traveller's circumstance, so
+ * it is shown and never reported, and nothing was stored.
+ */
+export type CaptureProblem = 'capture' | 'save' | 'library' | 'space';
 
 export const CAPTURE_PROBLEM_TEXT: Readonly<Record<CaptureProblem, string>> = {
   capture: DOCUMENT_CAPTURE_COPY.captureFailed,
   save: DOCUMENT_CAPTURE_COPY.saveFailed,
   library: DOCUMENT_CAPTURE_COPY.libraryFailed,
+  space: DOCUMENT_CAPTURE_COPY.noSpace,
 };
 
 /**
@@ -84,7 +90,16 @@ export function useDocumentCapture(tripId: string, type: DocumentType): Document
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<CaptureProblem | null>(null);
 
+  /**
+   * A full device is the traveller's circumstance, whichever step found it
+   * (the camera's own write, the re-encode, the seal): shown as `space`,
+   * never reported. Anything else is a defect and is (FR-073).
+   */
   const fail = (kind: CaptureProblem, error: unknown): false => {
+    if (error instanceof StorageFullError || isOutOfSpaceError(error)) {
+      setProblem('space');
+      return false;
+    }
     Sentry.captureException(error);
     setProblem(kind);
     return false;

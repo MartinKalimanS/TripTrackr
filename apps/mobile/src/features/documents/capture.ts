@@ -42,6 +42,12 @@ import { launchImageLibraryAsync } from 'expo-image-picker';
 import type { AppDatabase } from '@/db/client';
 import { documentsRepository } from '@/db/repositories/documents';
 import type { DocumentRow } from '@/db/schema';
+import {
+  StorageFullError,
+  hasRoomFor,
+  isOutOfSpaceError,
+  requireRoomFor,
+} from '@/lib/disk-space';
 import { Sentry } from '@/lib/sentry';
 
 import { discardTemporary, removeSealedFile, sealTemporaryFile } from './document-vault';
@@ -156,13 +162,34 @@ export interface StoreDocumentInput {
 }
 
 /**
- * Re-encode, seal and store a captured document, local-first (Constitution
- * II). A row that cannot be written takes its sealed file with it.
+ * Free space a document needs before it is touched: the editor's JPEG and the
+ * sealed file beside it (each about a megabyte, at most `MAX_DOCUMENT_BYTES`
+ * in theory), and headroom for the database row. Smaller than a photo's bound
+ * because a document writes one file where a photo writes two (T139).
  */
-export async function storeDocument(
+export const MIN_DOCUMENT_FREE_BYTES = 15 * 1024 * 1024;
+
+/** The sealed file of a row that could not be written goes; a leftover is reported, never masks. */
+function discardSealed(path: string): void {
+  try {
+    removeSealedFile(path);
+  } catch (error) {
+    Sentry.captureException(error);
+  }
+}
+
+/** Steps: re-encode → seal → row. Each failure undoes what came before it. */
+async function saveDocument(
   db: AppDatabase,
   input: StoreDocumentInput,
 ): Promise<DocumentRow> {
+  try {
+    requireRoomFor(MIN_DOCUMENT_FREE_BYTES);
+  } catch (error) {
+    // The capture's plaintext temporary is this call's to delete, room or not.
+    discardTemporary(input.temporaryUri);
+    throw error;
+  }
   const id = randomUUID();
   const jpeg = await reencodeAsJpeg(input.temporaryUri);
   const sealed = await sealTemporaryFile(id, jpeg);
@@ -175,7 +202,31 @@ export async function storeDocument(
       local_file_uri: sealed.path,
     });
   } catch (error) {
-    removeSealedFile(sealed.path);
+    discardSealed(sealed.path);
+    throw error;
+  }
+}
+
+/**
+ * Re-encode, seal and store a captured document, local-first (Constitution
+ * II). A capture either produces a row WITH its sealed file or leaves nothing
+ * on the disk — no row, no plaintext temporary, no half-written seal — and a
+ * device out of space says so with a `StorageFullError` (T139; sync-protocol.md
+ * §4; lib/disk-space.ts for how a full disk is recognised).
+ *
+ * @throws {StorageFullError} when the device is, or has just become, full.
+ */
+export async function storeDocument(
+  db: AppDatabase,
+  input: StoreDocumentInput,
+): Promise<DocumentRow> {
+  try {
+    return await saveDocument(db, input);
+  } catch (error) {
+    if (error instanceof StorageFullError) throw error;
+    if (isOutOfSpaceError(error) || !hasRoomFor(MIN_DOCUMENT_FREE_BYTES)) {
+      throw new StorageFullError(error);
+    }
     throw error;
   }
 }

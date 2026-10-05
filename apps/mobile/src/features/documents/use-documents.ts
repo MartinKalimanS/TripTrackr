@@ -4,11 +4,13 @@
  *
  * Screens read the encrypted local store through Drizzle's `useLiveQuery`
  * (as `use-notes.ts` does); writes go through the repository first and never
- * wait on the network. Storing a capture or confirming its fields then starts
- * an upload attempt in the background (`upload.ts`) — never awaited by the
- * screen, never shown as a dialog; the list's badge says what is still
- * pending. Ids are minted with `expo-crypto`'s `randomUUID()` in `capture.ts`
- * (research D-15).
+ * wait on the network. Storing a capture or confirming its fields then asks
+ * the upload queue to look for work (`kickUploadQueue`, sync/upload-queue.ts —
+ * T134: at once on Wi-Fi, after a hold-back on cellular) — never awaited by
+ * the screen, never shown as a dialog; the list's badge says what is still
+ * pending. Deleting a document cancels its upload in flight and deletes its
+ * sealed file (sync-protocol.md §4). Ids are minted with `expo-crypto`'s
+ * `randomUUID()` in `capture.ts` (research D-15).
  *
  * `useDocumentImage` is the viewer's image: the sealed file decrypted to
  * base64 in memory (`document-vault.ts`), for a data URI that is never
@@ -27,10 +29,11 @@ import { documentsRepository } from '@/db/repositories/documents';
 import type { DocumentRow } from '@/db/schema';
 import type { LiveResult } from '@/features/trips/use-trips';
 import { Sentry } from '@/lib/sentry';
+import { kickUploadQueue } from '@/sync/upload-queue';
 
 import { storeDocument, type StoreDocumentInput } from './capture';
 import { openSealedFile, removeSealedFile } from './document-vault';
-import { uploadDocument, uploadPendingDocuments } from './upload';
+import { cancelDocumentUpload } from './upload';
 
 /** A trip's live documents, newest first. */
 export function useDocuments(tripId: string): LiveResult<DocumentRow[]> {
@@ -61,9 +64,13 @@ export interface DocumentActions {
   store: (input: StoreDocumentInput) => Promise<DocumentRow>;
   /** Store the checked fields as confirmed; then try to send them. */
   confirmFields: (documentId: string, fields: DocumentParsedFields) => DocumentRow;
-  /** Tombstone the document and delete its sealed file. */
+  /** Tombstone the document, cancel its upload and delete its sealed file. */
   remove: (documentId: string) => void;
-  /** Upload whatever a trip's documents still owe the API. Never rejects. */
+  /**
+   * The list gained focus: ask the upload queue to look for what the API is
+   * still owed. The queue works through every trip, so the argument only says
+   * where the traveller is. Never rejects.
+   */
   syncTrip: (tripId: string) => Promise<void>;
 }
 
@@ -73,17 +80,18 @@ export function useDocumentActions(): DocumentActions {
     () => ({
       store: async (input) => {
         const document = await storeDocument(db, input);
-        void uploadDocument(db, document.id);
+        void kickUploadQueue('capture');
         return document;
       },
       confirmFields: (documentId, fields) => {
         const document = documentsRepository.confirmFields(db, documentId, fields);
-        void uploadDocument(db, documentId);
+        void kickUploadQueue('confirm');
         return document;
       },
       remove: (documentId) => {
         const released = documentsRepository.remove(db, documentId);
         if (!released) return;
+        cancelDocumentUpload(documentId);
         try {
           removeSealedFile(released);
         } catch (error) {
@@ -91,7 +99,7 @@ export function useDocumentActions(): DocumentActions {
           Sentry.captureException(error);
         }
       },
-      syncTrip: (tripId) => uploadPendingDocuments(db, tripId),
+      syncTrip: (_tripId) => kickUploadQueue('focus'),
     }),
     [db],
   );

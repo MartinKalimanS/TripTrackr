@@ -138,7 +138,7 @@ export default function DocumentCaptureScreen() {
       <InlineError
         testID="document-capture-error"
         message={
-          problem === 'save' || problem === 'library'
+          problem === 'save' || problem === 'library' || problem === 'space'
             ? CAPTURE_PROBLEM_TEXT[problem]
             : null
         }

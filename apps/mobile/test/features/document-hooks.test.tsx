@@ -26,6 +26,7 @@ import {
 } from '@/features/documents/use-documents';
 import { ApiRequestError } from '@/lib/api-client';
 import { Sentry } from '@/lib/sentry';
+import { kickUploadQueue } from '@/sync/upload-queue';
 
 import { createTestDatabase, type TestSqlite } from '../db/sqlite-harness';
 import {
@@ -47,6 +48,9 @@ jest.mock('@/lib/api-client', () => {
   const actual = jest.requireActual('@/lib/api-client');
   return { ...actual, apiFetch: jest.fn() };
 });
+jest.mock('@/sync/upload-queue', () => ({
+  kickUploadQueue: jest.fn(async () => undefined),
+}));
 
 const { apiFetch } = jest.requireMock('@/lib/api-client') as { apiFetch: jest.Mock };
 const fileSystem = jest.requireMock('expo-file-system') as FakeFileSystemModule;
@@ -88,7 +92,7 @@ function newTrip() {
 }
 
 describe('useDocuments / useDocument / useDocumentActions', () => {
-  test('a stored document appears in the live list, local-first, and an upload is attempted at once', async () => {
+  test('a stored document appears in the live list, local-first, and the upload queue is asked to look for work', async () => {
     const trip = newTrip();
     const { result } = await renderHook(
       () => ({ list: useDocuments(trip.id), actions: useDocumentActions() }),
@@ -115,19 +119,15 @@ describe('useDocuments / useDocument / useDocumentActions', () => {
       parsed_json: FIELDS,
       upload_state: 'pending',
     });
-    await waitFor(() =>
-      expect(apiFetch).toHaveBeenCalledWith(
-        expect.anything(),
-        `/trips/${trip.id}/documents`,
-        expect.objectContaining({ method: 'POST' }),
-      ),
-    );
-    // Offline: still pending, and nothing was reported.
+    // The queue decides when the bytes go (Wi-Fi now, cellular later): the hook
+    // only asks it to look, and never reaches for the network itself.
+    expect(kickUploadQueue).toHaveBeenCalledWith('capture');
+    expect(apiFetch).not.toHaveBeenCalled();
     expect(documentsRepository.byId(sqlite.db, documentId)?.upload_state).toBe('pending');
     expect(Sentry.captureException).not.toHaveBeenCalled();
   });
 
-  test('confirming the fields stores them as confirmed and attempts to send them', async () => {
+  test('confirming the fields stores them as confirmed and asks the upload queue to send them', async () => {
     const trip = newTrip();
     const { result } = await renderHook(() => useDocumentActions(), { wrapper });
     let documentId = '';
@@ -141,7 +141,7 @@ describe('useDocuments / useDocument / useDocumentActions', () => {
         })
       ).id;
     });
-    apiFetch.mockClear();
+    (kickUploadQueue as jest.Mock).mockClear();
 
     let confirmed: { parsed_confirmed_at: string | null } | null = null;
     await act(async () => {
@@ -149,7 +149,7 @@ describe('useDocuments / useDocument / useDocumentActions', () => {
     });
 
     expect(confirmed).toMatchObject({ parsed_confirmed_at: expect.any(String) });
-    await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+    expect(kickUploadQueue).toHaveBeenCalledWith('confirm');
   });
 
   test('useDocument follows one document, and removing it tombstones the row and deletes its sealed file', async () => {
@@ -205,25 +205,17 @@ describe('useDocuments / useDocument / useDocumentActions', () => {
     expect(documentsRepository.byId(sqlite.db, documentId)).toBeNull();
   });
 
-  test('syncTrip uploads whatever the trip still owes the API', async () => {
+  test('syncTrip asks the upload queue to look for whatever the API is still owed', async () => {
     const trip = newTrip();
     const { result } = await renderHook(() => useDocumentActions(), { wrapper });
-    await act(async () => {
-      await result.current.store({
-        tripId: trip.id,
-        type: 'other',
-        temporaryUri: CAMERA_OUTPUT,
-        parsed: null,
-      });
-    });
-    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(1));
-    apiFetch.mockClear();
 
     await act(async () => {
       await result.current.syncTrip(trip.id);
     });
 
-    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(kickUploadQueue).toHaveBeenCalledWith('focus');
+    // The hook itself never talks to the API: the queue owns when and over what.
+    expect(apiFetch).not.toHaveBeenCalled();
   });
 });
 

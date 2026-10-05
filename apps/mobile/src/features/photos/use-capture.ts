@@ -23,8 +23,11 @@
  * The picked assets are saved by capture.ts; this hook owns only the moment —
  * one capture at a time (a second tap while one runs is ignored), `busy` for
  * the buttons, and the sentence that says what happened. A capture that added
- * anything is followed at once by an upload attempt (upload.ts), which stays
- * quiet when there is no connection: the pending badge says it.
+ * anything then asks the upload queue to look for work (`kickUploadQueue`,
+ * sync/upload-queue.ts — T134): at once on Wi-Fi, after its cellular hold-back
+ * otherwise, and quietly not at all when there is no connection: the pending
+ * badge says it. A capture that could not be saved — the device is out of space
+ * included (T139) — leaves no row and no file and kicks nothing.
  *
  * Visibility posture: private by default — photos are written private and
  * nothing here offers to share them (per-photo visibility is User Story 7).
@@ -34,6 +37,7 @@ import { useRef, useState } from 'react';
 
 import { useDatabase } from '@/db/client';
 import { Sentry } from '@/lib/sentry';
+import { kickUploadQueue } from '@/sync/upload-queue';
 
 import {
   describeCapture,
@@ -42,7 +46,6 @@ import {
   type CaptureMessage,
 } from './capture';
 import { PHOTO_COPY } from './photo-copy';
-import { uploadPendingPhotos } from './upload';
 
 /** A pick of more than this is cut short by the system picker. */
 export const MAX_PHOTOS_PER_PICK = 20;
@@ -130,7 +133,7 @@ export function useCapture(tripId: string): PhotoCapture {
       const outcomes = await saveCapturedPhotos(db, tripId, assets);
       setMessage(describeCapture(outcomes));
       if (outcomes.some((outcome) => outcome.kind === 'added')) {
-        void uploadPendingPhotos(db, tripId);
+        void kickUploadQueue('capture');
       }
     } catch (error) {
       Sentry.captureException(error);

@@ -25,6 +25,13 @@
  * shell asks iOS to blur its app-switcher snapshot (`useAppSwitcherProtection`,
  * FR-034): a boarding pass on screen must not stay legible in the switcher.
  * It is lifted on sign-out; Android's FLAG_SECURE covers its recents preview.
+ *
+ * It is also where the sync runtime is bound (T135, FR-038): `useSyncTriggers`
+ * starts the engine, the upload queue and the four triggers once a traveller
+ * is signed in AND their database is open, and stops them on sign-out. The
+ * conflict notice (T133) is mounted here too, above the navigator, so a
+ * traveller who is told their edit was replaced is told wherever they are in
+ * the app. The first-sync state (T136) is the `(tabs)` layout's.
  */
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -36,12 +43,14 @@ import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
+import { ConflictNotices } from '@/components/ui/conflict-notice';
 import { LocalStoreProvider, useOpenDatabase } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useAppSwitcherProtection } from '@/features/documents/use-screen-capture-guard';
 import { useAppearance } from '@/hooks/use-appearance';
 import { configureMapbox } from '@/lib/mapbox';
 import { Sentry, initSentry } from '@/lib/sentry';
+import { useSyncTriggers } from '@/sync/use-sync-triggers';
 
 // FR-073. Called at module scope so that a crash during the first render is
 // still captured — an init inside a component runs too late to see it.
@@ -89,6 +98,9 @@ function RootLayout() {
   const hydrate = useSessionStore((session) => session.hydrate);
   const store = useOpenDatabase(status === 'signed-in' ? userId : null);
   useAppSwitcherProtection(status === 'signed-in');
+  // T135: nothing is bound until there is a traveller AND their open database.
+  const signedIn = status === 'signed-in';
+  useSyncTriggers(signedIn ? store.db : null, signedIn ? userId : null);
 
   useEffect(() => {
     // The store fails closed on its own; reporting is this layer's job.
@@ -146,6 +158,8 @@ function RootLayout() {
               <ThemeProvider value={navigationTheme}>
                 {/* FR-023: the status bar follows the theme with the rest of the UI. */}
                 <StatusBar style={isDark ? 'light' : 'dark'} />
+                {/* FR-040: told wherever the traveller is; nothing while there is nothing to tell. */}
+                {signedIn && store.db ? <ConflictNotices /> : null}
                 <Stack
                   screenOptions={{
                     headerShown: false,

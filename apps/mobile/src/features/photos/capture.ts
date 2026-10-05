@@ -28,17 +28,18 @@ import type { AppDatabase } from '@/db/client';
 import { photosRepository } from '@/db/repositories/photos';
 import { stopsRepository, type StopWithPlace } from '@/db/repositories/stops';
 import type { PhotoRow } from '@/db/schema';
+import {
+  StorageFullError,
+  hasRoomFor,
+  isOutOfSpaceError,
+  requireRoomFor,
+} from '@/lib/disk-space';
 import { Sentry } from '@/lib/sentry';
 
 import { nearestTripCity } from './city-match';
 import { readExif } from './exif';
 import { PARTIAL_FAILURE_COPY, PHOTO_COPY } from './photo-copy';
-import {
-  deletePhotoFiles,
-  discardCached,
-  hasRoomFor,
-  stagePhotoFiles,
-} from './photo-files';
+import { deletePhotoFiles, discardCached, stagePhotoFiles } from './photo-files';
 import { reencodePhoto, UnreadableImageError } from './reencode';
 
 /**
@@ -65,21 +66,15 @@ export interface CaptureMessage {
   openSettings?: boolean;
 }
 
-class NoSpaceError extends Error {
-  constructor() {
-    super('Not enough free space to add a photo.');
-    this.name = 'NoSpaceError';
-  }
-}
-
-const OUT_OF_SPACE =
-  /no space|ENOSPC|not enough space|out of space|disk (?:is )?full|storage (?:is )?full|SQLITE_FULL|database or disk is full/i;
-
+/**
+ * Why a capture failed (T139). A full disk is recognised by the failure's
+ * words, or — a failure whose words say nothing — by the free space now being
+ * short (lib/disk-space.ts: the SDK names no error code for it).
+ */
 function reasonFor(error: unknown): CaptureReason {
-  if (error instanceof NoSpaceError) return 'noSpace';
+  if (error instanceof StorageFullError) return 'noSpace';
   if (error instanceof UnreadableImageError) return 'unreadable';
-  const message = error instanceof Error ? error.message : String(error);
-  return OUT_OF_SPACE.test(message) || !hasRoomFor(MIN_FREE_BYTES) ? 'noSpace' : 'failed';
+  return isOutOfSpaceError(error) || !hasRoomFor(MIN_FREE_BYTES) ? 'noSpace' : 'failed';
 }
 
 /** Steps 1–5 for one asset. Throws, having undone its own work, on failure. */
@@ -89,7 +84,7 @@ async function savePhoto(
   asset: CaptureAsset,
   stops: readonly StopWithPlace[],
 ): Promise<PhotoRow> {
-  if (!hasRoomFor(MIN_FREE_BYTES)) throw new NoSpaceError();
+  requireRoomFor(MIN_FREE_BYTES);
   const reading = readExif(asset.exif);
   const encoded = await reencodePhoto(asset.uri);
   const id = randomUUID();

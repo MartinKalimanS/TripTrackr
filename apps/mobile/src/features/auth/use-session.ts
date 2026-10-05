@@ -20,13 +20,10 @@ import {
   type UserProfile,
 } from '@triptrackr/contracts';
 import { useMutation } from '@tanstack/react-query';
-import { z } from 'zod';
 
 import { useSessionStore } from '@/features/auth/session-store';
-import { ApiRequestError, apiFetch } from '@/lib/api-client';
-import { clearOfflineMaps } from '@/lib/mapbox';
-import { clearSession, getSession, setSession } from '@/lib/secure-store';
-import { Sentry } from '@/lib/sentry';
+import { apiFetch } from '@/lib/api-client';
+import { setSession } from '@/lib/secure-store';
 
 async function establishSession(tokens: AuthTokens): Promise<UserProfile> {
   await setSession({
@@ -87,41 +84,10 @@ export function useAppleSignIn() {
   });
 }
 
-/** Failures that are expected on the way out and change nothing about the outcome. */
-const EXPECTED_SIGN_OUT_FAILURES = new Set(['NETWORK', 'TIMEOUT', 'SESSION_EXPIRED']);
-
-function isExpectedSignOutFailure(error: unknown): boolean {
-  return error instanceof ApiRequestError && EXPECTED_SIGN_OUT_FAILURES.has(error.code);
-}
-
 /**
- * FR-004 — sign out on this device. `POST /auth/logout` revokes the presented
- * refresh token; if the device is offline the local session is still ended
- * (the server-side token simply ages out) and anything unexpected is reported
- * rather than swallowed. The traveller's local database is left in place —
- * see `db/client.ts` for why — but the offline city maps are not: Mapbox keeps
- * them device-wide rather than per account (`clearOfflineMaps`). They go
- * first, while the session still stands, so a sign-out cut short leaves either
- * the session or a recorded wipe behind — never an ended session over another
- * account's saved cities.
+ * FR-004 — sign out on this device. The hook lives in `use-sign-out.ts` (T137),
+ * beside the guard that pushes first and warns before leaving anything
+ * unsynced behind; it is re-exported here so every existing import keeps
+ * working.
  */
-export function useSignOut() {
-  return useMutation({
-    mutationFn: async () => {
-      const session = await getSession();
-      if (session) {
-        try {
-          await apiFetch(z.unknown(), '/auth/logout', {
-            method: 'POST',
-            body: { refresh_token: session.refreshToken },
-          });
-        } catch (error) {
-          if (!isExpectedSignOutFailure(error)) Sentry.captureException(error);
-        }
-      }
-      await clearOfflineMaps();
-      await clearSession();
-      useSessionStore.getState().signOut();
-    },
-  });
-}
+export { useSignOut } from '@/features/auth/use-sign-out';

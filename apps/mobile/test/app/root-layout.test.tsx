@@ -34,6 +34,24 @@ jest.mock('expo-splash-screen', () => ({
   hide: jest.fn(),
 }));
 
+// The sync runtime has its own suites (test/sync, sync-runtime-*.test.tsx, and
+// the shell wiring in test/app/sync-runtime-shell.test.tsx). Here the layout's
+// concern is the auth and store gates, so the engine is a double that reports
+// the first sync as done and the triggers bind nothing.
+jest.mock('@/sync/use-sync-triggers', () => ({ useSyncTriggers: jest.fn() }));
+jest.mock('@/sync/engine', () => ({
+  useSyncStatus: () => ({
+    phase: 'idle',
+    firstSyncComplete: true,
+    lastSyncedAt: null,
+    failure: null,
+  }),
+  getSyncStatus: jest.fn(),
+  startSyncEngine: jest.fn(() => () => undefined),
+  syncNow: jest.fn(),
+  countUnsynced: jest.fn(async () => 0),
+}));
+
 // The migrator is proven against a real database in test/db; here the client
 // is a recorder, so the migrator must not try to run SQL through it.
 jest.mock('drizzle-orm/expo-sqlite/migrator', () => ({

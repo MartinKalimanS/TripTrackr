@@ -16,9 +16,11 @@
  * Each local write throws when it fails, so the screen can report it and say
  * so (`useWriteAttempt`); the network halves never throw.
  *
- * `usePhotoUploads` is this story's retry policy until User Story 6's queue
- * (T134): whenever the gallery gains focus — including the app coming back to
- * the foreground on it — the trip's pending uploads are tried (upload.ts).
+ * `usePhotoUploads` asks the upload queue (sync/upload-queue.ts — T134) to look
+ * for work whenever the gallery gains focus — including the app coming back to
+ * the foreground on it; the queue decides when and over what (Wi-Fi at once,
+ * cellular after its hold-back). A traveller's own "Try again" (`retryUpload`)
+ * is not opportunistic and goes straight to the upload (upload.ts).
  * `useFocusEffect` is expo-router's (https://docs.expo.dev/versions/v57.0.0/sdk/router.md).
  *
  * Visibility posture: private. Nothing here reads or writes `is_public`.
@@ -32,10 +34,11 @@ import { photosRepository, type PhotoWithPlace } from '@/db/repositories/photos'
 import type { PhotoRow } from '@/db/schema';
 import type { LiveResult } from '@/features/trips/use-trips';
 import { useAppActive } from '@/hooks/use-app-active';
+import { kickUploadQueue } from '@/sync/upload-queue';
 
 import { deletePhotoFiles } from './photo-files';
 import { syncFiling } from './refile';
-import { cancelUpload, uploadPendingPhotos, uploadPhoto } from './upload';
+import { cancelUpload, uploadPhoto } from './upload';
 
 /** A trip's live photos, newest first by the time taken, with their filed city. */
 export function usePhotos(tripId: string): LiveResult<PhotoWithPlace[]> {
@@ -81,13 +84,12 @@ export function usePhotoActions(): PhotoActions {
   );
 }
 
-/** Try the trip's pending uploads whenever the gallery is focused in the foreground. */
-export function usePhotoUploads(tripId: string): void {
-  const db = useDatabase();
+/** Ask the upload queue to look for work whenever the gallery is focused in the foreground. */
+export function usePhotoUploads(_tripId: string): void {
   const active = useAppActive();
   useFocusEffect(
     useCallback(() => {
-      if (active) void uploadPendingPhotos(db, tripId);
-    }, [db, tripId, active]),
+      if (active) void kickUploadQueue('focus');
+    }, [active]),
   );
 }

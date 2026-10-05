@@ -21,9 +21,15 @@
  *   - anything else → reported to Sentry — the error only, never the image,
  *     the fields or the request — and still `pending`.
  *
- * Attempts are made right after a capture or a confirmation and whenever the
- * list gains focus: a simple retry until User Story 6's queue replaces it. One
- * document is never uploaded twice at once.
+ * Attempts are asked for by the upload queue (sync/upload-queue.ts, T134):
+ * right after a capture or a confirmation and whenever the list gains focus,
+ * at once on Wi-Fi and after a hold-back on cellular. One document is never
+ * uploaded twice at once.
+ *
+ * Deleting a document cancels its upload (`cancelDocumentUpload`;
+ * sync-protocol.md §4): the request in flight is aborted, and an attempt that
+ * finds its document gone — or its sealed file, deleted a moment before it was
+ * read — ends as `missing` without a word to the traveller or to Sentry.
  *
  * Visibility posture: owner-only, structurally. Every request is the
  * signed-in traveller's own, and no request carries a visibility field
@@ -71,7 +77,11 @@ function settleFailure(db: AppDatabase, id: string, error: unknown): UploadOutco
   return 'pending';
 }
 
-async function post(db: AppDatabase, document: DocumentRow): Promise<UploadOutcome> {
+async function post(
+  db: AppDatabase,
+  document: DocumentRow,
+  signal: AbortSignal,
+): Promise<UploadOutcome> {
   if (!document.local_file_uri) throw new Error('A pending document has no sealed file.');
   const body = CreateDocumentRequest.parse({
     id: document.id,
@@ -81,9 +91,12 @@ async function post(db: AppDatabase, document: DocumentRow): Promise<UploadOutco
     parsed_json: document.parsed_json,
     confirmed: document.parsed_json !== null && document.parsed_confirmed_at !== null,
   });
+  // Deleted while the file was being opened: nothing to send.
+  if (signal.aborted) return 'missing';
   await apiFetch(DocumentResponse, `/trips/${document.trip_id}/documents`, {
     method: 'POST',
     body,
+    signal,
   });
   documentsRepository.markUploaded(db, document.id, document.updated_at);
   return 'uploaded';
@@ -97,39 +110,65 @@ function patchBody(document: DocumentRow): PatchDocumentRequest {
     : { parsed_json: document.parsed_json, confirmed: true };
 }
 
-async function patch(db: AppDatabase, document: DocumentRow): Promise<UploadOutcome> {
+async function patch(
+  db: AppDatabase,
+  document: DocumentRow,
+  signal: AbortSignal,
+): Promise<UploadOutcome> {
   const body = PatchDocumentRequest.parse(patchBody(document));
   await apiFetch(DocumentResponse, `/documents/${document.id}`, {
     method: 'PATCH',
     body,
+    signal,
   });
   documentsRepository.markSynced(db, document.id, document.updated_at);
   return 'uploaded';
 }
 
 /** One request, if the document needs one. */
-async function step(db: AppDatabase, id: string): Promise<UploadOutcome> {
+async function step(
+  db: AppDatabase,
+  id: string,
+  signal: AbortSignal,
+): Promise<UploadOutcome> {
   const document = documentsRepository.byId(db, id);
-  if (!document) return 'missing';
+  if (!document || signal.aborted) return 'missing';
   if (document.upload_state === 'failed') return 'failed';
   if (document.upload_state === 'uploaded' && !document.is_dirty) return 'uploaded';
   try {
     return document.upload_state === 'pending'
-      ? await post(db, document)
-      : await patch(db, document);
+      ? await post(db, document, signal)
+      : await patch(db, document, signal);
   } catch (error) {
-    return settleFailure(db, id, error);
+    // Whatever broke, a cancelled upload is not a fault: its document is gone.
+    return signal.aborted ? 'missing' : settleFailure(db, id, error);
   }
 }
 
 /** Upload, then send at once anything the traveller changed while it travelled. */
-async function reconcile(db: AppDatabase, id: string): Promise<UploadOutcome> {
-  const first = await step(db, id);
+async function reconcile(
+  db: AppDatabase,
+  id: string,
+  signal: AbortSignal,
+): Promise<UploadOutcome> {
+  const first = await step(db, id, signal);
   if (first !== 'uploaded') return first;
-  return documentsRepository.byId(db, id)?.is_dirty ? step(db, id) : first;
+  return documentsRepository.byId(db, id)?.is_dirty ? step(db, id, signal) : first;
 }
 
 const running = new Map<string, Promise<UploadOutcome>>();
+
+/** The switch that cancels each document's upload, for as long as one runs. */
+const cancellers = new Map<string, AbortController>();
+
+/**
+ * Stop a document's upload, if one is running — its record is being deleted
+ * (sync-protocol.md §4). The caller tombstones the row and removes the sealed
+ * file; this ends the request that would otherwise carry it to the API.
+ */
+export function cancelDocumentUpload(documentId: string): void {
+  cancellers.get(documentId)?.abort();
+}
 
 /**
  * Bring one document up to date with the API. Never rejects. A second call
@@ -141,12 +180,18 @@ export function uploadDocument(
 ): Promise<UploadOutcome> {
   const current = running.get(documentId);
   if (current) return current;
-  const attempt = reconcile(db, documentId)
+  const canceller = new AbortController();
+  cancellers.set(documentId, canceller);
+  const attempt = reconcile(db, documentId, canceller.signal)
     .catch((error: unknown): UploadOutcome => {
+      if (canceller.signal.aborted) return 'missing';
       Sentry.captureException(error);
       return 'pending';
     })
-    .finally(() => running.delete(documentId));
+    .finally(() => {
+      running.delete(documentId);
+      cancellers.delete(documentId);
+    });
   running.set(documentId, attempt);
   return attempt;
 }

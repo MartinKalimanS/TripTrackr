@@ -54,6 +54,8 @@ export function createFileSystemMock() {
     availableDiskSpace: 64 * 1024 * 1024 * 1024,
     /** Return an error to make the next move to a matching destination fail. */
     failMove: null as ((to: string) => Error | null) | null,
+    /** Return an error to make creating a matching directory fail (a full disk cannot make one). */
+    failCreate: null as ((uri: string) => Error | null) | null,
   };
   const upload = jest.fn(
     async (_fileUri: string, _url: string, _options?: MockUploadOptions) => ({
@@ -76,6 +78,8 @@ export function createFileSystemMock() {
         if (options.idempotent) return;
         throw new Error(`Directory ${this.uri} already exists`);
       }
+      const injected = state.failCreate?.(this.uri) ?? null;
+      if (injected) throw injected;
       if (!directories.has(parentOf(this.uri)) && !options.intermediates) {
         throw new Error(`Parent of ${this.uri} does not exist`);
       }
@@ -153,6 +157,7 @@ export function createFileSystemMock() {
         directories.add(CACHE);
         state.availableDiskSpace = 64 * 1024 * 1024 * 1024;
         state.failMove = null;
+        state.failCreate = null;
         upload.mockReset();
         upload.mockImplementation(async () => ({ status: 200, headers: {}, body: '' }));
       },

@@ -20,12 +20,13 @@ import { tripsRepository } from '@/db/repositories/trips';
 import { photos } from '@/db/schema';
 import { photoPath, thumbnailPath } from '@/features/photos/photo-files';
 import { syncFiling } from '@/features/photos/refile';
-import { cancelUpload, uploadPendingPhotos, uploadPhoto } from '@/features/photos/upload';
+import { cancelUpload, uploadPhoto } from '@/features/photos/upload';
 import {
   usePhotoActions,
   usePhotos,
   usePhotoUploads,
 } from '@/features/photos/use-photos';
+import { kickUploadQueue } from '@/sync/upload-queue';
 
 import { createTestDatabase, type TestSqlite } from '../db/sqlite-harness';
 import { DOCUMENTS, type FileSystemMock } from './photo-fakes';
@@ -34,9 +35,11 @@ jest.mock('expo-file-system', () =>
   jest.requireActual('./photo-fakes').createFileSystemMock(),
 );
 jest.mock('@/features/photos/upload', () => ({
-  uploadPendingPhotos: jest.fn(async () => undefined),
   uploadPhoto: jest.fn(async () => 'waiting'),
   cancelUpload: jest.fn(),
+}));
+jest.mock('@/sync/upload-queue', () => ({
+  kickUploadQueue: jest.fn(async () => undefined),
 }));
 jest.mock('@/features/photos/refile', () => ({
   syncFiling: jest.fn(async () => 'skipped'),
@@ -185,17 +188,17 @@ describe('usePhotoActions', () => {
 });
 
 describe('usePhotoUploads', () => {
-  test('drains the trip’s pending uploads on focus, and again when the app returns', async () => {
+  test('asks the upload queue to look for work on focus, and again when the app returns', async () => {
     const { rerender } = await renderHook(() => usePhotoUploads(tripId), { wrapper });
-    expect(uploadPendingPhotos).toHaveBeenCalledWith(sqlite.db, tripId);
-    expect(uploadPendingPhotos).toHaveBeenCalledTimes(1);
+    expect(kickUploadQueue).toHaveBeenCalledWith('focus');
+    expect(kickUploadQueue).toHaveBeenCalledTimes(1);
 
     mockAppState.active = false;
     await rerender({});
-    expect(uploadPendingPhotos).toHaveBeenCalledTimes(1);
+    expect(kickUploadQueue).toHaveBeenCalledTimes(1);
 
     mockAppState.active = true;
     await rerender({});
-    expect(uploadPendingPhotos).toHaveBeenCalledTimes(2);
+    expect(kickUploadQueue).toHaveBeenCalledTimes(2);
   });
 });

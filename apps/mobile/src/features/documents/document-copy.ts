@@ -78,6 +78,9 @@ export const DOCUMENT_CAPTURE_COPY = {
     'Camera access is turned off for TripTrackr. Turn it on in Settings to scan or photograph a document here, or choose a picture from your library instead.',
   captureFailed: 'The camera couldn’t take that picture. Please try again.',
   saveFailed: 'That picture couldn’t be saved on this device. Please try again.',
+  /** T139: the device is full. Nothing was stored — no half-saved document is left behind. */
+  noSpace:
+    'There isn’t enough free space on this device to save this document. Free some space and try again — nothing was saved.',
   libraryFailed: 'That picture couldn’t be opened from your library. Please try again.',
   manualEntry:
     'No boarding-pass barcode could be read from this picture, so enter the flight details yourself. You can also do this later.',

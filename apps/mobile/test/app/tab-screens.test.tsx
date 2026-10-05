@@ -80,7 +80,9 @@ jest.mock('@/features/trips/use-trips', () => ({
 
 const mockSignOut = { mutate: jest.fn(), isPending: false, error: null as unknown };
 
-jest.mock('@/features/auth/use-session', () => ({
+// The hook now lives in use-sign-out.ts (T137); its guard predicate stays real.
+jest.mock('@/features/auth/use-sign-out', () => ({
+  ...jest.requireActual('@/features/auth/use-sign-out'),
   useSignOut: () => mockSignOut,
 }));
 

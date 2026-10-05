@@ -289,9 +289,11 @@ describe('uploadDocument — after the upload (PATCH /documents/:id)', () => {
     ];
     expect(schema).toBe(DocumentResponse);
     expect(path).toBe(`/documents/${document.id}`);
+    // The signal is what lets a delete cancel the request (T134).
     expect(options).toEqual({
       method: 'PATCH',
       body: { parsed_json: corrected, confirmed: true },
+      signal: expect.any(AbortSignal),
     });
     expect(PatchDocumentRequest.safeParse(options.body).success).toBe(true);
     expect(row(document.id)?.is_dirty).toBe(false);

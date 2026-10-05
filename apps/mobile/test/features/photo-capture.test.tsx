@@ -37,8 +37,8 @@ import {
 } from '@/features/photos/photo-files';
 import { fitWithin } from '@/features/photos/reencode';
 import { useCapture } from '@/features/photos/use-capture';
-import { uploadPendingPhotos } from '@/features/photos/upload';
 import { Sentry } from '@/lib/sentry';
+import { kickUploadQueue } from '@/sync/upload-queue';
 
 import { createTestDatabase, type TestSqlite } from '../db/sqlite-harness';
 import {
@@ -59,8 +59,8 @@ jest.mock('expo-image-picker', () => ({
   launchCameraAsync: jest.fn(),
   requestCameraPermissionsAsync: jest.fn(),
 }));
-jest.mock('@/features/photos/upload', () => ({
-  uploadPendingPhotos: jest.fn(async () => undefined),
+jest.mock('@/sync/upload-queue', () => ({
+  kickUploadQueue: jest.fn(async () => undefined),
 }));
 jest.mock('@/lib/sentry', () => ({
   Sentry: { captureException: jest.fn() },
@@ -301,7 +301,7 @@ describe('adding from the photo library', () => {
 
     expect(allRows()).toEqual([]);
     expect(result.current.message).toBeNull();
-    expect(uploadPendingPhotos).not.toHaveBeenCalled();
+    expect(kickUploadQueue).not.toHaveBeenCalled();
   });
 
   test('a picker that fails to open is explained and reported', async () => {
@@ -317,13 +317,14 @@ describe('adding from the photo library', () => {
     expect(Sentry.captureException).toHaveBeenCalled();
   });
 
-  test('an upload is attempted right after a capture that added something', async () => {
+  test('the upload queue is asked to look for work right after a capture that added something', async () => {
     libraryReturns([pickedAsset('rome', ROME_EXIF)]);
     const { result } = await renderCapture();
 
     await act(() => result.current.addFromLibrary());
 
-    expect(uploadPendingPhotos).toHaveBeenCalledWith(sqlite.db, tripId);
+    expect(kickUploadQueue).toHaveBeenCalledWith('capture');
+    expect(kickUploadQueue).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -406,7 +407,7 @@ describe('a failure part-way leaves no half-written record (sync-protocol.md §4
     });
     // The traveller's circumstance, not a defect.
     expect(Sentry.captureException).not.toHaveBeenCalled();
-    expect(uploadPendingPhotos).not.toHaveBeenCalled();
+    expect(kickUploadQueue).not.toHaveBeenCalled();
   });
 
   test('storage filling up during the re-encode: nothing staged, nothing left in the cache', async () => {
@@ -477,7 +478,7 @@ describe('a failure part-way leaves no half-written record (sync-protocol.md §4
       tone: 'error',
       text: '2 of 3 photos added. 1 couldn’t be read — try a different photo.',
     });
-    expect(uploadPendingPhotos).toHaveBeenCalled();
+    expect(kickUploadQueue).toHaveBeenCalledWith('capture');
   });
 });
 

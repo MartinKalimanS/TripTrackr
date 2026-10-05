@@ -144,9 +144,3 @@ export async function stagePhotoFiles(
     throw error;
   }
 }
-
-/** Whether the device has at least `bytes` free; true when it cannot say. */
-export function hasRoomFor(bytes: number): boolean {
-  const free = Paths.availableDiskSpace;
-  return !(typeof free === 'number' && free > 0 && free < bytes);
-}

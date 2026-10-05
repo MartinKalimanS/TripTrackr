@@ -54,13 +54,22 @@ function parentOf(uri: string): string {
 export interface FakeFileSystemModule {
   File: new (...parts: PathPart[]) => FakeFileHandle;
   Directory: new (...parts: PathPart[]) => FakeDirectoryHandle;
-  Paths: { readonly document: FakeDirectoryHandle; readonly cache: FakeDirectoryHandle };
+  Paths: {
+    readonly document: FakeDirectoryHandle;
+    readonly cache: FakeDirectoryHandle;
+    /** `undefined` until a suite sets it: the platform "cannot say". */
+    readonly availableDiskSpace: number | undefined;
+  };
   /** Every file on the fake disk, by URI. */
   __files: () => ReadonlyMap<string, Uint8Array>;
   /** Put a file on disk — a camera's, picker's or editor's output. */
   __seed: (uri: string, bytes: Uint8Array | string) => void;
+  /** What `Paths.availableDiskSpace` reports, in bytes. */
+  __setFreeSpace: (bytes: number | undefined) => void;
   /** The next `write` throws this, as a full disk would. */
   __failNextWrite: (error: Error) => void;
+  /** Creating a file or directory whose URI this answers with an error fails with it. */
+  __failCreate: (fault: ((uri: string) => Error | null) | null) => void;
   /** The next `delete` of this URI throws. */
   __failDelete: (uri: string, error: Error) => void;
   __reset: () => void;
@@ -90,9 +99,21 @@ export interface FakeDirectoryHandle {
 export function fileSystemDouble(): FakeFileSystemModule {
   const files = new Map<string, Uint8Array>();
   const directories = new Set<string>([FAKE_DOCUMENT_ROOT, FAKE_CACHE_ROOT]);
-  const faults: { write: Error | null; deletes: Map<string, Error> } = {
+  const faults: {
+    write: Error | null;
+    deletes: Map<string, Error>;
+    create: ((uri: string) => Error | null) | null;
+    freeSpace: number | undefined;
+  } = {
     write: null,
     deletes: new Map(),
+    create: null,
+    freeSpace: undefined,
+  };
+
+  const failIfCreateFaulted = (uri: string) => {
+    const error = faults.create?.(uri) ?? null;
+    if (error) throw error;
   };
 
   const requireDirectory = (uri: string) => {
@@ -112,6 +133,7 @@ export function fileSystemDouble(): FakeFileSystemModule {
         if (options.idempotent) return;
         throw new Error(`Directory ${this.uri} already exists`);
       }
+      failIfCreateFaulted(this.uri);
       if (!options.intermediates) requireDirectory(parentOf(this.uri));
       directories.add(this.uri);
     }
@@ -138,6 +160,7 @@ export function fileSystemDouble(): FakeFileSystemModule {
       if (this.exists && !options.overwrite) {
         throw new Error(`File ${this.uri} already exists`);
       }
+      failIfCreateFaulted(this.uri);
       if (!options.intermediates) requireDirectory(parentOf(this.uri));
       files.set(this.uri, new Uint8Array());
     }
@@ -182,8 +205,17 @@ export function fileSystemDouble(): FakeFileSystemModule {
       get cache() {
         return new FakeDirectory(FAKE_CACHE_ROOT);
       },
+      get availableDiskSpace() {
+        return faults.freeSpace;
+      },
     },
     __files: () => new Map(files),
+    __setFreeSpace: (bytes) => {
+      faults.freeSpace = bytes;
+    },
+    __failCreate: (fault) => {
+      faults.create = fault;
+    },
     __seed: (uri, bytes) => {
       directories.add(parentOf(uri));
       files.set(
@@ -204,6 +236,8 @@ export function fileSystemDouble(): FakeFileSystemModule {
       directories.add(FAKE_CACHE_ROOT);
       faults.write = null;
       faults.deletes.clear();
+      faults.create = null;
+      faults.freeSpace = undefined;
     },
   };
 }
@@ -411,6 +445,8 @@ export interface FakeImageManipulatorModule {
   __decodeAs: (width: number, height: number) => void;
   /** The next `renderAsync` rejects with this. */
   __failNextRender: (error: Error) => void;
+  /** The next `saveAsync` rejects with this, as a full disk would. */
+  __failNextSave: (error: Error) => void;
   __reset: () => void;
 }
 
@@ -423,6 +459,7 @@ export function imageManipulatorDouble(): FakeImageManipulatorModule {
   const state = {
     size: { width: 1000, height: 750 },
     renderFault: null as Error | null,
+    saveFault: null as Error | null,
     saved: 0,
     handed: [] as { release: jest.Mock }[],
   };
@@ -433,6 +470,11 @@ export function imageManipulatorDouble(): FakeImageManipulatorModule {
       height,
       saveAsync: jest.fn(async (options: { format?: string } = {}) => {
         const files = jest.requireMock('expo-file-system') as FakeFileSystemModule;
+        if (state.saveFault) {
+          const error = state.saveFault;
+          state.saveFault = null;
+          throw error;
+        }
         state.saved += 1;
         const uri = `${FAKE_CACHE_ROOT}/ImageManipulator/${state.saved}.${options.format ?? 'jpeg'}`;
         files.__seed(uri, fakeJpegText(width, height));
@@ -487,9 +529,13 @@ export function imageManipulatorDouble(): FakeImageManipulatorModule {
     __failNextRender: (error) => {
       state.renderFault = error;
     },
+    __failNextSave: (error) => {
+      state.saveFault = error;
+    },
     __reset: () => {
       state.size = { width: 1000, height: 750 };
       state.renderFault = null;
+      state.saveFault = null;
       state.handed = [];
     },
   };
