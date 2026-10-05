@@ -1,0 +1,45 @@
+# Row 4, second half — the deletion propagated; the record does not reappear on
+# the second device (FR-039; SC-011 "zero resurrected"). Device B, ONLINE, after
+# A reconnected.
+#
+# B held 'Synced note to delete' before (03-b-before-reconnect.yaml) and must
+# now have lost it; it never held 'Ephemeral note' and must not have acquired
+# it. A positive control ('Offline note' arrived) in the same list proves B has
+# pulled, so the two absences are not just "nothing arrived yet".
+#
+# Relaunching B twice-over (a second relaunch at the end) closes the
+# resurrection route this row is named for: a deletion that holds across a
+# later pull from the cursor is a deletion, one that holds only until the next
+# snapshot is not.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- tapOn:
+    id: 'tab-trips'
+- tapOn: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- extendedWaitUntil:
+    visible: 'Offline note'
+    timeout: 60000
+# B held this note before; wait for the pull to take it away.
+- extendedWaitUntil:
+    notVisible: 'Synced note to delete'
+    timeout: 60000
+- assertNotVisible: 'Ephemeral note'
+- assertVisible: 'Shared note'
+- tapOn: 'Back'
+- tapOn: 'Back'
+
+# Pull again from the stored cursor: nothing comes back.
+- runFlow: _helpers/relaunch.yaml
+- tapOn:
+    id: 'tab-trips'
+- tapOn: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Offline note'
+- assertNotVisible: 'Synced note to delete'
+- assertNotVisible: 'Ephemeral note'
+- tapOn: 'Back'
+- tapOn: 'Back'

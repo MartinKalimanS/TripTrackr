@@ -1,0 +1,38 @@
+# Preconditions for every phase of the offline acceptance suite.
+#
+# Fails the whole run, loudly and first, when the run cannot mean what it
+# claims. The checks are the ways a green run could be a lie:
+#
+#   1. iOS. `setAirplaneMode` is Android-only: on iOS (and web) the command
+#      PASSES and does nothing (docs.maestro.dev/reference/commands-available/
+#      setairplanemode), so every "offline" step would run online and every
+#      assertion about pending changes would be vacuous or flaky.
+#   2. RUN_ID. One gate run is one account (`maestro-offline-<RUN_ID>@...`)
+#      shared by device A and device B. Without the same RUN_ID on both devices
+#      they would be different travellers and nothing could sync between them.
+#   3. PHASE. The master flow runs ONE device's slice of the gate per
+#      invocation; no PHASE means no slice.
+#   4. DEVICE_ROLE. Each phase belongs to device A or device B; the master flow
+#      compares it with the phase so a phase can never run on the wrong device.
+#
+# No braces or backslashes inside the expressions: Maestro finds the end of a
+# `${...}` at the first closing brace.
+appId: com.triptrackr.app
+---
+- runFlow:
+    label: iOS cannot run this suite
+    when:
+      platform: iOS
+    commands:
+      - assertTrue:
+          condition: ${false}
+          label: 'iOS cannot run the offline gate: setAirplaneMode is a no-op there and still passes. Use an Android emulator or device (e2e/offline/README.md).'
+- assertTrue:
+    condition: "${typeof RUN_ID !== 'undefined' && String(RUN_ID).length > 0}"
+    label: 'RUN_ID is required. Pass the same -e RUN_ID=<value> for every phase of one gate run (e2e/offline/README.md).'
+- assertTrue:
+    condition: "${typeof PHASE !== 'undefined' && String(PHASE).length === 3 && String(PHASE).charAt(0) === 'p'}"
+    label: 'PHASE is required (p01 to p22). Pass -e PHASE=pNN, -e DEVICE_ROLE=A|B and --device for the device that phase belongs to (e2e/offline/README.md).'
+- assertTrue:
+    condition: "${typeof DEVICE_ROLE !== 'undefined' && (DEVICE_ROLE === 'A' || DEVICE_ROLE === 'B')}"
+    label: 'DEVICE_ROLE is required: pass -e DEVICE_ROLE=A or -e DEVICE_ROLE=B (e2e/offline/README.md).'

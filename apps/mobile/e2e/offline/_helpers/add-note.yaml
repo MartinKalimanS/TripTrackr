@@ -1,0 +1,21 @@
+# Add a note on the notes screen of the current trip, and see it appear.
+#
+# Needs: the notes screen open, NOTE_TITLE and NOTE_BODY (literals). The anchor
+# is left at the editor's default (the trip's first country), so the trip must
+# have at least one stop.
+appId: com.triptrackr.app
+---
+- tapOn:
+    id: 'notes-add'
+- assertVisible:
+    id: 'note-editor'
+- tapOn:
+    id: 'note-editor-title'
+- inputText: ${NOTE_TITLE}
+- tapOn:
+    id: 'note-editor-body'
+- inputText: ${NOTE_BODY}
+- hideKeyboard
+- tapOn:
+    id: 'note-editor-save'
+- assertVisible: ${NOTE_TITLE}

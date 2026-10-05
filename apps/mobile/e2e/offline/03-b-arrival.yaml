@@ -1,0 +1,49 @@
+# Row 3 (and row 1's content), second device — the offline window's records
+# have ARRIVED on B, from the server. Device B, ONLINE, after A reconnected
+# (03-a-reconnect.yaml, 06-a-photo-bytes-arrive.yaml).
+#
+# This is the independent evidence for "everything reaches the server": a row can
+# only be on B if the server accepted it from A. B relaunches (which pulls) and
+# finds the edited note, the expense, and the document's metadata. The photo is
+# 06-b-photo-arrived.yaml, the deletions 04-b-deletion-propagated.yaml, the
+# offline-created trip 13-b-trip-arrived.yaml.
+#
+# B's pull is fast but not instant: the first assertion of each screen waits
+# up to 60 s before concluding anything.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- tapOn:
+    id: 'tab-trips'
+- tapOn: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- extendedWaitUntil:
+    visible: 'Offline note'
+    timeout: 60000
+# The EDIT arrived, not the original text.
+- assertVisible: 'Edited in airplane mode\.'
+- assertNotVisible: 'Written in airplane mode\.'
+- tapOn: 'Back'
+
+- tapOn:
+    id: 'trip-open-expenses'
+- extendedWaitUntil:
+    visible: '.*12.34.*'
+    timeout: 60000
+- assertVisible: '.*20.00.*'
+- tapOn: 'Back'
+
+# A document's metadata reaches B only once its bytes landed (FR-041), so the row
+# appearing here is also an arrival check on the byte channel.
+- tapOn:
+    id: 'trip-open-documents'
+- extendedWaitUntil:
+    visible:
+      id: 'document-row-.*'
+    timeout: 90000
+- assertVisible: 'Boarding pass'
+- assertVisible: 'AC834 . .*'
+- assertNotVisible: 'No documents yet'
+- tapOn: 'Back'
+- tapOn: 'Back'

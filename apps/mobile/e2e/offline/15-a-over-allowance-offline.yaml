@@ -1,0 +1,97 @@
+# Row 15 — Create a trip offline while at the free allowance; reconnect.
+# Expected: the trip is kept and flagged; nothing recorded is lost
+# (research D-08, Constitution V). Device A. The second device's half is
+# 15-b-trip-kept.yaml.
+#
+# WHAT IS ASSERTED ON THE DEVICE, AND WHAT IS NOT. "Kept" is fully assertable:
+# after the reconnect the trip is still there, still readable, carries its expense,
+# and its pending marker has cleared (a trip the server REJECTED would stay dirty
+# and parked on the device). "Flagged" is NOT assertable from any screen: the push
+# result carries `warnings: ['over_allowance']` and the app records it in an
+# in-memory list (sync/warnings.ts) that nothing renders until the entitlement
+# flow of User Story 9 (T185 to T187). Inventing a UI assertion for it would be a
+# fake. The flag is therefore verified in two halves, both OUTSIDE this flow:
+#   server half   `node apps/mobile/e2e/offline/gate-tools.mjs verify-flag`
+#                 replays the trip's push (an idempotent noop by id) and prints the
+#                 `warnings` the API answers with (README, "Row 15 flagged").
+#   device half   test/sync/sync-core-push.test.ts ("over_allowance" cases) pins
+#                 that the mobile push records the warning without touching the trip.
+# When US9 renders the flag, add its assertion here and delete this paragraph.
+#
+# PRECONDITION: the account must already hold its allowance. Trips held before
+# this phase: 'Gate baseline', 'Gate bulk' (seed-bulk) and 'Gate offline trip'
+# (row 13) = 3, so it creates ALLOWANCE - 3 fillers online first (default 5, so
+# 2). Pass -e ALLOWANCE=<the API's FREE_TRIP_ALLOWANCE> if it is not 5. A trip is
+# "over" when at least that many OTHER live trips were created before it
+# (push-allowance.policy.ts), so more fillers than needed is harmless and fewer
+# makes the trip not over, which verify-flag reports.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+
+# --- Bring the account to its allowance, online ------------------------------------------
+- evalScript: "${output.fillers = (typeof ALLOWANCE === 'undefined' ? 5 : Number(ALLOWANCE)) - 3}"
+- evalScript: ${output.n = 0}
+- repeat:
+    while:
+      true: ${output.n < output.fillers}
+    commands:
+      - evalScript: ${output.n = output.n + 1}
+      - tapOn:
+          id: 'tab-trips'
+      - tapOn:
+          id: 'trips-plan-trip'
+      - tapOn:
+          id: 'add-trip-title'
+      - inputText: Gate filler ${output.n}
+      - hideKeyboard
+      - tapOn:
+          id: 'currency-EUR'
+      - tapOn:
+          id: 'add-trip-save'
+      - assertVisible:
+          id: 'trip-screen'
+      - tapOn: 'Back'
+# The fillers are on the server before the offline trip is even created.
+- tapOn:
+    id: 'tab-trips'
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 60000
+
+# --- Offline: create the over-allowance trip and record something against it ----------------
+- runFlow: _helpers/go-offline.yaml
+- runFlow:
+    file: _helpers/add-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate over allowance'
+- assertVisible: 'Not yet synced'
+- runFlow:
+    file: _helpers/open-section.yaml
+    env:
+      SEGMENT: 'expenses'
+- runFlow:
+    file: _helpers/add-expense.yaml
+    env:
+      AMOUNT: '3.33'
+- assertVisible: 'Not yet synced'
+- tapOn: 'Back'
+- tapOn: 'Back'
+- assertVisible: 'Gate over allowance'
+
+# --- Reconnect: kept, acknowledged, nothing lost ---------------------------------------------
+- runFlow: _helpers/go-online.yaml
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 30000
+- assertVisible: 'Gate over allowance'
+- tapOn: 'Gate over allowance'
+- assertVisible:
+    id: 'trip-screen'
+- assertNotVisible: 'Not yet synced'
+- tapOn:
+    id: 'trip-open-expenses'
+- assertVisible: '.*3.33.*'
+- assertNotVisible: 'Not yet synced'
+- tapOn: 'Back'
+- tapOn: 'Back'

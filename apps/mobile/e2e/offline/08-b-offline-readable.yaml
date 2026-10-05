@@ -1,0 +1,47 @@
+# Row 8 — Go offline and open a previously synced trip.
+# Expected: notes, expenses and itinerary all readable (FR-043). Device B.
+#
+# B is the right device for it: everything it holds ARRIVED BY PULL in phase
+# p02, so reading it offline cannot be explained by a cache of what B typed
+# itself. The relaunch matters as much as the airplane mode: an app that had
+# only kept the data in memory would lose it here, and one whose first-sync
+# flag was not persisted would show the first-sync gate ("You're offline")
+# instead of the tabs.
+#
+# Leaves B back ONLINE.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/go-offline.yaml
+
+# The tabs mounted, not the first-sync gate: the snapshot is complete on disk.
+- assertVisible:
+    id: 'tab-bar'
+- assertNotVisible:
+    id: 'first-sync-screen'
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+
+# Itinerary.
+- assertVisible: 'Stop 1: Rom(a|e).*'
+- assertVisible: 'Stop 2: Paris.*'
+# Notes.
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Shared note'
+- assertVisible: 'Original shared text\.'
+- assertVisible: 'Race note'
+- assertVisible: 'Synced note to delete'
+- tapOn: 'Back'
+# Expenses.
+- tapOn:
+    id: 'trip-open-expenses'
+- assertVisible:
+    id: 'spending-summary'
+- assertVisible: '.*20.00.*'
+- tapOn: 'Back'
+- tapOn: 'Back'
+
+# The probe in go-offline proved the network was down for all of the above.
+- runFlow: _helpers/go-online.yaml

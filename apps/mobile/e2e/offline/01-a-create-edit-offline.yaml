@@ -1,0 +1,168 @@
+# Row 1 — Create and edit notes, expenses, photo captures and documents in
+# aeroplane mode. Expected: all saved locally, immediately visible (FR-036).
+# Device A. Starts the OFFLINE WINDOW that rows 2, 4, 6, 13 and 14 continue:
+# A stays in aeroplane mode until phase p05.
+#
+# What "edit" means per record type, because the app does not offer the same
+# edit everywhere:
+#   note      Edit -> change the body                       (note-editor)
+#   photo     file it under another city                    (photo viewer pills)
+#   document  correct the confirmed flight details          (document-review)
+#   expense   NO EDIT CONTROL EXISTS in the app (create and delete only), so
+#             there is nothing to drive; its create is covered, and the gap is
+#             recorded in e2e/offline/README.md rather than faked here.
+#
+# "Photo capture" is the library import, which runs the same local-first pipeline
+# as the camera (file copied to app-private storage, record written with
+# upload_state 'pending'). The camera shutter is not driven: it opens the OS
+# camera app, whose markup is the emulator's, and its virtual scene cannot be
+# relied on (same limit as e2e/05-photos-and-documents.yaml).
+#
+# Every save is asserted on screen at once together with its pending marker:
+# "Not yet synced" (notes, expenses, documents) or "Waiting to upload" (photos).
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/go-offline.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+
+# --- Notes: create two, edit one ----------------------------------------------
+- runFlow:
+    file: _helpers/open-section.yaml
+    env:
+      SEGMENT: 'notes'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Offline note'
+      NOTE_BODY: 'Written in airplane mode.'
+- assertVisible: 'Written in airplane mode\.'
+- assertVisible: 'Not yet synced'
+# Row 4 deletes this one before it was ever synced.
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Ephemeral note'
+      NOTE_BODY: 'Created and deleted offline.'
+- tapOn: 'Edit Offline note'
+- assertVisible:
+    id: 'note-editor'
+- tapOn:
+    id: 'note-editor-body'
+- eraseText: 120
+- inputText: 'Edited in airplane mode.'
+- hideKeyboard
+- tapOn:
+    id: 'note-editor-save'
+- assertVisible: 'Edited in airplane mode\.'
+- assertNotVisible: 'Written in airplane mode\.'
+- assertVisible: 'Not yet synced'
+- tapOn: 'Back'
+
+# --- Expense: create (there is no edit control) --------------------------------
+- runFlow:
+    file: _helpers/open-section.yaml
+    env:
+      SEGMENT: 'expenses'
+- runFlow:
+    file: _helpers/add-expense.yaml
+    env:
+      AMOUNT: '12.34'
+- assertVisible: 'Not yet synced'
+- tapOn: 'Back'
+
+# --- Photo: capture (library import), then edit its filing ---------------------
+- addMedia:
+    - '../fixtures/rome-colosseum.jpg'
+- runFlow:
+    file: _helpers/open-section.yaml
+    env:
+      SEGMENT: 'photos'
+- assertVisible:
+    id: 'photos-title'
+- tapOn: 'Add photos from your library'
+- runFlow: _helpers/pick-library-media.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'photos-capture-message'
+      text: '1 photo added\.'
+    timeout: 30000
+- assertVisible:
+    id: 'photo-thumbnail-.*'
+# Visible at once, and honest about it: the bytes have not left the device.
+- assertVisible: 'Waiting to upload'
+- tapOn:
+    id: 'photo-open-.*'
+    index: 0
+- assertVisible:
+    id: 'photo-viewer'
+# Edit: refile it under Paris. The fixture's EXIF GPS is around Rome, so it never
+# starts under Paris and the filing really changes. The viewer then SAYS that the
+# filing contradicts the photo's position instead of correcting it (spec edge
+# case); that line is not asserted here.
+- assertVisible:
+    id: 'photo-viewer-place'
+- tapOn: 'File under Paris.*'
+- assertVisible:
+    id: 'photo-viewer-place'
+    text: 'Filed under Paris.*'
+- tapOn: 'Close photo'
+- assertNotVisible:
+    id: 'photo-viewer'
+- tapOn: 'Back'
+
+# --- Document: add a boarding pass, then correct its details --------------------
+- addMedia:
+    - '../fixtures/boarding-pass-pdf417.png'
+- runFlow:
+    file: _helpers/open-section.yaml
+    env:
+      SEGMENT: 'documents'
+- assertVisible:
+    id: 'documents-title'
+- tapOn:
+    id: 'documents-add'
+- tapOn:
+    id: 'document-capture-library'
+- runFlow: _helpers/pick-library-media.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'document-confirm-form'
+    timeout: 20000
+- assertVisible:
+    id: 'document-confirm-flight-number'
+    text: 'AC834'
+- tapOn:
+    id: 'document-confirm-save'
+- assertNotVisible:
+    id: 'document-confirm-form'
+- assertVisible:
+    id: 'document-fields-status'
+    text: 'Confirmed'
+# Edit: correct the passenger name.
+- tapOn:
+    id: 'document-review'
+- assertVisible:
+    id: 'document-confirm-form'
+- tapOn:
+    id: 'document-confirm-passenger-name'
+- eraseText: 80
+- inputText: 'OFFLINE/EDIT'
+- hideKeyboard
+- tapOn:
+    id: 'document-confirm-save'
+- assertVisible:
+    id: 'document-field-passenger-name'
+    text: 'OFFLINE/EDIT'
+- assertVisible:
+    id: 'document-upload-status'
+    text: 'Not uploaded yet\..*'
+- tapOn: 'Back'
+- assertVisible:
+    id: 'document-row-.*'
+- assertVisible: 'Boarding pass'
+- assertVisible: 'Not yet synced'
+- tapOn: 'Back'
+- tapOn: 'Back'

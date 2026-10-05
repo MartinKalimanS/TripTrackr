@@ -1,0 +1,40 @@
+# Row 5 (1 of 4) — Edit one record on two devices before either syncs.
+# Device B goes OFFLINE and edits 'Shared note' FIRST (the older edit).
+#
+# The four phases of row 5, in order:
+#   05a  B  offline, edits 'Shared note' -> "B version."      (this file; B stays offline)
+#   05b  A  offline, edits it -> "A version.", then reconnects FIRST
+#   05c  B  reconnects SECOND and is told its version was superseded
+#   05d  A  the winner is NOT told, and still has its own text
+#
+# Both devices start with the same synced note (phase p01 wrote it, B pulled it
+# in p02) and neither has synced since the edit. A edits later than B, so the
+# rule (incoming newer wins, stored newer -> conflict; sync-protocol.md §2) makes
+# A's version win whatever the order of arrival, and B, which pushes second, is
+# the superseded device: the shape quickstart.md §5 step 6 describes ("device 2
+# is told its version was superseded"). The two devices must not have
+# clocks skewed by more than the gap between the phases; two emulators on one
+# host share a clock, two physical devices should both be on network time.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/go-offline.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Original shared text\.'
+- tapOn: 'Edit Shared note'
+- assertVisible:
+    id: 'note-editor'
+- tapOn:
+    id: 'note-editor-body'
+- eraseText: 120
+- inputText: 'B version.'
+- hideKeyboard
+- tapOn:
+    id: 'note-editor-save'
+- assertVisible: 'B version\.'
+- assertNotVisible: 'Original shared text\.'
+- assertVisible: 'Not yet synced'

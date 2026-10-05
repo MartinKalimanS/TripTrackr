@@ -1,0 +1,12 @@
+# Press the destructive button of the system alert that Alert.alert raises
+# ("Delete this note?", "Remove Paris?", ...).
+#
+# React Native's Android Alert maps the LAST button to the dialog's positive
+# button, whose resource id is `android:id/button1` (the first button, Cancel,
+# is button2). Pressing it by id keeps the flow independent of the label's case,
+# which the dialog theme may upper-case. If a future RN or OS image changes the
+# dialog, this is the one file to adjust.
+appId: com.triptrackr.app
+---
+- tapOn:
+    id: 'android:id/button1'

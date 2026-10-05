@@ -1,0 +1,26 @@
+# Add a stop from a trip screen, picking the city in the two-step picker.
+#
+# Needs: a trip screen open; COUNTRY_FILTER (what to type), COUNTRY_ISO (the
+# `city-picker-country-<ISO>` id), CITY_QUERY (what to type) and CITY_PATTERN (a
+# regex for the option's text; the catalogue may hold the local spelling, Roma
+# or Rome). The dates are the editor's suggestions.
+appId: com.triptrackr.app
+---
+- tapOn:
+    id: 'trip-add-stop'
+- assertVisible:
+    id: 'stop-editor'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: ${COUNTRY_FILTER}
+- tapOn:
+    id: 'city-picker-country-${COUNTRY_ISO}'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: ${CITY_QUERY}
+- tapOn:
+    text: ${CITY_PATTERN}
+- assertVisible:
+    id: 'stop-editor-arrive'
+- tapOn:
+    id: 'stop-editor-save'

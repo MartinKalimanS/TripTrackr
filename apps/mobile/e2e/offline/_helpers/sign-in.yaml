@@ -1,0 +1,25 @@
+# Sign in as the gate's account, from the welcome screen.
+#
+# One gate run is one account for both devices:
+# maestro-offline-<RUN_ID>@example.com, registered by phase p01 on device A.
+# Stops after tapping submit; callers decide what to assert next (the first-sync
+# state on a brand-new device, or the tabs on a returning one).
+appId: com.triptrackr.app
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- assertVisible:
+    id: 'welcome-screen'
+- tapOn:
+    id: 'welcome-sign-in'
+- assertVisible:
+    id: 'login-screen'
+- tapOn:
+    id: 'login-email'
+- inputText: maestro-offline-${RUN_ID}@example.com
+- tapOn:
+    id: 'login-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'login-submit'

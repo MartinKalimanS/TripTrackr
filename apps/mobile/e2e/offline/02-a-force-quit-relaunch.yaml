@@ -1,0 +1,65 @@
+# Row 2 — Force-quit and relaunch while offline.
+# Expected: everything still present (FR-037; SC-009 "100% of offline-created
+# content survives restart"). Device A, still in the offline window.
+#
+# `stopApp` kills the process with nothing flushed; `launchApp` then reopens the
+# same encrypted store. Each record created in row 1 is looked up again, in the
+# state row 1 left it: the edited note body, the expense, the photo as "Waiting
+# to upload" and the document with its corrected passenger.
+#
+# The offline probe runs again at the end, because "still offline" after a
+# restart is exactly the claim: a relaunch that quietly reconnected would turn
+# this row into a test of the happy path.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+
+# --- Notes ---------------------------------------------------------------------
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Offline note'
+- assertVisible: 'Edited in airplane mode\.'
+- assertVisible: 'Ephemeral note'
+- assertVisible: 'Not yet synced'
+- tapOn: 'Back'
+
+# --- Expense -------------------------------------------------------------------
+- tapOn:
+    id: 'trip-open-expenses'
+- assertVisible: '.*12.34.*'
+- assertVisible: '.*20.00.*'
+- assertVisible: 'Not yet synced'
+- tapOn: 'Back'
+
+# --- Photo: present AND still marked as not uploaded ----------------------------
+- tapOn:
+    id: 'trip-open-photos'
+- assertVisible:
+    id: 'photo-thumbnail-.*'
+- assertVisible: 'Waiting to upload'
+- assertNotVisible: 'No photos yet'
+- tapOn: 'Back'
+
+# --- Document: present, with the edit ------------------------------------------
+- tapOn:
+    id: 'trip-open-documents'
+- assertVisible:
+    id: 'document-row-.*'
+- assertVisible: 'Boarding pass'
+- assertVisible: 'AC834 . .*'
+- assertVisible: 'Not yet synced'
+- tapOn:
+    id: 'document-row-.*'
+- assertVisible:
+    id: 'document-field-passenger-name'
+    text: 'OFFLINE/EDIT'
+- tapOn: 'Back'
+- tapOn: 'Back'
+- tapOn: 'Back'
+
+# --- Still offline after the restart ---------------------------------------------
+- runFlow: _helpers/assert-offline-probe.yaml

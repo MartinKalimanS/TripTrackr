@@ -1,0 +1,30 @@
+# Row 12 (2 of 5) — Device B goes OFFLINE and EDITS 'Race note', AFTER device A
+# deleted it (12a). See 12a-a-delete-offline.yaml for the whole row.
+#
+# B still has the note (it synced it in p02) and has not seen the deletion; A is
+# offline too, so nothing has reached the server yet. B's edit is therefore the
+# NEWER of the two changes by the wall clock, which is exactly the case a naive
+# newest-wins rule resurrects.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/go-offline.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Race note'
+- assertVisible: 'Original race text\.'
+- tapOn: 'Edit Race note'
+- assertVisible:
+    id: 'note-editor'
+- tapOn:
+    id: 'note-editor-body'
+- eraseText: 120
+- inputText: 'Edited on B after A deleted it.'
+- hideKeyboard
+- tapOn:
+    id: 'note-editor-save'
+- assertVisible: 'Edited on B after A deleted it\.'
+- assertVisible: 'Not yet synced'

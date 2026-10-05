@@ -1,0 +1,79 @@
+# Row 10 — Sync a batch too large for one attempt.
+# Expected: resumes rather than restarts (spec edge case; SC-009, SC-011).
+# Device B, ONLINE at the start. Needs the seeded dataset (gate-tools.mjs
+# seed-bulk): 'Gate bulk' with 1,100 EXPENSES of 1.00 EUR, which is three
+# `GET /sync/pull` pages (PULL_PAGE_SIZE = 500) on top of the gate's own history.
+#
+# B is made a brand-new device again (clearState), signs in, and the radio is cut
+# while its first snapshot is in flight. The gate then shows its designed
+# "You're offline" state (never an empty screen). Restoring the radio resumes
+# the pull from the cursor the pages that already landed left behind
+# (pull.ts: each page and its cursor commit in ONE transaction), and the first
+# sync completes.
+#
+# THE CHECKSUM. The 1,100 expenses sum to 1,100.00 EUR, shown by the trip's
+# spending summary. A page that was skipped on resume would make the total short;
+# there is no way to get it too large, because a row's id is its primary key
+# locally. So the total is "nothing lost" with an exact number, where counting
+# rows in a virtualised list would not be.
+#
+# WHAT THIS CANNOT PROVE. That the radio dropped mid-REQUEST rather than between
+# pages, and that the resume started from page N rather than from the top: the
+# cursor is not on screen. The flow does insist the interruption was OBSERVED
+# (the "You're offline" gate state must appear): if it fails at that step with the
+# first-sync gate already gone, the snapshot finished before the radio dropped.
+# That is a missed observation, not a defect: throttle B
+# (`adb -s <B> emu network speed edge`, undo with `... speed full`) and rerun.
+# Cursor resume itself is pinned by test/sync/sync-core-engine.test.ts and
+# apps/api/test/contract/sync-cursor.spec.ts.
+appId: com.triptrackr.app
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- runFlow: _helpers/sign-in.yaml
+
+# --- Cut the radio while the snapshot is in flight ---------------------------------------
+# Wait for the first-sync state before cutting, so the radio never drops under the
+# sign-in request itself (that would be a failed login, not an interrupted sync).
+- extendedWaitUntil:
+    visible:
+      id: 'first-sync-screen'
+    timeout: 60000
+- setAirplaneMode: enabled
+# The interruption must have landed in the first sync (see the header).
+- extendedWaitUntil:
+    visible: 'You.re offline'
+    timeout: 60000
+- assertVisible:
+    id: 'first-sync-screen'
+- assertNotVisible:
+    id: 'tab-bar'
+- takeScreenshot: 10-b-interrupted-first-sync
+
+# --- Restore it: the pull resumes and the first sync completes ------------------------------
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 300000
+- assertNotVisible:
+    id: 'first-sync-screen'
+
+# --- Nothing lost: the history and the checksum -------------------------------------------
+- tapOn:
+    id: 'tab-trips'
+- assertVisible: 'Gate baseline'
+- assertVisible: 'Gate over allowance'
+- tapOn: 'Gate bulk'
+- tapOn:
+    id: 'trip-open-expenses'
+- extendedWaitUntil:
+    visible:
+      id: 'summary-total'
+    timeout: 60000
+- assertVisible:
+    id: 'summary-total'
+    text: '.*1.?100.00.*'
+- tapOn: 'Back'
+- tapOn: 'Back'

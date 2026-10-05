@@ -1,0 +1,44 @@
+# Row 14, second half — the stop deleted offline on A is gone on B, and the
+# trip's arcs redraw (FR-039). Device B, ONLINE, after A reconnected.
+#
+# 'Gate baseline' had two stops in two countries on B (03-b-before-reconnect.yaml:
+# Stop 2 Paris, globe "2" countries). Now Paris is gone from the itinerary and the
+# globe counts one country (Italy; the offline trip's Rome stop is also Italy).
+# The arcs and the count come from the same local store, so the count is the
+# assertable proxy for the redraw; the screenshots are the evidence to review by
+# eye next to `14-b-globe-before-sync` (the map is native and absent from the
+# accessibility tree).
+#
+# Opening the trip is the spec's wording ("open the trip on a second device").
+# The relaunch at the end pulls again from the stored cursor: the stop does not
+# come back.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- tapOn:
+    id: 'tab-trips'
+- tapOn: 'Gate baseline'
+# B held Stop 2 before; wait for the pull to take it away.
+- assertVisible: 'Stop 1: Rom(a|e).*'
+- extendedWaitUntil:
+    notVisible: 'Stop 2: Paris.*'
+    timeout: 60000
+- tapOn: 'Back'
+
+- tapOn:
+    id: 'tab-index'
+- assertVisible:
+    id: 'globe-stat-countries'
+    text: '1'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 14-b-globe-after-sync
+
+# Pull again from the stored cursor: the stop does not come back.
+- runFlow: _helpers/relaunch.yaml
+- tapOn:
+    id: 'tab-trips'
+- tapOn: 'Gate baseline'
+- assertVisible: 'Stop 1: Rom(a|e).*'
+- assertNotVisible: 'Stop 2: Paris.*'
+- tapOn: 'Back'

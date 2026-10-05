@@ -1,0 +1,78 @@
+# Row 7 — Sign in on a brand-new device.
+# Expected: a "syncing your trips" state, then the full history — never an empty
+# screen (FR-042). Device B, ONLINE.
+#
+# `clearState` makes the device brand new: no encrypted database, no cursor. The
+# tabs mount only once the first snapshot has arrived (components/sync/
+# first-sync-gate.tsx), so while it is in flight the screen is the explicit
+# state, with NO tab bar and therefore no set of empty tabs to mistake for lost
+# data.
+#
+# OBSERVABILITY. The state is on screen only as long as the snapshot takes. On a
+# fast LAN with a handful of rows it can be shorter than a poll of
+# `extendedWaitUntil`, and then this flow fails at the first wait although the
+# app did nothing wrong. That is why the gate seeds ~1,100 rows BEFORE this phase
+# (gate-tools.mjs seed-bulk: three pull pages), and why an emulator can be
+# throttled (`adb -s <B> emu network speed edge`). A failure HERE with a fast
+# network is a missed observation, not a product defect: rerun with the seed or
+# the throttle in place and say so in gate-evidence.md.
+#
+# What this cannot show: that the screen was never blank for a single frame. The
+# accessibility tree is sampled, not streamed; the "no blank state" guarantee
+# is pinned by the unit suite (test/components/sync-runtime-first-sync.test.tsx)
+# and by the structure of the gate itself (it renders one of five designed
+# states, `firstSyncView`).
+appId: com.triptrackr.app
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- runFlow: _helpers/sign-in.yaml
+
+# --- The state ---------------------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: 'first-sync-screen'
+    timeout: 30000
+- extendedWaitUntil:
+    visible: 'Syncing your trips'
+    timeout: 30000
+- assertVisible:
+    id: 'first-sync-state'
+- assertNotVisible:
+    id: 'tab-bar'
+- takeScreenshot: 07-b-syncing-state
+
+# --- Then the full history ---------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 180000
+- assertNotVisible:
+    id: 'first-sync-screen'
+- tapOn:
+    id: 'tab-trips'
+- assertVisible: 'Gate baseline'
+- assertVisible: 'Gate bulk'
+- tapOn: 'Gate baseline'
+- assertVisible: 'Stop 1: Rom(a|e).*'
+- assertVisible: 'Stop 2: Paris.*'
+- assertNotVisible: 'Not yet synced'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Shared note'
+- assertVisible: 'Race note'
+- assertVisible: 'Synced note to delete'
+- tapOn: 'Back'
+- tapOn:
+    id: 'trip-open-expenses'
+- assertVisible: '.*20.00.*'
+- tapOn: 'Back'
+- tapOn: 'Back'
+# The globe is derived from the local store too: two countries (Italy, France).
+- tapOn:
+    id: 'tab-index'
+- assertVisible:
+    id: 'globe-stat-countries'
+    text: '2'
+- takeScreenshot: 07-b-globe-two-countries

@@ -1,0 +1,29 @@
+# Row 5 (4 of 4) — Device A, the winner, is NOT told anything and keeps its text.
+# See 05a-b-edit-offline.yaml for the whole row.
+#
+# "The loser is updated and told" has a second half: the winner has nothing to be
+# told. B's losing push left the server's row unchanged, so A's next pull brings
+# nothing and no notice may appear.
+#
+# A is deliberately NOT restarted: `stopApp: false` only brings a backgrounded app
+# forward. A notice is held in memory, so a restart would make "A was not told"
+# vacuous. For the same reason this flow needs A to still be on the notes screen
+# where 05b left it; if the app was restarted in between, the precondition fails
+# on purpose, and the row must be rerun from 05a with a fresh RUN_ID.
+appId: com.triptrackr.app
+---
+# Home, then back to the app, is the "app foregrounded" trigger (sync-protocol.md
+# §3): A pulls without being restarted, so anything B's push changed would reach
+# it now. The pull is asynchronous and the checks below do not wait for it: A's
+# row is clean, so a pull overwrites it silently by design and cannot raise a
+# notice; this proves the winner shows the winning text, not more.
+- pressKey: Home
+- launchApp:
+    stopApp: false
+- assertVisible:
+    id: 'notes-screen'
+- assertVisible: 'A version\.'
+- assertNotVisible: 'B version\.'
+- assertNotVisible: 'Updated from another device'
+- assertNotVisible:
+    id: 'conflict-notices'

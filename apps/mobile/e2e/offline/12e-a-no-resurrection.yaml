@@ -1,0 +1,21 @@
+# Row 12 (5 of 5) — Device A, which deleted the note, still does not have it after
+# B's edit reached the server. See 12a-a-delete-offline.yaml for the whole row.
+#
+# A relaunches (which pulls from the cursor): had B's newer edit resurrected the
+# note on the server, it would arrive here. 'Sentinel for row 12' is the positive
+# control showing A really is in sync with the account.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Sentinel for row 12'
+- assertNotVisible: 'Race note'
+- assertNotVisible: 'Edited on B after A deleted it\.'
+- assertNotVisible: 'Not yet synced'
+- tapOn: 'Back'
+- tapOn: 'Back'

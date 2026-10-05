@@ -1,0 +1,94 @@
+# Row 9 (1 of 2) — Drop connectivity mid-sync, twice.
+# Expected: resumes from the cursor; nothing lost or duplicated (SC-011).
+# Device A. The device-B half (everything arrived, once) is 09b.
+#
+# A holds a backlog (six notes written offline) and is then brought online and
+# knocked offline again, TWICE, before being left online:
+#
+#   on  -> off  (drop 1)  -> on  -> off  (drop 2)  -> on
+#
+# Each "on" fires the connectivity-restored trigger, which pushes at once; each
+# "off" cuts whatever that push is doing. Between the cuts the push either did
+# not start, was cut in flight (the response lost: the client retries and the
+# server upserts the same ids, sync-protocol.md §2 "idempotent by id"), or had
+# already landed. After the last "on", the backlog must drain completely.
+#
+# WHAT THIS CAN AND CANNOT SHOW.
+#   - It cannot choose WHERE in a request the radio drops: each toggle is one adb
+#     command, a second or so apart, and on a fast link a push is over in
+#     milliseconds. To make a drop land in flight, throttle the emulator first
+#     (`adb -s <A> emu network speed gsm`, undo with `... speed full`). The
+#     protocol-level guarantees (idempotent retry, cursor resume) are pinned
+#     deterministically by the unit and contract suites; this flow is the
+#     on-device chaos check that none of them is bypassed in the real app.
+#   - Nothing here reads the cursor. "Resumes rather than restarts" for the PULL
+#     direction is row 10.
+#   - Loss and duplication are checked on the second device (09b): every title
+#     arrived, each exactly once.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/go-offline.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+
+# --- The backlog -----------------------------------------------------------------
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Interrupt 1'
+      NOTE_BODY: 'Backlog item one.'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Interrupt 2'
+      NOTE_BODY: 'Backlog item two.'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Interrupt 3'
+      NOTE_BODY: 'Backlog item three.'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Interrupt 4'
+      NOTE_BODY: 'Backlog item four.'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Interrupt 5'
+      NOTE_BODY: 'Backlog item five.'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Interrupt 6'
+      NOTE_BODY: 'Backlog item six.'
+- assertVisible: 'Not yet synced'
+
+# --- Two interruptions ---------------------------------------------------------------
+- setAirplaneMode: disabled
+- setAirplaneMode: enabled
+- setAirplaneMode: disabled
+- setAirplaneMode: enabled
+
+# --- Left online: the backlog drains --------------------------------------------------
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 90000
+- assertVisible: 'Interrupt 1'
+- assertVisible: 'Interrupt 2'
+- assertVisible: 'Interrupt 3'
+- assertVisible: 'Interrupt 4'
+- assertVisible: 'Interrupt 5'
+- assertVisible: 'Interrupt 6'
+# Each title once on this device too: a retried push must not have duplicated them.
+- assertNotVisible:
+    text: 'Interrupt 1'
+    index: 1
+- assertNotVisible:
+    text: 'Interrupt 6'
+    index: 1

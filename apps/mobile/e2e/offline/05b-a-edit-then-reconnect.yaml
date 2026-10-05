@@ -1,0 +1,34 @@
+# Row 5 (2 of 4) — Device A goes OFFLINE, edits 'Shared note' SECOND (the newer
+# edit) and reconnects FIRST. See 05a-b-edit-offline.yaml for the whole row.
+#
+# Neither device has synced since the edit when A reconnects: B is still offline
+# with "B version." pending. A's push reaches the server alone and is applied.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/go-offline.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Original shared text\.'
+- tapOn: 'Edit Shared note'
+- assertVisible:
+    id: 'note-editor'
+- tapOn:
+    id: 'note-editor-body'
+- eraseText: 120
+- inputText: 'A version.'
+- hideKeyboard
+- tapOn:
+    id: 'note-editor-save'
+- assertVisible: 'A version\.'
+- assertVisible: 'Not yet synced'
+
+# A reconnects first, and only waits.
+- runFlow: _helpers/go-online.yaml
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 30000
+- assertVisible: 'A version\.'

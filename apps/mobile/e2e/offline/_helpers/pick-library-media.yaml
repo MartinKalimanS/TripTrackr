@@ -1,0 +1,13 @@
+# Choose the newest item in the Android system photo picker and confirm it.
+#
+# `addMedia` (called just before, by the caller) puts the fixture in the gallery
+# so it is the newest item. The picker is owned by the OS and its markup varies
+# by version: these two steps are the ones most likely to need adjusting on a
+# new emulator image (same caveat as e2e/05-photos-and-documents.yaml, which
+# drives the same picker the same way).
+appId: com.triptrackr.app
+---
+- tapOn:
+    text: 'Photo taken on.*'
+    index: 0
+- tapOn: 'Add'

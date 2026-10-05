@@ -1,0 +1,26 @@
+# Row 12 (3 of 5) — Device A reconnects FIRST: its tombstone reaches the server.
+# See 12a-a-delete-offline.yaml for the whole row.
+#
+# A parks on the notes screen, where 'Sentinel for row 12' is still pending, and
+# only waits. The marker clearing means the notes batch (the sentinel and the
+# tombstone for 'Race note') was acknowledged. B is still offline with its newer
+# edit pending.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Sentinel for row 12'
+- assertVisible: 'Not yet synced'
+- assertNotVisible: 'Race note'
+
+- runFlow: _helpers/go-online.yaml
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 30000
+- assertVisible: 'Sentinel for row 12'
+- assertNotVisible: 'Race note'

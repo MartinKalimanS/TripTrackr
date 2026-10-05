@@ -1,0 +1,8 @@
+# From a trip screen, open one of its sections.
+#
+# SEGMENT is one of: notes, expenses, photos, documents (the `trip-open-<segment>`
+# ids in app/trip/[id]/index.tsx).
+appId: com.triptrackr.app
+---
+- tapOn:
+    id: 'trip-open-${SEGMENT}'
