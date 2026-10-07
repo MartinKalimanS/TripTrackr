@@ -33,6 +33,11 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 export type ListScreenProps<Item> = {
   testID?: string;
+  /**
+   * The id of the scroller itself, the list apart from the screen root `testID` names
+   * (the trips screen's `trips-list`). Optional: most lists have none.
+   */
+  listTestID?: string;
   data: readonly Item[];
   renderItem: ListRenderItem<Item>;
   keyExtractor: (item: Item, index: number) => string;
@@ -65,6 +70,7 @@ function Gap() {
 
 export function ListScreen<Item>({
   testID,
+  listTestID,
   data,
   renderItem,
   keyExtractor,
@@ -94,6 +100,7 @@ export function ListScreen<Item>({
       testID={testID}>
       <View style={styles.column}>
         <FlashList
+          testID={listTestID}
           data={data as Item[]}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
