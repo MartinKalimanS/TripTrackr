@@ -60,6 +60,22 @@ the allowed folders imports the kit.
 **Mapping**: `primary` to the kit's `primary`; `secondary` to `secondary` (tonal); `text` to `ghost`;
 `destructive` to `danger-soft` (and `danger` for the confirmation action).
 
+**As built (T417)**
+
+- `icon` is an `IconName` drawn by `Icon` in the ink that reads on the variant's fill, so a caller cannot choose an
+  unreadable one. `variant` defaults to `primary` and `size` to `md`.
+- A busy button is announced `{ busy: true, disabled: true }` (the kit has no busy state), keeps its label and swaps
+  its icon for a spinner. `busy` and `disabled` both set throws in development, as does a blank label.
+- The kit's fixed heights (sm 40, md 48, lg 56 dp) are replaced by a minimum: the larger of the kit height and the
+  platform floor scaled by the font scale (`h-auto` plus a style `minHeight`), so `sm` is raised to the floor and a
+  wrapping label grows the button. An icon-only button is a fixed square of the floor.
+- The kit's press highlight is turned off (it overlays the 20% soft hover, which review rule 5 forbids under text,
+  and it disappears under `animation: 'disable-all'`); each variant swaps to a fixed `active:` fill instead
+  (`accent-hover` for primary, `surface-tertiary` for the others). The kit's scale stays.
+- `primary` plays the selection haptic and `destructive` the warning haptic; the success haptic is the caller's,
+  once a save has succeeded. `Tappable` is the bare form: no fill, a `surface-tertiary` pressed fill, a 2 dp focus
+  outline 2 dp outside the control, a minimum target scaled by the font scale.
+
 ---
 
 ## C4-8. Containers, lists, fields, chips, states
@@ -68,7 +84,7 @@ the allowed folders imports the kit.
 | ------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Screen`                                                | `Screen`       | `testID`, `edges`, `keyboardAware`, `style`                                                | Paints the canvas; scrolls at the largest text size; uses `contentInsetAdjustmentBehavior` so headers inset content; same `keyboardShouldPersistTaps="handled"`                                                                                                  |
 | `ListScreen`                                            | `ListScreen`   | unchanged generics                                                                         | `FlashList` is the scroller (D-23); header, empty and footer travel with it                                                                                                                                                                                      |
-| `Text`, `ThemedText`                                    | `ThemedText`   | `type` (existing values plus `largeTitle`, `headline`, `caption`, `numeric`), `themeColor` | Muted ink promotes to primary under increased contrast; numerals tabular where `numeric`; `ThemedText` stays as a shim so call sites need no change in phase 2                                                                                                   |
+| `Text`, `ThemedText`                                    | `ThemedText`   | `type`: `largeTitle`, `title`, `headline`, `body`, `callout`, `caption`, `numeric`; `tone` | Semantic classes, so increased contrast comes from the theme (no JS promotion); `numeric` is tabular; `largeTitle`, `title` are headers; never capped; `ThemedText` is unchanged until phase 7, not a shim                                                       |
 | `Card`, `Panel`                                         | `Surface`      | `variant="raised" \| "flat"`, `overMap?`, `pending?`, `radius?`                            | `overMap` is opaque with a hairline and **no shadow or tint** (FR-018, FR-033); a card never contains a card (FR-006); `pending` adds the pending marker treatment (FR-034)                                                                                      |
 | `ListGroup`, `ListRow`                                  | row layouts    | `title`, `description?`, `leading?`, `trailing?`, `onPress?`, `accessibilityActions?`      | A pressable row shows a chevron at 3:1 unless it supplies its own cue (FR-024); row-level `accessibilityActions` are forwarded (stop rows keep move up, move down, edit, delete)                                                                                 |
 | `Field`                                                 | `TextField`    | `label`, `value`, `onChangeText`, `error?`, `description?`, all `TextInput` props          | `testID` lands on the input; `accessibilityLabel` is the label; `aria-invalid` when an error exists; error is words under the field, never colour alone (FR-025); `secureTextEntry`, `textContentType`, `autoComplete` and `keyboardType` pass through unchanged |
@@ -79,8 +95,8 @@ the allowed folders imports the kit.
 | `EmptyState`, `LoadingState`, `ErrorState`, `Skeleton*` | `state-view`   | `title`, `detail?`, `onRetry?`; skeleton variants for trip card, row, list                 | Loading is announced (`progressbar`); skeletons mimic the shape of the content; error offers retry (FR-021, FR-035)                                                                                                                                              |
 | `FormActions`                                           | `FormActions`  | `testIDPrefix`, `saveLabel`, `onCancel`, `onSave`, `saveDisabled?`                         | Keeps `<prefix>-cancel` and `<prefix>-save`; Save is the single primary; sticky above the keyboard (FR-009)                                                                                                                                                      |
 | `InlineError`                                           | `InlineError`  | `message`, `testID`                                                                        | `accessibilityRole="alert"`                                                                                                                                                                                                                                      |
-| `Icon`                                                  | ad-hoc symbols | `name: { ios, android }`, `size: 16 \| 20 \| 24`, `tone?`                                  | One vocabulary over `expo-symbols`; decorative icons are hidden from assistive technology, meaningful ones carry a label                                                                                                                                         |
-| `Avatar`                                                | none           | `name`, `size`                                                                             | Initials from the display name; decorative unless it is the only identifier                                                                                                                                                                                      |
+| `Icon`                                                  | ad-hoc symbols | `name: { ios, android }`, `size: 16 \| 20 \| 24`, `tone?`, `label?`                        | One vocabulary over `expo-symbols`; decorative icons are hidden from assistive technology, meaningful ones (`label`) are announced as images                                                                                                                     |
+| `Avatar`                                                | none           | `name`, `size?`, `decorative?`                                                             | Initials from the display name (up to two words, `?` when empty); announced by the name unless decorative                                                                                                                                                        |
 | `MediaFrame`                                            | `MediaFrame`   | unchanged                                                                                  | Frames photographs with a hairline; **never** wraps them in a parent whose shadow bleeds inward (002 C12)                                                                                                                                                        |
 
 ---
@@ -95,15 +111,17 @@ the allowed folders imports the kit.
   short mark above the icon, so it survives greyscale (FR-010, FR-025).
 - Preserved: `testID="tab-bar"`, `tab-<routeName>`, `tab-mark-<routeName>`, `accessibilityRole="tablist"` and
   `"tab"` with `selected` state and the route's label as the name.
-- Press feedback and focus ring through `Tappable` in its bare form.
+- Press feedback and focus ring through `Tappable`.
 
 **Headers**
 
 - Native stack headers (`expo-router` `Stack`) with themed options: `headerTintColor` accent,
   `headerTitleStyle` and `headerLargeTitleStyle` in the display face, `contentStyle` canvas.
-- `HeaderBackButton` adapter: renders the platform back affordance with accessible name **"Back"**; used
-  as a custom `headerLeft` if the native label does not resolve for the Maestro flows (research
-  "Items to verify", item 7).
+- `HeaderBackButton` adapter: a chevron and the word "Back" in a `Tappable` with accessible name **"Back"**
+  (never the previous screen's title); `onPress` defaults to `router.back()`; draws nothing when React
+  Navigation passes `canGoBack={false}`; platform minimum target, not scaled with the font scale (a header is a
+  fixed-height bar). Used as a custom `headerLeft` if the native label does not resolve for the Maestro flows
+  (research "Items to verify", item 7).
 - iOS top-level list screens use large titles; Android uses a standard header with the same title.
 
 ---
