@@ -126,15 +126,21 @@ function kitThemeFor(themeName: PaletteName) {
 
 /**
  * Keeps the kit's theme, and with it every className colour, equal to the one
- * `useAppearance()` resolved; nothing else sets it (contract C4-4). Called on EVERY change,
- * including the way back from a contrast theme to `light` or `dark`.
+ * `useAppearance()` resolved; nothing else sets it (contract C4-4).
  *
- * A layout effect, on purpose: it runs before the commit is painted, so the classes switch
- * in the same frame as the legacy tokens that changed with `themeName`. It also runs while
- * this layout still renders nothing under the splash, so the first visible frame already
- * has the right theme. Uniwind starts adaptive on the device scheme, so for `light` and
- * `dark` that call is a no-op; a contrast theme arrives when the accessibility flag has
- * been read, which the splash covers (device check: research item 5, T406).
+ * It calls `Uniwind.setTheme` on mount and on EVERY change of `themeName`, including the
+ * way back from a contrast theme to `light` or `dark`. For those two the call is
+ * `setTheme('system')`, which switches adaptive themes on and calls
+ * `Appearance.setColorScheme('unspecified')` (`'auto'` from React Native 0.87): a native
+ * call, repeated on each change. It is idempotent, because it asks for the mode the app is
+ * already in (the scheme follows the OS), so repeating it changes nothing.
+ *
+ * A layout effect, on purpose: React runs it before the commit is painted, so the classes
+ * switch in the same frame as the legacy tokens that changed with `themeName`. That it is
+ * a layout effect, and that the call sits above this layout's early return, is asserted on
+ * the source in test/app/root-layout.test.tsx; running before paint is React's contract and
+ * cannot be observed under Jest. The contrast theme itself is known by the first frame
+ * because the layout renders nothing until `useAppearance().ready` (device check: T406).
  */
 function useKitTheme(themeName: PaletteName) {
   useLayoutEffect(() => {
@@ -159,7 +165,8 @@ function useKitConfig(prefersLessMotion: boolean): KitConfig {
   return useMemo(
     () => ({
       devInfo: { stylingPrinciples: false },
-      animation: prefersLessMotion ? 'disable-all' : undefined,
+      // Absent, not `undefined`, when motion is allowed: the kit then has nothing to read.
+      ...(prefersLessMotion ? { animation: 'disable-all' as const } : {}),
     }),
     [prefersLessMotion],
   );

@@ -503,7 +503,9 @@ describe('root layout — the kit follows useAppearance (feature 004, T402, T412
       await waitFor(() => expect(themesAsked().at(-1)).toBe('system'));
     });
 
-    test('is set while the splash is still up, before the first screen renders', async () => {
+    test('is called even while the layout renders nothing under the splash', async () => {
+      // What this proves is only that the call does not wait for the first screen; that it
+      // runs before PAINT cannot be seen under Jest, so the two source tests below pin why.
       mockScheme.value = 'dark';
       secureStore.getItemAsync.mockReturnValueOnce(new Promise(() => {}));
 
@@ -511,6 +513,36 @@ describe('root layout — the kit follows useAppearance (feature 004, T402, T412
 
       expect(screen.queryByTestId('app-root')).toBeNull();
       expect(themesAsked()).toEqual(['system']);
+    });
+
+    describe('why it can be trusted to run before the first frame (source)', () => {
+      const layoutSource = () =>
+        (jest.requireActual('fs') as typeof import('fs')).readFileSync(
+          require.resolve('@/app/_layout'),
+          'utf8',
+        );
+
+      test('useKitTheme is a layout effect, which React runs before the commit is painted', () => {
+        const hook = /function useKitTheme\([^)]*\)\s*\{([\s\S]*?)\n\}/.exec(
+          layoutSource(),
+        );
+
+        expect(hook).not.toBeNull();
+        expect(hook?.[1]).toMatch(/useLayoutEffect\(/);
+        expect(hook?.[1]).not.toMatch(/\buseEffect\(/);
+        expect(hook?.[1]).toMatch(/Uniwind\.setTheme\(kitThemeFor\(themeName\)\)/);
+        expect(hook?.[1]).toMatch(/\[themeName\]/);
+      });
+
+      test('RootLayout calls it above every early return, so it also runs under the splash', () => {
+        const source = layoutSource();
+        const layout = source.slice(source.indexOf('function RootLayout()'));
+
+        const call = layout.indexOf('useKitTheme(themeName)');
+        const firstReturn = layout.indexOf('return null');
+        expect(call).toBeGreaterThan(-1);
+        expect(firstReturn).toBeGreaterThan(call);
+      });
     });
   });
 
@@ -608,6 +640,25 @@ describe('root layout — the kit follows useAppearance (feature 004, T402, T412
 
   describe('the provider config (reduced motion, D4-05)', () => {
     const animation = () => configs().at(-1)?.animation;
+
+    test('has no animation key at all unless reduce motion is on', async () => {
+      await renderApp();
+      await screen.findByText('welcome-screen');
+      for (const config of configs()) expect(Object.keys(config)).toEqual(['devInfo']);
+
+      await setAccessibility({ reduceMotion: true });
+      await waitFor(() =>
+        expect(Object.keys(configs().at(-1) ?? {}).sort()).toEqual([
+          'animation',
+          'devInfo',
+        ]),
+      );
+
+      await setAccessibility({ reduceMotion: false });
+      await waitFor(() =>
+        expect(Object.keys(configs().at(-1) ?? {})).toEqual(['devInfo']),
+      );
+    });
 
     test('leaves animation to the kit, then disables it while reduce motion is on', async () => {
       await renderApp();
