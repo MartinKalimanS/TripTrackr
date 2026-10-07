@@ -299,6 +299,10 @@ describe('<TripsScreen> — the local trip list (T066)', () => {
     await fireEvent.press(screen.getByTestId('trips-plan-trip'));
     expect(mockPush).toHaveBeenCalledWith('/modal/add-trip');
 
+    // The empty state names the same next step with an action of its own (a distinct id).
+    mockPush.mockReset();
+    await fireEvent.press(screen.getByTestId('trips-empty-plan-trip'));
+    expect(mockPush).toHaveBeenCalledWith('/modal/add-trip');
   });
 
   test('shows a designed error state when the store fails', async () => {
@@ -328,6 +332,7 @@ describe('<TripsScreen> — the local trip list (T066)', () => {
     ];
     await render(<TripsScreen />);
 
+    expect(screen.getByTestId('trips-list')).toBeTruthy();
     expect(screen.getByText('Italy, spring 2026')).toBeTruthy();
     expect(screen.getByText('2 stops · EUR')).toBeTruthy();
     expect(screen.getByText('1 stop · EUR')).toBeTruthy();
