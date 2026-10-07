@@ -221,27 +221,39 @@ unused by screens.
 **Independent Test**: quickstart section 3 on one iOS and one Android device, light and dark, largest text,
 increased contrast.
 
-- [x] T426 [US1] Failing tests in `apps/mobile/test/components/tab-bar.test.tsx` (renamed from
-      `neumorphic-tab-bar.test.tsx`): flat strip, one divider at 3:1, filled selected icon, mark, 56 dp
+- [x] T426 [US1] Failing tests in `apps/mobile/test/components/tab-bar.test.tsx` (moved with `git mv`
+      from the 002 tab-bar suite): flat strip, one divider at 3:1, filled selected icon, mark, 56 dp
       budget, touch target, preserved ids, no literal; then rename and re-skin
       `components/navigation/tab-bar.tsx`, update `app/(tabs)/_layout.tsx` (FR-010, FR-025)
-      _As built:_ `TabBar` is a `View` of `flex-row border-t border-border bg-background` with a hairline
-      `borderTopWidth` in its style (Tailwind's `border-t` is 1 px) and the navigator's bottom inset as
-      padding; each tab is a `Tappable` (`flex-1`, role `tab`, `selected` state, the route's label as its
-      name) holding an `Icon` and a `Text type="caption"`, in the accent ink when selected and the muted
-      ink otherwise, so there is no `useAppearance` and no colour in the file. The selected tab draws the
-      filled SF Symbol (`globe.europe.africa`, `suitcase`, `person.crop.circle` plus `.fill`), a
-      `font-bold` label and the 24 x 3 dp `tab-mark-<name>` bar hanging from the divider (selected tab
-      only, absolute, so it costs no height). Android Material Symbols come from one static font in
-      `expo-symbols` with no fill axis, so the Android glyph (`globe`, `luggage`, `account_circle`) is the
-      same in both states and the accent, weight and mark carry the selection there. The label wraps
-      rather than truncates. Ids, roles, press and long-press behaviour are unchanged (40 tests; the
-      testID parity check passes). Device checks: the divider is visible in both themes and in increased
-      contrast; the filled icons draw on iOS and the same glyphs draw on Android; the mark and the heavier
-      label tell the selected tab apart in greyscale and in high contrast; the bar clears the bottom
-      inset with gesture navigation on Android and the home indicator on iOS; the focus ring (2 dp,
-      offset 2) is not clipped at the bar's edges; and the largest text size grows the bar without
-      clipping the label.
+      _As built:_ `TabBar` is a `View` of `flex-row border-border bg-background`; the divider's colour is
+      the class and its width is the style's hairline `borderTopWidth`, the only width (Tailwind's
+      `border-t` would be 1 px and would fight it), and the navigator's bottom inset is the padding. Each
+      tab is a `Tappable` (`flex-1`, role `tab`, `selected` state, the route's label as its name) holding
+      an `Icon` and a `Text type="caption"`, in the accent ink when selected and the muted ink otherwise,
+      so there is no `useAppearance` and no colour in the file. The selected tab draws the filled SF
+      Symbol (`globe.europe.africa`, `suitcase`, `person.crop.circle` plus `.fill`), a `font-bold` label
+      and the 24 x 3 dp `tab-mark-<name>` bar hanging from the divider (selected tab only, absolute, so
+      it costs no height). Android Material Symbols come from one static font in `expo-symbols` with no
+      fill axis, so the Android glyph (`globe`, `luggage`, `account_circle`) is the same in both states
+      and the accent, weight and mark carry the selection there. The 56 dp budget is `TabMetrics`
+      summed (20 icon + 2 gap + 16 caption line + 2 x 4 padding = 46 dp, `TabContentHeight`) and a tab is
+      the larger of that and the touch target, so the bar is 46.3 dp on iOS and 48.3 dp on Android, and
+      the suite sums it for both platforms. `Tappable` scales its minimum height with the font scale
+      (88 dp at scale 2, about 140 dp at Android's largest, for a 20 dp icon and one word), so the tab
+      passes `minHeight: MinTouchTarget` as its own style (a caller style wins) and the content grows
+      the tab by what it needs; the label has no `numberOfLines` and wraps. `tabBar` stays a
+      `(props) => <TabBar {...props} />` render function, not `tabBar={TabBar}`: React Navigation calls
+      it inside a context consumer's callback, and the bar must keep its own hook scope.
+      `test/app/tabs-layout.test.tsx` mounts the layout over the real navigator: ids, selection and mark
+      moving on press, the measured height reaching `useBottomTabBarHeight()`, and the scene background
+      equal to the canvas the bar paints. Ids, roles, press and long-press behaviour are unchanged (44
+      tests in the component suite, 5 in the layout suite; the testID parity check passes). Device
+      checks: the divider is visible in both themes and in increased contrast; the filled icons draw
+      on iOS and the same glyphs draw on Android; the mark and the heavier label tell the selected
+      tab apart in greyscale and in high contrast; the bar clears the bottom inset with gesture
+      navigation on Android and the home indicator on iOS; the focus ring (2 dp, offset 2) is not
+      clipped at the bar's edges; and the largest text size on both platforms grows the bar without
+      clipping or truncating the label (and by how much).
 - [ ] T427 [US1] Failing tests in `test/app/tab-screens.test.tsx` and `test/app/trip-and-modal-screens.test.tsx`
       for headers and Back; then nested stacks: move `app/(tabs)/trips.tsx` to `app/(tabs)/trips/_layout.tsx`
       and `index.tsx`, `profile.tsx` likewise (use the Prettier character-class workaround), themed header
