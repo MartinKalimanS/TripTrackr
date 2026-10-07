@@ -1,9 +1,13 @@
 /**
- * T097 — the statistics overlay (FR-050, Acceptance Scenario 3.5).
+ * T097 — the statistics overlay (FR-050, Acceptance Scenario 3.5); restyled by feature
+ * 004 (T428; FR-018, FR-033, contract C4-10, research D4-11).
  *
- * It floats over map content, so feature 002 contract C12 governs it: opaque
- * and bordered so it stays legible over light and dark imagery (FR-025), and
- * casting no shadow onto the map (FR-024).
+ * It floats over map content, so it is an opaque `Card overMap`: the `surface` fill, a
+ * hairline `border`, no shadow and no translucency, so it reads over the lightest and
+ * the darkest part of the globe alike. Its two figures are in the display face with
+ * tabular numerals. Under Jest the kit renders plain views that carry the classes they
+ * were given, so what is pinned here is what the overlay ASKED for; how a class looks is
+ * Uniwind's, on a device (tasks.md T428).
  */
 import { render, screen } from '@testing-library/react-native';
 import { getLocales } from 'expo-localization';
@@ -36,10 +40,18 @@ beforeEach(() => {
     prefersLessTransparency: false,
     ready: true,
     fontScale: 1,
-    elevationProfile: 'full',
+    elevationProfile: 'flat',
     tokens: Colors.light,
   });
 });
+
+const tokens = (className: unknown) =>
+  String(className ?? '')
+    .split(/\s+/)
+    .filter(Boolean);
+const classesOf = (testID: string) => tokens(screen.getByTestId(testID).props.className);
+const styleOf = (testID: string) =>
+  StyleSheet.flatten(screen.getByTestId(testID).props.style) as Record<string, unknown>;
 
 describe('<StatsOverlay>', () => {
   test('shows countries visited and distance travelled', async () => {
@@ -74,12 +86,84 @@ describe('<StatsOverlay>', () => {
     );
   });
 
-  test('is opaque and bordered over the map, and casts no shadow onto it (C12)', async () => {
-    await render(<StatsOverlay summary={{ countriesVisited: 3, distanceKm: 10 }} />);
-    const style = StyleSheet.flatten(screen.getByTestId('globe-stats').props.style);
-    expect(style.backgroundColor).toBe(Colors.light.surface);
-    expect(style.borderWidth).toBeGreaterThan(0);
-    expect(style.borderColor).toBe(Colors.light.border);
+  test('says "1 country" in the announcement for one', async () => {
+    await render(<StatsOverlay summary={{ countriesVisited: 1, distanceKm: 0 }} />);
+    expect(screen.getByTestId('globe-stats').props.accessibilityLabel).toMatch(
+      /^1 country visited, /,
+    );
+  });
+});
+
+describe('<StatsOverlay> — an opaque card over the globe (FR-018, FR-033)', () => {
+  const renderOverlay = () =>
+    render(<StatsOverlay summary={{ countriesVisited: 3, distanceKm: 10 }} />);
+
+  test('is the opaque surface with a hairline: bg-surface, border, border-border', async () => {
+    await renderOverlay();
+    expect(classesOf('globe-stats-card')).toEqual(
+      expect.arrayContaining(['bg-surface', 'border', 'border-border']),
+    );
+  });
+
+  test('casts no shadow onto the map', async () => {
+    await renderOverlay();
+    const classes = classesOf('globe-stats-card');
+    expect(classes).toContain('shadow-none');
+    expect(classes.filter((token) => /(^|:)(inset-|drop-)?shadow/.test(token))).toEqual([
+      'shadow-none',
+    ]);
+    const style = styleOf('globe-stats-card');
     expect(style.boxShadow).toBeUndefined();
+    expect(style.elevation).toBeUndefined();
+    expect(style.shadowColor).toBeUndefined();
+  });
+
+  test('is never translucent: no opacity suffix, no opacity or tint in the style', async () => {
+    await renderOverlay();
+    const classes = classesOf('globe-stats-card');
+    expect(classes.filter((token) => token.includes('/'))).toEqual([]);
+    expect(classes.filter((token) => /(^|:)(opacity|backdrop)/.test(token))).toEqual([]);
+    const style = styleOf('globe-stats-card');
+    expect(style.opacity).toBeUndefined();
+    expect(style.backgroundColor).toBeUndefined();
+  });
+
+  test('keeps the announcement on the outer node: the card paints, it does not speak', async () => {
+    await renderOverlay();
+    expect(classesOf('globe-stats')).toEqual([]);
+    expect(screen.getByTestId('globe-stats-card').props.accessible).toBeUndefined();
+  });
+});
+
+describe('<StatsOverlay> — the figures (FR-004)', () => {
+  test('are in the display face with tabular numerals, sized as a title', async () => {
+    await render(<StatsOverlay summary={{ countriesVisited: 3, distanceKm: 12345.6 }} />);
+    for (const id of ['globe-stat-countries', 'globe-stat-distance']) {
+      expect(classesOf(id)).toEqual(
+        expect.arrayContaining(['font-display', 'text-[22px]', 'text-foreground']),
+      );
+      expect(styleOf(id).fontVariant).toContain('tabular-nums');
+    }
+  });
+
+  test('carry their labels in the muted caption role', async () => {
+    await render(<StatsOverlay summary={{ countriesVisited: 3, distanceKm: 12345.6 }} />);
+    for (const label of ['countries', 'travelled']) {
+      const classes = tokens(screen.getByText(label).props.className);
+      expect(classes).toEqual(expect.arrayContaining(['text-muted', 'text-[12px]']));
+    }
+  });
+});
+
+describe('<StatsOverlay> — built on the Atlas adapters only', () => {
+  test('imports none of the retired primitives and never the kit', () => {
+    const source = jest
+      .requireActual('fs')
+      .readFileSync(require.resolve('../stats-overlay'), 'utf8') as string;
+    expect(source).not.toMatch(
+      /from '@\/components\/(themed-text|themed-view|ui\/surface|ui\/pressable-surface)'/,
+    );
+    expect(source).not.toMatch(/from 'heroui-native|from 'uniwind/);
+    expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\(/);
   });
 });
