@@ -509,6 +509,98 @@ describe('root layout — the kit follows useAppearance (feature 004, T402, T412
     });
   });
 
+  describe('the splash waits for the first accessibility read (D4-05)', () => {
+    /** A contrast query a test settles by hand, so the read stays pending until it says. */
+    function pendingContrastRead() {
+      let settle: { resolve: (value: boolean) => void; reject: (error: Error) => void };
+      const promise = new Promise<boolean>((resolve, reject) => {
+        settle = { resolve, reject };
+      });
+      Object.assign(AccessibilityInfo, {
+        isDarkerSystemColorsEnabled: jest.fn(() => promise),
+      });
+      return {
+        resolve: (value: boolean) => settle.resolve(value),
+        reject: (error: Error) => settle.reject(error),
+      };
+    }
+
+    test('signed out: no screen and no splash hide while the read is pending, both once it answers', async () => {
+      const contrast = pendingContrastRead();
+
+      await renderApp();
+      // The session is known and nothing else is outstanding; only the read is.
+      await waitFor(() => expect(useSessionStore.getState().status).toBe('signed-out'));
+      // The router testing library fakes timers; let everything that can settle, settle.
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(50);
+      });
+      expect(SplashScreen.hide).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('app-root')).toBeNull();
+      expect(screen.queryByText('welcome-screen')).toBeNull();
+
+      await act(async () => {
+        contrast.resolve(false);
+      });
+
+      expect(await screen.findByText('welcome-screen')).toBeTruthy();
+      expect(SplashScreen.hide).toHaveBeenCalled();
+    });
+
+    test('signed in: the open store does not hide the splash before the read answers', async () => {
+      await signedIn();
+      const contrast = pendingContrastRead();
+
+      await renderApp();
+      await waitFor(() => expect(openDatabaseAsync).toHaveBeenCalled());
+      // The router testing library fakes timers; let everything that can settle, settle.
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(50);
+      });
+      expect(SplashScreen.hide).not.toHaveBeenCalled();
+      expect(screen.queryByText('home-screen')).toBeNull();
+
+      await act(async () => {
+        contrast.resolve(false);
+      });
+
+      expect(await screen.findByText('home-screen')).toBeTruthy();
+      expect(SplashScreen.hide).toHaveBeenCalled();
+    });
+
+    test('a rejected query settles the read too: the app comes up on the more-contrast theme', async () => {
+      const contrast = pendingContrastRead();
+
+      await renderApp();
+      await waitFor(() => expect(useSessionStore.getState().status).toBe('signed-out'));
+      expect(SplashScreen.hide).not.toHaveBeenCalled();
+
+      await act(async () => {
+        contrast.reject(new Error('the accessibility service is not available'));
+      });
+
+      expect(await screen.findByText('welcome-screen')).toBeTruthy();
+      expect(SplashScreen.hide).toHaveBeenCalled();
+      expect(themesAsked().at(-1)).toBe('light-contrast');
+    });
+
+    test('the first render of the app already has the flags the OS reported', async () => {
+      mockScheme.value = 'dark';
+      a11y.darker = true;
+      a11y.reduceMotion = true;
+
+      await renderApp();
+      await screen.findByText('welcome-screen');
+
+      // `themeName` and `prefersLessMotion` come out of one state, so an app whose very
+      // first render already has animation off was rendered after the flags were read:
+      // there is no render on the base theme, or with animation on, to flip afterwards.
+      expect(configs().length).toBeGreaterThan(0);
+      expect(configs()[0].animation).toBe('disable-all');
+      expect(themesAsked().at(-1)).toBe('dark-contrast');
+    });
+  });
+
   describe('the provider config (reduced motion, D4-05)', () => {
     const animation = () => configs().at(-1)?.animation;
 

@@ -192,8 +192,12 @@ function navigationThemeFor(isDark: boolean, tokens: AppearanceContext['tokens']
  * The status is `loading` until the session has been read; for a signed-in traveller the
  * gate is settled only once the encrypted database has opened (migrations included) or
  * failed with something to show, and the native splash comes down then, not before.
+ *
+ * `appearanceReady` is the same kind of condition (`useAppearance().ready`): the splash
+ * also stays up until the first read of the accessibility flags has settled, so the first
+ * frame already has the contrast theme and the motion setting the OS asked for.
  */
-function useSessionGate() {
+function useSessionGate(appearanceReady: boolean) {
   const status = useSessionStore((session) => session.status);
   const userId = useSessionStore((session) => session.user?.id ?? null);
   const hydrate = useSessionStore((session) => session.hydrate);
@@ -210,11 +214,13 @@ function useSessionGate() {
     });
   }, [hydrate]);
 
-  // Settled: the gate can decide AND, for a signed-in traveller, the store
-  // has either opened (migrations included) or failed with something to show.
+  // Settled: the appearance has been read AND the gate can decide AND, for a signed-in
+  // traveller, the store has either opened (migrations included) or failed with
+  // something to show.
   const settled =
-    status === 'signed-out' ||
-    (status === 'signed-in' && (store.db !== null || store.error !== null));
+    appearanceReady &&
+    (status === 'signed-out' ||
+      (status === 'signed-in' && (store.db !== null || store.error !== null)));
 
   useEffect(() => {
     if (settled) SplashScreen.hide();
@@ -257,15 +263,16 @@ function RootStack({
 }
 
 function RootLayout() {
-  const { theme, themeName, prefersLessMotion, tokens } = useAppearance();
+  const { theme, themeName, prefersLessMotion, tokens, ready } = useAppearance();
   useKitTheme(themeName);
   const kitConfig = useKitConfig(prefersLessMotion);
-  const { status, signedIn, store } = useSessionGate();
+  const { status, signedIn, store } = useSessionGate(ready);
 
-  // Nothing is rendered beneath the splash until the gate can decide — a
-  // flash of the welcome screen before the tabs is exactly the wrong first
-  // impression for a returning traveller.
-  if (status === 'loading') return null;
+  // Nothing is rendered beneath the splash until the gate can decide — a flash of the
+  // welcome screen before the tabs is exactly the wrong first impression for a returning
+  // traveller — and until the accessibility flags have been read, so the app never
+  // appears on the base theme and then flips to the contrast one.
+  if (status === 'loading' || !ready) return null;
 
   const isDark = theme === 'dark';
 

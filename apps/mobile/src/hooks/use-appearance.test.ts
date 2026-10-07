@@ -5,12 +5,19 @@
  * hook's own job: reading the platform, subscribing to change events, and
  * cleaning up after itself.
  */
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AccessibilityInfo, Platform } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 
 import { useAppearance } from './use-appearance';
+
+// The contrast reader is the one that decides the theme, so a test can make it fail. It wraps
+// the real reader; `beforeEach` points it back at it, whatever an earlier test changed.
+jest.mock('@/theme/accessibility', () => {
+  const actual = jest.requireActual('@/theme/accessibility');
+  return { ...actual, readPrefersMoreContrast: jest.fn() };
+});
 
 jest.mock('@/hooks/use-color-scheme', () => ({
   useColorScheme: jest.fn(() => 'light'),
@@ -19,10 +26,17 @@ jest.mock('@/hooks/use-color-scheme', () => ({
 const { useColorScheme } = jest.requireMock('@/hooks/use-color-scheme') as {
   useColorScheme: jest.Mock;
 };
+const { readPrefersMoreContrast } = jest.requireMock('@/theme/accessibility') as {
+  readPrefersMoreContrast: jest.Mock;
+};
+const realReadPrefersMoreContrast = (
+  jest.requireActual('@/theme/accessibility') as typeof import('@/theme/accessibility')
+).readPrefersMoreContrast;
 
 let removeSpy: jest.Mock;
 
 beforeEach(() => {
+  readPrefersMoreContrast.mockImplementation(realReadPrefersMoreContrast);
   removeSpy = jest.fn();
   useColorScheme.mockReturnValue('light');
   jest
@@ -142,5 +156,119 @@ describe('useAppearance themeName — contract C4-4', () => {
     const { result } = await renderHook(() => useAppearance());
     await waitFor(() => expect(result.current.themeName).toBe('dark-contrast'));
     expect(result.current.tokens).toBe(Colors.dark);
+  });
+});
+
+describe('useAppearance ready — the first accessibility read has settled (004 D4-05)', () => {
+  /** A query a test settles by hand, on the iOS "Increase Contrast" accessor. */
+  function pendingContrast() {
+    let settle: { resolve: (value: boolean) => void; reject: (error: Error) => void };
+    const promise = new Promise<boolean>((resolve, reject) => {
+      settle = { resolve, reject };
+    });
+    Object.assign(AccessibilityInfo, {
+      isDarkerSystemColorsEnabled: jest.fn(() => promise),
+    });
+    return {
+      resolve: (value: boolean) => settle.resolve(value),
+      reject: (e: Error) => settle.reject(e),
+    };
+  }
+
+  test('is false while a query is still pending, with the flags at their defaults', async () => {
+    pendingContrast();
+
+    const { result } = await renderHook(() => useAppearance());
+    await waitFor(() =>
+      expect(AccessibilityInfo.isReduceMotionEnabled).toHaveBeenCalled(),
+    );
+
+    expect(result.current.ready).toBe(false);
+    expect(result.current.themeName).toBe('light');
+  });
+
+  test('stays false for as long as the query never answers', async () => {
+    pendingContrast();
+
+    const { result } = await renderHook(() => useAppearance());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+
+    expect(result.current.ready).toBe(false);
+  });
+
+  test('becomes true, with the flags it read, in the same render', async () => {
+    const contrast = pendingContrast();
+    const seen: { ready: boolean; themeName: string }[] = [];
+
+    const { result } = await renderHook(() => {
+      const appearance = useAppearance();
+      seen.push({ ready: appearance.ready, themeName: appearance.themeName });
+      return appearance;
+    });
+    await act(async () => {
+      contrast.resolve(true);
+    });
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.themeName).toBe('light-contrast');
+    // Never ready with the flags still unread: every ready render already has them.
+    const readyThemes = seen
+      .filter((entry) => entry.ready)
+      .map((entry) => entry.themeName);
+    expect(readyThemes.length).toBeGreaterThan(0);
+    expect(new Set(readyThemes)).toEqual(new Set(['light-contrast']));
+  });
+
+  test('becomes true when the platform query rejects, which reads as more contrast', async () => {
+    const contrast = pendingContrast();
+
+    const { result } = await renderHook(() => useAppearance());
+    await act(async () => {
+      contrast.reject(new Error('the accessibility service is not available'));
+    });
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    // Contract C4: an unavailable query falls back to the MORE accessible value.
+    expect(result.current.prefersMoreContrast).toBe(true);
+  });
+
+  test('becomes true when the whole read rejects, keeping the flags it had', async () => {
+    readPrefersMoreContrast.mockRejectedValue(new Error('unexpected'));
+
+    const { result } = await renderHook(() => useAppearance());
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.prefersMoreContrast).toBe(false);
+  });
+
+  test('stays true when a later change event starts another read that has not answered', async () => {
+    setIosIncreasedContrast(false);
+    const { result } = await renderHook(() => useAppearance());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    pendingContrast();
+
+    const handlers = (AccessibilityInfo.addEventListener as jest.Mock).mock.calls.map(
+      ([, handler]) => handler as () => void,
+    );
+    await act(async () => {
+      handlers.forEach((handler) => handler());
+    });
+
+    expect(result.current.ready).toBe(true);
+  });
+
+  test('sets nothing once unmounted, whether the read resolves or rejects late', async () => {
+    const contrast = pendingContrast();
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const { unmount } = await renderHook(() => useAppearance());
+    await unmount();
+    await act(async () => {
+      contrast.resolve(true);
+    });
+
+    expect(errors).not.toHaveBeenCalled();
   });
 });
