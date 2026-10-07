@@ -58,20 +58,27 @@ const light = {
   // `FocusRing.offset` gap of the surrounding neutral, so it is gated against canvas,
   // surface and field fill only (C4-3), never against an accent fill it does not touch.
   focus: '#2456C7',
-  danger: '#B71A18',
+  // Research D4-01 had #B71A18, #00713E, #854E00, #5F6773. Each text colour is gated, and
+  // its 15% soft chip too, on all five neutral fills (canvas, surface, overlay, field
+  // fill, surface-tertiary), so each is darkened to the smallest value that passes on
+  // the darkest of them (surface-tertiary): danger #A61816, success #006336, amber
+  // #7F4A00, past #515761.
+  danger: '#A61816',
   dangerInk: '#FEFDFB',
-  // Research D4-01 had #00713E, which is 4.42:1 on its own 15% chip over canvas.
-  success: '#006B3A',
+  success: '#006336',
   successInk: '#FEFDFB',
   // Amber text must be the darker planning ink, not the arc colour (D4-01).
-  warning: '#854E00',
+  warning: '#7F4A00',
   warningInk: '#FEFDFB',
+  // The arc colour: equal to GlobeColors.light.planning, gated as a mark, not as text.
   statusPlanning: '#9A5B00',
-  statusPlanningInk: '#854E00',
+  statusPlanningInk: '#7F4A00',
   statusActive: '#2456C7',
-  // Research D4-01 had #5F6773, which is 4.21:1 on its own 15% chip over canvas.
-  statusPast: '#585F69',
-  pending: '#6B46C1',
+  // Intentionally NOT GlobeColors.light.past (#6B7482). That is a 3:1 map line over its
+  // casing; this is TEXT and a chip label, so it must clear 4.5:1 on every neutral fill
+  // and on its own soft chip. Only active and planning are shared with the globe.
+  statusPast: '#515761',
+  pending: '#6140B0',
 };
 
 /** @type {PaletteColours} */
@@ -104,7 +111,9 @@ const dark = {
   statusPlanning: '#F2B45C',
   statusPlanningInk: '#F2B45C',
   statusActive: '#7FA8FF',
-  statusPast: '#9CA5B1',
+  // Intentionally NOT GlobeColors.dark.past (#8C96A5): that is a map line over its casing,
+  // this is text and a chip label (4.5:1 on every neutral fill and on its own soft chip).
+  statusPast: '#A1AAB5',
   pending: '#B9A4F5',
 };
 
@@ -121,25 +130,28 @@ const lightContrast = {
   ink: '#0A111B',
   muted: '#353D48',
   placeholder: '#353D48',
-  // Research D4-01 had #173F99, whose 15% chip over canvas is 6.93:1 (7:1 plus the 0.1
-  // blend tolerance needed); this is the smallest darkening that clears it.
-  accent: '#163D94',
+  // Research D4-01 had #173F99, whose 15% chip over surface-tertiary is 6.19:1 (7:1 plus
+  // the 0.1 blend tolerance needed); this is the smallest darkening that clears every
+  // neutral fill. The contrast themes' accent is not pinned to the globe.
+  accent: '#13347D',
   accentInk: '#FEFEFC',
-  link: '#163D94',
+  link: '#13347D',
   border: '#4A525C',
-  focus: '#163D94',
-  // Research D4-01 had #8F1210, 6.60:1 on its own 15% chip over canvas (7:1 needed).
-  danger: '#85110F',
+  focus: '#13347D',
+  // Research D4-01 had #8F1210 (6.60:1 on its own 15% chip over canvas); every text
+  // colour here is darkened until its soft chip clears 7:1 plus tolerance on all five
+  // neutral fills.
+  danger: '#710E0D',
   dangerInk: '#FEFEFC',
-  success: '#004E2A',
+  success: '#004224',
   successInk: '#FEFEFC',
-  warning: '#5C3700',
+  warning: '#533200',
   warningInk: '#FEFEFC',
   statusPlanning: '#7A4800',
-  statusPlanningInk: '#5C3700',
-  statusActive: '#163D94',
-  statusPast: '#3D4550',
-  pending: '#4B2E96',
+  statusPlanningInk: '#533200',
+  statusActive: '#13347D',
+  statusPast: '#343A44',
+  pending: '#3F277F',
 };
 
 /** @type {PaletteColours} */
@@ -154,36 +166,30 @@ const darkContrast = {
   ink: '#FBFAF7',
   muted: '#C6CDD6',
   placeholder: '#C6CDD6',
-  accent: '#A9C5FF',
+  // Research D4-01 had #A9C5FF, whose 15% chip over the overlay is 6.35:1 (7:1 plus the
+  // 0.1 blend tolerance needed); this is the smallest lightening that clears every
+  // neutral fill. The contrast themes' accent is not pinned to the globe.
+  accent: '#BFD4FF',
   accentInk: '#05090E',
-  link: '#A9C5FF',
+  link: '#BFD4FF',
   border: '#A3ACB8',
-  focus: '#A9C5FF',
-  danger: '#FFB1AA',
+  focus: '#BFD4FF',
+  danger: '#FFC5BF',
   dangerInk: '#05090E',
-  success: '#8FE3B0',
+  success: '#95E5B4',
   successInk: '#05090E',
   warning: '#FFD08A',
   warningInk: '#05090E',
   statusPlanning: '#FFC978',
   statusPlanningInk: '#FFD08A',
-  statusActive: '#A9C5FF',
-  statusPast: '#C0C8D2',
-  pending: '#D2C4FA',
+  statusActive: '#BFD4FF',
+  statusPast: '#CED4DC',
+  pending: '#D9CDFB',
 };
 
-/**
- * @template T
- * @param {T} value
- * @returns {Readonly<T>}
- */
-function freeze(value) {
-  return Object.freeze(value);
-}
-
-module.exports = freeze({
-  light: freeze(light),
-  dark: freeze(dark),
-  'light-contrast': freeze(lightContrast),
-  'dark-contrast': freeze(darkContrast),
+module.exports = Object.freeze({
+  light: Object.freeze(light),
+  dark: Object.freeze(dark),
+  'light-contrast': Object.freeze(lightContrast),
+  'dark-contrast': Object.freeze(darkContrast),
 });
