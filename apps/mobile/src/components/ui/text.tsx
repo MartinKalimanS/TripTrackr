@@ -31,8 +31,17 @@
  * (`fontVariant`), semibold, and `context` borrows the size of the role it sits in, so a
  * total in a hero is `context="largeTitle"` (and takes the display face with it).
  *
- * The display faces are `font-display` and `font-display-bold` (global.css). They carry
- * their own weight, so the display roles ask for no `font-*` weight class.
+ * The display faces are `font-display` and `font-display-bold`: Tailwind turns the
+ * `--font-display` and `--font-display-bold` variables of the `@theme static` block in
+ * `src/global.css` into those utilities, and `text.test.tsx` reads the stylesheet so a
+ * missing declaration fails the build instead of leaving a role in the platform face.
+ * Each weight is its own family (React Native has no variable weights for a custom
+ * font), so the display roles ask for no `font-*` weight class. The kit's text adds
+ * `font-normal` (weight 400) beside the family and tailwind-merge keeps both (checked):
+ * that is expected to be harmless, and to even help, because a requested weight of 400
+ * leaves Android nothing to synthesise on top of the already bold file. Whether the
+ * family loads and applies that way on both platforms is the device check of research
+ * D4-07 (T408).
  */
 import { Typography, type TypographyRootProps } from 'heroui-native';
 import type { TextPropsIOS } from 'react-native';
@@ -84,14 +93,17 @@ const TONE_CLASSES: Record<TextTone, string> = {
   onAccent: 'text-accent-foreground',
 };
 
-const DYNAMIC_TYPE_RAMP: Record<TextRole, TextPropsIOS['dynamicTypeRamp']> = {
+/**
+ * The iOS Dynamic Type ramp of a role. A `numeric` text takes the ramp of the role it sits
+ * in (its `context`, `body` by default), so a total in a hero grows like a large title.
+ */
+const DYNAMIC_TYPE_RAMP: Record<NumericContext, TextPropsIOS['dynamicTypeRamp']> = {
   largeTitle: 'largeTitle',
   title: 'title2',
   headline: 'headline',
   body: 'body',
   callout: 'callout',
   caption: 'caption1',
-  numeric: 'body',
 };
 
 const HEADER_ROLES: readonly TextRole[] = ['largeTitle', 'title'];
@@ -119,7 +131,7 @@ export function Text({
   return (
     <Typography
       accessibilityRole={HEADER_ROLES.includes(type) ? 'header' : undefined}
-      dynamicTypeRamp={DYNAMIC_TYPE_RAMP[type]}
+      dynamicTypeRamp={DYNAMIC_TYPE_RAMP[type === 'numeric' ? context : type]}
       className={className ? `${classes} ${className}` : classes}
       style={type === 'numeric' ? [{ fontVariant: TABULAR_NUMERALS }, style] : style}
       {...rest}

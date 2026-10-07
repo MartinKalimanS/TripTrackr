@@ -8,6 +8,8 @@
  * typography tokens so a class cannot drift from `src/theme/typography.ts`.
  */
 import { render, screen } from '@testing-library/react-native';
+import fs from 'node:fs';
+import path from 'node:path';
 import { StyleSheet } from 'react-native';
 
 import { TextRoleNames, TextRoles, type TextRole } from '@/theme';
@@ -285,5 +287,101 @@ describe('<Text type="numeric"> - FR-004', () => {
       </Text>,
     );
     expect(screen.getByTestId('text').props.accessibilityRole).toBeUndefined();
+  });
+});
+
+describe('<Text type="numeric"> Dynamic Type follows its context', () => {
+  test.each([
+    [undefined, 'body'],
+    ['largeTitle', 'largeTitle'],
+    ['title', 'title2'],
+    ['headline', 'headline'],
+    ['callout', 'callout'],
+    ['caption', 'caption1'],
+  ] as const)('context %s asks for the %s ramp', async (context, ramp) => {
+    await render(
+      <Text testID="text" type="numeric" context={context}>
+        12
+      </Text>,
+    );
+    expect(screen.getByTestId('text').props.dynamicTypeRamp).toBe(ramp);
+  });
+
+  test('a numeric total in a hero grows like a large title, not like body text', async () => {
+    await render(
+      <>
+        <Text testID="total" type="numeric" context="largeTitle">
+          12
+        </Text>
+        <Text testID="plain" type="numeric">
+          12
+        </Text>
+      </>,
+    );
+    expect(screen.getByTestId('total').props.dynamicTypeRamp).not.toBe(
+      screen.getByTestId('plain').props.dynamicTypeRamp,
+    );
+  });
+});
+
+describe('the display faces are declared by src/global.css (research D4-07)', () => {
+  const stylesheet = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'global.css'),
+    'utf8',
+  );
+  // Tailwind turns `--font-<name>` in an `@theme` block into the `font-<name>` utility. It
+  // generates nothing for a variable no class uses unless the block is `static`.
+  const themeBlock = /@theme\s+static\s*\{([^}]*)\}/.exec(stylesheet)?.[1] ?? '';
+  const SYSTEM_WEIGHTS = new Set(['normal', 'medium', 'semibold', 'bold']);
+
+  test('declares --font-display and --font-display-bold in an @theme static block', () => {
+    expect(themeBlock).toMatch(/--font-display:\s*'[^']+'/);
+    expect(themeBlock).toMatch(/--font-display-bold:\s*'[^']+'/);
+  });
+
+  test('does not redefine the kit weights: body text stays in the platform face', () => {
+    expect(stylesheet).not.toMatch(/--font-(?:normal|medium|semibold|bold)\s*:/);
+  });
+
+  test('every font class Text asks for is a weight or a declared family', async () => {
+    for (const [index, props] of [
+      { type: 'largeTitle' },
+      { type: 'title' },
+      { type: 'numeric', context: 'largeTitle' },
+      { type: 'numeric', context: 'title' },
+      { type: 'numeric' },
+      { type: 'headline' },
+      { type: 'body' },
+      { type: 'callout' },
+      { type: 'caption' },
+    ].entries()) {
+      await render(
+        <Text testID={`text-${index}`} {...(props as object)}>
+          x
+        </Text>,
+      );
+      const families = classesOf(`text-${index}`)
+        .filter((cls) => cls.startsWith('font-'))
+        .map((cls) => cls.slice('font-'.length))
+        .filter((name) => !SYSTEM_WEIGHTS.has(name));
+      for (const family of families) {
+        expect(themeBlock).toContain(`--font-${family}:`);
+      }
+    }
+  });
+
+  test('the two display roles do ask for a declared family', async () => {
+    await render(
+      <>
+        <Text testID="large" type="largeTitle">
+          x
+        </Text>
+        <Text testID="title" type="title">
+          x
+        </Text>
+      </>,
+    );
+    expect(classesOf('large')).toContain('font-display-bold');
+    expect(classesOf('title')).toContain('font-display');
   });
 });
