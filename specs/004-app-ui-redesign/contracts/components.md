@@ -89,11 +89,11 @@ the allowed folders imports the kit.
 
 | Adapter                                                 | Replaces       | API                                                                                        | Guarantees and preserved identifiers                                                                                                                                                                                                                             |
 | ------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Screen`                                                | `Screen`       | `testID`, `edges`, `keyboardAware`, `style`                                                | Paints the canvas; scrolls at the largest text size; uses `contentInsetAdjustmentBehavior` so headers inset content; same `keyboardShouldPersistTaps="handled"`                                                                                                  |
-| `ListScreen`                                            | `ListScreen`   | unchanged generics                                                                         | `FlashList` is the scroller (D-23); header, empty and footer travel with it                                                                                                                                                                                      |
+| `Screen`                                                | `Screen`       | `testID`, `edges`, `keyboardAware`, `style`, `underHeader?`                                | Paints the canvas (`bg-background` and the token style); scrolls at the largest text size; `keyboardShouldPersistTaps="handled"`; opt-in `underHeader` (native header above): default edges `['bottom']`, `contentInsetAdjustmentBehavior="automatic"`           |
+| `ListScreen`                                            | `ListScreen`   | unchanged generics, `underHeader?`                                                         | `FlashList` is the scroller (D-23); header, empty and footer travel with it; the same `underHeader` opt-in as `Screen` (edges `['bottom']`, `contentInsetAdjustmentBehavior="automatic"`)                                                                        |
 | `Text`, `ThemedText`                                    | `ThemedText`   | `type`: `largeTitle`, `title`, `headline`, `body`, `callout`, `caption`, `numeric`; `tone` | Semantic classes, so increased contrast comes from the theme (no JS promotion); `numeric` is tabular; `largeTitle`, `title` are headers; never capped; `ThemedText` is unchanged until phase 7, not a shim                                                       |
-| `Card`, `Panel`                                         | `Surface`      | `variant="raised" \| "flat"`, `overMap?`, `pending?`, `radius?`                            | `overMap` is opaque with a hairline and **no shadow or tint** (FR-018, FR-033); a card never contains a card (FR-006); `pending` adds the pending marker treatment (FR-034)                                                                                      |
-| `ListGroup`, `ListRow`                                  | row layouts    | `title`, `description?`, `leading?`, `trailing?`, `onPress?`, `accessibilityActions?`      | A pressable row shows a chevron at 3:1 unless it supplies its own cue (FR-024); row-level `accessibilityActions` are forwarded (stop rows keep move up, move down, edit, delete)                                                                                 |
+| `Card`, `Panel`                                         | `Surface`      | `variant="raised" \| "flat"`, `overMap?`, `pending?`, `radius?`, `onPress?`, `cue?`        | `overMap` is opaque, hairline, `shadow-none`, no tint (FR-018, FR-033); a card never contains a card, a development error (FR-006); `pending` adds a dashed `border-pending` edge (FR-034); `onPress` makes the card one control with a chevron cue (FR-024)     |
+| `ListGroup`, `ListRow`                                  | row layouts    | `title`, `description?`, `leading?`, `trailing?`, `onPress?`, `accessibilityActions?`      | A pressable row shows a chevron at 3:1 unless it supplies `trailing` (FR-024); row-level `accessibilityActions` are forwarded (stop rows keep move up, move down, edit, delete); `tone="destructive"` is danger ink plus an icon (FR-025)                        |
 | `Field`                                                 | `TextField`    | `label`, `value`, `onChangeText`, `error?`, `description?`, all `TextInput` props          | `testID` lands on the input; `accessibilityLabel` is the label; `aria-invalid` when an error exists; error is words under the field, never colour alone (FR-025); `secureTextEntry`, `textContentType`, `autoComplete` and `keyboardType` pass through unchanged |
 | `Chip`                                                  | pill buttons   | `label`, `selected?`, `onPress?`, `leading?`                                               | Selected is shown by fill, weight and a check glyph, not colour alone                                                                                                                                                                                            |
 | `ChipGroup`                                             | `PillGroup`    | `options[{key,label,testID,accessibilityLabel}]`, `selectedKey`, `onSelect`                | Keeps `radiogroup` and `radio` roles with `selected` and `checked`; selection plays a selection haptic; may scroll sideways (FR-009 and 003 FR-017)                                                                                                              |
@@ -105,6 +105,50 @@ the allowed folders imports the kit.
 | `Icon`                                                  | ad-hoc symbols | `name: { ios, android }`, `size: 16 \| 20 \| 24`, `tone?`, `label?`                        | One vocabulary over `expo-symbols`; decorative icons are hidden from assistive technology, meaningful ones (`label`) are announced as images                                                                                                                     |
 | `Avatar`                                                | none           | `name`, `size?`, `decorative?`                                                             | Initials from the display name (up to two words, `?` when empty); announced by the name unless decorative                                                                                                                                                        |
 | `MediaFrame`                                            | `MediaFrame`   | unchanged                                                                                  | Frames photographs with a hairline; **never** wraps them in a parent whose shadow bleeds inward (002 C12)                                                                                                                                                        |
+
+**As built (T418, T419, T424)**: the table above states the contract; these are the decisions and the places the
+built API goes beyond it.
+
+- **`Card`**: `variant` defaults to `raised` and `radius` to `lg` (16 dp; `md` 12, `xl` 24; continuous corner).
+  `raised` is the kit's own surface (`bg-surface` and its soft light-theme shadow `--surface-shadow`); `flat` is the
+  same fill with `shadow-none`; neither draws an edge (FR-006). The kit's Surface carries `box-shadow` in its own
+  stylesheet, so "no shadow" has to be asked for: `shadow-none` is the one shadow class used, and it cancels, never
+  adds. `overMap` is `bg-surface border border-border shadow-none` whatever the variant, with no opacity suffix and
+  no translucent style (a test pins it); `pending` is `border border-dashed border-pending` (it replaces the
+  hairline of an `overMap` card, it does not stack on it) and is only the edge: `SyncBadge` stays the text and icon
+  marker (FR-025, FR-034).
+- **A pressable `Card`** (`onPress`, which makes `accessibilityLabel` a required prop by type and, in development,
+  at run time) is ONE `Tappable` around the kit surface, so role `button`, `disabled` and `busy` announced and
+  inert, the font-scaled minimum target and the focus ring (which follows the card's corner) are `Tappable`'s.
+  `testID` lands on that control; the surface inside is `<testID>-surface` and the cue `<testID>-cue`. The pressed
+  fill belongs to the card (`bg-surface-tertiary`, at once), so the control behind it paints nothing. The trailing
+  chevron (`PressCue`, muted ink, the gate's "row cue" pair) is on unless `cue={false}`. Extra props beyond the
+  contract: `cue?`, `disabled?`, `busy?`, `className` and `style` (layout only, on the outermost node), and, on a
+  card with no `onPress` only, `accessibilityLabel?`, `accessibilityHint?`, `accessibilityRole?` (a notice card is
+  `accessibilityRole="alert"`); a plain card announces nothing of its own.
+- **One surface in another** is a development error, shared by `Card` and `ListGroup` (`surface-nesting.tsx`): any
+  raised container inside another, through any number of `Panel`s, throws; it is a no-op in a release build. A
+  `ListGroup` counts as a raised surface (this goes beyond the contract text, which names only cards).
+- **`Panel`** is a plain `View`, not a kit Surface: no fill, no edge, no shadow, no padding, so it adds no depth
+  level and may sit on the canvas or inside a card (the kit's Surface clips its children, which would cut off the
+  shadow of a card placed in it). Its optional `title` is a `headline` announced as a heading.
+- **`ListGroup`** is the kit's group in a continuous `lg` corner with an inset (`ms-4`) kit `Separator` between
+  rows (`<testID>-separator-<n>`); rows must be direct children or arrays (a Fragment is one child). `header` is a
+  muted `caption` heading above the group.
+- **`ListRow`**: `testID` lands on the row. A pressable row is role `button`, announced `disabled` and dimmed when
+  it is, with the same font-scaled minimum height as `Tappable` and a held-press fill (`active:bg-surface-tertiary`)
+  at once. Its focus ring is drawn INSIDE the row (the group clips to its rounded corners, which would cut off a
+  ring outside; review rule 6 asks only that it never touch an accent fill); the default chevron is `<testID>-cue`.
+  It sets no `accessibilityLabel` of its own: the platform reads the row's text, trailing text included. A row with
+  no `onPress` is not a control (no role, not focusable, never announced unavailable) and is one element for
+  assistive technology only when given an `accessibilityLabel` or `accessibilityActions`, so a trailing switch
+  stays reachable. `tone="destructive"` is `text-danger` and a leading icon (a caution glyph, `<testID>-icon`,
+  unless the caller passes `leading`).
+- **`Screen` and `ListScreen`** gain `underHeader?: boolean` (default `false`; everything else unchanged): default
+  edges `['bottom']`, `contentInsetAdjustmentBehavior="automatic"` on the scroll view or `FlashList`, the scroller
+  the first child of the screen root (for `ListScreen`, first down the chain of first children: react-native-screens
+  4.26 walks it, `RNSScrollViewFinder`). The canvas is the `bg-background` class AND the `ThemedView` canvas token
+  style in both modes.
 
 ---
 
