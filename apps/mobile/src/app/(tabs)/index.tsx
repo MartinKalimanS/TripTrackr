@@ -25,7 +25,7 @@
  */
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { GlobeEmptyState, GlobeNotice } from '@/components/globe/empty-state';
 import { GlobeView } from '@/components/globe/globe-view';
@@ -40,6 +40,15 @@ import {
 } from '@/features/globe/globe-data';
 import { useGlobe, type GlobeData } from '@/features/globe/use-globe';
 import { todayIso } from '@/features/trips/stop-dates';
+
+/**
+ * The overlay insets the top edge only, as it always has. The sides are not needed: the
+ * app is portrait-locked (`orientation: 'portrait'` in `app.config.ts`), where the side
+ * insets are zero, so a landscape cutout cannot sit under a card. If that lock is ever
+ * lifted, this is where `'left'` and `'right'` join it (the overlay is full-bleed and its
+ * cards hug the left edge).
+ */
+const OVERLAY_EDGES: Edge[] = ['top'];
 
 export default function HomeScreen() {
   // One calendar day for the whole screen: the statuses and the beacon's
@@ -76,7 +85,11 @@ function HomeGlobe({
         today={today}
         accessibilityLabel={describeGlobe(data, drawn)}
       />
-      <SafeAreaView edges={['top']} style={styles.overlay}>
+      <SafeAreaView
+        testID="home-overlay"
+        edges={OVERLAY_EDGES}
+        pointerEvents="box-none"
+        style={styles.overlay}>
         <HomeCard data={data} failed={failed} />
       </SafeAreaView>
     </View>
@@ -134,7 +147,9 @@ const styles = StyleSheet.create({
   message: {
     justifyContent: 'center',
   },
-  // Lets touches through to the map everywhere except on the card itself.
+  // Lets touches through to the map everywhere except on the card itself. Also a prop on
+  // the native view above, which is the one it reads; the style key is the older guarantee
+  // and is kept beside it. The card and its parents stay on the default, `auto`.
   overlay: {
     position: 'absolute',
     top: 0,

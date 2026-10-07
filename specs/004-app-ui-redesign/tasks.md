@@ -316,21 +316,31 @@ increased contrast.
       because a plain `Card` announces nothing of its own and has no `accessible` prop; the card inside is
       `globe-stats-card`. **Invitation** (`globe-empty-state`): `title`, muted `callout` reason, ONE primary
       `Button` with the unchanged id, label and navigation per reason (there was never a second action, so
-      no text button). **Notice** (`globe-notice`): `alert`, leading alert icon, danger-ink headline, muted
-      detail; no retry, because `useGlobe` has no reload and the copy says to restart. Both messages share
-      one `OverlayCard`: `self-stretch` with `max-w-md`, the reason wraps in full (the old `numberOfLines`
-      cap of 3 is gone), and an inner `ScrollView` caps the card at 60% of the window height, so at the
-      largest text size every word and the action stay reachable and the globe is never covered whole; the
-      Home overlay keeps `pointerEvents: 'box-none'`. Home route: a `bg-background` view instead of
-      `ThemedView`, `LoadingState` straight on `Screen`; no `ErrorState`, because a failed read keeps the
-      globe and floats the notice (003 FR-001). Unresolved-id ratchet 34 to 35 (`OverlayCard` forwards
-      `testID`). `GlobeView`, arcs, camera, beacon and `GlobeColors` are untouched. Device checks (Jest
-      renders no styles): the cards over bright ocean and ice and over the dark night basemap (hairline
-      visible, no halo); display-face figures and tabular digits on both platforms; large text on a small
-      phone (the invitation wraps, scrolls inside its cap, the primary button stays reachable, the globe
-      still pans and zooms around it); the top safe area under the notch and the status bar; TalkBack and
-      VoiceOver read the stats as ONE summary, the notice as an alert on appearance, and the invitation
-      title as a heading followed by the button.
+      no text button); it is deliberately not merged into one focus stop (it never was): title, reason and
+      button stay separate. **Notice** (`globe-notice`): ONE accessible `alert` named by its title and
+      reason (an outer view, like the stats; the card inside is `globe-notice-card`), leading alert icon,
+      danger-ink headline, muted detail; no retry, because `useGlobe` has no reload and the copy says to
+      restart. Both messages share one `OverlayCard`: `self-stretch` with `max-w-md`, the reason wraps in
+      full (the old `numberOfLines` cap of 3 is gone), and an inner `ScrollView` caps the card at 60% of
+      the window height (`overlayMaxHeight`), so at the largest text size every word and the action stay
+      reachable and the globe is never covered whole. The card owns its padding: none on the card,
+      `OVERLAY_CARD_INSET` on the scroller's content, so the cap is the card's whole height and the inset
+      is the gutter that keeps a focus ring (`FocusRing`, 4 dp outside) from being clipped by the
+      scroller. The Home overlay is a native `SafeAreaView` with `pointerEvents="box-none"` as a prop (and
+      still in its style, as before) and `testID="home-overlay"`; its edges stay `top` only, as in the old
+      file, because the app is portrait-locked and the side insets are zero (add `left` and `right` if the
+      lock is lifted). Home route: a `bg-background` view instead of `ThemedView`, `LoadingState` straight
+      on `Screen`; no `ErrorState`, because a failed read keeps the globe and floats the notice (003
+      FR-001). Unresolved-id ratchet: ids 34 to 35 (`OverlayCard` forwards `testID`), labels 37 to 38 (the
+      notice's label is built from its props). `GlobeView`, arcs, camera, beacon and `GlobeColors` are
+      untouched. Device checks (Jest renders no styles): that a `style` of `padding: 0` really replaces
+      the kit surface's class padding (Uniwind applies a style after the class, by its source); the cards
+      over bright ocean and ice and over the dark night basemap (hairline visible, no halo); display-face
+      figures and tabular digits on both platforms; large text on a small phone (the invitation wraps,
+      scrolls inside its cap, the primary button stays reachable, the globe still pans and zooms around
+      it); the top safe area under the notch and the status bar; TalkBack and VoiceOver read the stats as
+      ONE summary, the notice once on appearance as an alert, and the invitation title as a heading
+      followed by the button.
 - [x] T429 [P] [US2] Failing tests in `apps/mobile/test/db/` and `src/features/trips/__tests__/` for the
       cover rule (designated, earliest, typographic, thumbnail failure) and date range; then
       `db/repositories/photos.ts` (earliest photo per trip, thumbnails only) and the `TripSummary` extension
