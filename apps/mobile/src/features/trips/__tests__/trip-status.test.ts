@@ -4,7 +4,11 @@
  * The same rule the server applies (T061), so the pill a traveller sees while
  * offline matches what the server will say once they reconnect.
  */
-import { STATUS_PRESENTATION, deriveTripStatus } from '@/features/trips/trip-status';
+import {
+  STATUS_PRESENTATION,
+  deriveTripStatus,
+  tripDateRange,
+} from '@/features/trips/trip-status';
 
 const stop = (arrive: string, depart: string) => ({
   arrive_date: arrive,
@@ -56,6 +60,37 @@ describe('deriveTripStatus', () => {
       deriveTripStatus([stop('2000-01-01', '2000-01-02')]),
     );
     expect(deriveTripStatus([stop('2000-01-01', '2000-01-02')])).toBe('past');
+  });
+});
+
+describe('tripDateRange (FR-011; data-model.md §5)', () => {
+  test('is null with no stops', () => {
+    expect(tripDateRange([])).toBeNull();
+  });
+
+  test('is the stop’s own dates for one stop', () => {
+    expect(tripDateRange([stop('2026-05-10', '2026-05-12')])).toEqual({
+      start: '2026-05-10',
+      end: '2026-05-12',
+    });
+  });
+
+  test('is the earliest arrival to the latest departure regardless of order or overlap', () => {
+    const stops = [
+      stop('2026-05-15', '2026-05-18'),
+      stop('2026-05-10', '2026-05-16'),
+      stop('2026-05-12', '2026-05-13'),
+    ];
+    expect(tripDateRange(stops)).toEqual({ start: '2026-05-10', end: '2026-05-18' });
+  });
+
+  test('does not change the stops it reads', () => {
+    const stops = [stop('2026-05-15', '2026-05-18'), stop('2026-05-10', '2026-05-16')];
+    const snapshot = JSON.stringify(stops);
+
+    tripDateRange(stops);
+
+    expect(JSON.stringify(stops)).toBe(snapshot);
   });
 });
 
