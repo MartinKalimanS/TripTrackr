@@ -227,7 +227,8 @@ describe('ref counting', () => {
 
   test('a platform with no accessibility events registers nothing and still settles `ready`', async () => {
     os.restore();
-    os = jest.replaceProperty(Platform, 'OS', 'windows');
+    // Not a platform the app ships on: whatever it is, the mapping has no event for it.
+    os = jest.replaceProperty(Platform, 'OS', 'unknown-os' as never);
 
     const unsubscribe = subscribeToAppearance(() => undefined);
     await settle();

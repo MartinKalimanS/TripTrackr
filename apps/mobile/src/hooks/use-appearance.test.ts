@@ -10,6 +10,7 @@ import { AccessibilityInfo, Platform } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 
+import { __resetAppearanceStoreForTests } from './appearance-store';
 import { useAppearance } from './use-appearance';
 
 // The contrast reader is the one that decides the theme, so a test can make it fail. It wraps
@@ -47,6 +48,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // The store is shared by the whole module registry: a test must not inherit the last one's.
+  __resetAppearanceStoreForTests();
   jest.restoreAllMocks();
   delete (AccessibilityInfo as { isDarkerSystemColorsEnabled?: unknown })
     .isDarkerSystemColorsEnabled;

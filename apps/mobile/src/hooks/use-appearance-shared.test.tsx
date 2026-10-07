@@ -11,6 +11,7 @@ import { act, render, renderHook } from '@testing-library/react-native';
 import { Profiler } from 'react';
 import { AccessibilityInfo, Platform } from 'react-native';
 
+import { __resetAppearanceStoreForTests } from './appearance-store';
 import { useAppearance, type AppearanceContext } from './use-appearance';
 
 jest.mock('@/hooks/use-color-scheme', () => ({
@@ -56,6 +57,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // The store is shared by the whole module registry: a test must not inherit the last one's.
+  __resetAppearanceStoreForTests();
   jest.restoreAllMocks();
   os.restore();
   delete (AccessibilityInfo as { isDarkerSystemColorsEnabled?: unknown })
