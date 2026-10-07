@@ -84,40 +84,14 @@ export interface Palette {
 }
 
 /**
- * Every key of `Palette`. Written as a `Record` so the compiler rejects a key that is in
- * the interface but not here, which keeps `PaletteKeys` and `Palette` from drifting.
+ * Every key of `Palette`, derived from the palette data (the keys of the first theme, in
+ * data order), so there is no second list to keep in step with it. Two checks stand
+ * behind it: `Palettes` below fails to compile when the data lacks a `Palette` key, and
+ * `test/theme/palette.test.ts` compares this list with the data-model section 1 keys,
+ * written out independently, so a key added to the data without the spec is caught.
  */
-const KEY_SET: Record<keyof Palette, true> = {
-  canvas: true,
-  surface: true,
-  surfaceSecondary: true,
-  surfaceTertiary: true,
-  overlay: true,
-  separator: true,
-  backdrop: true,
-  ink: true,
-  muted: true,
-  placeholder: true,
-  accent: true,
-  accentInk: true,
-  link: true,
-  border: true,
-  focus: true,
-  danger: true,
-  dangerInk: true,
-  success: true,
-  successInk: true,
-  warning: true,
-  warningInk: true,
-  statusPlanning: true,
-  statusPlanningInk: true,
-  statusActive: true,
-  statusPast: true,
-  pending: true,
-};
-
 export const PaletteKeys: readonly (keyof Palette)[] = Object.freeze(
-  Object.keys(KEY_SET) as (keyof Palette)[],
+  Object.keys(data.light) as (keyof Palette)[],
 );
 
 /** The four palettes, deeply frozen. Assigning from the data fails to compile on a missing key. */

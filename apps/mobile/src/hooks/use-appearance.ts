@@ -53,13 +53,6 @@ interface AccessibilityFlags {
   prefersLessTransparency: boolean;
 }
 
-/** Android exposes its API level as `Platform.Version`; iOS reports a string. */
-function androidApiLevel(): number | null {
-  if (Platform.OS !== 'android') return null;
-  const version = Platform.Version;
-  return typeof version === 'number' ? version : null;
-}
-
 export function useAppearance(): AppearanceContext {
   const scheme = useColorScheme();
   const theme: ThemeName = scheme === 'dark' ? 'dark' : 'light';
@@ -109,11 +102,8 @@ export function useAppearance(): AppearanceContext {
       themeName: resolvePaletteName(theme, flags.prefersMoreContrast),
       ...flags,
       fontScale,
-      elevationProfile: resolveElevationProfile({
-        os: Platform.OS,
-        apiLevel: androidApiLevel(),
-        prefersMoreContrast: flags.prefersMoreContrast,
-      }),
+      // Forced flat (004 D4-12): no device input reaches it, so none is passed.
+      elevationProfile: resolveElevationProfile(),
       tokens: Colors[theme],
     }),
     [theme, flags, fontScale],

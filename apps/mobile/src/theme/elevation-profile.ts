@@ -35,8 +35,9 @@ export interface ElevationInput {
 
 /**
  * Resolve the elevation profile for the current device and preferences: always `flat`
- * (004 D4-12). The parameter is kept so the signature, and every caller, is unchanged.
+ * (004 D4-12). Nothing about the device changes the answer, so the input is optional and
+ * ignored; it is still accepted so older callers and tests that pass one keep compiling.
  */
-export function resolveElevationProfile(_input: ElevationInput): ElevationProfile {
+export function resolveElevationProfile(_input?: ElevationInput): ElevationProfile {
   return 'flat';
 }

@@ -61,7 +61,20 @@ describe('palette names and keys', () => {
   });
 
   test('the key list is the data-model §1 list, nothing added or dropped', () => {
+    // DATA_MODEL_KEYS is the independent oracle: PaletteKeys is derived from the data, so
+    // this is what catches a key added to (or dropped from) the data without the spec.
     expect([...PaletteKeys].sort()).toEqual([...DATA_MODEL_KEYS].sort());
+  });
+
+  test('PaletteKeys is derived from the palette data, in its order, and is frozen', () => {
+    expect([...PaletteKeys]).toEqual(Object.keys(Palettes.light));
+    expect(Object.isFrozen(PaletteKeys)).toBe(true);
+  });
+
+  test('every theme lists its keys in the same order, so a diff reads across themes', () => {
+    for (const name of PaletteNames) {
+      expect(Object.keys(Palettes[name])).toEqual([...PaletteKeys]);
+    }
   });
 
   test.each(PaletteNames)('%s defines every key and no other', (name) => {

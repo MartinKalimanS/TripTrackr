@@ -40,7 +40,8 @@ export const DECORATIVE_GENERATED_VARIABLES = [
 export const SHARED_NON_COLOUR_VARIABLES = ['--field-border-width'] as const;
 
 interface SoftChipException {
-  theme: PaletteName;
+  /** A base theme: the pinned colour is the globe arc, which only light and dark have. */
+  theme: Extract<PaletteName, 'light' | 'dark'>;
   /** Palette keys that hold the pinned colour (all the same hex). */
   colours: readonly (keyof Palette)[];
   /** Neutral fills a soft chip of that colour cannot be placed on. */

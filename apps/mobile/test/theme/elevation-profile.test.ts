@@ -48,6 +48,12 @@ describe('resolveElevationProfile — forced flat (004 D4-12)', () => {
     ).not.toThrow();
   });
 
+  test('needs no input at all: nothing about the device changes the answer', () => {
+    // The old resolver read the OS, the Android API level and the contrast preference.
+    // Forced flat (D4-12), nothing does, so callers pass nothing.
+    expect(resolveElevationProfile()).toBe('flat');
+  });
+
   test('is deterministic', () => {
     const input = { os: 'android', apiLevel: 29, prefersMoreContrast: false };
     expect(resolveElevationProfile(input)).toBe(resolveElevationProfile(input));
