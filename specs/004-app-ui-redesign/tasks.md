@@ -247,8 +247,9 @@ increased contrast.
       stripped, each weight being that file's own because React Native picks the nearest weight of a family.
       _Still to do under T427:_ `trip/[id]/_layout.tsx` and `modal/_layout.tsx` header options,
       `HeaderBackButton` where T408 needs it, and the headers-and-Back tests in
-      `trip-and-modal-screens.test.tsx`. _Device-only:_ the large title collapses as the trips list scrolls on iOS
-      (and the title stays visible on iOS 26); both titles draw the display face on both platforms (T408).
+      `trip-and-modal-screens.test.tsx`. _Device-only (T408):_ the large title collapses as the trips list scrolls on iOS
+      (Jest asserts the options and the list props, not the collapse) and stays visible on iOS 26; both titles draw
+      the display face on both platforms.
 - [ ] T428 [P] [US1] Failing tests in `components/globe/__tests__/stats-overlay.test.tsx` and
       `empty-state.test.tsx`; then restyle `stats-overlay.tsx` and `empty-state.tsx` as opaque hairline cards
       with display-face tabular figures; `GlobeView`, arcs, camera and `GlobeColors` untouched (FR-018,
@@ -267,25 +268,50 @@ increased contrast.
       `components/trip/trip-card.tsx`, `app/(tabs)/trips/index.tsx` (FR-011, FR-021, FR-035)
       _As built:_ tests are `test/components/trip-card.test.tsx` (the card: one button named "title, status, N
       stops" with the hint "Opens the trip", cover, chip, range, stops line, badge, chevron, large text, no neumorphic
-      import), `test/components/trip-components.test.tsx` (announcement parity), `test/app/trips-screen.test.tsx`
-      (states, iOS header action versus Android FAB, list as scroller, clearance), `test/app/tab-screens.test.tsx`
-      (trips parts), `src/features/trips/__tests__/trip-date-range.test.ts` and `list-screen.test.tsx`. New:
+      import, every id readable by the id extractor), `test/components/trip-components.test.tsx` (announcement
+      parity), `test/app/trips-screen.test.tsx` (states, iOS header action versus Android FAB, list as scroller,
+      clearance), `test/app/tab-screens.test.tsx` (trips parts), `src/features/trips/__tests__/trip-date-range.test.ts`,
+      `test/features/trip-date-range.{auckland,los-angeles}.test.ts` and `list-screen.test.tsx`. New:
       `components/trip/trip-cover-band.tsx` (thumbnail or status-tinted initial, fallback to the typographic cover
       per thumbnail address when `expo-image` reports an error), `plan-trip-action.tsx`,
       `features/trips/trip-date-range.ts` ("12 Mar – 20 Mar 2026", year once, en dash). The screen is a
       `ListScreen` (`underHeader`, `edges={[]}`: the tab bar clears the home indicator) with `listTestID`, a
-      small additive prop on `ListScreen` so `trips-list` stays on the list (populated state only, as before; the
-      unresolved-id ratchet goes 34 to 35 for that forward). The error state keeps its title and detail and has no
+      small additive prop on `ListScreen` so `trips-list` stays on the list (populated state only, as before).
+      _Review round 1:_ (1) **iOS header action is icon-only**: a plus `Button` (`iconOnly`, `variant="text"`, name
+      "Plan a trip", `trips-plan-trip`), a fixed 44 pt square that the font scale does not touch, so large Dynamic
+      Type cannot clip or widen the header; the words live in the empty state's own action
+      (`trips-empty-plan-trip`). Android keeps the extended FAB. (2) **Date range**: `formatDateRange` returns
+      `null` for anything it cannot read (garbage, empty, not on the calendar, reversed, a language tag the platform
+      rejects falls back to its own locale) and never throws; the card then shows no date text. It reads the year,
+      month and day out of the string, sets them on a `Date` at 12:00 UTC and formats in UTC, so the day shown is the
+      day stored in any zone, and its formatters (one per language and with or without the year, `dayFormatter`) are
+      built once and kept: a formatter that formatted LOCAL dates would be pinned to the zone it was made in and show
+      the wrong day after the phone changed zone. This is deliberate and is not the UTC-conversion mistake the
+      date rule forbids (see the module header). (3) **Zones**: `test/env/zone-environment.js` is a Jest environment
+      that sets the REAL process zone before a file loads (`process.env.TZ` inside a test changes nothing: Jest
+      gives the test a copy of `process.env`); two files run the same suite in Pacific/Auckland and
+      America/Los_Angeles, each with a control proving that a UTC-parsing (west) or UTC-formatting (east)
+      implementation is wrong there; with each mistake put into the code the other zone's file passed and its own
+      failed 13 of its 15 tests. (4) The id ratchet: only `list-screen.tsx:103 testID={listTestID}` raised it (34 to 35
+      testIDs), found by diffing the extractor's unresolved list at `ad119a2` against the tree; the cover band and the
+      card write every id out with the literal head `trip-card-${id}` and add none. (5) The failed-image state is kept
+      against the thumbnail address current when the event ARRIVES: `expo-image` 57.0.5's `onError` is
+      `{ error: string }` and names no source, so a stale error cannot be matched to its source; the worst case is a
+      placeholder, never a wrong photo (see the band's header). The error state keeps its title and detail and has no
       retry (the live query offers none), a known gap against C4-10 rule 2. The card passes `cue={false}` and draws
       its own chevron beside the text: the cover runs to the card's edge with `-mx-4 -mt-4` over the kit Surface's
       16 dp padding, and the default chevron would hang off the picture. Maestro: no flow depends on text that
       changed (ids, 'No trips yet', 'Planning', '2 stops.*', the card title are all kept), so no flow was edited.
-      _Device-only checks:_ the iOS large title collapse over the `FlashList` (and "Plan a trip" in the header
-      reachable by Maestro on iOS 26, where header items sit in a glass capsule); the Android FAB placement against
-      the tab bar and gesture area, the last card reachable above it, and no flow tapping a card centre under it;
-      the photo cover with a real thumbnail, and the typographic fallback when the file is gone; VoiceOver and
-      TalkBack read each card as ONE element ("title, status, N stops", hint "Opens the trip"); every card at the
-      largest text size (the chip and date rows wrap, the initial grows); light, dark and both contrast themes.
+      _Device-only checks:_ (a) the iOS large title collapses over the `FlashList` as it scrolls and the title stays
+      visible on iOS 26 (Jest asserts only the props, T408); (b) **Maestro `tapOn: id trips-plan-trip` finds and
+      taps the icon-only button inside the iOS native header** (five flows use it: `01-account-and-trip`,
+      `02-notes-and-expenses`, `03-globe`, `offline/_helpers/add-trip`, `offline/15-a-over-allowance-offline`), and
+      how the button sits in the **glass capsule iOS 26 draws around header items** (its tint, its 44 pt target);
+      (c) the Android FAB placement against the tab bar and gesture area, the last card reachable above it, and no
+      flow tapping a card centre under it; (d) the photo cover with a real thumbnail, and the typographic fallback
+      when the file is gone; (e) VoiceOver and TalkBack read each card as ONE element ("title, status, N stops",
+      hint "Opens the trip"); (f) every card at the largest text size (the chip and date rows wrap, the initial
+      grows) and the iOS header at the largest Dynamic Type size; (g) light, dark and both contrast themes.
 - [ ] T431 [US2] Failing tests in `test/app/trip-and-modal-screens.test.tsx` for the hero title
       (`trip-title`), status row, areas row (`trip-links`, `trip-open-<segment>`), timeline and preserved stop
       controls and accessibility actions; then `app/trip/[id]/index.tsx`, `components/trip/stop-row.tsx`,
