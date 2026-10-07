@@ -4,6 +4,11 @@
 
 **Input**: Feature specification from `/specs/002-neumorphic-ui/spec.md`
 
+> **Superseded in part by [004-app-ui-redesign](../004-app-ui-redesign/plan.md) (2026-10-07).** The
+> neumorphic token recipes, the elevation profile and the surface primitives described below are being
+> retired (004 phase 7). The contrast gate, the appearance resolver and the accessibility adaptations
+> remain in force and are extended by 004.
+
 ## Summary
 
 Give TripTrackr one deliberate, tactile visual identity — surfaces that read as raised out of or

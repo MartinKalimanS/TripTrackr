@@ -8,6 +8,12 @@
 
 **Input**: User description: "I want the app to have neumorphism look"
 
+> **Superseded in part by [004-app-ui-redesign](../004-app-ui-redesign/spec.md) (2026-10-07).**
+> The neumorphic identity was dismissed. FR-001 to FR-006 and the surface recipes are replaced;
+> FR-007 to FR-029 are inherited by 004 (restated without shadows in its FR-023 to FR-037), with FR-009
+> clarified to the wording of the accessibility rule it cites. This document is kept as history and as
+> the source of the contrast, touch-target, text-size, motion and transparency commitments.
+
 ## Overview
 
 TripTrackr currently presents its screens with unremarkable default styling. This feature gives

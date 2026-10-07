@@ -10,14 +10,14 @@ it; where they disagree, the constitution wins.
 
 ## Layout
 
-| Path                 | What                                                                                      |
-| -------------------- | ----------------------------------------------------------------------------------------- |
-| `apps/mobile`        | Expo SDK 57 dev-client app (`expo-router`, typed routes). iOS + Android only.             |
-| `apps/api`           | NestJS 11 API, BullMQ worker, hand-written SQL migrations in `src/db/migrations/`.        |
-| `packages/contracts` | `@triptrackr/contracts` — zod schemas both apps import. Change the wire format here only. |
-| `infra/`             | Compose stack, backup image, `scripts/backup.sh` + `scripts/restore-rehearsal.sh`.        |
-| `specs/`             | Spec Kit features. `001-triptrackr-mvp` is the product; `002-neumorphic-ui` the visuals.  |
-| `docs/`              | Product documents, legal sources (`legal/`), store checklist (`release/`).                |
+| Path                 | What                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| `apps/mobile`        | Expo SDK 57 dev-client app (`expo-router`, typed routes). iOS + Android only.              |
+| `apps/api`           | NestJS 11 API, BullMQ worker, hand-written SQL migrations in `src/db/migrations/`.         |
+| `packages/contracts` | `@triptrackr/contracts` — zod schemas both apps import. Change the wire format here only.  |
+| `infra/`             | Compose stack, backup image, `scripts/backup.sh` + `scripts/restore-rehearsal.sh`.         |
+| `specs/`             | Spec Kit features. `001-triptrackr-mvp` is the product; `004-app-ui-redesign` the visuals. |
+| `docs/`              | Product documents, legal sources (`legal/`), store checklist (`release/`).                 |
 
 ## Commands
 
@@ -92,8 +92,13 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
 - **No web target** (research D-14): do not re-add `react-native-web`, `react-dom`, `*.web.tsx`
   or a `web` output. iOS and Android only.
 - **No raw colour literals in screens or components** — every visual value comes from the token
-  layer (`specs/002-neumorphic-ui/contracts/design-tokens.md`, contract C1). Tabs use
-  `expo-router` `Tabs` with a custom bar, not native tabs (D-17).
+  layer (`specs/004-app-ui-redesign/contracts/design-tokens.md`, contract C4-1; the neumorphic
+  `specs/002-neumorphic-ui` look is being retired, so do not build new screens on `Surface` or
+  `PressableSurface`). Tabs use `expo-router` `Tabs` with a custom bar, not native tabs (D-17,
+  rationale amended by research D4-06: the native module is still `unstable-` in SDK 57).
+- **The look is Atlas** (feature 004). Once the spike (task T409) passes, UI primitives come from
+  `components/ui/*` only, and only that folder imports `heroui-native` (research D4-02, D4-03).
+  Until then read `specs/004-app-ui-redesign/tasks.md` before touching shared UI.
 - Local writes go to the SQLCipher-encrypted SQLite store first; the network is a background
   reconciler. A record is not "saved" until its bytes are uploaded.
 - **The globe** (research D-30) is ONE `MapView` in `components/globe/globe-view.tsx`; User Story 4
@@ -114,17 +119,18 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
 
 ## Libraries — use these, do not hand-roll (research D-21..D-29)
 
-| Need                      | Use                                                                                                                  |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| A form                    | `react-hook-form` + `zodResolver(schema from @triptrackr/contracts)`; copy via `apps/mobile/src/lib/form-copy.ts`    |
-| Drag to reorder           | `react-native-sortables` (`Sortable.Grid`/`Sortable.Flex`); keep buttons as the accessible path                      |
-| An unbounded list         | `@shopify/flash-list` as the scroll container (`components/ui/list-screen.tsx`), never nested in `Screen`            |
-| A form under the keyboard | `KeyboardAwareScrollView` from `react-native-keyboard-controller` (provider is in the root layout)                   |
-| Date arithmetic           | `date-fns` on `YYYY-MM-DD` strings via `features/trips/stop-dates.ts` helpers — local calendar day, never UTC        |
-| Money arithmetic          | `decimal.js` — never `Number` on an amount or a rate (SC-016). Wire and DB carry decimal strings / `NUMERIC`         |
-| Locale, decimal separator | `expo-localization` `getLocales()`; format with `Intl`                                                               |
-| A recurring server job    | BullMQ job scheduler (`upsertJobScheduler`) in `apps/api/src/common/queue/`, not `setInterval` or `@nestjs/schedule` |
-| Expense categories        | System rows are `SYSTEM_EXPENSE_CATEGORIES` in contracts (fixed ids, seeded by migration 0009)                       |
+| Need                        | Use                                                                                                                  |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| A form                      | `react-hook-form` + `zodResolver(schema from @triptrackr/contracts)`; copy via `apps/mobile/src/lib/form-copy.ts`    |
+| Drag to reorder             | `react-native-sortables` (`Sortable.Grid`/`Sortable.Flex`); keep buttons as the accessible path                      |
+| An unbounded list           | `@shopify/flash-list` as the scroll container (`components/ui/list-screen.tsx`), never nested in `Screen`            |
+| A form under the keyboard   | `KeyboardAwareScrollView` from `react-native-keyboard-controller` (provider is in the root layout)                   |
+| Date arithmetic             | `date-fns` on `YYYY-MM-DD` strings via `features/trips/stop-dates.ts` helpers — local calendar day, never UTC        |
+| Money arithmetic            | `decimal.js` — never `Number` on an amount or a rate (SC-016). Wire and DB carry decimal strings / `NUMERIC`         |
+| Locale, decimal separator   | `expo-localization` `getLocales()`; format with `Intl`                                                               |
+| A recurring server job      | BullMQ job scheduler (`upsertJobScheduler`) in `apps/api/src/common/queue/`, not `setInterval` or `@nestjs/schedule` |
+| Expense categories          | System rows are `SYSTEM_EXPENSE_CATEGORIES` in contracts (fixed ids, seeded by migration 0009)                       |
+| UI components (feature 004) | `heroui-native` on `uniwind`, only through the adapters in `components/ui/` (subject to spike T409)                  |
 
 Native modules (`flash-list`, `keyboard-controller`, `expo-localization`) follow the SDK 57 pin in
 `node_modules/expo/bundledNativeModules.json`; check it before bumping.

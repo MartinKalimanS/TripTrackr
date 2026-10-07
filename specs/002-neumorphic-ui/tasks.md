@@ -4,6 +4,10 @@ description: 'Task list for Neumorphic Visual Identity'
 
 # Tasks: Neumorphic Visual Identity
 
+> **Superseded in part by [004-app-ui-redesign](../004-app-ui-redesign/tasks.md) (2026-10-07).**
+> The neumorphic look was dismissed; the tasks below record work that is being retired in 004 phase 7
+> (T451 to T456). The contrast gate and appearance tasks stay in force.
+
 > **Status note (2026-09-23).** The repository was restructured into an npm-workspaces monorepo
 > and the create-expo-app template was removed before the first product screen (feature 001,
 > research D-13, D-14, D-17; tasks R001, R008, R009). Consequences for this feature:
