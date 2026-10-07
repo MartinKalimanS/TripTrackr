@@ -193,6 +193,8 @@ describe('Colors is re-pointed at the palette (research D4-12)', () => {
       'accent',
       'accentInk',
       'danger',
+      // Added by the 004 review: the flat interim card hairline (surfaces.ts).
+      'separator',
     ];
     for (const theme of BASE_THEMES) {
       expect(Object.keys(Colors[theme]).sort()).toEqual([...legacy].sort());
@@ -214,6 +216,7 @@ describe('Colors is re-pointed at the palette (research D4-12)', () => {
       accent: palette.accent,
       accentInk: palette.accentInk,
       danger: palette.danger,
+      separator: palette.separator,
     });
   });
 

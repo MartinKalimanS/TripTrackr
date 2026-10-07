@@ -21,10 +21,11 @@ import { Palettes, type Palette } from '@/theme/palette';
  *
  *   surfaceSunk   <- surfaceSecondary   textPrimary <- ink       border <- border
  *   textMuted     <- muted              borderStrong <- border   danger <- danger
+ *   separator     <- separator (added by the 004 review: the flat card hairline)
  *
  * `shadowLight` and `shadowDark` are both the canvas colour, so a leftover neumorphic
- * shadow is invisible. They, `surfaceSunk` and `borderStrong` go with the old primitives
- * in phase 7. Only light and dark exist here; the increased-contrast themes are reached
+ * shadow is invisible. They, `surfaceSunk`, `borderStrong` and `separator` go with the
+ * old primitives in phase 7. Only light and dark exist here; the increased-contrast themes are reached
  * through `useAppearance().themeName` and the generated stylesheet.
  */
 function legacyColors(palette: Palette) {
@@ -41,6 +42,7 @@ function legacyColors(palette: Palette) {
     accent: palette.accent,
     accentInk: palette.accentInk,
     danger: palette.danger,
+    separator: palette.separator,
   };
 }
 

@@ -29,9 +29,11 @@ const SURFACE_TOKENS = ['canvas', 'surface', 'surfaceSunk'] as const;
  *
  * These sit at 1.16–1.52:1 against their canvas and can never reach 3:1. They
  * carry no state and identify no control, so WCAG 1.4.11 does not apply. This
- * is why interactive elements carry a border instead.
+ * is why interactive elements carry a border instead. `separator` is the Atlas
+ * hairline that keeps a flat static card apart from the canvas until phase 7
+ * (004 D4-12); it is below 3:1 by design.
  */
-const DECORATIVE_EXEMPT = ['shadowLight', 'shadowDark'] as const;
+const DECORATIVE_EXEMPT = ['shadowLight', 'shadowDark', 'separator'] as const;
 
 /** Tokens used as text on a surface — FR-008, 4.5:1. */
 const TEXT_TOKENS = ['textPrimary', 'textMuted', 'accent', 'danger'] as const;
