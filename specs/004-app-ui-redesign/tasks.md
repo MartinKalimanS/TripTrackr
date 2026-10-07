@@ -142,7 +142,7 @@ After this phase every unconverted screen already renders in Atlas colours with 
 
 ### Adapters (each: failing test first, in `apps/mobile/src/components/ui/*.test.tsx`)
 
-- [ ] T414 [P] Parity tooling: `apps/mobile/scripts/testid-baseline.mjs` and
+- [x] T414 [P] Parity tooling: `apps/mobile/scripts/testid-baseline.mjs` and
       `apps/mobile/test/testid-parity.test.ts` that extract every `testID` and accessible name from the
       `pre-004-baseline` tag and fail when one is missing or renamed (allowlist file for recorded
       exceptions) (FR-037, SC-003)
@@ -171,7 +171,7 @@ After this phase every unconverted screen already renders in Atlas colours with 
       `header-back-button.tsx`) (FR-008; D4-08)
 - [ ] T424 [P] `Screen` and `ListScreen` restyle (canvas, `contentInsetAdjustmentBehavior`, safe areas,
       largest-text scroll) (`components/ui/screen.tsx`, `list-screen.tsx`) (FR-029; C4-8)
-- [ ] T425 ESLint in `apps/mobile/eslint.config.js`: arbitrary-value colour classes rejected in `src/app`
+- [x] T425 ESLint in `apps/mobile/eslint.config.js`: arbitrary-value colour classes rejected in `src/app`
       and `src/components`; `no-restricted-imports` for `heroui-native` and `uniwind` outside
       `src/components/ui/**` and tests; a test that fails when a file outside the folder imports the kit
       (FR-036; C4-1, C4-6)
