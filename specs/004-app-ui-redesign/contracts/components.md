@@ -120,3 +120,6 @@ the allowed folders imports the kit.
    can fall below 4.5:1 (light-theme danger text on canvas is about 4.2:1).
 6. A focus indicator is drawn with `FocusRing.offset` (2 dp) of the surrounding neutral between the
    ring and the control, so it never touches an accent fill (`design-tokens.md` C4-3).
+7. A soft chip is placed on canvas, surface or overlay only, never on the field fill
+   (`surfaceSecondary`) or on `surfaceTertiary`: the light accent's soft chip over those two cannot reach
+   4.5:1 and is the one pair exception in `design-tokens.md` C4-3.

@@ -306,6 +306,10 @@ language.
       shadows, and the `shadowLight`, `shadowDark`, `surfaceSunk` keys from `constants/theme.ts`; delete
       `elevationProfile` and `prefersLessTransparency`-only branches that no longer apply from
       `hooks/use-appearance.ts` (keep the flag) (FR-038)
+      **Also, when the last unmigrated screen moves:** `useAppearance().tokens` must switch from the
+      two-theme `Colors` to the `Palette` for `themeName` (including `light-contrast` and
+      `dark-contrast`). Until then unmigrated screens read `Colors[theme]` and ignore the increased-contrast
+      palettes; only the kit-based screens follow `themeName`.
 - [ ] T454 Rewrite `eslint.config.js` comments that cite 002 contract C1 to cite C4-1; update
       `apps/mobile/README.md` (dev-client rebuild for the new native modules, theme build, fonts)
 - [ ] T455 Rename leftovers (`NeumorphicTabBar` references, test names, comments), remove the 002-only
