@@ -42,12 +42,16 @@ config (`jest.config.js`, `eslint.config.js`, `metro.config.js`, `tsconfig.json`
 
 ## Phase 0: Prerequisite
 
-- [ ] T400 Land the uncommitted feature 003 working tree as separate conventional commits on
+- [x] T400 Land the uncommitted feature 003 working tree as separate conventional commits on
       `feat/us3-globe` (API logger pretty-transport; mobile journey legs, flat tab bar, currency picker,
       trip screen; `specs/003-globe-first-home`; run-on-phone scripts; AGENTS/README/gitattributes), run
       `npm run lint && npm run typecheck && npm run test:cov -w apps/mobile`, then create branch
       `feat/004-app-ui-redesign` and tag `pre-004-baseline` (the testID and accessible-name baseline for
       T414). The Maestro flow edits already in the tree (`e2e/03-globe.yaml`) ride with their feature.
+      _Done:_ the working tree landed as three branches (`fix/api-log-transport`, `chore/run-on-phone-windows`,
+      `feat/003-globe-first-home`), each merged into `feat/us3-globe` with a merge commit; the tag
+      `pre-004-baseline` marks the merge tip (307778d); each later area of this feature is its own branch
+      merged into `feat/004-app-ui-redesign` after review.
 
 ---
 
@@ -517,8 +521,11 @@ increased contrast.
       numbers back and in order with no flash of the old numbering between the drop and the redraw, the
       lifted row's scale and shadow, auto-scroll while dragging near the screen edge); and the T427
       checks above (swipe-back, Back twice, header colours in all four themes with a live switch).
-- [ ] T432 [US1] Update `apps/mobile/e2e/01-account-and-trip.yaml` and `03-globe.yaml` only where visible
-      text changed; run both on iOS and Android; list each edit and its reason here (FR-037)
+- [x] T432 [US1] Update `apps/mobile/e2e/01-account-and-trip.yaml` and `03-globe.yaml` only where visible
+      text changed; run both on iOS and Android; list each edit and its reason here (FR-037).
+      _Desk part done:_ every flow that touches Home, Trips, the trip screen or the tab bar was read against the new
+      ids, labels and texts and none needed an edit (the branches record the check per screen); `id: trips-plan-trip`
+      now lives in the iOS native header. _Pending on a device:_ running both flows on iOS and Android.
 - [ ] T433 [US1] **Checkpoint: on-phone review.** Run quickstart section 3 and the testID parity test;
       the user approves or lists changes before phase 4 (SC-013)
 

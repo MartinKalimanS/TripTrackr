@@ -96,9 +96,10 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
   `specs/002-neumorphic-ui` look is being retired, so do not build new screens on `Surface` or
   `PressableSurface`). Tabs use `expo-router` `Tabs` with a custom bar, not native tabs (D-17,
   rationale amended by research D4-06: the native module is still `unstable-` in SDK 57).
-- **The look is Atlas** (feature 004). Once the spike (task T409) passes, UI primitives come from
-  `components/ui/*` only, and only that folder imports `heroui-native` (research D4-02, D4-03).
-  Until then read `specs/004-app-ui-redesign/tasks.md` before touching shared UI.
+- **The look is Atlas** (feature 004). The spike (T409) is a conditional go: the desk checks passed and the
+  device checks are still pending. UI primitives come from `components/ui/*` only, and only that folder
+  imports `heroui-native` (research D4-02, D4-03); a failed device check switches the adapters to the
+  fallback without touching a screen. Read `specs/004-app-ui-redesign/tasks.md` before touching shared UI.
 - Local writes go to the SQLCipher-encrypted SQLite store first; the network is a background
   reconciler. A record is not "saved" until its bytes are uploaded.
 - **The globe** (research D-30) is ONE `MapView` in `components/globe/globe-view.tsx`; User Story 4
