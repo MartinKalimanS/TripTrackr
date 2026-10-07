@@ -23,22 +23,38 @@ export interface StopDateRange {
   depart_date: string;
 }
 
+/** The span a trip covers, as local calendar days (`YYYY-MM-DD`). */
+export interface TripDateRange {
+  start: string;
+  end: string;
+}
+
+/**
+ * Earliest arrival to latest departure over `stops` (the caller passes the
+ * active ones), or `null` with none — feature 004 data-model.md §5. Earliest
+ * and latest rather than first and last by order, for the reason above.
+ */
+export function tripDateRange(stops: readonly StopDateRange[]): TripDateRange | null {
+  if (stops.length === 0) return null;
+
+  // IsoDate strings compare correctly as text — that is the point of the format.
+  let start = stops[0]!.arrive_date;
+  let end = stops[0]!.depart_date;
+  for (const stop of stops) {
+    if (stop.arrive_date < start) start = stop.arrive_date;
+    if (stop.depart_date > end) end = stop.depart_date;
+  }
+  return { start, end };
+}
+
 export function deriveTripStatus(
   stops: readonly StopDateRange[],
   today: string = todayIso(),
 ): TripStatus {
-  if (stops.length === 0) return 'planning';
-
-  // IsoDate strings compare correctly as text — that is the point of the format.
-  let first = stops[0]!.arrive_date;
-  let last = stops[0]!.depart_date;
-  for (const stop of stops) {
-    if (stop.arrive_date < first) first = stop.arrive_date;
-    if (stop.depart_date > last) last = stop.depart_date;
-  }
-
-  if (today < first) return 'planning';
-  if (today > last) return 'past';
+  const range = tripDateRange(stops);
+  if (!range) return 'planning';
+  if (today < range.start) return 'planning';
+  if (today > range.end) return 'past';
   return 'active';
 }
 

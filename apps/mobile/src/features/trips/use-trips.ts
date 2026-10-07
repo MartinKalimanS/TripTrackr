@@ -17,6 +17,7 @@ import { randomUUID } from 'expo-crypto';
 import { useMemo } from 'react';
 
 import { useDatabase } from '@/db/client';
+import { photosRepository, type CoverCandidate } from '@/db/repositories/photos';
 import {
   stopsRepository,
   type AddStopInput,
@@ -27,12 +28,22 @@ import {
 import { tripsRepository, type CreateTripInput } from '@/db/repositories/trips';
 import type { TripRow, TripStopRow } from '@/db/schema';
 
-import { deriveTripStatus, type TripStatus } from './trip-status';
+import { resolveTripCover, type TripCover } from './trip-cover';
+import {
+  deriveTripStatus,
+  tripDateRange,
+  type TripDateRange,
+  type TripStatus,
+} from './trip-status';
 
 export interface TripSummary {
   trip: TripRow;
   stopCount: number;
   status: TripStatus;
+  /** Designated or earliest photo's thumbnail, else a typographic mark (FR-012). */
+  cover: TripCover;
+  /** Earliest arrival to latest departure over the active stops; `null` with none (FR-011). */
+  dateRange: TripDateRange | null;
 }
 
 export interface LiveResult<T> {
@@ -42,42 +53,60 @@ export interface LiveResult<T> {
   error: Error | null;
 }
 
+function groupByTrip<T extends { trip_id: string }>(rows: readonly T[]) {
+  const byTrip = new Map<string, T[]>();
+  for (const row of rows) {
+    const list = byTrip.get(row.trip_id) ?? [];
+    list.push(row);
+    byTrip.set(row.trip_id, list);
+  }
+  return byTrip;
+}
+
 function summarise(
   trips: TripRow[],
   stops: TripStopRow[],
+  candidates: CoverCandidate[],
   today?: string,
 ): TripSummary[] {
-  const byTrip = new Map<string, TripStopRow[]>();
-  for (const stop of stops) {
-    const list = byTrip.get(stop.trip_id) ?? [];
-    list.push(stop);
-    byTrip.set(stop.trip_id, list);
-  }
+  const stopsByTrip = groupByTrip(stops);
+  const candidatesByTrip = groupByTrip(candidates);
   return trips.map((trip) => {
-    const tripStops = byTrip.get(trip.id) ?? [];
+    const tripStops = stopsByTrip.get(trip.id) ?? [];
+    const status = deriveTripStatus(tripStops, today);
     return {
       trip,
       stopCount: tripStops.length,
-      status: deriveTripStatus(tripStops, today),
+      status,
+      cover: resolveTripCover(trip, candidatesByTrip.get(trip.id) ?? [], status),
+      dateRange: tripDateRange(tripStops),
     };
   });
 }
 
-/** Every live trip with its stop count and derived status, most recently changed first. */
+/**
+ * Every live trip with its stop count, derived status, cover and date range, most
+ * recently changed first. Three live queries (trips, stops, photo cover candidates),
+ * joined in memory; read from the traveller's own local rows, never the network.
+ */
 export function useTrips(today?: string): LiveResult<TripSummary[]> {
   const db = useDatabase();
   const trips = useLiveQuery(tripsRepository.listQuery(db));
   const stops = useLiveQuery(stopsRepository.allActiveQuery(db));
+  const covers = useLiveQuery(photosRepository.coverCandidatesQuery(db));
 
   const data = useMemo(
-    () => summarise(trips.data, stops.data, today),
-    [trips.data, stops.data, today],
+    () => summarise(trips.data, stops.data, covers.data, today),
+    [trips.data, stops.data, covers.data, today],
   );
 
   return {
     data,
-    loading: trips.updatedAt === undefined || stops.updatedAt === undefined,
-    error: trips.error ?? stops.error ?? null,
+    loading:
+      trips.updatedAt === undefined ||
+      stops.updatedAt === undefined ||
+      covers.updatedAt === undefined,
+    error: trips.error ?? stops.error ?? covers.error ?? null,
   };
 }
 

@@ -154,6 +154,8 @@ describe('<TripCard>', () => {
           },
           stopCount: 2,
           status: 'active',
+          cover: { kind: 'typographic', initial: 'I', status: 'active' },
+          dateRange: { start: '2026-05-10', end: '2026-05-12' },
         }}
         onPress={onPress}
       />,

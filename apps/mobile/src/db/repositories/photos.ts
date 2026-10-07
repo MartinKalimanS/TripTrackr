@@ -26,9 +26,16 @@
  * row written here is private — `is_public` is always false, and nothing in
  * this story can change it (per-photo visibility is User Story 7). Screening
  * state starts `pending` and is only ever copied from the server (FR-056).
+ *
+ * `coverCandidatesQuery` (feature 004 T429; FR-012; research D4-09) adds one
+ * read and no write. Posture: private. It reads the signed-in traveller's own
+ * local `photos` rows — five small columns, never bytes or text bodies — so the
+ * trip list can pick a cover; only the thumbnail is drawn, on the device, and
+ * nothing read is transmitted. No new endpoint, table, column, permission or
+ * sync field.
  */
 import type { ModerationState } from '@triptrackr/contracts';
-import { and, asc, desc, eq, getTableColumns, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import type { AppDatabase } from '@/db/client';
 import { cities, countries, photos, type PhotoRow } from '@/db/schema';
@@ -91,6 +98,44 @@ function forTripQuery(db: AppDatabase, tripId: string) {
     .leftJoin(countries, eq(countries.id, cities.country_id))
     .where(and(eq(photos.trip_id, tripId), isNull(photos.deleted_at)))
     .orderBy(desc(photos.taken_at), desc(photos.created_at), desc(photos.id));
+}
+
+/**
+ * What the cover rule reads from a photo (`features/trips/trip-cover.ts`).
+ * Columns only: the path is turned into a thumbnail URI in memory.
+ */
+export type CoverCandidate = Pick<
+  PhotoRow,
+  'id' | 'trip_id' | 'taken_at' | 'created_at' | 'local_file_uri'
+>;
+
+/**
+ * Every live photo that still names a staged file, across all trips, grouped
+ * by trip and, within a trip, earliest-taken first: dated before undated, then
+ * earliest added, then id. The rule that picks a cover re-checks the path and
+ * the trip itself; this ordering keeps the likeliest cover at the head of each
+ * run and the read to one small statement. Live-queryable: Drizzle subscribes
+ * to the `photos` table.
+ */
+function coverCandidatesQuery(db: AppDatabase) {
+  return db
+    .select({
+      id: photos.id,
+      trip_id: photos.trip_id,
+      taken_at: photos.taken_at,
+      created_at: photos.created_at,
+      local_file_uri: photos.local_file_uri,
+    })
+    .from(photos)
+    .where(and(isNull(photos.deleted_at), isNotNull(photos.local_file_uri)))
+    .orderBy(
+      asc(photos.trip_id),
+      // SQLite sorts NULL lowest: the flag moves undated photos after dated ones.
+      sql`${photos.taken_at} IS NULL`,
+      asc(photos.taken_at),
+      asc(photos.created_at),
+      asc(photos.id),
+    );
 }
 
 function byId(db: AppDatabase, id: string): PhotoRow | null {
@@ -188,6 +233,7 @@ function setUploadState(db: AppDatabase, id: string, state: 'pending' | 'failed'
 
 export const photosRepository = {
   forTripQuery,
+  coverCandidatesQuery,
   byId,
   pendingUploads,
   create,

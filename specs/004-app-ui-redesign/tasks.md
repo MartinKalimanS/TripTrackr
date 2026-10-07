@@ -201,7 +201,7 @@ increased contrast.
       `empty-state.test.tsx`; then restyle `stats-overlay.tsx` and `empty-state.tsx` as opaque hairline cards
       with display-face tabular figures; `GlobeView`, arcs, camera and `GlobeColors` untouched (FR-018,
       FR-033; D4-11)
-- [ ] T429 [P] [US2] Failing tests in `apps/mobile/test/db/` and `src/features/trips/__tests__/` for the
+- [x] T429 [P] [US2] Failing tests in `apps/mobile/test/db/` and `src/features/trips/__tests__/` for the
       cover rule (designated, earliest, typographic, thumbnail failure) and date range; then
       `db/repositories/photos.ts` (earliest photo per trip, thumbnails only) and the `TripSummary` extension
       in `features/trips/use-trips.ts` per data-model §4 and §5; state the visibility posture in the commit

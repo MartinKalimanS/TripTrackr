@@ -127,6 +127,8 @@ function summary(
     },
     stopCount,
     status,
+    cover: { kind: 'typographic', initial: 'I', status },
+    dateRange: null,
   };
 }
 
