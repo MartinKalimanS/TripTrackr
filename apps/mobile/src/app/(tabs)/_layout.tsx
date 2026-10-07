@@ -1,13 +1,14 @@
 /**
- * `(tabs)` group — globe (home), trips, profile (R009, research D-17).
+ * `(tabs)` group — globe (home), trips, profile (R009, research D-17, amended by
+ * D4-06).
  *
- * The stable JavaScript `Tabs` navigator with a custom `tabBar`
+ * The stable JavaScript `Tabs` navigator with a custom `tabBar`, the Atlas `TabBar`
  * (https://docs.expo.dev/router/advanced/tabs.md). `expo-router/unstable-native-tabs`
- * is not used: a native bar is platform-supplied styling by definition, which
- * FR-003 forbids, and an `unstable-` module is the wrong foundation for the
- * root of a production navigation tree. `expo-router/js-tabs` is the
- * non-deprecated import path in the installed v57 router; the bare
- * `expo-router` export of `Tabs` is marked deprecated in its typings.
+ * is not used: a native bar is platform-supplied styling by definition, which the
+ * flat strip of feature 003 FR-013 to FR-016 and feature 004 FR-010 rules out, and an
+ * `unstable-` module is the wrong foundation for the root of a production navigation
+ * tree. `expo-router/js-tabs` is the non-deprecated import path in the installed v57
+ * router; the bare `expo-router` export of `Tabs` is marked deprecated in its typings.
  *
  * Every tab reads the local store, so the navigator mounts only once the
  * store is open (`RequireLocalStore`, T041) — and, on a device that has never
