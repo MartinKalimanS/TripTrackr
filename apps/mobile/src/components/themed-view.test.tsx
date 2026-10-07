@@ -24,6 +24,7 @@ function mockAppearance(theme: 'light' | 'dark' = 'light') {
     prefersMoreContrast: false,
     prefersLessMotion: false,
     prefersLessTransparency: false,
+    ready: true,
     fontScale: 1,
     elevationProfile: 'full',
     tokens: Colors[theme],

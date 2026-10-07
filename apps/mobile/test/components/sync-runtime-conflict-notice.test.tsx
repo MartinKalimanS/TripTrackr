@@ -34,6 +34,7 @@ function appearance(overrides: Partial<AppearanceContext> = {}) {
     prefersMoreContrast: false,
     prefersLessMotion: false,
     prefersLessTransparency: false,
+    ready: true,
     fontScale: 1,
     elevationProfile: 'full',
     tokens: Colors.light,
