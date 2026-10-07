@@ -5,6 +5,21 @@ const prettierConfig = require('eslint-config-prettier');
 const tseslint = require('typescript-eslint');
 
 /**
+ * A colour as an arbitrary-value utility class: `[#fff]`, `[rgb(1,2,3)]`,
+ * `[oklch(0.7 0.1 200)]`. It is the source of a regular expression used in two
+ * `no-restricted-syntax` selectors, so it holds no slash (an esquery regex ends
+ * at the next one).
+ */
+const ARBITRARY_COLOUR_CLASS =
+  '\\[(#[0-9a-fA-F]{3,8}|(rgb|rgba|hsl|hsla|oklch|oklab|lab|lch|color)\\(.*?\\))\\]';
+
+const ARBITRARY_COLOUR_MESSAGE =
+  'Arbitrary-value colour class. A colour comes from the token layer, never from a utility such as bg-[#fff] or text-[rgb(1,2,3)]: add it to the palette and use its semantic class (specs/004-app-ui-redesign/contracts/design-tokens.md, C4-1).';
+
+/** The UI kit and its styling layer, subpaths included (gitignore-style groups). */
+const KIT_PACKAGES = ['heroui-native', 'heroui-native/**', 'uniwind', 'uniwind/**'];
+
+/**
  * Mobile (Expo) lint configuration — ESLint 9 flat config.
  *
  * `eslint-config-prettier` is last so formatting rules are surrendered to
@@ -38,6 +53,8 @@ module.exports = defineConfig([
     // production styling, and a fixture cannot leak into the rendered app.
     ignores: ['**/*.test.{ts,tsx}'],
     rules: {
+      // ESLint does not merge the options of one rule across config objects, so
+      // every selector for these files lives in this one array.
       'no-restricted-syntax': [
         'error',
         {
@@ -51,7 +68,54 @@ module.exports = defineConfig([
           message:
             'Raw colour literal. Import the token from @/constants/theme or use a treatment from @/hooks/use-surface (contract C1).',
         },
+        // Feature 004, contract C4-1: the same colours written as a Tailwind or
+        // Uniwind arbitrary value (`bg-[#fff]`, `text-[rgb(1,2,3)]`), in a plain
+        // string or in the text of a template literal.
+        {
+          selector: `Literal[value=/${ARBITRARY_COLOUR_CLASS}/]`,
+          message: ARBITRARY_COLOUR_MESSAGE,
+        },
+        {
+          selector: `TemplateElement[value.cooked=/${ARBITRARY_COLOUR_CLASS}/]`,
+          message: ARBITRARY_COLOUR_MESSAGE,
+        },
       ],
+    },
+  },
+  {
+    // Feature 004, contract C4-6: the UI kit is reachable only through the
+    // adapters in `src/components/ui/`. Everything else in `src/` composes those
+    // adapters, so a screen cannot come to depend on the kit directly.
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: KIT_PACKAGES,
+              message:
+                'Import UI primitives from @/components/ui/*, not from the kit: only src/components/ui/**, tests, src/app/_layout.tsx and src/hooks/use-appearance.ts may import heroui-native or uniwind (specs/004-app-ui-redesign/contracts/components.md, C4-6).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // The places allowed to import the kit: the adapters themselves, tests (they
+    // render the kit's components or assert on them), the root layout (which
+    // mounts `HeroUINativeProvider`) and the appearance hook (which calls
+    // `Uniwind.setTheme`).
+    files: [
+      'src/components/ui/**/*.{ts,tsx}',
+      '**/*.test.{ts,tsx}',
+      'test/**/*.{ts,tsx}',
+      'src/app/_layout.tsx',
+      'src/hooks/use-appearance.ts',
+    ],
+    rules: {
+      'no-restricted-imports': 'off',
     },
   },
   {
