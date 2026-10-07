@@ -192,7 +192,8 @@ describe('colour literals (C4-1)', () => {
 
 const KITS = ['heroui-native', 'uniwind'] as const;
 const FORBIDDEN_FILES = [
-  'src/app/(tabs)/trips.tsx',
+  'src/app/(tabs)/trips/index.tsx',
+  'src/app/(tabs)/trips/_layout.tsx',
   'src/components/trip/trip-card.tsx',
   'src/features/globe/globe-stats.ts',
   'src/hooks/use-other.ts',
