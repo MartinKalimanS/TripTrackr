@@ -3,10 +3,12 @@
  *
  * FR-003 forbids platform-supplied styling on any tab, so the bar is composed
  * from `PressableSurface` rather than themed over React Navigation's default.
- * What is asserted here is what a traveller relies on: every route is a
- * reachable, labelled tab; the focused one is announced as selected and reads
- * as pressed-in; the touch target respects the platform minimum whatever the
- * text size; and the bar clears the home indicator.
+ * Feature 003 (US3) makes it a flat strip: the screen's own colour, one divider,
+ * no per-tab surface. What is asserted here is what a traveller relies on:
+ * every route is a reachable, labelled tab; the focused one is announced as
+ * selected and marked by more than colour; the touch target respects the
+ * platform minimum whatever the text size; and the bar clears the home
+ * indicator.
  *
  * The props are the `BottomTabBarProps` shape the JS `Tabs` navigator passes
  * to a custom `tabBar` — built by hand so the component's own behaviour is
@@ -107,15 +109,53 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
     expect(profile.props.accessibilityState).toMatchObject({ selected: false });
   });
 
-  test('the focused tab reads as pressed into the bar; the others stand raised', async () => {
+  test('no tab carries a raised, recessed or bordered surface: the bar is one flat strip (feature 003 FR-014)', async () => {
     await render(<NeumorphicTabBar {...makeProps(0)} />);
 
-    const [globe, trips] = screen.getAllByRole('tab');
-    const focused = styleOf(globe).boxShadow as { inset?: boolean }[];
-    const resting = styleOf(trips).boxShadow as { inset?: boolean }[];
+    for (const tab of screen.getAllByRole('tab')) {
+      const style = styleOf(tab);
+      expect(style.boxShadow).toBeUndefined();
+      expect(style.borderWidth).toBeUndefined();
+      expect(style.backgroundColor).toBeUndefined();
+    }
+  });
 
-    expect(focused.every((shadow) => shadow.inset)).toBe(true);
-    expect(resting.every((shadow) => !shadow.inset)).toBe(true);
+  test.each(['light', 'dark'] as const)(
+    'is separated from the screen by one %s divider that meets the 3:1 boundary (feature 003 FR-014)',
+    async (theme) => {
+      mockAppearance({ theme });
+      await render(<NeumorphicTabBar {...makeProps()} />);
+
+      const bar = styleOf(screen.getByTestId('tab-bar'));
+      expect(bar.borderTopWidth).toBeGreaterThan(0);
+      expect(bar.borderTopColor).toBe(Colors[theme].border);
+    },
+  );
+
+  test('marks the selected tab by more than colour: a heavier label and a mark above its icon (feature 003 FR-015)', async () => {
+    await render(<NeumorphicTabBar {...makeProps(1)} />);
+
+    expect(screen.getByTestId('tab-mark-trips')).toBeTruthy();
+    expect(screen.queryByTestId('tab-mark-index')).toBeNull();
+    expect(screen.queryByTestId('tab-mark-profile')).toBeNull();
+    expect(styleOf(screen.getByTestId('tab-mark-trips')).backgroundColor).toBe(
+      Colors.light.accent,
+    );
+
+    const weight = (label: string) => styleOf(screen.getByText(label)).fontWeight;
+    expect(weight('Trips')).toBeGreaterThan(weight('Globe'));
+    expect(weight('Trips')).toBeGreaterThan(weight('Profile'));
+  });
+
+  test('adds a hairline and nothing else around the touch targets, so it stays within 56 dp (feature 003 FR-013)', async () => {
+    await render(<NeumorphicTabBar {...makeProps()} />);
+
+    const bar = styleOf(screen.getByTestId('tab-bar'));
+    const [tab] = screen.getAllByRole('tab');
+    expect(bar.paddingTop ?? 0).toBe(0);
+    expect((bar.borderTopWidth as number) + styleOf(tab!).minHeight).toBeLessThanOrEqual(
+      56,
+    );
   });
 
   test('every tab meets the platform minimum touch target (FR-011)', async () => {

@@ -1,12 +1,21 @@
 /**
- * The tab bar — research D-17, feature 002 FR-003 (T076), tasks.md R009.
+ * The tab bar — research D-17, feature 002 FR-003 (T076), tasks.md R009;
+ * flattened by feature 003 (User Story 3, FR-013 to FR-016).
  *
  * FR-003 forbids platform-supplied styling on any tab, which rules out both
  * the native tab bar and a re-coloured React Navigation default. This bar is
- * composed from `PressableSurface`, so every guarantee the primitive makes —
- * the compliance border (FR-009), the minimum touch target (FR-011), the focus
- * ring (FR-012), discrete press feedback (FR-018) — holds for each tab without
- * being restated here.
+ * composed from `PressableSurface` in its `bare` mode, so every guarantee the
+ * primitive makes that does not need a surface — the minimum touch target
+ * (FR-011), the focus ring (FR-012), discrete press feedback (FR-018) — holds
+ * for each tab without being restated here.
+ *
+ * What feature 003 removed is the per-tab raised pill and its compliance
+ * border: the bar is the screen's own colour, one divider line (the `border`
+ * token, 3:1 or better against the canvas) marks where it starts, and each
+ * tab is its glyph. The selected tab says so with accent colour, a heavier
+ * label and a short mark above its icon — never colour alone (002 FR-010).
+ * Icons and labels use the muted and primary inks, which clear the text
+ * contrast floor on this background in both themes (002 FR-008).
  *
  * It receives the `BottomTabBarProps` the JS `Tabs` navigator passes to a
  * custom `tabBar` (https://docs.expo.dev/router/advanced/tabs.md, "Tab bar
@@ -24,7 +33,7 @@ import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { PressableSurface } from '@/components/ui/pressable-surface';
-import { Spacing } from '@/constants/theme';
+import { BorderHairline, Spacing } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
 import { resolveInk } from '@/theme/ink';
 
@@ -41,7 +50,9 @@ const TAB_ICONS: Record<string, SymbolName> = {
   profile: { ios: 'person.crop.circle', android: 'account_circle' },
 };
 
-const IconSize = 22;
+const IconSize = 20;
+const MarkWidth = 24;
+const MarkHeight = 3;
 
 export function NeumorphicTabBar({
   state,
@@ -67,9 +78,10 @@ export function NeumorphicTabBar({
         styles.bar,
         {
           backgroundColor: tokens.canvas,
+          borderTopColor: tokens.border,
           // Clears the home indicator / gesture bar. The inset is what the
           // navigator resolved for this device, so it is right on both platforms.
-          paddingBottom: insets.bottom + Spacing.two,
+          paddingBottom: insets.bottom,
         },
       ]}>
       {state.routes.map((route, index) => {
@@ -104,13 +116,17 @@ export function NeumorphicTabBar({
             accessibilityRole="tab"
             accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
             accessibilityState={{ selected: focused }}
-            // The selected tab is pressed INTO the bar; the others stand
-            // proud of it. Two treatments, one light source (FR-005).
-            treatment={focused ? 'recessed' : 'raised'}
-            radius="md"
+            bare
+            radius="sm"
             onPress={onPress}
             onLongPress={onLongPress}
             style={styles.tab}>
+            {focused ? (
+              <View
+                testID={`tab-mark-${route.name}`}
+                style={[styles.mark, { backgroundColor: tokens.accent }]}
+              />
+            ) : null}
             {icon ? (
               <SymbolView
                 name={icon}
@@ -125,7 +141,7 @@ export function NeumorphicTabBar({
               />
             ) : null}
             <ThemedText
-              type="small"
+              type={focused ? 'smallBold' : 'small'}
               themeColor={focused ? 'textPrimary' : 'textMuted'}
               numberOfLines={1}
               style={styles.label}>
@@ -141,16 +157,22 @@ export function NeumorphicTabBar({
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
+    borderTopWidth: BorderHairline,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
-    gap: Spacing.one,
+    justifyContent: 'center',
     paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  // Over the icon, out of the layout: it costs the bar no height.
+  mark: {
+    position: 'absolute',
+    top: 0,
+    width: MarkWidth,
+    height: MarkHeight,
+    borderRadius: MarkHeight,
   },
   label: {
     textAlign: 'center',
