@@ -98,6 +98,24 @@ function pendingContrast() {
   };
 }
 
+/**
+ * Every call of iOS "Increase Contrast" returns a promise of its own that the test settles by
+ * hand, in call order: `reads[0]` is the first read's, `reads[1]` the next one's.
+ */
+function controlledContrastReads() {
+  const reads: { resolve: (value: boolean) => void; reject: (error: Error) => void }[] =
+    [];
+  Object.assign(AccessibilityInfo, {
+    isDarkerSystemColorsEnabled: jest.fn(
+      () =>
+        new Promise<boolean>((resolve, reject) => {
+          reads.push({ resolve, reject });
+        }),
+    ),
+  });
+  return reads;
+}
+
 describe('before anyone subscribes', () => {
   test('the snapshot is the unread default and nothing has been registered or read', () => {
     expect(getAppearanceSnapshot()).toEqual({
@@ -396,6 +414,109 @@ describe('`ready` and the failure fallbacks (contract C4, research D4-05)', () =
     await fireEvents();
 
     expect(getAppearanceSnapshot().ready).toBe(true);
+    unsubscribe();
+  });
+});
+
+describe('overlapping reads: the newest read wins', () => {
+  test('an older read that answers last cannot overwrite the newer answer', async () => {
+    const reads = controlledContrastReads();
+    const listener = jest.fn();
+    const unsubscribe = subscribeToAppearance(listener);
+    registrations[0].handler();
+    expect(reads).toHaveLength(2);
+
+    reads[1].resolve(true);
+    await settle();
+    expect(getAppearanceSnapshot()).toEqual(
+      expect.objectContaining({ ready: true, prefersMoreContrast: true }),
+    );
+
+    reads[0].resolve(false);
+    await settle();
+
+    expect(getAppearanceSnapshot().prefersMoreContrast).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  test('`ready` settles from the newest read while the first is still pending', async () => {
+    const reads = controlledContrastReads();
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    registrations[0].handler();
+
+    reads[1].resolve(false);
+    await settle();
+
+    expect(getAppearanceSnapshot().ready).toBe(true);
+    unsubscribe();
+  });
+
+  test('an older read that answers while a newer one is pending publishes nothing yet', async () => {
+    const reads = controlledContrastReads();
+    const listener = jest.fn();
+    const unsubscribe = subscribeToAppearance(listener);
+    registrations[0].handler();
+
+    reads[0].resolve(true);
+    await settle();
+
+    expect(getAppearanceSnapshot().ready).toBe(false);
+    expect(listener).not.toHaveBeenCalled();
+
+    reads[1].resolve(true);
+    await settle();
+    expect(getAppearanceSnapshot()).toEqual(
+      expect.objectContaining({ ready: true, prefersMoreContrast: true }),
+    );
+    unsubscribe();
+  });
+
+  test('when the newest read falls back, the older read answering later does not undo it', async () => {
+    const reads = controlledContrastReads();
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    registrations[0].handler();
+
+    reads[1].reject(new Error('the accessibility service is not available'));
+    await settle();
+    // The platform query failed: the MORE accessible value, and `ready` settled.
+    expect(getAppearanceSnapshot()).toEqual(
+      expect.objectContaining({ ready: true, prefersMoreContrast: true }),
+    );
+
+    reads[0].resolve(false);
+    await settle();
+
+    expect(getAppearanceSnapshot().prefersMoreContrast).toBe(true);
+    unsubscribe();
+  });
+
+  test('when the newest read fails as a whole, `ready` still settles and an older answer is dropped', async () => {
+    const reads = controlledContrastReads();
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    readPrefersMoreContrast.mockRejectedValueOnce(new Error('unexpected'));
+    registrations[0].handler();
+    await settle();
+    expect(getAppearanceSnapshot().ready).toBe(true);
+    const settled = getAppearanceSnapshot();
+
+    reads[0].resolve(!settled.prefersMoreContrast);
+    await settle();
+
+    expect(getAppearanceSnapshot()).toBe(settled);
+    unsubscribe();
+  });
+
+  test('reads in strict sequence each publish: the newest is always the last one in', async () => {
+    const reads = controlledContrastReads();
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    reads[0].resolve(false);
+    await settle();
+    registrations[0].handler();
+    reads[1].resolve(true);
+    await settle();
+
+    expect(getAppearanceSnapshot().prefersMoreContrast).toBe(true);
     unsubscribe();
   });
 });

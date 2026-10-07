@@ -113,15 +113,22 @@ function publish(answered: AccessibilityFlags | null): void {
  */
 function startSession(): () => void {
   let active = true;
+  /** The id of the newest read; only that read may publish. */
+  let latest = 0;
 
   const refresh = async () => {
     if (!active) return;
+    const id = ++latest;
     const answered = await readFlags();
-    if (active) publish(answered);
+    // A newer read has started since: this answer may be older than what that one will say,
+    // so it is dropped. `ready` still settles, from whichever read is the newest.
+    if (active && id === latest) publish(answered);
   };
 
   void refresh();
 
+  // The event's payload is ignored on purpose: every event re-reads all three signals, so a
+  // payload for one signal can never be applied over another (no torn state).
   const subscriptions = appearanceChangeEvents(Platform.OS).map((event) =>
     AccessibilityInfo.addEventListener(
       event as Parameters<typeof AccessibilityInfo.addEventListener>[0],
