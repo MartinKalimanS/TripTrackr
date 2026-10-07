@@ -2,14 +2,16 @@
 /**
  * Writes `src/theme/generated/theme.css` from the palette (feature 004, contract C4-5).
  *
- *   node scripts/build-theme-css.mjs            (from apps/mobile) regenerate the file
- *   node scripts/build-theme-css.mjs --check    exit 1 when the committed file is stale
+ *   npm run theme:build -w apps/mobile    (repository root) regenerate the file
+ *   npm run theme:check -w apps/mobile    exit 1 when the committed file is stale
  *
- * A later change adds the `theme:build` npm script for the first form; until then run the
- * command above. The file is a pure function of `src/theme/palette.data.js` and the
- * variable map in `scripts/theme-css.js`; `test/theme/theme-css-sync.test.ts` regenerates
- * it in memory and fails the build when the committed copy differs, so a retuned colour
- * can never ship half-applied.
+ * They are scripts in apps/mobile/package.json that run this file as
+ * `node scripts/build-theme-css.mjs` and `node scripts/build-theme-css.mjs --check`.
+ *
+ * The file is a pure function of `src/theme/palette.data.js` and the variable map in
+ * `scripts/theme-css.js`; `test/theme/theme-css-sync.test.ts` regenerates it in memory
+ * and fails the build when the committed copy differs, so a retuned colour can never
+ * ship half-applied.
  *
  * Plain Node ESM: no dependency, no TypeScript step. That is why the palette is authored
  * as plain data (`palette.data.js`) rather than only in `palette.ts`.

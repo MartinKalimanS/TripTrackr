@@ -88,6 +88,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --ci --coverage",
     "e2e": "maestro test e2e/",
-    "doctor": "expo-doctor"
+    "doctor": "expo-doctor",
+    "theme:build": "node scripts/build-theme-css.mjs",
+    "theme:check": "node scripts/build-theme-css.mjs --check"
   }
 }
