@@ -94,11 +94,11 @@ the allowed folders imports the kit.
 | `Text`, `ThemedText`                                    | `ThemedText`   | `type`: `largeTitle`, `title`, `headline`, `body`, `callout`, `caption`, `numeric`; `tone` | Semantic classes, so increased contrast comes from the theme (no JS promotion); `numeric` is tabular; `largeTitle`, `title` are headers; never capped; `ThemedText` is unchanged until phase 7, not a shim                                                       |
 | `Card`, `Panel`                                         | `Surface`      | `variant="raised" \| "flat"`, `overMap?`, `pending?`, `radius?`, `onPress?`, `cue?`        | `overMap` is opaque, hairline, `shadow-none`, no tint (FR-018, FR-033); a card never contains a card, a development error (FR-006); `pending` adds a dashed `border-pending` edge (FR-034); `onPress` makes the card one control with a chevron cue (FR-024)     |
 | `ListGroup`, `ListRow`                                  | row layouts    | `title`, `description?`, `leading?`, `trailing?`, `onPress?`, `accessibilityActions?`      | A pressable row shows a chevron at 3:1 unless it supplies `trailing` (FR-024); row-level `accessibilityActions` are forwarded (stop rows keep move up, move down, edit, delete); `tone="destructive"` is danger ink plus an icon (FR-025)                        |
-| `Field`                                                 | `TextField`    | `label`, `value`, `onChangeText`, `error?`, `description?`, all `TextInput` props          | `testID` lands on the input; `accessibilityLabel` is the label; `aria-invalid` when an error exists; error is words under the field, never colour alone (FR-025); `secureTextEntry`, `textContentType`, `autoComplete` and `keyboardType` pass through unchanged |
-| `Chip`                                                  | pill buttons   | `label`, `selected?`, `onPress?`, `leading?`                                               | Selected is shown by fill, weight and a check glyph, not colour alone                                                                                                                                                                                            |
-| `ChipGroup`                                             | `PillGroup`    | `options[{key,label,testID,accessibilityLabel}]`, `selectedKey`, `onSelect`                | Keeps `radiogroup` and `radio` roles with `selected` and `checked`; selection plays a selection haptic; may scroll sideways (FR-009 and 003 FR-017)                                                                                                              |
+| `Field`                                                 | `TextField`    | `label`, `value`, `onChangeText`, `error?`, `description?`, `isRequired?`, TextInput props | `testID` lands on the input; `accessibilityLabel` is the label; `aria-invalid` when an error exists; error is words under the field, never colour alone (FR-025); `secureTextEntry`, `textContentType`, `autoComplete` and `keyboardType` pass through unchanged |
+| `Chip`                                                  | pill buttons   | `label`, `accessibilityLabel`, `selected?`, `onPress?`, `leading?`, `disabled?`            | Selected is shown by fill, weight and a check glyph, not colour alone                                                                                                                                                                                            |
+| `ChipGroup`                                             | `PillGroup`    | `options[{key,label,testID,accessibilityLabel}]`, `selectedKey`, `onSelect`, `scroll?`     | Keeps `radiogroup` and `radio` roles with `selected` and `checked`; selection plays a selection haptic; may scroll sideways (FR-009 and 003 FR-017)                                                                                                              |
 | `StatusChip`                                            | `StatusPill`   | `status: 'planning' \| 'active' \| 'past'`                                                 | Keeps `testID="status-pill-<status>"` and label "Status: …"; icon and text carry the state; colours from the status tokens                                                                                                                                       |
-| `SyncBadge`                                             | `SyncBadge`    | `state: 'pending' \| 'syncing' \| 'failed'`                                                | Icon and text, announced with a text equivalent; reflects props, queries nothing (002 C11 kept)                                                                                                                                                                  |
+| `SyncBadge`                                             | `SyncBadge`    | `state: 'pending' \| 'syncing' \| 'failed'`                                                | Icon and text, announced with a text equivalent ("Sync pending", "Sync in progress", "Sync failed"); `pending` ink while waiting, `danger` when failed; reflects props, queries nothing (002 C11 kept)                                                           |
 | `EmptyState`, `LoadingState`, `ErrorState`, `Skeleton*` | `state-view`   | `title`, `detail?`, `icon?`, `action?`, `onRetry?`; lists: `variant`, `rows?`, `label?`    | Flat surface, no nested card; loading is ONE `progressbar` (spinner hidden); error = words, alert icon, danger ink, secondary "Try again"; empty names its next action; a skeleton is ONE `progressbar` named `label`, shapes hidden (FR-021, FR-025, FR-035)    |
 | `FormActions`                                           | `FormActions`  | `testIDPrefix`, `saveLabel`, `onCancel`, `onSave`, `saveDisabled?`                         | Keeps `<prefix>-cancel` and `<prefix>-save`; Save is the single primary, Cancel a text button; the row wraps at large text; sticky above the keyboard is the screen's concern (FR-005, FR-009, FR-029)                                                           |
 | `InlineError`                                           | `InlineError`  | `message`, `testID`                                                                        | `accessibilityRole="alert"` and `testID` on one focusable node; danger ink with a leading alert icon, never colour alone (FR-025)                                                                                                                                |
@@ -173,6 +173,33 @@ built API goes beyond it.
   so they share the line and Save drops to its own line when the labels no longer fit at the largest text size. Save plays the
   `Button`'s selection haptic on press (silent under reduced motion); the success haptic is still the caller's.
 - `alert-icon.ts` holds the one alert glyph (`exclamationmark.triangle` / `warning`) shared by `ErrorState` and `InlineError`.
+
+**As built (T420, T421)**
+
+- `Field` is over the kit's `TextField`, `Label`, `Input`, `FieldError` and `Description`. `testID` is the input's and
+  `${testID}-error` the message's. An error is one `alert` element under the input; an empty string is no error; the
+  description stays neutral beside it. `isRequired` shows the kit's asterisk and adds the hint "Required" (a caller hint
+  wins). `editable={false}` is the kit's disabled state. The input's minimum height is the larger of the kit's 48 dp and
+  the platform floor, scaled by the font scale and never below it. A multiline field starts at the top, with the kit
+  TextArea's vertical padding.
+- The kit's Android classes (`android:border-transparent`) hide the field border until focus, so `Field` asks for
+  `android:border-field-border` again, except while invalid (the kit's `android:border-danger` must stay). The facts
+  are pinned in `test/ui-kit/field-chip-kit-facts.test.ts`.
+- `Chip` also takes `accessibilityRole?`, `testID?` and `className?` (layout only); `accessibilityLabel` is required.
+  It shows selection by an accent fill, `font-semibold` and a check glyph that replaces the leading glyph; unselected is
+  outlined in `border`, which the gate measures at 3:1 (a tone-on-tone chip would not reach it). Neither is a soft chip.
+  The role is `button` (or the caller's; `text` without `onPress`), the state `{ selected }` plus `checked` for a radio
+  and `disabled`. An interactive chip has a minimum size of the platform floor each way, 4 dp of slop, `overflow-visible`
+  (the kit clips its root, which would cut the focus ring off), an `active:` fill gated for its text (never the 20%
+  hover), and the 2 dp ring offset 2 dp.
+- `ChipGroup` also takes `accessibilityLabel?` and `testID?` for its container. It is `PillGroup` with the same roles,
+  ids and `{ selected, checked }` state. The selection haptic plays on a change, not on a re-press, and `onSelect` is
+  still called for both. `scroll` is one sideways row with no scroll bar and `keyboardShouldPersistTaps="handled"`; the
+  container is deliberately not an accessibility element, so its radios stay reachable one by one.
+- `StatusChip` and `SyncBadge` are capsules of an `Icon` and a `caption` word: the ink on its 15% soft fill, exactly the
+  pairs the gate measures (`status-active`, `status-past`, `status-planning-ink`, `pending`, `danger`). `Icon` gained
+  `statusPlanning`, `statusActive`, `statusPast` and `pending` tones for them. `SyncBadge` keeps its ids, announcements and
+  visible words (Maestro looks for "Not yet synced"), stays dashed, and hugs its content (`self-start`).
 
 ---
 

@@ -57,6 +57,12 @@ describe('<Icon> tone - FR-023, C4-1', () => {
     danger: 'danger',
     success: 'success',
     onAccent: 'accent-foreground',
+    // The app's own variables (`--color-status-*`, `--color-pending`), for the status
+    // and sync chips; planning is the INK variant, the one gated as text (C4-3).
+    statusPlanning: 'status-planning-ink',
+    statusActive: 'status-active',
+    statusPast: 'status-past',
+    pending: 'pending',
   };
 
   test.each(Object.entries(TOKENS) as [IconTone, string][])(
