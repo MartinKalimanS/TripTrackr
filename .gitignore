@@ -32,6 +32,9 @@ apps/mobile/android/
 # Maestro
 .maestro/
 
+# GeoNames extracts downloaded by scripts/run-on-phone.ps1 (CC BY 4.0, large; never committed)
+data/
+
 # ---------------------------------------------------------------------------
 # Secrets — Constitution: secrets MUST NOT be committed or baked into images.
 # ---------------------------------------------------------------------------

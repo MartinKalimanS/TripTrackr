@@ -18,3 +18,7 @@
 *.p12 binary
 *.jks binary
 *.keystore binary
+
+# Windows batch files need CRLF; PowerShell is happy with either.
+*.cmd text eol=crlf
+*.bat text eol=crlf

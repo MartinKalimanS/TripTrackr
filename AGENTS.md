@@ -153,6 +153,15 @@ Native modules (`flash-list`, `keyboard-controller`, `expo-localization`) follow
   every release (`infra/scripts/README.md`). CI runs it on every PR.
 - Redis runs with `maxmemory-policy noeviction` because BullMQ jobs must never be evicted.
 - Store submission checklist: `docs/release/store-readiness.md`.
+- **Trying the app on a phone (Windows):** `run-on-phone.cmd` / `scripts/run-on-phone.ps1` (see
+  `apps/mobile/README.md`). `-Check` is read-only. It picks the USB tunnel on a Public Windows
+  network and the Wi-Fi address otherwise. The script is ASCII-only on purpose: Windows PowerShell
+  5.1 misreads UTF-8 without a BOM. `*.cmd` files are CRLF via `.gitattributes`.
+- **Metro over the USB tunnel must listen on IPv4.** `adb reverse` reaches the PC at `127.0.0.1`, but
+  Node 24 resolves `localhost` to `::1` first, so `expo start --localhost` binds IPv6 only and the
+  phone's request is accepted then dropped ("unexpected end of stream"). The script starts Metro with
+  `NODE_OPTIONS=--dns-result-order=ipv4first`; start it by hand the same way. Metro's `/status` has
+  no content type, so Windows PowerShell 5.1 returns the body as bytes: `Test-Http` decodes it.
 - **Offline-sync gate (T140/T141):** the Maestro suite is dispatched in phases across two devices;
   the ordered run and the row-to-file table are in `apps/mobile/e2e/offline/README.md`. Build the
   dev client against the API over the network (LAN address, or `10.0.2.2` on an emulator), never

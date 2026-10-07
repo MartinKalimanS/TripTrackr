@@ -53,8 +53,21 @@ docker compose -f infra/docker-compose.yml stop api worker
 npm run api                  # nest start --watch on :3000
 ```
 
-Mobile — Expo Go cannot run this app (Mapbox, SQLCipher and other native modules), so build a
-development client once, then start the bundler:
+**Try it on an Android phone with one command** (Windows; plug the phone in over USB with USB
+debugging on):
+
+```powershell
+.\run-on-phone.cmd          # or: scripts\run-on-phone.ps1
+```
+
+It starts Docker and the stack, loads the city catalogue the first time, builds and installs the
+development client when needed, starts Metro and opens the app. `-Check` reports what it would do
+and changes nothing; `-Stop` stops the stack. How it reaches your PC (Wi-Fi or the USB cable),
+and every switch, are documented at the top of `scripts/run-on-phone.ps1` and in
+`apps/mobile/README.md`.
+
+Mobile, by hand — Expo Go cannot run this app (Mapbox, SQLCipher and other native modules), so
+build a development client once, then start the bundler:
 
 ```bash
 cd apps/mobile
