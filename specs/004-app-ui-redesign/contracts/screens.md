@@ -61,7 +61,9 @@ URLs); `trip/[id]` and `modal` turn headers on; `modal/add-trip` and `modal/add-
 **Notes from building Trips and the Trip card (T427 trips and profile, T430)**
 
 - The large title option is `headerLargeTitleEnabled`; the iOS trips header has no background of its own (iOS 26 hides a
-  large title over one).
+  large title over one). Jest asserts the option and the list props; the collapse on scroll is a device check (T408).
+- The iOS "Plan a trip" is an icon-only plus (a fixed 44 pt square, named "Plan a trip") so large Dynamic Type cannot clip or
+  widen the header; the words are the empty state's own action. Android keeps the extended button.
 - `trips-list` is on the list itself (the `FlashList` scroller) and only in the populated state, as before;
   `trips-screen` is the screen root in every state. The empty state's own action is `trips-empty-plan-trip`
   ("Plan a trip", secondary), so `trips-plan-trip` stays unique: the header action on iOS, the floating button on

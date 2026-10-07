@@ -23,6 +23,18 @@
  * Both are decoration. The card is one control named by its label, which already says
  * the title and the status, so the band is hidden from assistive technology on both
  * platforms. No colour is written here: the tints are semantic classes.
+ *
+ * A stale error. expo-image's `onError` event is `{ error: string }` (expo-image 57.0.5,
+ * `ImageErrorEventData`): it names no source, so an error that was raised for a
+ * superseded source cannot be told from one for the current one, and it is recorded
+ * against the address shown when it ARRIVES. The worst case is a card showing the
+ * typographic cover for a photo that would have drawn, until its thumbnail changes (a new
+ * address is tried afresh) or the card is remounted. It costs a placeholder, never a
+ * wrong photo or a crash, and nothing better is reachable from the event.
+ *
+ * Ids are written out in full here (`trip-card-${tripId}-cover`) rather than handed in as
+ * a prefix, so the id extractor reads each with its literal head and the unresolved-id
+ * ratchet does not grow for them (`test/testid-parity.test.ts`).
  */
 import { Image } from 'expo-image';
 import { useState } from 'react';
@@ -37,8 +49,8 @@ export interface TripCoverBandProps {
   /** The trip's title and status: what the typographic look is made of on a failure. */
   title: string;
   status: TripStatus;
-  /** The card's id: the band is `<idPrefix>-cover`, its parts `-photo` and `-initial`. */
-  idPrefix: string;
+  /** The trip's id: the band is `trip-card-<id>-cover`, its parts `-photo` and `-initial`. */
+  tripId: string;
 }
 
 /** Literal classes, so Tailwind finds each one: the soft fill and the ink per status. */
@@ -59,21 +71,21 @@ const DECORATIVE = {
 function TypographicBand({
   initial,
   status,
-  idPrefix,
+  tripId,
 }: {
   initial: string;
   status: TripStatus;
-  idPrefix: string;
+  tripId: string;
 }) {
   const { fill, ink } = TINT[status];
   return (
     <View
-      testID={`${idPrefix}-cover`}
+      testID={`trip-card-${tripId}-cover`}
       className={`${BLEED} min-h-[120px] items-center justify-center ${fill}`}
       {...DECORATIVE}>
       <Text
         type="largeTitle"
-        testID={`${idPrefix}-initial`}
+        testID={`trip-card-${tripId}-initial`}
         className={`text-[64px] leading-[72px] ${ink}`}>
         {initial}
       </Text>
@@ -85,20 +97,20 @@ function PhotoBand({
   uri,
   photoId,
   onError,
-  idPrefix,
+  tripId,
 }: {
   uri: string;
   photoId: string;
   onError: () => void;
-  idPrefix: string;
+  tripId: string;
 }) {
   return (
     <View
-      testID={`${idPrefix}-cover`}
+      testID={`trip-card-${tripId}-cover`}
       className={`${BLEED} h-[120px] border-b border-border`}
       {...DECORATIVE}>
       <Image
-        testID={`${idPrefix}-photo`}
+        testID={`trip-card-${tripId}-photo`}
         source={{ uri }}
         recyclingKey={photoId}
         contentFit="cover"
@@ -111,7 +123,7 @@ function PhotoBand({
   );
 }
 
-export function TripCoverBand({ cover, title, status, idPrefix }: TripCoverBandProps) {
+export function TripCoverBand({ cover, title, status, tripId }: TripCoverBandProps) {
   const [failedUri, setFailedUri] = useState<string | null>(null);
 
   if (cover.kind === 'photo' && cover.thumbnailUri !== failedUri) {
@@ -120,12 +132,10 @@ export function TripCoverBand({ cover, title, status, idPrefix }: TripCoverBandP
         uri={cover.thumbnailUri}
         photoId={cover.photoId}
         onError={() => setFailedUri(cover.thumbnailUri)}
-        idPrefix={idPrefix}
+        tripId={tripId}
       />
     );
   }
   const look = cover.kind === 'typographic' ? cover : typographicCover({ title }, status);
-  return (
-    <TypographicBand initial={look.initial} status={look.status} idPrefix={idPrefix} />
-  );
+  return <TypographicBand initial={look.initial} status={look.status} tripId={tripId} />;
 }

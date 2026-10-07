@@ -3,17 +3,19 @@
  * FR-013, FR-021, FR-035; Constitution II; contract C4-11 "Trips").
  *
  * Read from the encrypted local store through a live query, most recently changed
- * first. The title is the navigator's: a large collapsing "Trips" on iOS, a standard
- * header on Android (`trips/_layout.tsx`), so the screen lays out no title of its own.
- * The list is a `FlashList` through `ListScreen` (D-23), `underHeader`, so the native
- * header insets it and the large title collapses as it scrolls; it is the first thing the
- * screen renders, which is where react-native-screens looks for it.
+ * first. The title is the navigator's: a large "Trips" on iOS, a standard header on
+ * Android (`trips/_layout.tsx`), so the screen lays out no title of its own. The list is
+ * a `FlashList` through `ListScreen` (D-23), `underHeader`: the scroller is the first
+ * thing the screen renders, which is where react-native-screens looks for it, and it
+ * takes `contentInsetAdjustmentBehavior="automatic"`. Those props are asserted in the
+ * tests; that the large title then collapses as the list scrolls is a device check
+ * (T408), not something Jest can see.
  *
  * Every state is designed (C4-10 rule 2): skeleton cards while the store has not
  * answered (never the empty state), words and an icon when it failed, and for no trips
  * a sentence plus a "Plan a trip" action. "Plan a trip" is one control per platform,
- * with one id (`plan-trip-action.tsx`): the header action on iOS, an extended floating
- * button on Android, which the list leaves room for.
+ * with one id (`plan-trip-action.tsx`): an icon-only header action on iOS, an extended
+ * floating button on Android, which the list leaves room for.
  *
  * Visibility posture: private. The list is the signed-in traveller's own local rows.
  */

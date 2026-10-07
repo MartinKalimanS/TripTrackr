@@ -15,6 +15,8 @@ import path from 'node:path';
 import { TripCard } from '@/components/trip/trip-card';
 import type { TripSummary } from '@/features/trips/use-trips';
 
+import { analyseSources } from '../../scripts/lib/extract-ids';
+
 // A View that carries every prop, so a test reads `source`, `recyclingKey` and fires `error`.
 jest.mock('expo-image', () => {
   const React = require('react') as typeof import('react');
@@ -121,6 +123,25 @@ describe('<TripCard> - what it shows (FR-011)', () => {
     expect(screen.queryByText(/–/)).toBeNull();
     expect(screen.getByText('No stops yet · EUR')).toBeTruthy();
   });
+
+  test.each([
+    ['garbage', { start: 'garbage', end: '2026-03-20' }],
+    ['empty', { start: '', end: '' }],
+    ['reversed', { start: '2026-03-20', end: '2026-03-12' }],
+  ])(
+    'a %s range shows no date text and the rest of the card as usual',
+    async (_name, dateRange) => {
+      await renderCard(summary({ dateRange, status: 'active' }));
+
+      expect(screen.queryByText(/–/)).toBeNull();
+      expect(screen.getByText('Italy, spring 2026')).toBeTruthy();
+      expect(screen.getByTestId('status-pill-active')).toBeTruthy();
+      expect(screen.getByText('2 stops · EUR')).toBeTruthy();
+      expect(screen.getByTestId('trip-card-t1').props.accessibilityLabel).toBe(
+        'Italy, spring 2026, active, 2 stops',
+      );
+    },
+  );
 
   test('shows the pending badge exactly when the row is dirty (Constitution II)', async () => {
     await renderCard(summary({ trip: { is_dirty: true } }));
@@ -259,6 +280,28 @@ describe('<TripCard> - sources (FR-036)', () => {
     expect(text).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|\[#/);
     expect(importsOf(text).some((from) => /^(heroui-native|uniwind)/.test(from))).toBe(
       false,
+    );
+  });
+
+  // The id parity guard reads ids out of the source. An id handed in as a prop is one it
+  // cannot read where it is used, and each is a blind spot the ratchet then allows: the
+  // card and its cover band write every id out, with the literal head `trip-card-`.
+  test('every id the card and the band build is readable by the id extractor', () => {
+    const { ids, unresolved } = analyseSources(
+      FILES.map((file) => ({ path: `src/${file}`, text: source(file) })),
+    );
+
+    expect(unresolved.testIDs).toEqual([]);
+    expect(ids.testIDs).toEqual(
+      expect.arrayContaining([
+        'trip-card-<param>',
+        'trip-card-<param>-cover',
+        'trip-card-<param>-photo',
+        'trip-card-<param>-initial',
+        'trip-card-<param>-cue',
+        'trip-card-<param>-status-row',
+        'trip-card-<param>-meta-row',
+      ]),
     );
   });
 });

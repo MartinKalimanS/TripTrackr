@@ -204,7 +204,7 @@ const ALLOWED_FILES = [
   'src/app/_layout.tsx',
   'src/hooks/use-appearance.ts',
   'src/components/trip/trip-card.test.tsx',
-  'src/app/(tabs)/trips.test.tsx',
+  'src/app/(tabs)/trips/index.test.tsx',
   'test/components/trip-card.test.tsx',
 ];
 

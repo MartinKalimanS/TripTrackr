@@ -32,7 +32,7 @@ afterEach(() => jest.restoreAllMocks());
 describe('stackHeaderOptions - iOS (FR-007)', () => {
   const options = stackHeaderOptions('Trips', THEME, 'ios');
 
-  test('asks for a large title that collapses, with no shadow under either bar', () => {
+  test('asks for a large title (the option, not the collapse: that is a device check, T408), with no shadow under either bar', () => {
     expect(options.title).toBe('Trips');
     // `headerLargeTitle` is deprecated in the installed router; the option is `...Enabled`.
     expect(options.headerLargeTitleEnabled).toBe(true);

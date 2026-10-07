@@ -215,11 +215,13 @@ built API goes beyond it.
   list itself, apart from the screen root `testID`.
 - `TripCard` is a pressable `Card` with `cue={false}` and its own `PressCue` (`<id>-cue`) beside the text, because the
   cover runs to the card's edges (`-mx-4 -mt-4` over the kit Surface's 16 dp padding, clipped by its corner) and the
-  default chevron would sit beside the picture. Ids: `trip-card-<id>`, `-cover`, `-photo`, `-initial`, `-cue`,
-  `-status-row`, `-meta-row`. The title is announced as text, not a header (the card is one element). The cover falls back
+  default chevron would sit beside the picture. Ids, each written out in full where it is built (the id extractor
+  reads them with the literal head `trip-card-`, and none is an unresolved forward): `trip-card-<id>`, `-cover`, `-photo`,
+  `-initial`, `-cue`, `-status-row`, `-meta-row`. The date text is `formatDateRange`, which is `null` for a range it cannot
+  read (the card then shows none). The title is announced as text, not a header (the card is one element). The cover falls back
   to the typographic look for a thumbnail address that errored, and tries a new address afresh.
-- "Plan a trip" (`components/trip/plan-trip-action.tsx`): `PlanTripHeaderAction` (text `Button`, plus icon, minimum height
-  the platform floor and not scaled, in `headerRight`) on iOS; `PlanTripFab` (primary `lg` `Button`, `absolute`, 16 dp above
+- "Plan a trip" (`components/trip/plan-trip-action.tsx`): `PlanTripHeaderAction` (icon-only text `Button`: a plus, named
+  "Plan a trip", a fixed 44 pt square not scaled with the font scale, in `headerRight`) on iOS; `PlanTripFab` (primary `lg` `Button`, `absolute`, 16 dp above
   the screen's bottom and `16 dp + the larger side inset` from its end) on Android, with `PlanTripFabClearance` as the
   list's footer. Both: `testID="trips-plan-trip"`, name "Plan a trip".
 
