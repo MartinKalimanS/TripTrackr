@@ -112,10 +112,21 @@ export type CoverCandidate = Pick<
 /**
  * Every live photo that still names a staged file, across all trips, grouped
  * by trip and, within a trip, earliest-taken first: dated before undated, then
- * earliest added, then id. The rule that picks a cover re-checks the path and
- * the trip itself; this ordering keeps the likeliest cover at the head of each
- * run and the read to one small statement. Live-queryable: Drizzle subscribes
- * to the `photos` table.
+ * earliest added, then id. This order IS the "earliest photo" rule:
+ * `resolveTripCover` (features/trips/trip-cover.ts) does not sort, it takes the
+ * first candidate of a trip whose path yields a thumbnail, so it must receive
+ * rows in this order (any subsequence keeps it). Live-queryable: Drizzle
+ * subscribes to the `photos` table.
+ *
+ * Text order is chronological order here because `taken_at` and `created_at` are
+ * UTC instants ending in `Z`, the only form ever stored: the device writes
+ * `toISOString()` (`nowIso()`, `features/photos/exif.ts`) and the server answers
+ * in UTC (`INSTANT_FORMAT`, apps/api sync-records.ts). The contract's
+ * `IsoDateTime` (`packages/contracts/src/scalars.ts`, `taken_at:
+ * IsoDateTime.nullable()`) admits offsets in syntax, but its own note says
+ * "Always UTC"; precision differs (ms on the device, µs from the server), below
+ * what a cover needs. The gallery's `forTripQuery` orders on the same assumption.
+ * test/db/photo-cover-candidates.test.ts pins the order and the mixed precision.
  */
 function coverCandidatesQuery(db: AppDatabase) {
   return db

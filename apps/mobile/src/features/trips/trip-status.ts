@@ -35,11 +35,12 @@ export interface TripDateRange {
  * and latest rather than first and last by order, for the reason above.
  */
 export function tripDateRange(stops: readonly StopDateRange[]): TripDateRange | null {
-  if (stops.length === 0) return null;
+  const [first] = stops;
+  if (first === undefined) return null;
 
   // IsoDate strings compare correctly as text — that is the point of the format.
-  let start = stops[0]!.arrive_date;
-  let end = stops[0]!.depart_date;
+  let start = first.arrive_date;
+  let end = first.depart_date;
   for (const stop of stops) {
     if (stop.arrive_date < start) start = stop.arrive_date;
     if (stop.depart_date > end) end = stop.depart_date;

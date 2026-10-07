@@ -5,13 +5,23 @@
  * First match wins:
  *   1. `trips.cover_photo_id` names a candidate photo of THIS trip whose
  *      `thumbnailUri(local_file_uri)` is non-null;
- *   2. otherwise the trip's earliest such candidate: `taken_at` (undated last),
- *      then `created_at`, then `id`;
+ *   2. otherwise the trip's earliest such candidate;
  *   3. otherwise a typographic cover: the title's initial and the derived status.
  *
- * Candidates come from `photosRepository.coverCandidatesQuery` (live photos
- * that still name a file). They may span every trip: a photo of another trip is
- * never returned, even when `cover_photo_id` names it.
+ * "Earliest" is not decided here. `photosRepository.coverCandidatesQuery` returns
+ * each trip's photos earliest-taken first (undated last, then `created_at`, then
+ * `id`), so the first usable candidate of a trip is its earliest. The rule
+ * therefore does not sort: its precondition is that `candidates` are in
+ * `coverCandidatesQuery` order, or a subsequence of it (a trip's group, or every
+ * trip's rows, which the trip filter below narrows without reordering).
+ *
+ * That order is textual, and textual order is chronological because every
+ * `taken_at` / `created_at` is a UTC instant ending in `Z`: the contract's
+ * `IsoDateTime` (`packages/contracts/src/scalars.ts`, "Always UTC"; the photo's
+ * `taken_at` is `IsoDateTime.nullable()`) admits offsets in syntax, but the device
+ * writes `toISOString()` and the server answers in UTC (`INSTANT_FORMAT`), so none
+ * is ever stored. They differ in precision (milliseconds on the device,
+ * microseconds from the server), below what a cover needs.
  *
  * Visibility posture: private. Reads the signed-in traveller's own local rows
  * and builds a path to a thumbnail on the device; nothing is fetched, stored or
@@ -52,38 +62,31 @@ function photoCover(photo: CoverCandidate): PhotoCover | null {
   return uri === null ? null : { kind: 'photo', photoId: photo.id, thumbnailUri: uri };
 }
 
-/** Earliest first: dated before undated, then `created_at`, then `id`. */
-function compareCandidates(a: CoverCandidate, b: CoverCandidate): number {
-  if (a.taken_at !== b.taken_at) {
-    if (a.taken_at === null) return 1;
-    if (b.taken_at === null) return -1;
-    return a.taken_at < b.taken_at ? -1 : 1;
-  }
-  if (a.created_at !== b.created_at) return a.created_at < b.created_at ? -1 : 1;
-  if (a.id === b.id) return 0;
-  return a.id < b.id ? -1 : 1;
-}
-
-/** The trip's earliest candidate that has a thumbnail, or null. One pass, no copy. */
-function earliestCover(candidates: readonly CoverCandidate[]): PhotoCover | null {
-  let earliest: CoverCandidate | null = null;
-  for (const candidate of candidates) {
-    if (thumbnailUri(candidate.local_file_uri) === null) continue;
-    if (earliest === null || compareCandidates(candidate, earliest) < 0) {
-      earliest = candidate;
-    }
-  }
-  return earliest && photoCover(earliest);
-}
-
+/**
+ * One pass over `candidates` (precondition: `coverCandidatesQuery` order), one
+ * `thumbnailUri` per candidate, no sort and no copy. The first usable candidate of
+ * the trip is its earliest photo; the designated one, wherever it sits, beats it.
+ */
 export function resolveTripCover(
   trip: CoverTrip,
   candidates: readonly CoverCandidate[],
   status: TripStatus,
 ): TripCover {
-  const own = candidates.filter((candidate) => candidate.trip_id === trip.id);
+  const designatedId = trip.cover_photo_id;
+  let earliest: PhotoCover | null = null;
 
-  const designated = own.find((candidate) => candidate.id === trip.cover_photo_id);
-  const cover = (designated && photoCover(designated)) ?? earliestCover(own);
-  return cover ?? typographicCover(trip, status);
+  for (const candidate of candidates) {
+    if (candidate.trip_id !== trip.id) continue; // never another trip's photo
+    const isDesignated = candidate.id === designatedId;
+    // Once the earliest is known, only the designated photo can still win.
+    if (earliest !== null && !isDesignated) continue;
+
+    const cover = photoCover(candidate);
+    if (cover === null) continue;
+    if (isDesignated) return cover;
+
+    earliest = cover;
+    if (designatedId === null) break; // nothing designated: the first usable is final
+  }
+  return earliest ?? typographicCover(trip, status);
 }
