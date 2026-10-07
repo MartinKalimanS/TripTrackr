@@ -149,10 +149,11 @@ After this phase every unconverted screen already renders in Atlas colours with 
 - [ ] T415 [P] Baselines before screens move: scroll frame rate for 200 trips and 1,000 expense rows on
       the oldest supported test device, release JS bundle size and font size, recorded in
       `specs/004-app-ui-redesign/research.md` "Baselines" (SC-006, SC-011)
-- [ ] T416 [P] `Text` and the `ThemedText` shim with `largeTitle`, `headline`, `caption`, `numeric` roles,
-      contrast ink promotion, tabular numerals (`components/ui/text.tsx`, `components/themed-text.tsx`)
-      (FR-004; C4-8)
-- [ ] T417 [P] `Tappable` and `Button` with required accessible name, busy and disabled exclusivity,
+- [x] T416 [P] `Text` with the `largeTitle`, `title`, `headline`, `body`, `callout`, `caption`, `numeric` roles, a
+      `tone`, header semantics and tabular numerals (`components/ui/text.tsx`) (FR-004; C4-8). _Revised:_ there
+      is no `ThemedText` shim and no JavaScript ink promotion: `ThemedText` is untouched until phase 7 (migrated
+      screens use `Text`), and muted ink is already 7:1 in the contrast themes through the stylesheet.
+- [x] T417 [P] `Tappable` and `Button` with required accessible name, busy and disabled exclusivity,
       44/48 dp scaled minimum, focus ring, 100 ms pressed state, haptic hook (`components/ui/tappable.tsx`,
       `components/ui/button.tsx`, `hooks/use-haptics.ts`) (FR-005, FR-019, FR-020, FR-026; C4-7)
 - [ ] T418 [P] `Card` and `Panel` (`variant`, `overMap`, `pending`), no shadow or tint over map content
@@ -167,7 +168,7 @@ After this phase every unconverted screen already renders in Atlas colours with 
 - [ ] T422 [P] State views: `Skeleton*`, `EmptyState`, `LoadingState`, `ErrorState`, `FormActions`,
       `InlineError` (`components/ui/state-view.tsx`, `form-actions.tsx`, `inline-error.tsx`) (FR-021,
       FR-035)
-- [ ] T423 [P] `Icon`, `Avatar`, `HeaderBackButton` (`components/ui/icon.tsx`, `avatar.tsx`,
+- [x] T423 [P] `Icon`, `Avatar`, `HeaderBackButton` (`components/ui/icon.tsx`, `avatar.tsx`,
       `header-back-button.tsx`) (FR-008; D4-08)
 - [ ] T424 [P] `Screen` and `ListScreen` restyle (canvas, `contentInsetAdjustmentBehavior`, safe areas,
       largest-text scroll) (`components/ui/screen.tsx`, `list-screen.tsx`) (FR-029; C4-8)
