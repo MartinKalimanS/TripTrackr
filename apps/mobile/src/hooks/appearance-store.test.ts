@@ -640,6 +640,138 @@ describe('an answer from a session that no longer exists is dropped', () => {
   });
 });
 
+describe('exception safety of the native session', () => {
+  /** Makes `addEventListener` throw on its Nth call (1-based); the others behave as usual. */
+  function failRegistrationNumber(call: number, failure: Error) {
+    const normal = jest
+      .mocked(AccessibilityInfo.addEventListener)
+      .getMockImplementation();
+    let calls = 0;
+    jest.mocked(AccessibilityInfo.addEventListener).mockImplementation(((
+      ...args: unknown[]
+    ) => {
+      calls += 1;
+      if (calls === call) throw failure;
+      return (normal as (...rest: unknown[]) => unknown)(...args);
+    }) as never);
+  }
+
+  /** Captures what the store reports on its own tick instead of letting it go uncaught. */
+  function captureReportedErrors() {
+    const reported: (() => void)[] = [];
+    jest.spyOn(globalThis, 'queueMicrotask').mockImplementation((task) => {
+      reported.push(task);
+    });
+    return reported;
+  }
+
+  test('a registration that throws removes the ones already made and rethrows to the caller', () => {
+    const failure = new Error('the accessibility module is gone');
+    failRegistrationNumber(3, failure);
+
+    expect(() => subscribeToAppearance(() => undefined)).toThrow(failure);
+
+    expect(registrations).toHaveLength(2);
+    expect(registrations.map(({ remove }) => remove.mock.calls.length)).toEqual([1, 1]);
+  });
+
+  test('a registration that throws leaves no subscriber behind and no half-started session', async () => {
+    const listener = jest.fn();
+    failRegistrationNumber(2, new Error('the accessibility module is gone'));
+    expect(() => subscribeToAppearance(listener)).toThrow();
+
+    // The read the failed start began is dropped: nobody asked for it any more.
+    await settle();
+    expect(listener).not.toHaveBeenCalled();
+    expect(getAppearanceSnapshot().ready).toBe(false);
+
+    // The count is consistent: the next subscriber starts a fresh session ...
+    jest.mocked(AccessibilityInfo.addEventListener).mockImplementation(((
+      event: string,
+      handler: () => void,
+    ) => {
+      const remove = jest.fn();
+      registrations.push({ event, handler, remove });
+      return { remove };
+    }) as never);
+    const before = registrations.length;
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    expect(registrations).toHaveLength(before + 3);
+    await settle();
+    expect(getAppearanceSnapshot().ready).toBe(true);
+
+    // ... and the last one leaving tears that session down (an orphaned entry would not).
+    unsubscribe();
+    expect(
+      registrations.slice(before).map(({ remove }) => remove.mock.calls.length),
+    ).toEqual([1, 1, 1]);
+  });
+
+  test('the very first registration throwing leaves nothing to remove and nothing running', async () => {
+    failRegistrationNumber(1, new Error('the accessibility module is gone'));
+
+    expect(() => subscribeToAppearance(() => undefined)).toThrow();
+    await settle();
+
+    expect(registrations).toHaveLength(0);
+    expect(getAppearanceSnapshot().ready).toBe(false);
+  });
+
+  test('a remove() that throws during teardown does not stop the rest being removed', () => {
+    const reported = captureReportedErrors();
+    const failure = new Error('already removed natively');
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    registrations[0].remove.mockImplementation(() => {
+      throw failure;
+    });
+
+    expect(() => unsubscribe()).not.toThrow();
+
+    expect(registrations.map(({ remove }) => remove.mock.calls.length)).toEqual([
+      1, 1, 1,
+    ]);
+    // The failure is not swallowed: it surfaces on its own tick.
+    expect(reported).toHaveLength(1);
+    expect(() => reported[0]()).toThrow(failure);
+  });
+
+  test('after a teardown whose remove() threw, the next subscriber still starts cleanly', async () => {
+    captureReportedErrors();
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    registrations[1].remove.mockImplementation(() => {
+      throw new Error('already removed natively');
+    });
+    unsubscribe();
+
+    const restarted = subscribeToAppearance(() => undefined);
+    await settle();
+
+    expect(registrations).toHaveLength(6);
+    registrations.slice(3).forEach(({ remove }) => expect(remove).not.toHaveBeenCalled());
+    restarted();
+    expect(registrations.slice(3).map(({ remove }) => remove.mock.calls.length)).toEqual([
+      1, 1, 1,
+    ]);
+  });
+
+  test('every remove() throwing is reported once each and the reset still completes', () => {
+    const reported = captureReportedErrors();
+    subscribeToAppearance(() => undefined);
+    registrations.forEach(({ remove }) =>
+      remove.mockImplementation(() => {
+        throw new Error('already removed natively');
+      }),
+    );
+
+    expect(() => __resetAppearanceStoreForTests()).not.toThrow();
+
+    expect(registrations.map(({ remove }) => remove.mock.calls.length)).toEqual([
+      1, 1, 1,
+    ]);
+    expect(reported).toHaveLength(3);
+  });
+});
+
 describe('__resetAppearanceStoreForTests', () => {
   test('removes the native subscriptions, forgets every listener and the snapshot', async () => {
     const listener = jest.fn();

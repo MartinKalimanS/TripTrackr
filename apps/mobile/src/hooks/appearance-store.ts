@@ -128,15 +128,41 @@ function notify(): void {
   }
 }
 
+type NativeSubscription =
+  ReturnType<typeof AccessibilityInfo.addEventListener> | undefined;
+
+/**
+ * Removes every subscription, whatever one of them does: a `remove()` that throws is
+ * reported on its own tick and the rest are still removed.
+ */
+function removeAll(subscriptions: readonly NativeSubscription[]): void {
+  for (const subscription of subscriptions) {
+    try {
+      subscription?.remove();
+    } catch (error) {
+      reportLater(error);
+    }
+  }
+}
+
 /**
  * Reads now and again on each change event, so the context updates live rather than only at
  * launch. The event names differ per platform (`appearanceChangeEvents`). Once stopped, a
  * session answers to nobody: a read still in flight is dropped, not published.
+ *
+ * Exception-safe: if a registration throws, the ones already made are removed, the session
+ * is stopped and the error goes to the caller, so nothing is left half-started.
  */
 function startSession(): () => void {
   let active = true;
   /** The id of the newest read; only that read may publish. */
   let latest = 0;
+  const subscriptions: NativeSubscription[] = [];
+
+  const stop = () => {
+    active = false;
+    removeAll(subscriptions);
+  };
 
   const refresh = async () => {
     if (!active) return;
@@ -147,21 +173,25 @@ function startSession(): () => void {
     if (active && id === latest) publish(answered);
   };
 
-  void refresh();
+  try {
+    void refresh();
 
-  // The event's payload is ignored on purpose: every event re-reads all three signals, so a
-  // payload for one signal can never be applied over another (no torn state).
-  const subscriptions = appearanceChangeEvents(Platform.OS).map((event) =>
-    AccessibilityInfo.addEventListener(
-      event as Parameters<typeof AccessibilityInfo.addEventListener>[0],
-      () => void refresh(),
-    ),
-  );
+    // The event's payload is ignored on purpose: every event re-reads all three signals, so a
+    // payload for one signal can never be applied over another (no torn state).
+    for (const event of appearanceChangeEvents(Platform.OS)) {
+      subscriptions.push(
+        AccessibilityInfo.addEventListener(
+          event as Parameters<typeof AccessibilityInfo.addEventListener>[0],
+          () => void refresh(),
+        ),
+      );
+    }
+  } catch (error) {
+    stop();
+    throw error;
+  }
 
-  return () => {
-    active = false;
-    subscriptions.forEach((subscription) => subscription?.remove());
-  };
+  return stop;
 }
 
 /** Ends the running session, if any, and forgets what it read. */
@@ -178,8 +208,10 @@ function stopAndForget(): void {
  */
 export function subscribeToAppearance(listener: () => void): () => void {
   const entry: Entry = { listener };
-  entries.add(entry);
+  // Started BEFORE the entry is added: a start that throws leaves nothing to roll back, and
+  // no listener can be told before the first (asynchronous) read settles.
   if (stopSession === null) stopSession = startSession();
+  entries.add(entry);
 
   return () => {
     if (!entries.delete(entry)) return;
