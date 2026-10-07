@@ -1,94 +1,47 @@
 @import 'tailwindcss';
 @import 'uniwind';
 @import 'heroui-native/styles';
+@import './theme/generated/theme.css';
 
 /*
- * Spike placeholders for the two increased-contrast themes (feature 004, T402/T406).
+ * The Atlas stylesheet entry (feature 004, research D4-02). Metro hands this file to
+ * Uniwind (`cssEntryFile` in metro.config.js); `app/_layout.tsx` imports it once.
  *
- * Uniwind requires every registered theme (`extraThemes` in metro.config.js) to define
- * the SAME variables as `light` and `dark`: a missing one is reported as
- * "Uniwind Error - Theme <name> is missing variable --<x>" on every bundle. The
- * variables are the 35 that `heroui-native/styles` defines for light and dark.
- * The values below are the kit's defaults with the foreground, border and separator
- * pushed to the extremes so that a live theme switch is visible on a device.
- * T411 replaces this block with `theme/generated/theme.css`, built from the palette.
+ * Nothing here is a colour. Every theme variable, for `light`, `dark` and the two
+ * increased-contrast themes registered as `extraThemes`, comes from
+ * `theme/generated/theme.css`, which `npm run theme:build -w apps/mobile` writes from the
+ * palette (contract C4-5) and a Jest test keeps in sync. It is imported AFTER
+ * `heroui-native/styles` on purpose: both declare `@layer theme { :root { @variant ... } }`
+ * blocks, and for equal specificity the later one wins, so the kit's own defaults are
+ * overridden variable by variable. `@import` is only honoured ahead of every other rule,
+ * so the four imports stay together at the top.
+ *
+ * What is written by hand below is the display face (research D4-07, PROVISIONAL until
+ * the device pick in T408): two weights of Bricolage Grotesque, embedded at build time by
+ * the `expo-font` config plugin (`app.config.ts`). The kit's own `--font-normal`,
+ * `--font-medium`, `--font-semibold` and `--font-bold` are deliberately NOT set: body text
+ * stays in the platform face, so Dynamic Type and font scaling work unchanged.
+ *
+ * A custom family is one name per weight, and the name is not the same on both platforms
+ * (https://docs.expo.dev/versions/v57.0.0/sdk/font.md, "Configurable properties"): on
+ * Android it is the file name without its extension (and Uniwind's rule is that the CSS
+ * name equals it, https://docs.uniwind.dev/faq.md); on iOS it is read from the font file,
+ * where React Native resolves the PostScript name. `test/theme/global-css.test.ts` reads
+ * both from the files, so a font package upgrade that renames either fails the build.
+ *
+ * `static` makes Tailwind emit the two variables although no class uses them yet: a native
+ * header cannot take a className, so it reads the family with `useCSSVariable`.
  */
+@theme static {
+  --font-display: 'BricolageGrotesque_600SemiBold';
+  --font-display-bold: 'BricolageGrotesque_700Bold';
+}
+
 @layer theme {
   :root {
-    @variant light-contrast {
-      --background: oklch(100% 0 0);
-      --foreground: oklch(0% 0 0);
-      --surface: oklch(100% 0 0);
-      --surface-foreground: oklch(0% 0 0);
-      --surface-secondary: oklch(96% 0 0);
-      --surface-secondary-foreground: oklch(0% 0 0);
-      --surface-tertiary: oklch(92% 0 0);
-      --surface-tertiary-foreground: oklch(0% 0 0);
-      --overlay: oklch(100% 0 0);
-      --overlay-foreground: oklch(0% 0 0);
-      --backdrop: oklch(0% 0 0 / 40%);
-      --muted: oklch(35% 0 0);
-      --default: oklch(92% 0 0);
-      --default-foreground: oklch(0% 0 0);
-      --accent: oklch(40% 0.19 260);
-      --accent-foreground: oklch(100% 0 0);
-      --field-background: oklch(100% 0 0);
-      --field-foreground: oklch(0% 0 0);
-      --field-placeholder: oklch(35% 0 0);
-      --field-border: oklch(30% 0 0);
-      --success: oklch(40% 0.13 150);
-      --success-foreground: oklch(100% 0 0);
-      --warning: oklch(45% 0.12 70);
-      --warning-foreground: oklch(100% 0 0);
-      --danger: oklch(40% 0.18 25);
-      --danger-foreground: oklch(100% 0 0);
-      --segment: oklch(100% 0 0);
-      --segment-foreground: oklch(0% 0 0);
-      --border: oklch(30% 0 0);
-      --separator: oklch(30% 0 0);
-      --focus: oklch(40% 0.19 260);
-      --link: oklch(40% 0.19 260);
-      --surface-shadow: 0 0 0 0 transparent inset;
-      --overlay-shadow: 0 0 0 0 transparent inset;
-      --field-shadow: 0 0 0 0 transparent inset;
-    }
-
-    @variant dark-contrast {
-      --background: oklch(0% 0 0);
-      --foreground: oklch(100% 0 0);
-      --surface: oklch(14% 0 0);
-      --surface-foreground: oklch(100% 0 0);
-      --surface-secondary: oklch(20% 0 0);
-      --surface-secondary-foreground: oklch(100% 0 0);
-      --surface-tertiary: oklch(26% 0 0);
-      --surface-tertiary-foreground: oklch(100% 0 0);
-      --overlay: oklch(14% 0 0);
-      --overlay-foreground: oklch(100% 0 0);
-      --backdrop: oklch(0% 0 0 / 60%);
-      --muted: oklch(85% 0 0);
-      --default: oklch(26% 0 0);
-      --default-foreground: oklch(100% 0 0);
-      --accent: oklch(85% 0.12 255);
-      --accent-foreground: oklch(0% 0 0);
-      --field-background: oklch(14% 0 0);
-      --field-foreground: oklch(100% 0 0);
-      --field-placeholder: oklch(85% 0 0);
-      --field-border: oklch(80% 0 0);
-      --success: oklch(85% 0.15 150);
-      --success-foreground: oklch(0% 0 0);
-      --warning: oklch(88% 0.14 80);
-      --warning-foreground: oklch(0% 0 0);
-      --danger: oklch(85% 0.12 25);
-      --danger-foreground: oklch(0% 0 0);
-      --segment: oklch(26% 0 0);
-      --segment-foreground: oklch(100% 0 0);
-      --border: oklch(80% 0 0);
-      --separator: oklch(80% 0 0);
-      --focus: oklch(85% 0.12 255);
-      --link: oklch(85% 0.12 255);
-      --surface-shadow: 0 0 0 0 transparent inset;
-      --overlay-shadow: 0 0 0 0 transparent inset;
-      --field-shadow: 0 0 0 0 transparent inset;
+    @variant ios {
+      --font-display: 'BricolageGrotesque-SemiBold';
+      --font-display-bold: 'BricolageGrotesque-Bold';
     }
   }
 }

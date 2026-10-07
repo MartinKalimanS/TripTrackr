@@ -233,6 +233,22 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // Bare: the SDK download token, if Mapbox ever requires one again, is read
     // from RNMAPBOX_MAPS_DOWNLOAD_TOKEN at build time (see STORE_COMPLIANCE.md).
     '@rnmapbox/maps',
+    [
+      // The display face (feature 004, research D4-07): two weights, embedded at build
+      // time so they are there on the first frame, with no run-time load
+      // (https://docs.expo.dev/versions/v57.0.0/sdk/font.md, "Configuration in app
+      // config"). PROVISIONAL: the final pick is made on a device in T408. Paths are
+      // relative to this project and the package is hoisted to the repository root's
+      // node_modules; test/config/app-config.test.ts fails if a file is not there. The
+      // family names the two platforms register are in src/global.css.
+      'expo-font',
+      {
+        fonts: [
+          '../../node_modules/@expo-google-fonts/bricolage-grotesque/600SemiBold/BricolageGrotesque_600SemiBold.ttf',
+          '../../node_modules/@expo-google-fonts/bricolage-grotesque/700Bold/BricolageGrotesque_700Bold.ttf',
+        ],
+      },
+    ],
   ],
 
   experiments: {

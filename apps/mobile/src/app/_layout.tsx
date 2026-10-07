@@ -32,6 +32,12 @@
  * conflict notice (T133) is mounted here too, above the navigator, so a
  * traveller who is told their edit was replaced is told wherever they are in
  * the app. The first-sync state (T136) is the `(tabs)` layout's.
+ *
+ * The UI kit (feature 004, T412; research D4-05) is wired here and nowhere else:
+ * `useKitTheme` hands `useAppearance().themeName` to Uniwind, `useKitConfig` feeds
+ * reduced motion to `HeroUINativeProvider`, and that provider sits BELOW the query
+ * client, the local store and the navigation theme because the portal host it mounts
+ * renders Select, Dialog and Toast content inside it.
  */
 // The Tailwind/Uniwind entry (feature 004, research D4-02). Imported here, once, and
 // never from the package entry: Uniwind documents that a global.css imported at
@@ -44,19 +50,21 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { HeroUINativeProvider } from 'heroui-native';
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useMemo, type ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { Uniwind } from 'uniwind';
 
 import { ConflictNotices } from '@/components/ui/conflict-notice';
 import { LocalStoreProvider, useOpenDatabase } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useAppSwitcherProtection } from '@/features/documents/use-screen-capture-guard';
-import { useAppearance } from '@/hooks/use-appearance';
+import { useAppearance, type AppearanceContext } from '@/hooks/use-appearance';
 import { configureMapbox } from '@/lib/mapbox';
 import { Sentry, initSentry } from '@/lib/sentry';
 import { useSyncTriggers } from '@/sync/use-sync-triggers';
+import type { PaletteName } from '@/theme/palette';
 
 // FR-073. Called at module scope so that a crash during the first render is
 // still captured — an init inside a component runs too late to see it.
@@ -97,13 +105,95 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1 } },
 });
 
-// The kit's defaults, deliberately empty for the spike (T402): reduced motion, text
-// props and toast settings arrive with the adapters (D4-05). Only the development
-// console banner is switched off: this codebase ships no debug output.
-const HEROUI_CONFIG = { devInfo: { stylingPrinciples: false } };
+/**
+ * What `Uniwind.setTheme` is given for an appearance theme (research D4-05, contract C4-4).
+ *
+ * `light` and `dark` become `'system'`, NOT themselves. `setTheme('light' | 'dark')` PINS
+ * the scheme: Uniwind turns adaptive themes off and calls
+ * `Appearance.setColorScheme('light' | 'dark')`, which is
+ * `AppCompatDelegate.setDefaultNightMode` on Android and `overrideUserInterfaceStyle` on
+ * every iOS window. The app would then stop following the OS, and `useColorScheme()`, the
+ * input of `useAppearance()`, would keep reporting the value it was pinned to. `'system'`
+ * switches adaptive mode back on and hands the scheme back (`setColorScheme('unspecified')`).
+ *
+ * The contrast themes are custom names: adaptive mode goes off, but the scheme is handed
+ * back to the OS as well, so `useAppearance()` still chooses between `light-contrast` and
+ * `dark-contrast` from the system scheme and the more-contrast flag.
+ */
+function kitThemeFor(themeName: PaletteName) {
+  return themeName === 'light' || themeName === 'dark' ? 'system' : themeName;
+}
 
-function RootLayout() {
-  const { theme, tokens } = useAppearance();
+/**
+ * Keeps the kit's theme, and with it every className colour, equal to the one
+ * `useAppearance()` resolved; nothing else sets it (contract C4-4). Called on EVERY change,
+ * including the way back from a contrast theme to `light` or `dark`.
+ *
+ * A layout effect, on purpose: it runs before the commit is painted, so the classes switch
+ * in the same frame as the legacy tokens that changed with `themeName`. It also runs while
+ * this layout still renders nothing under the splash, so the first visible frame already
+ * has the right theme. Uniwind starts adaptive on the device scheme, so for `light` and
+ * `dark` that call is a no-op; a contrast theme arrives when the accessibility flag has
+ * been read, which the splash covers (device check: research item 5, T406).
+ */
+function useKitTheme(themeName: PaletteName) {
+  useLayoutEffect(() => {
+    Uniwind.setTheme(kitThemeFor(themeName));
+  }, [themeName]);
+}
+
+type KitConfig = NonNullable<ComponentProps<typeof HeroUINativeProvider>['config']>;
+
+/**
+ * The kit provider's settings (research D4-05).
+ *
+ * - `animation` follows `useAppearance().prefersLessMotion`: the kit reads Reanimated's
+ *   reduce-motion flag once, at launch, so only this keeps it live (research item 6).
+ * - `textProps` and `textInputProps` stay unset: the largest platform font size must work
+ *   (002 FR-016), so there is no `maxFontSizeMultiplier`.
+ * - The development banner is off: this codebase ships no debug output.
+ *
+ * Memoised on the one input, so the provider's context values stay stable across renders.
+ */
+function useKitConfig(prefersLessMotion: boolean): KitConfig {
+  return useMemo(
+    () => ({
+      devInfo: { stylingPrinciples: false },
+      animation: prefersLessMotion ? 'disable-all' : undefined,
+    }),
+    [prefersLessMotion],
+  );
+}
+
+/**
+ * React Navigation paints its own background behind every screen; left at the default it
+ * is white, which is the "half-converted" flash Acceptance Scenario 3.2 forbids. Every
+ * value below is a token (contract C1).
+ */
+function navigationThemeFor(isDark: boolean, tokens: AppearanceContext['tokens']) {
+  const base = isDark ? DarkTheme : DefaultTheme;
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: tokens.accent,
+      background: tokens.canvas,
+      card: tokens.surface,
+      text: tokens.textPrimary,
+      border: tokens.border,
+      notification: tokens.accent,
+    },
+  };
+}
+
+/**
+ * The session, the traveller's local store and the splash (T041, T119, T135).
+ *
+ * The status is `loading` until the session has been read; for a signed-in traveller the
+ * gate is settled only once the encrypted database has opened (migrations included) or
+ * failed with something to show, and the native splash comes down then, not before.
+ */
+function useSessionGate() {
   const status = useSessionStore((session) => session.status);
   const userId = useSessionStore((session) => session.user?.id ?? null);
   const hydrate = useSessionStore((session) => session.hydrate);
@@ -134,71 +224,79 @@ function RootLayout() {
     if (store.error) Sentry.captureException(store.error);
   }, [store.error]);
 
+  return { status, signedIn, store };
+}
+
+function RootStack({
+  status,
+  canvas,
+}: {
+  status: ReturnType<typeof useSessionGate>['status'];
+  canvas: string;
+}) {
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: canvas },
+      }}>
+      <Stack.Protected guard={status === 'signed-out'}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={status === 'signed-in'}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="trip/[id]" />
+        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+      </Stack.Protected>
+
+      {/* Reachable in either state: a bad link is not a reason to sign in. */}
+      <Stack.Screen name="+not-found" />
+    </Stack>
+  );
+}
+
+function RootLayout() {
+  const { theme, themeName, prefersLessMotion, tokens } = useAppearance();
+  useKitTheme(themeName);
+  const kitConfig = useKitConfig(prefersLessMotion);
+  const { status, signedIn, store } = useSessionGate();
+
   // Nothing is rendered beneath the splash until the gate can decide — a
   // flash of the welcome screen before the tabs is exactly the wrong first
   // impression for a returning traveller.
   if (status === 'loading') return null;
 
   const isDark = theme === 'dark';
-  const base = isDark ? DarkTheme : DefaultTheme;
-
-  // React Navigation paints its own background behind every screen; left at
-  // the default it is white, which is the "half-converted" flash Acceptance
-  // Scenario 3.2 forbids. Every value below is a token (contract C1).
-  const navigationTheme = {
-    ...base,
-    colors: {
-      ...base.colors,
-      primary: tokens.accent,
-      background: tokens.canvas,
-      card: tokens.surface,
-      text: tokens.textPrimary,
-      border: tokens.border,
-      notification: tokens.accent,
-    },
-  };
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      {/* The kit's provider (feature 004): text and input defaults, toasts, portals. */}
-      <HeroUINativeProvider config={HEROUI_CONFIG}>
-        {/* Keyboard frames for every form's KeyboardAwareScrollView (research D-24). */}
-        <KeyboardProvider>
-          {/* testID is the anchor for the Maestro flows (e2e/00-smoke.yaml). */}
-          <View
-            testID="app-root"
-            style={[styles.root, { backgroundColor: tokens.canvas }]}>
-            <QueryClientProvider client={queryClient}>
-              <LocalStoreProvider value={store}>
-                <ThemeProvider value={navigationTheme}>
+      {/* Keyboard frames for every form's KeyboardAwareScrollView (research D-24). Above
+          the kit's provider, so what it portals (a toast wrapped in the library's
+          KeyboardAvoidingView, a sheet with a field) can read them too. */}
+      <KeyboardProvider>
+        {/* testID is the anchor for the Maestro flows (e2e/00-smoke.yaml). */}
+        <View testID="app-root" style={[styles.root, { backgroundColor: tokens.canvas }]}>
+          <QueryClientProvider client={queryClient}>
+            <LocalStoreProvider value={store}>
+              <ThemeProvider value={navigationThemeFor(isDark, tokens)}>
+                {/* The kit's provider (feature 004): text and input defaults, toasts and the
+                    portal host. The host renders what Select, Dialog and Toast portal, and it
+                    sits INSIDE this provider, so the provider goes below every context that
+                    portalled content may read: the query client, the local store and the
+                    navigation theme (research D4-05). Gesture handling is above it. */}
+                <HeroUINativeProvider config={kitConfig}>
                   {/* FR-023: the status bar follows the theme with the rest of the UI. */}
                   <StatusBar style={isDark ? 'light' : 'dark'} />
                   {/* FR-040: told wherever the traveller is; nothing while there is nothing to tell. */}
                   {signedIn && store.db ? <ConflictNotices /> : null}
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: { backgroundColor: tokens.canvas },
-                    }}>
-                    <Stack.Protected guard={status === 'signed-out'}>
-                      <Stack.Screen name="(auth)" />
-                    </Stack.Protected>
-
-                    <Stack.Protected guard={status === 'signed-in'}>
-                      <Stack.Screen name="(tabs)" />
-                      <Stack.Screen name="trip/[id]" />
-                      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                    </Stack.Protected>
-
-                    {/* Reachable in either state: a bad link is not a reason to sign in. */}
-                    <Stack.Screen name="+not-found" />
-                  </Stack>
-                </ThemeProvider>
-              </LocalStoreProvider>
-            </QueryClientProvider>
-          </View>
-        </KeyboardProvider>
-      </HeroUINativeProvider>
+                  <RootStack status={status} canvas={tokens.canvas} />
+                </HeroUINativeProvider>
+              </ThemeProvider>
+            </LocalStoreProvider>
+          </QueryClientProvider>
+        </View>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }
