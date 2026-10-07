@@ -120,25 +120,37 @@ After this phase every unconverted screen already renders in Atlas colours with 
       `Colors` in `src/constants/theme.ts` at the palette (keys preserved); force the elevation profile to
       `flat` in `src/theme/elevation-profile.ts`; update the tests that asserted the old neumorphic values
       (FR-001, FR-002; D4-04, D4-12)
-- [ ] T412 Failing test `apps/mobile/test/theme/theme-css-sync.test.ts` (regenerated CSS equals the
+- [x] T412 Failing test `apps/mobile/test/theme/theme-css-sync.test.ts` (regenerated CSS equals the
       committed file; every theme defines every variable); then `apps/mobile/scripts/build-theme-css.mjs`,
       `src/theme/generated/theme.css`, `src/global.css`, the `theme:build` script in
       `apps/mobile/package.json` (then `npm install` at the root), Metro, `tsconfig.json`, `jest.config.js`,
       `jest.setup.ts` and `app.config.ts` (`expo-font` plugin, `assets/fonts/`), the root layout provider
       and the `Uniwind.setTheme(themeName)` effect in `src/app/_layout.tsx`, `themeName` in
       `src/hooks/use-appearance.ts`; carry over the spike's config diffs (FR-031, FR-032; D4-04, D4-05)
-      _Partly done (tokens branch):_ the sync test, `scripts/theme-css.js` (pure `buildThemeCss`),
-      `scripts/build-theme-css.mjs` (`node scripts/build-theme-css.mjs`, `--check`),
-      `src/theme/generated/theme.css` and `themeName` in `use-appearance.ts`. _Still open:_
-      `src/global.css`, the `theme:build` script (`node scripts/build-theme-css.mjs`) and the
-      `npm install`, Metro, `tsconfig.json`, `jest.config.js`, `jest.setup.ts`, `app.config.ts`, the root
-      layout provider and the `Uniwind.setTheme(themeName)` effect.
+      _Done (tokens branch):_ the sync test, `scripts/theme-css.js` (pure `buildThemeCss`),
+      `scripts/build-theme-css.mjs`, `src/theme/generated/theme.css` and `themeName` in
+      `use-appearance.ts`. _Done (wiring branch):_ `src/global.css` is the four imports plus the display
+      face (no hand-written colour; the spike's placeholder themes are gone), `theme:build` and
+      `theme:check` (script lines only: no dependency changed, so no lockfile change), Metro and
+      `tsconfig.json` (spike), `jest.config.js` and `jest.setup.ts` (the `useCSSVariable` stand-in now answers
+      only names `theme.css` declares), the `expo-font` plugin in `app.config.ts`, and in
+      `src/app/_layout.tsx` the `Uniwind.setTheme` effect, the reduced-motion provider config and the
+      provider placement below the navigation theme (research D4-05, "T412 decisions"). Tests:
+      `test/theme/{global-css,kit-variables,css-variable-stand-in,uniwind-adaptive-theme}.test.ts`,
+      `test/config/{app-config,package-scripts,metro-config}.test.ts`, `test/app/root-layout.test.tsx`.
+      _Deviation:_ the fonts are embedded straight from `node_modules/@expo-google-fonts/...` (the test
+      fails if a file is missing), not copied to `assets/fonts/`, so no binary is duplicated in Git.
+      _Device only, still open:_ rebuild the dev clients (the `expo-font` plugin changes the native
+      projects, so `expo prebuild` runs), then T406 (live theme switch and no first-frame flash, with
+      the more-contrast flag), T407 (live reduce-motion), T408 (the display face resolves on iOS by its
+      PostScript name and on Android by its file name; pick the final face) and a Select, Dialog and
+      Toast opened from a modal screen on both platforms (the portal host sits in the root layout).
 - [x] T413 [P] `src/theme/typography.ts` and `src/theme/motion.ts` with their tests (type roles, radii,
       timings, tabular numerals), and the display-face variables in `global.css` (FR-001, FR-004, FR-022;
       D4-07)
       _Done:_ `typography.ts`, `motion.ts`, `shape.ts` (`AtlasRadius`, `AtlasSpacing`, `cornerStyle`) and
-      `freeze.ts`, exported from `src/theme/index.ts`. _Still open, with T412's `global.css`:_ the
-      display-face variables.
+      `freeze.ts`, exported from `src/theme/index.ts`. _Done with T412:_ the display-face variables
+      (`--font-display`, `--font-display-bold`) in `global.css`; the face is provisional (D4-07).
 
 ### Adapters (each: failing test first, in `apps/mobile/src/components/ui/*.test.tsx`)
 

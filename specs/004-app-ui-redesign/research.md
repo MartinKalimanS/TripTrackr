@@ -184,6 +184,48 @@ diffable).
 switch. The first-frame concern (the accessibility flags are read asynchronously) is covered by the
 splash screen and checked in T406.
 
+**T412 decisions** (wiring, 2026-10-07; the desk part of T406 and T407 is now in code and tests):
+
+- **`setTheme` is called with `'system'` for `light` and `dark`, never with the names themselves.**
+  In Uniwind 1.12 `setTheme('light' | 'dark')` turns adaptive themes off and calls
+  `Appearance.setColorScheme('light' | 'dark')`, which is `AppCompatDelegate.setDefaultNightMode` on
+  Android and `window.overrideUserInterfaceStyle` on iOS (read in `AppearanceModule.kt` and
+  `RCTAppearance.mm`): it PINS the native scheme. The app would stop following the OS, and
+  `useColorScheme()`, which feeds `useAppearance()`, would stay on the pinned value. The first draft of
+  this decision ("call `setTheme` on every change, including back to `light` or `dark`") would have
+  done exactly that. `'system'` switches adaptive mode back on and calls
+  `setColorScheme('unspecified')`; the contrast themes are custom names, which also hand the scheme back
+  to the OS, so `useAppearance()` keeps choosing `light-contrast` or `dark-contrast` from the live system
+  scheme. The effect still runs on every `themeName` change, so each transition reaches Uniwind and the
+  call re-syncs it with the OS scheme; it is idempotent. Pinned against the real module by
+  `test/theme/uniwind-adaptive-theme.test.ts`.
+- **A layout effect, running before the first screen.** It runs before paint, so the classes switch in
+  the same commit as the legacy `tokens`, and it runs while the layout still renders nothing under the
+  splash. Uniwind starts adaptive on the device scheme, so `light` and `dark` need no first-frame work;
+  a contrast theme arrives once the asynchronous accessibility read has returned, which the splash
+  covers in practice. That "in practice" is the device check left in T406.
+- **`HeroUINativeProvider` sits below `QueryClientProvider`, `LocalStoreProvider` and the navigation
+  `ThemeProvider`.** The kit's `Portal` registers React elements in a module-level store, and
+  `PortalHost`, which the provider mounts as a sibling after `children`, renders them where it stands
+  (`heroui-native/src/providers/hero-ui-native/provider.tsx`, `primitives/portal/portal.tsx`). Select
+  items, Dialog, Menu, Popover and Toast content therefore see only the contexts ABOVE the provider, and
+  the spike's tree had it above all three. It still wraps the `Stack`, the status bar and
+  `ConflictNotices`; `GestureHandlerRootView` stays outermost (the kit wraps portalled Select content in
+  its own nested gesture root, which on this gesture-handler version is only a layout view, so the app root
+  is the one that routes gestures). Consequence for the adapters: portalled content can read the query client, the
+  open local store and the navigation theme, but not the navigation state of the screen that opened it
+  (`useNavigation`, `useRoute`, `useLocalSearchParams`), because the host is a sibling of the navigator:
+  pass such values as props. Not yet seen on a device: on iOS the kit draws overlays in a
+  `FullWindowOverlay` (above native modals and form sheets); on Android the host is an ordinary sibling
+  drawn after the navigator, so check a Select inside `modal/add-trip`.
+- **`KeyboardProvider` wraps the kit provider.** The kit imports no keyboard code and needs no
+  ancestor, and its toasts are not keyboard-aware by themselves; its `toast.contentWrapper` hook takes
+  the library's `KeyboardAvoidingView`, which does need the provider above it, as does any portalled sheet
+  with a field. Nothing is set for toasts yet: no screen shows one (T422).
+- **The provider config** is memoised on the one input: `animation: 'disable-all'` only while
+  `prefersLessMotion` is true (otherwise unset), `devInfo.stylingPrinciples: false`, and `textProps` and
+  `textInputProps` unset so font scaling is never capped.
+
 ## D4-06 — Navigation chrome: stable APIs, native headers, native sheets (D-17 amended)
 
 **Decision**:
@@ -224,6 +266,32 @@ registered as `--font-display` and `--font-display-bold`.
 
 **Shortlist** (all published as `@expo-google-fonts/*`, OFL): Bricolage Grotesque, Young Serif, Geist.
 The final pick is made on a device in T408; the choice is recorded here when made.
+
+**PROVISIONAL pick, wired in T412**: Bricolage Grotesque (`@expo-google-fonts/bricolage-grotesque`
+0.4.1), `600SemiBold` and `700Bold` only, so every consumer and test has one real face to run against.
+It is a stand-in until T408 compares the shortlist on a device; nothing else in the design depends on
+it. How it is wired, and what changing the pick touches:
+
+- `app.config.ts` lists the two `.ttf` files in the `expo-font` plugin's `fonts` (paths relative to
+  `apps/mobile`, into the hoisted package). `test/config/app-config.test.ts` fails if one is missing,
+  if a third is listed, or if the plugin cannot resolve them. The change needs a dev-client rebuild.
+- `src/global.css` declares `--font-display` and `--font-display-bold` in `@theme static` (so a native
+  header, which cannot take a className, can read them with `useCSSVariable`), and leaves the kit's
+  `--font-normal`, `--font-medium`, `--font-semibold` and `--font-bold` alone: body text stays in the
+  platform face.
+- **The family name differs per platform, so there are two spellings.** Android registers a plugin-embedded
+  font under its file name without the extension (`BricolageGrotesque_600SemiBold`; Uniwind's own rule
+  is that the CSS name equals it). On iOS the name is read from the file, and React Native resolves a
+  PostScript name there (`BricolageGrotesque-SemiBold`, `BricolageGrotesque-Bold`; the file names
+  differ from them). With only the Android spelling the heading face would silently fall back to the
+  system font on iOS. `global.css` therefore carries an `@variant ios` override of the two variables,
+  Uniwind's documented platform selector (the export holds both: the Android names in the base table, the
+  iOS names in `__uniwind-platform-ios`). `test/theme/global-css.test.ts` reads both spellings from the
+  font files themselves, so swapping the face means changing the two paths and the four names, and the
+  tests say which is wrong.
+- Not yet seen on a device (T408): that iOS resolves the PostScript name, that no `fontWeight` is needed
+  or harmful beside it (each weight is its own family, as above), and Android's Material Symbols font
+  loading beside these two.
 
 **Rationale**: system text is what makes an app feel native; a display face supplies identity at the
 two places the traveller looks first. React Native has no dynamic weights for custom fonts, so each
@@ -308,16 +376,16 @@ and the spike re-confirms after the install.
 published at least seven days before the install (verify with `npm view <pkg>@<version> time`), install
 scripts reviewed, `npm audit` run, native modules at the SDK 57 pin from `bundledNativeModules.json`.
 
-| Package                               | Pin                    | Notes                                                           |
-| ------------------------------------- | ---------------------- | --------------------------------------------------------------- |
-| `heroui-native`                       | 1.0.10                 | 2026-09-21                                                      |
-| `uniwind`                             | 1.12.0                 | 2026-09-04; 1.12.1 and 1.12.2 are too new                       |
-| `tailwindcss`                         | 4.3.3                  | confirm publish date at install                                 |
-| `tailwind-variants`, `tailwind-merge` | 3.3.1, 3.7.0           | confirm publish dates                                           |
-| `react-native-svg`                    | 15.15.4                | SDK 57 pin; `npx expo install`                                  |
-| `expo-blur`                           | ~57.0.3                | required peer of the kit                                        |
-| `expo-haptics`                        | ~57.0.3                | SDK 57 pin                                                      |
-| display font                          | `@expo-google-fonts/*` | chosen in T408; two weights; embedded by the `expo-font` plugin |
+| Package                               | Pin                    | Notes                                                      |
+| ------------------------------------- | ---------------------- | ---------------------------------------------------------- |
+| `heroui-native`                       | 1.0.10                 | 2026-09-21                                                 |
+| `uniwind`                             | 1.12.0                 | 2026-09-04; 1.12.1 and 1.12.2 are too new                  |
+| `tailwindcss`                         | 4.3.3                  | confirm publish date at install                            |
+| `tailwind-variants`, `tailwind-merge` | 3.3.1, 3.7.0           | confirm publish dates                                      |
+| `react-native-svg`                    | 15.15.4                | SDK 57 pin; `npx expo install`                             |
+| `expo-blur`                           | ~57.0.3                | required peer of the kit                                   |
+| `expo-haptics`                        | ~57.0.3                | SDK 57 pin                                                 |
+| display font                          | `@expo-google-fonts/*` | PROVISIONAL: Bricolage Grotesque 0.4.1; final pick in T408 |
 
 Not added: `@gorhom/bottom-sheet` (our sheets are Expo Router form sheets; the spike confirms the kit
 loads without it), `@expo/ui`, any Uniwind Pro licence. Tailwind's native engine (`@tailwindcss/oxide`)
@@ -424,6 +492,14 @@ These could not be confirmed from documentation and are the acceptance checks of
    `contrast-dark` would). Pass explicit colours from the adapters, or rename the themes
    `contrast-light` and `contrast-dark` before T411.
 
+   Update (T412, 2026-10-07): the placeholders are replaced by the generated themes (the export builds
+   and prints no "is missing variable" line; the four theme tables hold only generated values), the
+   names stay `light-contrast` and `dark-contrast` (adapters pass explicit colours, as advised above), and
+   the sentence "call `setTheme` on every change, including back to `light` or `dark`" is **corrected**:
+   those two names pin the native scheme (they call `Appearance.setColorScheme('light' | 'dark')`), so the
+   root layout passes `'system'` for them. See D4-05, "T412 decisions". Still on a device: the live
+   switch and the first frame.
+
 6. **Reduced motion and largest text**: `animation: 'disable-all'` removes the kit's animation; at font
    scale 2.0 Button, Chip and ListGroup do not clip. (T407)
 
@@ -440,6 +516,11 @@ These could not be confirmed from documentation and are the acceptance checks of
    trigger use a min-height or padding and grow; Chip and ListGroup.Item size from padding plus line
    height and grow.
 
+   Update (T412, 2026-10-07): the root layout feeds `animation` from `useAppearance().prefersLessMotion`
+   (`'disable-all'` while true, unset otherwise, config memoised) and leaves `textProps` and
+   `textInputProps` unset; `test/app/root-layout.test.tsx` covers both directions of the toggle. The live
+   OS toggle and font scale 2.0 are still device checks (T407).
+
 7. **Back parity**: `tapOn: 'Back'` resolves on a native header on iOS and Android, else a custom
    `headerLeft` labelled "Back" is used; `formSheet` behaves on both platforms; the display face loads
    from the `expo-font` plugin and applies to `headerLargeTitleStyle`. (T408)
@@ -451,6 +532,15 @@ These could not be confirmed from documentation and are the acceptance checks of
    family: declare `--font-normal`, `--font-medium`, `--font-semibold` and `--font-bold` in `@theme`
    with the font's PostScript name (Tailwind prefers a family over a weight of the same name in a `font-*`
    utility). Whether Uniwind honours that on both platforms is for T408 to prove.
+
+   Update (T412, 2026-10-07): the body families are left alone on purpose (D4-07), and the display face is
+   wired as `--font-display` and `--font-display-bold`. The v57 `expo-font` page says the plugin's
+   family name is the file name on Android and "taken directly from the font file" on iOS, so the CSS
+   name must match the file name only on Android; on iOS it is the PostScript name, read from the file's
+   `name` table (id 6). Both spellings are in `global.css` (`@variant ios` for the second) and checked
+   against the files by a test; the export contains both, and `@theme static` keeps them in it before
+   any class uses them. Pending on a device: that the faces actually render on both platforms and in
+   `headerLargeTitleStyle` (T408).
 
 8. **Bottom-sheet peer**: `heroui-native` loads and renders without `@gorhom/bottom-sheet` installed.
    (T401)
