@@ -12,19 +12,25 @@
  * - A chevron `Icon` (decorative) and the word "Back", in a `Tappable` named "Back". The
  *   name is fixed: it is never the previous screen's title, which is what the native
  *   button announces and what a flow cannot rely on.
- * - `onPress` defaults to `router.back()` from `expo-router`. `canGoBack` is what React
- *   Navigation passes to a `headerLeft`; when it is explicitly `false` there is nothing
- *   to go back to and nothing is drawn, as the native affordance does. The other props a
- *   `headerLeft` receives (`tintColor`, `label`, `href`) are ignored on purpose: the
- *   colour is the accent token and the name is "Back".
+ * - `onPress` defaults to `router.back()` from `expo-router`, or to `router.replace('/')`
+ *   when the router has nothing to go back to (the screen was opened by a deep link or a
+ *   notification, where `back()` would do nothing). The router is asked when the button
+ *   is pressed, not when it renders. `canGoBack` is also what React Navigation passes to
+ *   a `headerLeft`; when it is explicitly `false` nothing is drawn, as the native
+ *   affordance does. The other props a `headerLeft` receives (`tintColor`, `label`,
+ *   `href`) are ignored on purpose: the colour is the accent token and the name is "Back".
  * - It has the platform's minimum touch target (44 dp iOS, 48 dp Android), but is NOT
  *   scaled with the font scale: unlike a button in a page, a header is a fixed-height
- *   bar that would clip or overflow a taller control. The word follows the text size
- *   like any text.
+ *   bar that would clip or overflow a taller control.
+ * - Above a 1.3 font scale the visible word is dropped and the chevron stands alone: the
+ *   word would no longer fit the bar (FR-029 forbids clipping it), and the control keeps
+ *   its name "Back" and its target. The font scale comes from `useWindowDimensions`, not
+ *   `useAppearance` (tappable.tsx).
  * - The chevron is the RTL-aware `chevron.backward` on iOS, which mirrors itself in a
  *   right-to-left layout (this app ships left-to-right only today).
  */
 import { useRouter } from 'expo-router';
+import { useWindowDimensions } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
 
@@ -42,17 +48,23 @@ export interface HeaderBackButtonProps {
 
 const CHEVRON: IconName = { ios: 'chevron.backward', android: 'chevron_left' };
 
+/** Above this font scale the bar has no room for the word beside the chevron. */
+const HIDE_WORD_ABOVE = 1.3;
+
 /** A header is a fixed-height bar: the floor, not the floor times the font scale. */
 const HEADER_TARGET = { minHeight: MinTouchTarget } as const;
 
 export function HeaderBackButton({ onPress, canGoBack, testID }: HeaderBackButtonProps) {
   const router = useRouter();
+  const { fontScale } = useWindowDimensions();
   if (canGoBack === false) return null;
+
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   return (
     <Tappable
       accessibilityLabel="Back"
-      onPress={onPress ?? (() => router.back())}
+      onPress={onPress ?? goBack}
       testID={testID}
       className="flex-row items-center gap-1"
       style={HEADER_TARGET}>
@@ -62,9 +74,11 @@ export function HeaderBackButton({ onPress, canGoBack, testID }: HeaderBackButto
         tone="accent"
         testID={testID ? `${testID}-icon` : undefined}
       />
-      <Text type="body" tone="accent">
-        Back
-      </Text>
+      {fontScale > HIDE_WORD_ABOVE ? null : (
+        <Text type="body" tone="accent">
+          Back
+        </Text>
+      )}
     </Tappable>
   );
 }
