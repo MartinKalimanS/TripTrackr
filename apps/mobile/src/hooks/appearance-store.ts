@@ -102,8 +102,30 @@ function publish(answered: AccessibilityFlags | null): void {
     prefersLessTransparency: flags.prefersLessTransparency,
     ready: true,
   });
-  // A copy: a listener may unsubscribe (or a consumer unmount) while it is being told.
-  [...entries].forEach(({ listener }) => listener());
+  notify();
+}
+
+/** Reports an error without unwinding the caller: it surfaces on its own tick, unhandled. */
+function reportLater(error: unknown): void {
+  queueMicrotask(() => {
+    throw error;
+  });
+}
+
+/**
+ * Tells everyone who is listening NOW. The round runs over a copy, so a listener that
+ * subscribes during it hears the next round; one that was removed by an earlier listener in
+ * this round is skipped; and one that throws cannot starve the rest.
+ */
+function notify(): void {
+  for (const entry of [...entries]) {
+    if (!entries.has(entry)) continue;
+    try {
+      entry.listener();
+    } catch (error) {
+      reportLater(error);
+    }
+  }
 }
 
 /**

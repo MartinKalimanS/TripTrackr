@@ -321,6 +321,70 @@ describe('notification and snapshot identity', () => {
     second();
   });
 
+  test('a listener removed by an earlier one in the same round is not called', async () => {
+    const removed = jest.fn();
+    const after = jest.fn();
+    const remover: { removeSecond?: () => void } = {};
+    const first = subscribeToAppearance(() => remover.removeSecond?.());
+    remover.removeSecond = subscribeToAppearance(removed);
+    const third = subscribeToAppearance(after);
+
+    await settle();
+
+    expect(removed).not.toHaveBeenCalled();
+    expect(after).toHaveBeenCalledTimes(1);
+    first();
+    third();
+  });
+
+  test('a listener subscribed during a round hears the next one, not this one', async () => {
+    const newcomer = jest.fn();
+    let joined = false;
+    const first = subscribeToAppearance(() => {
+      if (joined) return;
+      joined = true;
+      subscribeToAppearance(newcomer);
+    });
+
+    await settle();
+    expect(newcomer).not.toHaveBeenCalled();
+    // The newcomer joined the running session: no second one was started for it.
+    expect(registrations).toHaveLength(3);
+
+    flags.motion = true;
+    await fireEvents();
+
+    expect(newcomer).toHaveBeenCalledTimes(1);
+    first();
+  });
+
+  test('a listener that throws does not starve the rest, and its error is reported, not swallowed', async () => {
+    const reported: (() => void)[] = [];
+    jest.spyOn(globalThis, 'queueMicrotask').mockImplementation((task) => {
+      reported.push(task);
+    });
+    const failure = new Error('a consumer failed while rendering');
+    const before = jest.fn();
+    const after = jest.fn();
+    const unsubscribers = [
+      subscribeToAppearance(before),
+      subscribeToAppearance(() => {
+        throw failure;
+      }),
+      subscribeToAppearance(after),
+    ];
+
+    await settle();
+
+    expect(before).toHaveBeenCalledTimes(1);
+    expect(after).toHaveBeenCalledTimes(1);
+    // The new snapshot is in place for everyone, and the error surfaces on its own tick.
+    expect(getAppearanceSnapshot().ready).toBe(true);
+    expect(reported).toHaveLength(1);
+    expect(() => reported[0]()).toThrow(failure);
+    unsubscribers.forEach((unsubscribe) => unsubscribe());
+  });
+
   test('a late listener reads the CURRENT value straight away, with no second read', async () => {
     flags.motion = true;
     const first = subscribeToAppearance(() => undefined);
