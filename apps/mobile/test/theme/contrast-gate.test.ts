@@ -10,6 +10,10 @@
  *      assertion. Decorative tokens are exempt from WCAG 1.4.11 because they
  *      identify nothing — that is a documented decision (research R-002), not
  *      an assertion someone quietly commented out.
+ *
+ * Feature 004 (T411): `Colors` is now re-pointed at the Atlas palette, so this gate keeps
+ * measuring the LEGACY keys that unmigrated screens read, until phase 7 deletes them. The
+ * gate for the palette itself, in four themes, is `palette-gate.test.ts`.
  */
 import { Colors } from '@/constants/theme';
 import { ContrastFloor, contrastRatio } from '@/theme/contrast';
