@@ -7,6 +7,28 @@ Expo's APIs have changed. Before writing code against any Expo API, read the exa
 under <https://docs.expo.dev/versions/v57.0.0/> (append `.md` for Markdown). This is a
 constitutional requirement, not a suggestion (`.specify/memory/constitution.md`).
 
+## One command on an Android phone (Windows)
+
+```powershell
+.\run-on-phone.cmd              # from the repository root; options pass through
+```
+
+`scripts/run-on-phone.ps1` does the steps below for you, and is safe to re-run: it starts Docker
+and the dev stack, points `S3_PUBLIC_ENDPOINT` (root `.env`) and `EXPO_PUBLIC_API_URL`
+(`apps/mobile/.env.local`) at the right address, offers to import the GeoNames city catalogue the
+first time, builds and installs the development client when it is missing or `package.json` /
+`app.config.ts` changed, starts Metro in its own window and opens the app.
+
+| Connection (`-Connection`) | How the phone reaches the PC                              | Use it when                                                                                            |
+| -------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `Usb`                      | `adb reverse` through the cable; the app uses `localhost` | The Windows network is **Public** (campus, cafe), or you want no firewall change. `Auto` picks it then |
+| `Lan`                      | The PC's Wi-Fi address, plus a one-time firewall rule     | You want airplane mode to genuinely cut the API (offline-sync tests); needs a Private network          |
+
+`adb reverse` keeps working in airplane mode, so with `Usb` go offline with
+`adb reverse --remove-all` and come back by running the script again. Other switches: `-Check`
+(report only), `-BackendOnly`, `-SkipBackend`, `-RebuildApp`, `-ImportGeo`, `-NoApiBuild`,
+`-Device <serial>`, `-HostIp <address>`, `-Stop`. iOS is not supported from Windows.
+
 ## Dev-client workflow
 
 The app needs native modules (SQLCipher, Mapbox, Sentry), so it does not run in Expo Go. Build a
