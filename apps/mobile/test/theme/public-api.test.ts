@@ -6,10 +6,14 @@
  * or removal is a breaking change and should fail here rather than in a screen.
  */
 import {
+  AtlasRadius,
+  AtlasSpacing,
   ContrastFloor,
+  Motion,
   PaletteKeys,
   PaletteNames,
   Palettes,
+  TextRoles,
   blend,
   contrastRatio,
   meetsFloor,
@@ -56,6 +60,15 @@ describe('token layer public API — contract C7', () => {
     expect(PaletteNames).toHaveLength(4);
     expect(PaletteKeys.length).toBeGreaterThan(0);
     expect(Palettes.light.canvas).toMatch(/^#[0-9A-F]{6}$/);
+  });
+
+  test('exports the Atlas type, shape and motion tables as data (004 C4-6)', () => {
+    expect(Object.keys(TextRoles)).toEqual(
+      expect.arrayContaining(['largeTitle', 'body', 'numeric']),
+    );
+    expect(AtlasRadius.pill).toBe(999);
+    expect(AtlasSpacing.twelve).toBe(12);
+    expect(Motion.transitionMs).toBe(200);
   });
 
   test('exports the platform query facade', () => {

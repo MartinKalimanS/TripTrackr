@@ -127,9 +127,12 @@ After this phase every unconverted screen already renders in Atlas colours with 
       `src/global.css`, the `theme:build` script (`node scripts/build-theme-css.mjs`) and the
       `npm install`, Metro, `tsconfig.json`, `jest.config.js`, `jest.setup.ts`, `app.config.ts`, the root
       layout provider and the `Uniwind.setTheme(themeName)` effect.
-- [ ] T413 [P] `src/theme/typography.ts` and `src/theme/motion.ts` with their tests (type roles, radii,
+- [x] T413 [P] `src/theme/typography.ts` and `src/theme/motion.ts` with their tests (type roles, radii,
       timings, tabular numerals), and the display-face variables in `global.css` (FR-001, FR-004, FR-022;
       D4-07)
+      _Done:_ `typography.ts`, `motion.ts`, `shape.ts` (`AtlasRadius`, `AtlasSpacing`, `cornerStyle`) and
+      `freeze.ts`, exported from `src/theme/index.ts`. _Still open, with T412's `global.css`:_ the
+      display-face variables.
 
 ### Adapters (each: failing test first, in `apps/mobile/src/components/ui/*.test.tsx`)
 

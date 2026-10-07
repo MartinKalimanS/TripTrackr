@@ -46,3 +46,34 @@ export {
   platformQueries,
   type AccessibilityQueries,
 } from './accessibility';
+
+export {
+  TextRoleNames,
+  TextRoles,
+  numericStyle,
+  textStyle,
+  type FontFamilyRole,
+  type FontWeight,
+  type TextRole,
+  type TextSize,
+  type TextStyleToken,
+} from './typography';
+
+export {
+  AtlasRadius,
+  AtlasSpacing,
+  cornerStyle,
+  type AtlasRadiusName,
+  type AtlasSpacingName,
+} from './shape';
+
+export {
+  Motion,
+  MotionProperties,
+  isMotionProperty,
+  motionDuration,
+  type MotionName,
+  type MotionProperty,
+} from './motion';
+
+export { deepFreeze, type DeepReadonly } from './freeze';
