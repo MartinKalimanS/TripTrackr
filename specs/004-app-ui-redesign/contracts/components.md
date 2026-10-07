@@ -201,6 +201,28 @@ built API goes beyond it.
   `statusPlanning`, `statusActive`, `statusPast` and `pending` tones for them. `SyncBadge` keeps its ids, announcements and
   visible words (Maestro looks for "Not yet synced"), stays dashed, and hugs its content (`self-start`).
 
+**As built (T427 trips and profile, T430)**
+
+- `useStackHeaderOptions(title)` (`components/ui/stack-header.ts`) is the themed option set of a native stack header,
+  an adapter because `useThemeColor` and `useCSSVariable` may not be imported under `src/app`; `stackHeaderOptions` is
+  its pure half, asserted per platform. iOS: `headerLargeTitleEnabled` (`headerLargeTitle` is deprecated in router
+  57.0.22), no shadow under either bar (`headerShadowVisible`, `headerLargeTitleShadowVisible` false), accent
+  `headerTintColor`, foreground title ink, the canvas as `contentStyle`, and NO `headerStyle` background (a background
+  on a large-title header hides the title on iOS 26, per the router's own note). Android: a standard header painted with
+  the canvas, no large title. Display face: `--font-display` (weight `'600'`) for the title, `--font-display-bold`
+  (`'700'`) for the large title, quotes stripped; left to the platform face when a variable is unreadable.
+- `ListScreen` gained `listTestID?`, forwarded to the `FlashList` (which hands it to its scroll view): the id of the
+  list itself, apart from the screen root `testID`.
+- `TripCard` is a pressable `Card` with `cue={false}` and its own `PressCue` (`<id>-cue`) beside the text, because the
+  cover runs to the card's edges (`-mx-4 -mt-4` over the kit Surface's 16 dp padding, clipped by its corner) and the
+  default chevron would sit beside the picture. Ids: `trip-card-<id>`, `-cover`, `-photo`, `-initial`, `-cue`,
+  `-status-row`, `-meta-row`. The title is announced as text, not a header (the card is one element). The cover falls back
+  to the typographic look for a thumbnail address that errored, and tries a new address afresh.
+- "Plan a trip" (`components/trip/plan-trip-action.tsx`): `PlanTripHeaderAction` (text `Button`, plus icon, minimum height
+  the platform floor and not scaled, in `headerRight`) on iOS; `PlanTripFab` (primary `lg` `Button`, `absolute`, 16 dp above
+  the screen's bottom and `16 dp + the larger side inset` from its end) on Android, with `PlanTripFabClearance` as the
+  list's footer. Both: `testID="trips-plan-trip"`, name "Plan a trip".
+
 ---
 
 ## C4-9. Tab bar and headers

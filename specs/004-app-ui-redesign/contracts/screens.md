@@ -58,5 +58,20 @@ Every screen, including ones added later:
 URLs); `trip/[id]` and `modal` turn headers on; `modal/add-trip` and `modal/add-expense` are `formSheet`;
 `Stack.Protected` guards in the root layout are untouched.
 
+**Notes from building Trips and the Trip card (T427 trips and profile, T430)**
+
+- The large title option is `headerLargeTitleEnabled`; the iOS trips header has no background of its own (iOS 26 hides a
+  large title over one).
+- `trips-list` is on the list itself (the `FlashList` scroller) and only in the populated state, as before;
+  `trips-screen` is the screen root in every state. The empty state's own action is `trips-empty-plan-trip`
+  ("Plan a trip", secondary), so `trips-plan-trip` stays unique: the header action on iOS, the floating button on
+  Android, present in every state.
+- The trips error state keeps its title and detail and offers no retry: `useTrips` is a live query with nothing to
+  re-run. This is a recorded gap against C4-10 rule 2.
+- The trip card draws its own chevron (`cue={false}`) so a cover that runs to the card's edge does not leave it
+  hanging off the picture. The date range reads "12 Mar – 20 Mar 2026" (the year said once when both ends share it).
+- The tab screen pads no bottom safe area (the tab bar below it clears the home indicator): the Android button sits
+  16 dp above the screen's edge and the list ends with a footer as tall as the button plus its margins.
+
 **Back**: in the Maestro flows `tapOn: 'Back'` must keep working on the trip, sub-screens and sign-in
 forms on both platforms (research, "Items to verify", item 7).
