@@ -438,16 +438,31 @@ jest.mock('heroui-native', () => require('./test/mocks/heroui-native'));
 
 // Uniwind reads CSS variables the Metro transform registered; with no transform
 // there is nothing to read. The real module is kept (`Uniwind.setTheme`, `useUniwind`,
-// `withUniwind` all work), and `useCSSVariable` answers every name with a fixed
-// placeholder so a component that needs a colour value gets a string, never
-// `undefined`. A test that cares about a value mocks the hook itself.
+// `withUniwind` all work). `useCSSVariable` answers a fixed placeholder colour for the
+// names `src/theme/generated/theme.css` declares, read once when the module is first
+// required, and `undefined` for every other name, as the real hook does for a variable no
+// stylesheet defines: a typo, or a variable dropped from the theme, shows up as a failing
+// test instead of a colour that is missing only on a device. A test that cares about a
+// value mocks the hook itself (test/theme/css-variable-stand-in.test.ts pins this).
 jest.mock('uniwind', () => {
   const actual = jest.requireActual('uniwind');
+  const { readFileSync } = require('fs') as typeof import('fs');
+  const { resolve } = require('path') as typeof import('path');
+  const generated = readFileSync(
+    resolve(__dirname, 'src', 'theme', 'generated', 'theme.css'),
+    'utf8',
+  );
+  const declared = new Set(
+    [...generated.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/(--[a-z0-9-]+)\s*:/g)].map(
+      (match) => match[1],
+    ),
+  );
   const placeholder = '#808080';
+  const answer = (name: string) => (declared.has(name) ? placeholder : undefined);
   return {
     ...actual,
     useCSSVariable: (name: string | string[]) =>
-      Array.isArray(name) ? name.map(() => placeholder) : placeholder,
+      Array.isArray(name) ? name.map(answer) : answer(name),
   };
 });
 
