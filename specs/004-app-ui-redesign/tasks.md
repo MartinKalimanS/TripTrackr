@@ -57,19 +57,21 @@ config (`jest.config.js`, `eslint.config.js`, `metro.config.js`, `tsconfig.json`
 `spike/heroui-uniwind`; carry only findings, pins and config diffs worth keeping into T412. The ten checks
 are listed in [research.md](./research.md#items-to-verify-empirically).
 
-- [ ] T401 Install the pinned packages of research D4-14 with exact pins in one root `npm install` (via
+- [x] T401 Install the pinned packages of research D4-14 with exact pins in one root `npm install` (via
       `npx expo install` for `react-native-svg`, `expo-blur`, `expo-haptics`); verify each version's publish
       date is at least 7 days old, review install scripts, run `npm audit`; confirm `heroui-native` loads
       without `@gorhom/bottom-sheet`; run `npm ci` on Windows and note the CI expectation (SC-012); rebuild
-      the Android and iOS dev clients (D4-14)
-- [ ] T402 Metro: wrap `apps/mobile/metro.config.js` so `withUniwindConfig` is the **outermost** wrapper
+      the Android and iOS dev clients (D4-14). _Done except rebuilding the dev clients, which is pending on a
+      device: the install is commit e580c87, `npm ci --dry-run` passes on Windows, and `heroui-native`
+      bundles, type-checks and renders without `@gorhom/bottom-sheet` (research items 8 and 10)._
+- [x] T402 Metro: wrap `apps/mobile/metro.config.js` so `withUniwindConfig` is the **outermost** wrapper
       over `getSentryExpoConfig`, the `.sql` source extension and the test-file block list
       (`cssEntryFile: './src/global.css'`, `dtsFile: './src/uniwind-types.d.ts'`, `extraThemes`); add a
       minimal `src/global.css`; confirm iOS and Android bundles build and the Sentry Debug ID is still
       embedded (D4-02)
-- [ ] T403 React Compiler: with `experiments.reactCompiler` on, render a throwaway screen using Button,
+- [x] T403 React Compiler: with `experiments.reactCompiler` on, render a throwaway screen using Button,
       Field, Card, ListGroup, Chip; record any file that needs `"use no memo"` (D4-02)
-- [ ] T404 Jest: extend `transformIgnorePatterns`, add reanimated and worklets mocks, a `uniwind`
+- [x] T404 Jest: extend `transformIgnorePatterns`, add reanimated and worklets mocks, a `uniwind`
       `useCSSVariable` stub, `.css` handling and one shared `heroui-native` stand-in in `jest.config.js` and
       `jest.setup.ts`; failing test first for one real `Button` and `Field` render; the whole existing suite
       stays green (D4-13)
@@ -77,21 +79,25 @@ are listed in [research.md](./research.md#items-to-verify-empirically).
       the native node on Button, Card, ListGroup item, Input and Chip; touch targets of sizes sm, md and lg
       measure at least 44 dp (iOS) and 48 dp (Android); busy and disabled are announced; check whether
       rounded views honour `borderCurve: 'continuous'`; compare one measured screenshot of a soft chip
-      against `blend()` (0.1 tolerance) (FR-024, FR-026, FR-030)
+      against `blend()` (0.1 tolerance) (FR-024, FR-026, FR-030). _(desk part done / device part pending:
+      research items 4 and 9)_
 - [ ] T406 Themes: register `light-contrast` and `dark-contrast`; call `Uniwind.setTheme` from a throwaway
       effect fed by `useAppearance()`; switch system dark mode with the app open; confirm no first-frame
-      flash beyond the splash (FR-031, FR-032; D4-05)
+      flash beyond the splash (FR-031, FR-032; D4-05). _(desk part done / device part pending: research
+      item 5)_
 - [ ] T407 Reduced motion and text: provider `animation: 'disable-all'` removes the kit's animation; at
-      font scale 2.0 Button, Chip and ListGroup do not clip; `textProps` stay uncapped (FR-028, FR-029)
+      font scale 2.0 Button, Chip and ListGroup do not clip; `textProps` stay uncapped (FR-028, FR-029).
+      _(desk part done / device part pending: research item 6)_
 - [ ] T408 Navigation and font: a native header's Back resolves for `tapOn: 'Back'` on iOS and Android (try
       `headerBackButtonDisplayMode: 'generic'`, else a custom `headerLeft` labelled "Back"); `formSheet`
       behaves on both platforms; load the display-face shortlist (Bricolage Grotesque, Young Serif, Geist)
       through the `expo-font` config plugin and apply it to `headerLargeTitleStyle`; **choose the face**
-      and record it in research D4-07 (FR-007, FR-008, FR-009; D4-06, D4-07)
+      and record it in research D4-07 (FR-007, FR-008, FR-009; D4-06, D4-07). _(device part pending; one font
+      fact recorded in research item 7)_
 - [ ] T409 Record the go/no-go and each check's result in [research.md](./research.md) ("Go/no-go
       outcome"). **No-go**: switch to the fallback of `contracts/components.md` C4-6 (same adapters on React
       Native primitives and the same tokens) and continue; tasks below stay valid, only T412 and T413
-      internals change (D4-02)
+      internals change (D4-02). _(desk part done / device part pending: conditional go recorded)_
 
 **Checkpoint**: decision recorded. Phase 2 starts only after T409.
 

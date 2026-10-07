@@ -33,11 +33,17 @@
  * traveller who is told their edit was replaced is told wherever they are in
  * the app. The first-sync state (T136) is the `(tabs)` layout's.
  */
+// The Tailwind/Uniwind entry (feature 004, research D4-02). Imported here, once, and
+// never from the package entry: Uniwind documents that a global.css imported at
+// the entry turns every edit into a full reload instead of a hot reload.
+import '@/global.css';
+
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { HeroUINativeProvider } from 'heroui-native';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -90,6 +96,11 @@ export const unstable_settings = {
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1 } },
 });
+
+// The kit's defaults, deliberately empty for the spike (T402): reduced motion, text
+// props and toast settings arrive with the adapters (D4-05). Only the development
+// console banner is switched off: this codebase ships no debug output.
+const HEROUI_CONFIG = { devInfo: { stylingPrinciples: false } };
 
 function RootLayout() {
   const { theme, tokens } = useAppearance();
@@ -149,40 +160,45 @@ function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      {/* Keyboard frames for every form's KeyboardAwareScrollView (research D-24). */}
-      <KeyboardProvider>
-        {/* testID is the anchor for the Maestro flows (e2e/00-smoke.yaml). */}
-        <View testID="app-root" style={[styles.root, { backgroundColor: tokens.canvas }]}>
-          <QueryClientProvider client={queryClient}>
-            <LocalStoreProvider value={store}>
-              <ThemeProvider value={navigationTheme}>
-                {/* FR-023: the status bar follows the theme with the rest of the UI. */}
-                <StatusBar style={isDark ? 'light' : 'dark'} />
-                {/* FR-040: told wherever the traveller is; nothing while there is nothing to tell. */}
-                {signedIn && store.db ? <ConflictNotices /> : null}
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: tokens.canvas },
-                  }}>
-                  <Stack.Protected guard={status === 'signed-out'}>
-                    <Stack.Screen name="(auth)" />
-                  </Stack.Protected>
+      {/* The kit's provider (feature 004): text and input defaults, toasts, portals. */}
+      <HeroUINativeProvider config={HEROUI_CONFIG}>
+        {/* Keyboard frames for every form's KeyboardAwareScrollView (research D-24). */}
+        <KeyboardProvider>
+          {/* testID is the anchor for the Maestro flows (e2e/00-smoke.yaml). */}
+          <View
+            testID="app-root"
+            style={[styles.root, { backgroundColor: tokens.canvas }]}>
+            <QueryClientProvider client={queryClient}>
+              <LocalStoreProvider value={store}>
+                <ThemeProvider value={navigationTheme}>
+                  {/* FR-023: the status bar follows the theme with the rest of the UI. */}
+                  <StatusBar style={isDark ? 'light' : 'dark'} />
+                  {/* FR-040: told wherever the traveller is; nothing while there is nothing to tell. */}
+                  {signedIn && store.db ? <ConflictNotices /> : null}
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: tokens.canvas },
+                    }}>
+                    <Stack.Protected guard={status === 'signed-out'}>
+                      <Stack.Screen name="(auth)" />
+                    </Stack.Protected>
 
-                  <Stack.Protected guard={status === 'signed-in'}>
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="trip/[id]" />
-                    <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                  </Stack.Protected>
+                    <Stack.Protected guard={status === 'signed-in'}>
+                      <Stack.Screen name="(tabs)" />
+                      <Stack.Screen name="trip/[id]" />
+                      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                    </Stack.Protected>
 
-                  {/* Reachable in either state: a bad link is not a reason to sign in. */}
-                  <Stack.Screen name="+not-found" />
-                </Stack>
-              </ThemeProvider>
-            </LocalStoreProvider>
-          </QueryClientProvider>
-        </View>
-      </KeyboardProvider>
+                    {/* Reachable in either state: a bad link is not a reason to sign in. */}
+                    <Stack.Screen name="+not-found" />
+                  </Stack>
+                </ThemeProvider>
+              </LocalStoreProvider>
+            </QueryClientProvider>
+          </View>
+        </KeyboardProvider>
+      </HeroUINativeProvider>
     </GestureHandlerRootView>
   );
 }
