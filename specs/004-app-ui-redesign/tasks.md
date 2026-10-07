@@ -278,6 +278,34 @@ increased contrast.
       `HeaderBackButton` where T408 needs it, and the headers-and-Back tests in
       `trip-and-modal-screens.test.tsx`. _Device-only:_ the large title collapses as the trips list scrolls on iOS
       (and the title stays visible on iOS 26); both titles draw the display face on both platforms (T408).
+      _Trip part done (the rest of T427 is still open, so this box stays unticked)._ _As built:_
+      `trip/[id]/_layout.tsx` turns the native header on for `index` ONLY
+      (`<Stack.Screen name="index" options={{ headerShown: true, title: '', headerLeft }}/>`); notes,
+      expenses, photos, documents, document-capture, document-view and offline-maps keep
+      `headerShown: false` and their own bars until phase 5. `headerLeft` is `HeaderBackButton` WITHOUT
+      the props React Navigation passes: `canGoBack` is `false` for a trip opened with nothing beneath it,
+      and the button then goes home (`router.replace('/')`) instead of vanishing. `title` is empty (the
+      hero title is the content; two copies would be read twice). The colours come from a new hook,
+      `useHeaderTheme()` (`components/ui/header-theme.ts`, tested beside it): the kit's `background` for
+      `headerStyle` and `contentStyle`, `accent` for `headerTintColor`, `headerShadowVisible: false`. It
+      lives in `components/ui` because only that folder may import the kit; the layout never writes a
+      colour. The layout declares no `unstable_settings` or `initialParams`, so the root's `(tabs)`
+      anchor, the route's params and deep links are untouched. `test/app/trip-layout.test.tsx` renders the
+      layout through a real router and reads the native header config of every trip screen (header only on
+      `index`, empty title, no hairline, token colours, `backButtonInCustomView` false), then presses Back
+      with history beneath the trip (pops to `/`) and without (replaces with `/`). From the source: the
+      first screen of a nested stack still gets `canGoBack` true when the parent stack has a previous
+      screen (`NativeStackView.native.js`: `parentHeaderBack`), so a native back button left on would
+      have been labelled with the previous screen's route name, `(tabs)`; that is why `headerLeft` is
+      used at all.
+      Device checks (T408): `tapOn: 'Back'` resolves on the custom `headerLeft` on iOS and Android
+      (01-account-and-trip, 03-globe and 04-zoom, every `Back` from a trip); the iOS edge swipe still pops
+      the trip with a custom `headerLeft` (desk reading: the swipe belongs to the ROOT stack's
+      `trip/[id]` screen, which has no header and no custom left item, and the nested stack's overview is
+      its first screen, so its own pop gesture has nothing to pop; confirm on a phone); the Android back
+      button and gesture; the header over the hero at the largest text size (the word in the Back control
+      drops above font scale 1.3; the bar is fixed-height); the iOS 26 glass capsule behind a custom left
+      item; no flash of the previous background while the header animates in.
 - [x] T428 [P] [US1] Failing tests in `components/globe/__tests__/stats-overlay.test.tsx` and
       `empty-state.test.tsx`; then restyle `stats-overlay.tsx` and `empty-state.tsx` as opaque hairline cards
       with display-face tabular figures; `GlobeView`, arcs, camera and `GlobeColors` untouched (FR-018,
@@ -336,10 +364,77 @@ increased contrast.
       the photo cover with a real thumbnail, and the typographic fallback when the file is gone; VoiceOver and
       TalkBack read each card as ONE element ("title, status, N stops", hint "Opens the trip"); every card at the
       largest text size (the chip and date rows wrap, the initial grows); light, dark and both contrast themes.
-- [ ] T431 [US2] Failing tests in `test/app/trip-and-modal-screens.test.tsx` for the hero title
+- [x] T431 [US2] Failing tests in `test/app/trip-and-modal-screens.test.tsx` for the hero title
       (`trip-title`), status row, areas row (`trip-links`, `trip-open-<segment>`), timeline and preserved stop
       controls and accessibility actions; then `app/trip/[id]/index.tsx`, `components/trip/stop-row.tsx`,
       `stop-list.tsx`, `status-pill.tsx` (FR-013, FR-024, FR-030, 003 FR-018)
+      _As built:_ every pre-004 id and accessible name is unchanged
+      (`node scripts/testid-baseline.mjs --check test/fixtures/testid-baseline.json` holds, and the
+      unresolved-id count did not move). No Maestro flow needed an edit (see _Maestro_ below).
+      _Screen_ (`app/trip/[id]/index.tsx`): `Screen underHeader`, no bar of its own. Hero: a
+      `largeTitle` `Text` with `trip-title` (a heading, in the trip's exact words); one row
+      `trip-header-row` of `StatusChip` (keeps `status-pill-<status>` and "Status: <label>"), the home
+      currency as muted `callout` text (a bare "EUR", as announced before, not a chip that would need a
+      new name) and `SyncBadge` while `is_dirty`. Areas: `trip-links` is a horizontal `ScrollView` with no
+      scroll bar, bleeding into the screen's 24 dp side padding (negative margin, the same padding given
+      back inside) so a chip is cut by the screen edge; each area is a `Chip` with a leading icon, its old
+      accessibility label, `testID trip-open-<segment>` and the same route. "Stops": a `headline` heading
+      and the secondary `Button` `trip-add-stop` (label "Add stop", `plus` icon); the screen has no
+      primary control. States: the trip loads as `LoadingState` "Loading trip"; a trip not on the device
+      is the same `EmptyState`; a trip the store cannot read is a new `ErrorState` "Couldn't read this
+      trip" (before, that case fell into "not on this device", which was wrong); the stops load as a
+      `ListSkeleton` region named "Loading stops" (a `progressbar`, as the spinner state was), empty and
+      error as before. `trip-write-error` is the `InlineError` (role `alert`), after the list as before,
+      and the write helper is the shared `useWriteAttempt`. The screen is three small hooks and
+      components (`useStopWrites`, `useStopEditor`, `TripDetails`), none over 50 lines.
+      _Timeline_ (`stop-row.tsx`, `stop-list.tsx`): a row is one `accessible` `View` named
+      `Stop N: place, country. dates` with the same four `accessibilityActions` and handlers, containing
+      a rail and a flat `Card` (`pending` gives the dashed edge while the stop is only on the device, and
+      the `SyncBadge` stays the text and icon). The rail is drawn per row: a line above every dot but the
+      first, below every dot but the last (`stop-rail-top-<id>`, `stop-rail-bottom-<id>`), through the
+      12 dp each row carries under its card, so the drag list's `rowGap` is now 0 and the rows stay
+      independent sortable items. The dot is the stop's order (`stop-number-<id>`, `numeric` role: tabular
+      figures, accent fill, `accent-foreground` ink). Place is a `headline`, country a muted `caption`,
+      dates (`stop-dates-<id>`) `numeric` at `callout`. Controls are compact `Button`s in a wrapping row
+      (`stop-actions-<id>`): `stop-move-up-<id>` and `stop-move-down-<id>` icon-only `text` buttons
+      (disabled at the ends, as announced before), `stop-edit-<id>` "Dates" (`text`, calendar icon) and
+      `stop-remove-<id>` "Remove" (`destructive`, trash icon), each with the label and id it had. The
+      visible "Stop N" caption became the number in the dot; the row's name already said it. The drag
+      handle is a grip glyph in a platform-sized target (`stop-grip-<id>`), same name and hint.
+      _Maestro:_ every flow that touches the trip screen was read and none was edited: `tapOn: 'Back'`
+      from a trip (03-globe, 04-zoom, the offline helpers) is served by the header control named
+      "Back" (its visible word too, at the default text size; 01-appearance's two `Back` steps are the
+      sign-in and register screens, not the trip); `trip-add-stop`,
+      `trip-open-<segment>`, `stop-editor-*` and `trip-screen` are the same ids; "Italy, spring 2026" is
+      the hero title's text; "Planning", "Active" and "Past" are the `StatusChip` words; "No stops yet",
+      "Not yet synced" and `Stop N: place.*` (the row's name) are unchanged, and `tapOn: 'Remove Paris'`
+      (offline 14-a) matches the Remove button's name as before. `test/testid-maestro.test.ts` agrees.
+      None of this was run: Maestro needs a device.
+      _Deviations:_ (1) Remove is the `destructive` variant, not `text` as the brief said for the
+      controls: it is the one destructive control of the row and a plain-ink Remove would lose the
+      danger cue it had (FR-025); the on-phone review (T433) decides whether a soft red fill per row is
+      too loud. (2) The pre-004 order of the static text changed (title first, then status, currency,
+      pending marker; Back is now the header's); the order of every CONTROL is unchanged.
+      003 FR-018 asked for Back and the status on one row; 004 FR-007 and FR-008 moved Back into the
+      native header, so the status row is the one under the title and the sideways areas row is as
+      specified. `status-pill.tsx` is no longer used by this screen and stays until the cleanup.
+      _Tests:_ `trip-and-modal-screens` (hero, status row, order, areas, states, Add stop, write error,
+      adapter-only source), `trip-components` (row as a timeline: number, rail, controls, targets,
+      pending, actions), `stop-list.test.tsx` (new), and `test/ui-kit/trip-screen-real-render.test.tsx`
+      (new: the screen over the REAL kit, nothing throws, ids and names land on the nodes).
+      Device checks: (a) Back parity with Maestro on iOS and Android (T427 note); (b) the header over the
+      hero at the largest text size; (c) the areas row at the largest text size: it scrolls, the last chip
+      is reachable, the focus ring is not clipped, the negative-margin bleed lines up on Android;
+      (d) VoiceOver and TalkBack reading order: Back, title (heading), status, currency, pending
+      marker, the five areas, "Stops" (heading), Add stop, then one element per stop with its four custom
+      actions, then the alert; (e) drag-to-reorder still lifts a row from its grip, the others slide, and
+      a drop writes the whole order once (the rows now carry their own 12 dp, which the sortable
+      measures; the library's lift scale and shadow are unchanged); (f) the rail meets the dot and the
+      place line (the 12 dp stub above the dot is tuned for a 16 dp card padding and a 24 dp line);
+      (g) the stop's controls at 360 dp wide at the default size (they may take a second line) and at the
+      largest size; (h) the dashed edge and the soft Remove in all four themes, and the dot's ink on its
+      fill; (i) the kit's ghost `Button` hover blend needs variables Jest cannot register, so
+      `test/ui-kit/trip-screen-real-render.test.tsx` drops that one console message and nothing else.
 - [ ] T432 [US1] Update `apps/mobile/e2e/01-account-and-trip.yaml` and `03-globe.yaml` only where visible
       text changed; run both on iOS and Android; list each edit and its reason here (FR-037)
 - [ ] T433 [US1] **Checkpoint: on-phone review.** Run quickstart section 3 and the testID parity test;

@@ -1,6 +1,6 @@
 /**
- * The trip's ordered stops, draggable — tasks.md T071b (FR-012, Acceptance
- * Scenario 1.6; research D-22).
+ * The trip's ordered stops, as a draggable timeline — tasks.md T071b, 004 T431
+ * (FR-012, FR-013, Acceptance Scenario 1.6; research D-22).
  *
  * A one-column `Sortable.Grid` from `react-native-sortables`: a long press on
  * the grip handle lifts the row, the others slide out of its way, and the
@@ -13,14 +13,18 @@
  * The move-up / move-down buttons and the row's `accessibilityActions` stay:
  * they are the path for a screen reader, a switch, and one-handed use. The
  * gesture is additive.
+ *
+ * The gap between rows is the rows' own (a row carries 12 dp under its card), not the
+ * grid's `rowGap`, so the rail between two dots is one unbroken line. The handle is the
+ * grip glyph in a platform-sized target; its name and hint are what they were.
  */
 import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Sortable from 'react-native-sortables';
 
-import { ThemedText } from '@/components/themed-text';
 import { StopRow } from '@/components/trip/stop-row';
-import { Spacing } from '@/constants/theme';
+import { Icon, type IconName } from '@/components/ui/icon';
+import { MinTouchTarget } from '@/constants/theme';
 import type { StopWithPlace } from '@/db/repositories/stops';
 
 export type StopListProps = {
@@ -35,16 +39,17 @@ export type StopListProps = {
 /** How long a press must hold before the row lifts — short enough to feel direct, long enough not to fire on a scroll. */
 export const DRAG_ACTIVATION_DELAY_MS = 150;
 
-function GripHandle() {
+const GRIP: IconName = { ios: 'line.3.horizontal', android: 'drag_handle' };
+
+function GripHandle({ stopId }: { stopId: string }) {
   return (
     <Sortable.Handle>
       <View
+        testID={`stop-grip-${stopId}`}
         style={styles.grip}
         accessibilityLabel="Drag to reorder"
         accessibilityHint="Hold and move to change this stop's position">
-        <ThemedText type="small" themeColor="textMuted">
-          ⋮⋮
-        </ThemedText>
+        <Icon name={GRIP} size={20} tone="muted" testID={`stop-grip-${stopId}-icon`} />
       </View>
     </Sortable.Handle>
   );
@@ -66,7 +71,7 @@ export function StopList({ stops, onMove, onReorder, onEdit, onRemove }: StopLis
         onMoveDown={() => onMove(item.id, 'down')}
         onEdit={() => onEdit(item)}
         onRemove={() => onRemove(item)}
-        handle={stops.length > 1 ? <GripHandle /> : undefined}
+        handle={stops.length > 1 ? <GripHandle stopId={item.id} /> : undefined}
       />
     ),
     [last, onEdit, onMove, onRemove, stops.length],
@@ -79,7 +84,7 @@ export function StopList({ stops, onMove, onReorder, onEdit, onRemove }: StopLis
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         columns={1}
-        rowGap={Spacing.three}
+        rowGap={0}
         customHandle
         dragActivationDelay={DRAG_ACTIVATION_DELAY_MS}
         onDragEnd={({ data }) => onReorder(data.map((stop) => stop.id))}
@@ -90,8 +95,8 @@ export function StopList({ stops, onMove, onReorder, onEdit, onRemove }: StopLis
 
 const styles = StyleSheet.create({
   grip: {
-    minWidth: 44,
-    minHeight: 32,
+    minWidth: MinTouchTarget,
+    minHeight: MinTouchTarget,
     alignItems: 'center',
     justifyContent: 'center',
   },
