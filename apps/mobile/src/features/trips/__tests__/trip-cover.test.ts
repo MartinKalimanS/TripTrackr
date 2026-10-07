@@ -7,6 +7,11 @@
  * THIS trip with a usable thumbnail; (2) the trip's earliest usable photo;
  * (3) the title's initial tinted by status. Nothing here reads or writes the
  * store, the network or the file system.
+ *
+ * Precondition: candidates arrive in `coverCandidatesQuery` order, so the first
+ * usable one of a trip is its earliest. The rule does not sort; the ordering
+ * itself (taken_at with undated last, created_at, id) is pinned against real
+ * SQLite in test/db/photo-cover-candidates.test.ts.
  */
 import type { CoverCandidate } from '@/db/repositories/photos';
 import { resolveTripCover, typographicCover } from '@/features/trips/trip-cover';
@@ -94,18 +99,47 @@ describe('resolveTripCover — designated photo', () => {
     ).toEqual({ kind: 'typographic', initial: 'I', status: 'planning' });
   });
 
-  test('falls to the earliest photo when the designated one has no usable thumbnail', () => {
-    const unusable = candidate(1, { local_file_uri: 'not/a/photo/path.jpg' });
+  test('falls to the first usable photo when the designated one has no usable thumbnail', () => {
     const earliest = candidate(2, { taken_at: '2026-05-02T08:00:00.000Z' });
+    const unusable = candidate(1, {
+      taken_at: '2026-05-03T08:00:00.000Z',
+      local_file_uri: 'not/a/photo/path.jpg',
+    });
     const later = candidate(3, { taken_at: '2026-05-09T08:00:00.000Z' });
 
     const cover = resolveTripCover(
       trip({ cover_photo_id: unusable.id }),
-      [later, unusable, earliest],
+      [earliest, unusable, later],
       'active',
     );
 
     expect(cover).toMatchObject({ kind: 'photo', photoId: earliest.id });
+  });
+
+  test('falls through when the designated photo is the first candidate and is unusable', () => {
+    const unusable = candidate(1, { local_file_uri: null });
+    const next = candidate(2, { taken_at: '2026-05-09T08:00:00.000Z' });
+
+    expect(
+      resolveTripCover(trip({ cover_photo_id: unusable.id }), [unusable, next], 'past'),
+    ).toMatchObject({ photoId: next.id });
+  });
+
+  test('uses an undated designated photo even when dated photos come before it', () => {
+    const dated = candidate(1, { taken_at: '2026-05-01T08:00:00.000Z' });
+    const undatedDesignated = candidate(2, { taken_at: null });
+
+    const cover = resolveTripCover(
+      trip({ cover_photo_id: undatedDesignated.id }),
+      [dated, undatedDesignated],
+      'past',
+    );
+
+    expect(cover).toEqual({
+      kind: 'photo',
+      photoId: undatedDesignated.id,
+      thumbnailUri: thumbnailOf(undatedDesignated),
+    });
   });
 
   test('falls to the earliest photo when the designated id names no candidate (deleted or unknown)', () => {
@@ -117,83 +151,63 @@ describe('resolveTripCover — designated photo', () => {
   });
 });
 
-describe('resolveTripCover — earliest photo', () => {
-  test('is the earliest taken_at, whatever order the rows arrive in', () => {
-    const a = candidate(1, { taken_at: '2026-05-09T08:00:00.000Z' });
-    const b = candidate(2, { taken_at: '2026-05-02T08:00:00.000Z' });
-    const c = candidate(3, { taken_at: '2026-05-05T08:00:00.000Z' });
+// The earliest-photo rule does not sort: `coverCandidatesQuery` already returns
+// each trip's photos earliest-taken first (dated before undated, then earliest
+// added, then id — pinned by test/db/photo-cover-candidates.test.ts), so the
+// first usable candidate IS the earliest. These inputs are in that order.
+describe('resolveTripCover — first usable photo in query order', () => {
+  test('is the first candidate of the trip', () => {
+    const earliest = candidate(1, { taken_at: '2026-05-02T08:00:00.000Z' });
+    const middle = candidate(2, { taken_at: '2026-05-05T08:00:00.000Z' });
+    const latest = candidate(3, { taken_at: '2026-05-09T08:00:00.000Z' });
 
-    for (const rows of [
-      [a, b, c],
-      [c, b, a],
-      [b, a, c],
-    ]) {
-      expect(resolveTripCover(trip(), rows, 'past')).toMatchObject({ photoId: b.id });
-    }
-  });
-
-  test('a photo with no taken_at comes last, however early it was added', () => {
-    const undated = candidate(1, { created_at: '2026-01-01T00:00:00.000Z' });
-    const dated = candidate(2, {
-      taken_at: '2030-01-01T00:00:00.000Z',
-      created_at: '2026-09-01T00:00:00.000Z',
-    });
-
-    expect(resolveTripCover(trip(), [undated, dated], 'past')).toMatchObject({
-      photoId: dated.id,
+    expect(resolveTripCover(trip(), [earliest, middle, latest], 'past')).toEqual({
+      kind: 'photo',
+      photoId: earliest.id,
+      thumbnailUri: thumbnailOf(earliest),
     });
   });
 
-  test('when only undated photos exist, the earliest created_at wins', () => {
-    const first = candidate(1, { created_at: '2026-06-01T10:00:00.000Z' });
-    const second = candidate(2, { created_at: '2026-06-01T10:00:01.000Z' });
+  test('trusts the order it is handed instead of sorting again (precondition: query order)', () => {
+    const first = candidate(1, { taken_at: '2026-05-09T08:00:00.000Z' });
+    const second = candidate(2, { taken_at: '2026-05-02T08:00:00.000Z' });
 
-    expect(resolveTripCover(trip(), [second, first], 'past')).toMatchObject({
+    expect(resolveTripCover(trip(), [first, second], 'past')).toMatchObject({
       photoId: first.id,
     });
   });
 
-  test('equal taken_at falls back to created_at, then to id', () => {
-    const takenAt = '2026-05-02T08:00:00.000Z';
-    const addedEarlier = candidate(5, {
-      taken_at: takenAt,
-      created_at: '2026-06-01T10:00:00.000Z',
-    });
-    const addedLater = candidate(1, {
-      taken_at: takenAt,
-      created_at: '2026-06-01T10:00:05.000Z',
-    });
-    expect(resolveTripCover(trip(), [addedLater, addedEarlier], 'past')).toMatchObject({
-      photoId: addedEarlier.id,
-    });
+  test('an undated photo is the cover when the query put it first', () => {
+    const undated = candidate(1);
+    const dated = candidate(2, { taken_at: '2026-05-09T08:00:00.000Z' });
 
-    const lowId = candidate(1, { taken_at: takenAt });
-    const highId = candidate(9, { taken_at: takenAt });
-    expect(resolveTripCover(trip(), [highId, lowId], 'past')).toMatchObject({
-      photoId: lowId.id,
+    expect(resolveTripCover(trip(), [undated, dated], 'past')).toMatchObject({
+      photoId: undated.id,
     });
   });
 
-  test('skips photos without a usable thumbnail, even the earliest', () => {
-    const earliestButBroken = candidate(1, {
-      taken_at: '2026-05-01T08:00:00.000Z',
-      local_file_uri: null,
-    });
-    const usable = candidate(2, { taken_at: '2026-05-08T08:00:00.000Z' });
+  test('skips candidates without a usable thumbnail, even the first', () => {
+    const noFile = candidate(1, { local_file_uri: null });
+    const notAPhoto = candidate(2, { local_file_uri: 'elsewhere/x.jpg' });
+    const usable = candidate(3, { taken_at: '2026-05-08T08:00:00.000Z' });
+    const later = candidate(4, { taken_at: '2026-05-09T08:00:00.000Z' });
 
-    expect(resolveTripCover(trip(), [earliestButBroken, usable], 'past')).toMatchObject({
-      photoId: usable.id,
-    });
+    expect(
+      resolveTripCover(trip(), [noFile, notAPhoto, usable, later], 'past'),
+    ).toMatchObject({ photoId: usable.id });
   });
 
   test('looks only at this trip’s photos when handed every trip’s candidates', () => {
-    const foreignEarliest = candidate(1, {
+    const foreign = candidate(1, {
       trip_id: OTHER_TRIP,
       taken_at: '2020-01-01T00:00:00.000Z',
     });
     const own = candidate(2, { taken_at: '2026-05-08T08:00:00.000Z' });
 
-    expect(resolveTripCover(trip(), [foreignEarliest, own], 'past')).toMatchObject({
+    expect(resolveTripCover(trip(), [foreign, own], 'past')).toMatchObject({
+      photoId: own.id,
+    });
+    expect(resolveTripCover(trip(), [own, foreign], 'past')).toMatchObject({
       photoId: own.id,
     });
   });

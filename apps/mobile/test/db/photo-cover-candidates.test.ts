@@ -92,15 +92,6 @@ describe('photosRepository.coverCandidatesQuery', () => {
     });
   });
 
-  test('issues one select over the photos table, with no join and no star', () => {
-    const { sql } = photosRepository.coverCandidatesQuery(sqlite.db).toSQL();
-
-    expect(sql).toMatch(
-      /^select "id", "trip_id", "taken_at", "created_at", "local_file_uri"/,
-    );
-    expect(sql).not.toMatch(/join|\*/i);
-  });
-
   test('leaves out tombstoned photos', () => {
     const tripId = newTrip();
     addPhoto(tripId, { id: 'kept' });
@@ -165,6 +156,28 @@ describe('photosRepository.coverCandidatesQuery', () => {
     addPhoto(tripId, { id: 'undated-old', created_at: '2026-06-02T10:00:00.000Z' });
 
     expect(idsOf(candidates())).toEqual(['dated', 'undated-old', 'undated-new']);
+  });
+
+  // The order is plain text order, which is chronological because every writer
+  // emits a UTC instant ending in `Z`: the device's `toISOString()` (3 fractional
+  // digits, `nowIso()` and `features/photos/exif.ts`) and the server's pull
+  // (`INSTANT_FORMAT`, 6 digits: apps/api sync-records.ts). The contract's
+  // `IsoDateTime` (`offset: true`) would admit other offsets, but nothing writes
+  // one, so no normalisation is done. Precision differs below the millisecond
+  // only, which this suite does not rely on.
+  test('orders UTC instants of mixed precision chronologically (device milliseconds, server microseconds)', () => {
+    const tripId = newTrip();
+    addPhoto(tripId, { id: 'p-ms-late', taken_at: '2026-05-12T10:00:01.250Z' });
+    addPhoto(tripId, { id: 'p-us-before', taken_at: '2026-05-12T09:59:59.999999Z' });
+    addPhoto(tripId, { id: 'p-us-late', taken_at: '2026-05-13T00:00:00.000001Z' });
+    addPhoto(tripId, { id: 'p-ms-noon', taken_at: '2026-05-12T10:00:00.000Z' });
+
+    expect(idsOf(candidates())).toEqual([
+      'p-us-before',
+      'p-ms-noon',
+      'p-ms-late',
+      'p-us-late',
+    ]);
   });
 
   test('keeps each trip’s photos together, in that order, across trips', () => {

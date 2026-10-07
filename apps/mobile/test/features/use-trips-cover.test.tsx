@@ -10,6 +10,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
 
 import { DatabaseProvider } from '@/db/client';
+import { photosRepository, type CoverCandidate } from '@/db/repositories/photos';
 import { photos, tripStops, trips } from '@/db/schema';
 import { useTrips, type TripSummary } from '@/features/trips/use-trips';
 
@@ -46,6 +47,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  jest.restoreAllMocks();
   sqlite.close();
 });
 
@@ -110,10 +112,34 @@ function addPhoto(
 const thumbnail = (tripId: string, photoId: string) =>
   `${DOCUMENTS}/photos/${tripId}/${photoId}.thumb.jpg`;
 
+/**
+ * Covers no longer hold the list's loading flag, so after it settles the photo
+ * query's answer is flushed too (it resolves in the same turn on this driver).
+ * `renders` counts every render of the hook, to tell "re-ran and found nothing
+ * new" from "never re-ran".
+ */
 async function renderTrips() {
-  const view = await renderHook(() => useTrips(TODAY), { wrapper });
+  const renders = { count: 0 };
+  const view = await renderHook(
+    () => {
+      renders.count += 1;
+      return useTrips(TODAY);
+    },
+    { wrapper },
+  );
   await waitFor(() => expect(view.result.current.loading).toBe(false));
-  return view;
+  await act(async () => undefined);
+  return { ...view, renders };
+}
+
+/** A write to `photos` followed by the change event, and the re-render it causes. */
+async function writePhotos(renders: { count: number }, write: () => void): Promise<void> {
+  const before = renders.count;
+  await act(async () => {
+    write();
+    sqlite.emitChange('photos');
+  });
+  await waitFor(() => expect(renders.count).toBeGreaterThan(before));
 }
 
 function summaryOf(data: TripSummary[], id: string): TripSummary {
@@ -346,5 +372,218 @@ describe('useTrips — cover', () => {
       dateRange: { start: '2026-05-10', end: '2026-05-12' },
       cover: { kind: 'typographic', initial: 'I', status: 'active' },
     });
+  });
+});
+
+describe('useTrips — covers are decorative', () => {
+  test('a failing cover query still returns every trip, with typographic covers and no error', async () => {
+    addTrip(ITALY, 'Italy');
+    addTrip(PERU, 'Peru');
+    addStop(uuid(10), ITALY, '2026-05-10', '2026-05-12');
+    sqlite.native.exec('DROP TABLE photos');
+
+    const { result } = await renderTrips();
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toHaveLength(2);
+    expect(summaryOf(result.current.data, ITALY)).toMatchObject({
+      stopCount: 1,
+      status: 'active',
+      cover: { kind: 'typographic', initial: 'I', status: 'active' },
+    });
+    expect(summaryOf(result.current.data, PERU).cover).toEqual({
+      kind: 'typographic',
+      initial: 'P',
+      status: 'planning',
+    });
+  });
+
+  test('a failing trips query is still the list’s error', async () => {
+    sqlite.native.exec('DROP TABLE trips');
+
+    const view = await renderHook(() => useTrips(TODAY), { wrapper });
+
+    await waitFor(() => expect(view.result.current.error).not.toBeNull());
+  });
+
+  test('does not wait for the cover query: typographic covers first, the photo once it arrives', async () => {
+    addTrip(ITALY, 'Italy');
+    const photoId = addPhoto(1, ITALY, { takenAt: '2026-05-10T10:00:00.000Z' });
+    const real = photosRepository.coverCandidatesQuery(sqlite.db);
+    let deliver: (rows: CoverCandidate[]) => void = () => undefined;
+    const pending = new Promise<CoverCandidate[]>((resolve) => {
+      deliver = resolve;
+    });
+    // The query's own shape (`useLiveQuery` reads its table), answering later.
+    const held = Object.assign(Object.create(real) as object, {
+      then: (ok: (rows: CoverCandidate[]) => unknown, fail: (e: unknown) => unknown) =>
+        pending.then(ok, fail),
+    });
+    jest
+      .spyOn(photosRepository, 'coverCandidatesQuery')
+      .mockReturnValue(held as unknown as typeof real);
+
+    const { result } = await renderTrips();
+
+    expect(result.current.loading).toBe(false);
+    expect(summaryOf(result.current.data, ITALY).cover).toEqual({
+      kind: 'typographic',
+      initial: 'I',
+      status: 'planning',
+    });
+
+    await act(async () => deliver(real.all()));
+
+    await waitFor(() =>
+      expect(summaryOf(result.current.data, ITALY).cover).toEqual({
+        kind: 'photo',
+        photoId,
+        thumbnailUri: thumbnail(ITALY, photoId),
+      }),
+    );
+    expect(result.current.loading).toBe(false);
+  });
+});
+
+describe('useTrips — photos that match no live trip', () => {
+  test('are ignored, and never become another trip’s cover', async () => {
+    const GONE = uuid(0);
+    addTrip(GONE, 'Gone');
+    addTrip(ITALY, 'Italy', uuid(100));
+    addPhoto(0, GONE, { takenAt: '2020-01-01T00:00:00.000Z' });
+    sqlite.native.exec(`UPDATE trips SET deleted_at = '${NOW}' WHERE id = '${GONE}'`);
+    const own = addPhoto(2, ITALY, { takenAt: '2026-05-10T10:00:00.000Z' });
+
+    const { result } = await renderTrips();
+
+    expect(result.current.data.map((summary) => summary.trip.id)).toEqual([ITALY]);
+    // `cover_photo_id` names the removed trip's photo: it is not Italy's to use.
+    expect(summaryOf(result.current.data, ITALY).cover).toEqual({
+      kind: 'photo',
+      photoId: own,
+      thumbnailUri: thumbnail(ITALY, own),
+    });
+  });
+});
+
+describe('useTrips — referential stability', () => {
+  test('a photos write that changes no cover input keeps the list, every summary and every cover reference-equal', async () => {
+    addTrip(ITALY, 'Italy');
+    addTrip(PERU, 'Peru');
+    addPhoto(1, ITALY, { takenAt: '2026-05-10T10:00:00.000Z' });
+    const notTheCover = addPhoto(2, ITALY, { takenAt: '2026-05-12T10:00:00.000Z' });
+    const { result, renders } = await renderTrips();
+    const before = result.current.data;
+
+    await writePhotos(renders, () =>
+      photosRepository.markUploaded(sqlite.db, notTheCover, {
+        sentUpdatedAt: NOW,
+        syncedAt: NOW,
+        server: { moderation_state: 'approved', has_thumbnail: true },
+      }),
+    );
+
+    const after = result.current.data;
+    expect(after).toBe(before);
+    expect(summaryOf(after, ITALY).cover).toBe(summaryOf(before, ITALY).cover);
+    expect(summaryOf(after, PERU).cover).toBe(summaryOf(before, PERU).cover);
+  });
+
+  test('a photos write that changes one trip’s cover replaces only that trip’s cover and summary', async () => {
+    addTrip(ITALY, 'Italy');
+    addTrip(PERU, 'Peru');
+    const first = addPhoto(1, ITALY, { takenAt: '2026-05-10T10:00:00.000Z' });
+    const second = addPhoto(2, ITALY, { takenAt: '2026-05-12T10:00:00.000Z' });
+    addPhoto(3, PERU, { takenAt: '2026-08-01T10:00:00.000Z' });
+    const { result, renders } = await renderTrips();
+    const before = result.current.data;
+    expect(summaryOf(before, ITALY).cover).toMatchObject({ photoId: first });
+
+    await writePhotos(renders, () =>
+      sqlite.native.exec(
+        `UPDATE photos SET deleted_at = '${NOW}', local_file_uri = NULL WHERE id = '${first}'`,
+      ),
+    );
+
+    const after = result.current.data;
+    expect(summaryOf(after, ITALY).cover).toMatchObject({ photoId: second });
+    expect(summaryOf(after, ITALY).cover).not.toBe(summaryOf(before, ITALY).cover);
+    expect(summaryOf(after, ITALY)).not.toBe(summaryOf(before, ITALY));
+    expect(summaryOf(after, PERU)).toBe(summaryOf(before, PERU));
+  });
+
+  test('renaming a trip produces a new summary only for that trip', async () => {
+    addTrip(ITALY, 'Italy');
+    addTrip(PERU, 'Peru');
+    addPhoto(1, ITALY, { takenAt: '2026-05-10T10:00:00.000Z' });
+    addStop(uuid(10), ITALY, '2026-05-10', '2026-05-12');
+    const { result } = await renderTrips();
+    const before = result.current.data;
+
+    await act(async () => {
+      sqlite.native.exec(
+        `UPDATE trips SET title = 'Italy 2026', updated_at = '2026-07-01T00:00:00.000Z' WHERE id = '${ITALY}'`,
+      );
+      sqlite.emitChange('trips');
+    });
+    await waitFor(() =>
+      expect(summaryOf(result.current.data, ITALY).trip.title).toBe('Italy 2026'),
+    );
+
+    const after = result.current.data;
+    expect(summaryOf(after, ITALY)).not.toBe(summaryOf(before, ITALY));
+    // Same photo, same stops: the parts that did not change are the same objects.
+    expect(summaryOf(after, ITALY).cover).toBe(summaryOf(before, ITALY).cover);
+    expect(summaryOf(after, ITALY).dateRange).toBe(summaryOf(before, ITALY).dateRange);
+    // The trips query returned fresh row objects for Peru too; the summary is kept.
+    expect(summaryOf(after, PERU)).toBe(summaryOf(before, PERU));
+  });
+
+  test('adding a stop produces a new summary only for that trip', async () => {
+    addTrip(ITALY, 'Italy');
+    addTrip(PERU, 'Peru');
+    addStop(uuid(10), PERU, '2026-08-01', '2026-08-20');
+    const { result } = await renderTrips();
+    const before = result.current.data;
+
+    await act(async () => {
+      addStop(uuid(11), ITALY, '2026-05-10', '2026-05-12');
+      sqlite.emitChange('trip_stops');
+    });
+    await waitFor(() => expect(summaryOf(result.current.data, ITALY).stopCount).toBe(1));
+
+    const after = result.current.data;
+    expect(summaryOf(after, ITALY)).not.toBe(summaryOf(before, ITALY));
+    expect(summaryOf(after, PERU)).toBe(summaryOf(before, PERU));
+    expect(summaryOf(after, PERU).dateRange).toBe(summaryOf(before, PERU).dateRange);
+  });
+
+  test('a typographic cover is replaced when its status changes, and kept when it does not', async () => {
+    addTrip(ITALY, 'Italy');
+    addStop(uuid(10), ITALY, '2026-05-10', '2026-05-12');
+    const { result } = await renderTrips();
+    const before = summaryOf(result.current.data, ITALY).cover;
+    expect(before).toMatchObject({ kind: 'typographic', status: 'active' });
+
+    await act(async () => {
+      addStop(uuid(11), ITALY, '2026-05-11', '2026-05-11', { order: 1 });
+      sqlite.emitChange('trip_stops');
+    });
+    await waitFor(() => expect(summaryOf(result.current.data, ITALY).stopCount).toBe(2));
+    expect(summaryOf(result.current.data, ITALY).cover).toBe(before);
+
+    await act(async () => {
+      sqlite.native.exec(
+        `UPDATE trip_stops SET arrive_date = '2026-05-08', depart_date = '2026-05-09'`,
+      );
+      sqlite.emitChange('trip_stops');
+    });
+    await waitFor(() =>
+      expect(summaryOf(result.current.data, ITALY).cover).toMatchObject({
+        status: 'past',
+      }),
+    );
+    expect(summaryOf(result.current.data, ITALY).cover).not.toBe(before);
   });
 });
