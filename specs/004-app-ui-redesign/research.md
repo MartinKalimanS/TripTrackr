@@ -181,8 +181,8 @@ diffable).
   because 002 FR-016 requires the largest platform size to work.
 
 **Rationale**: it keeps 002's contract C4 intact and maps each inherited requirement onto a real
-switch. The first-frame concern (the accessibility flags are read asynchronously) is covered by the
-splash screen and checked in T406.
+switch. The first-frame concern (the accessibility flags are read asynchronously) is covered by holding
+the splash until `useAppearance().ready` (see "T412 decisions") and checked on a device in T406.
 
 **T412 decisions** (wiring, 2026-10-07; the desk part of T406 and T407 is now in code and tests):
 
@@ -199,11 +199,18 @@ splash screen and checked in T406.
   scheme. The effect still runs on every `themeName` change, so each transition reaches Uniwind and the
   call re-syncs it with the OS scheme; it is idempotent. Pinned against the real module by
   `test/theme/uniwind-adaptive-theme.test.ts`.
-- **A layout effect, running before the first screen.** It runs before paint, so the classes switch in
-  the same commit as the legacy `tokens`, and it runs while the layout still renders nothing under the
-  splash. Uniwind starts adaptive on the device scheme, so `light` and `dark` need no first-frame work;
-  a contrast theme arrives once the asynchronous accessibility read has returned, which the splash
-  covers in practice. That "in practice" is the device check left in T406.
+- **A layout effect, and no render before the accessibility flags are known.** The effect runs before
+  paint, so the classes switch in the same commit as the legacy `tokens`; the source test in
+  `root-layout.test.tsx` pins that it is a `useLayoutEffect` and that it is called above the layout's
+  early return (running before paint is React's contract and cannot be seen under Jest). The flags are
+  read asynchronously, so `useAppearance()` has a `ready` field, false until the FIRST read has
+  settled (answered or failed) and never reset by later events. The root layout renders nothing and
+  keeps the splash up until `ready` as well as the session and, when signed in, the store, so the first
+  frame the traveller sees already has the contrast theme and the motion setting; flags and `ready` change in
+  one render. Uniwind starts adaptive on the device scheme, so `light` and `dark` need no first-frame
+  work. A query that never answers would hold the splash (no timeout was asked for; the accessibility
+  promises are native and settle at once); a rejecting one settles and falls back to the more accessible
+  value. The live check of the first frame is still the T406 device check.
 - **`HeroUINativeProvider` sits below `QueryClientProvider`, `LocalStoreProvider` and the navigation
   `ThemeProvider`.** The kit's `Portal` registers React elements in a module-level store, and
   `PortalHost`, which the provider mounts as a sibling after `children`, renders them where it stands
@@ -272,9 +279,14 @@ The final pick is made on a device in T408; the choice is recorded here when mad
 It is a stand-in until T408 compares the shortlist on a device; nothing else in the design depends on
 it. How it is wired, and what changing the pick touches:
 
-- `app.config.ts` lists the two `.ttf` files in the `expo-font` plugin's `fonts` (paths relative to
-  `apps/mobile`, into the hoisted package). `test/config/app-config.test.ts` fails if one is missing,
-  if a third is listed, or if the plugin cannot resolve them. The change needs a dev-client rebuild.
+- `app.config.ts` lists the two `.ttf` files in the `expo-font` plugin's `fonts`, as package specifiers
+  (`@expo-google-fonts/bricolage-grotesque/600SemiBold/BricolageGrotesque_600SemiBold.ttf` and the
+  `700Bold` one). The v57 page documents paths relative to the project root; the plugin's own resolver
+  (`expo-font/plugin/build/utils.js`) tries an entry as a path there and otherwise resolves it as a module
+  with `createRequire(projectRoot)`, so a specifier does not depend on where npm hoists the package.
+  `test/config/app-config.test.ts` runs the plugin's own `resolveFontPaths` on the entries and fails if
+  one is missing, if a third is listed, or if a plugin version drops the module lookup. The change needs a
+  dev-client rebuild.
 - `src/global.css` declares `--font-display` and `--font-display-bold` in `@theme static` (so a native
   header, which cannot take a className, can read them with `useCSSVariable`), and leaves the kit's
   `--font-normal`, `--font-medium`, `--font-semibold` and `--font-bold` alone: body text stays in the
@@ -292,6 +304,13 @@ it. How it is wired, and what changing the pick touches:
 - Not yet seen on a device (T408): that iOS resolves the PostScript name, that no `fontWeight` is needed
   or harmful beside it (each weight is its own family, as above), and Android's Material Symbols font
   loading beside these two.
+- **How far the CSS is proven.** The `@theme static` block and the `@variant ios` override are checked
+  only by the Android `expo export` (the bundle holds the Android names in the base table and the iOS
+  names in `__uniwind-platform-ios`) and by a test that reads both spellings from the font files. No
+  iOS bundle has been built and nothing renders the face yet, so that Uniwind applies the iOS override
+  on iOS, and that the iOS spelling is the one React Native resolves, must be confirmed on a device. A
+  test that compiles the Tailwind CSS was considered and not built: it would pin Uniwind's compiler
+  output, not the device behaviour that is in doubt.
 
 **Rationale**: system text is what makes an app feel native; a display face supplies identity at the
 two places the traveller looks first. React Native has no dynamic weights for custom fonts, so each
@@ -611,5 +630,8 @@ Device checks pending (each needs the dev clients rebuilt, because `react-native
    Chip and ListGroup.
 6. **Navigation and font** (item 7, T408): native header Back for `tapOn: 'Back'`, `formSheet`, the
    display-face shortlist through the `expo-font` plugin, applied to `headerLargeTitleStyle`; record
-   the face in D4-07.
+   the face in D4-07. Include the font CSS: the `@theme static` + `@variant ios` override of
+   `--font-display` and `--font-display-bold` is proven only by the Android export so far, so confirm on
+   an iPhone that the iOS (PostScript) spelling resolves and that Android's file-name spelling does too
+   (D4-07, "How far the CSS is proven").
 7. **CI** (item 10): the first CI run of this branch.

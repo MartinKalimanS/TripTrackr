@@ -127,6 +127,7 @@ interface AppearanceContext {
   prefersLessTransparency: boolean; // structurally false on Android
   fontScale: number;
   tokens: Palette; // the resolved palette for themeName
+  ready: boolean; // the first read of the accessibility flags has settled (answered or failed)
 }
 ```
 
@@ -148,6 +149,10 @@ The four-theme type is `PaletteName`. `surfaces.ts` still exports an older two-v
 - `elevationProfile` is **removed** (it existed only for neumorphic shadows). Until phase 7 it is forced
   to `flat` so the old primitives render without shadows.
 - `prefersLessMotion` drives the kit provider's `animation` (`'disable-all'`) and `useHaptics()`.
+- `ready` is false until the first read of the accessibility flags has settled, whether it answered or
+  failed, and is never reset by a later change event. Until then `themeName` and `prefersLessMotion`
+  are defaults, so the root layout renders nothing and keeps the splash up until it is true; nothing else
+  reads it.
 
 **Obligation**: consumers treat every field as able to change at any time; reading once at mount is a
 breach.
