@@ -7,7 +7,9 @@
  * exists on this device, the pending marker (words and icon) with a dashed edge. The rail
  * is drawn per row (a line above every dot but the first, below every dot but the last,
  * through the 12 dp of space under each card), so the rows stay independent items for the
- * drag list and the line still reads as one.
+ * drag list and the line still reads as one. While a row is being dragged (`dragging`) the
+ * numbers and the rail are not trusted, because they come from the data order and the
+ * screen is ahead of it: the dot goes neutral (same box, no number) and the rail is hidden.
  *
  * Reordering has two paths. The explicit "Move up" / "Move down" controls
  * work one-handed, with a screen reader, with a switch, and under every
@@ -49,6 +51,13 @@ export type StopRowProps = {
   onRemove: () => void;
   /** A drag affordance rendered beside the place; omitted when there is nothing to drag. */
   handle?: ReactNode;
+  /**
+   * A stop in this list is being dragged. The number and the rail come from the row's
+   * index in the data, which only follows the drop once it is written back, so while a
+   * row is carried they would read 1, 3, 2 and the "last" row's rail would stay on the
+   * item that was last when the drag began: the dot goes neutral and the rail goes.
+   */
+  dragging?: boolean;
 };
 
 const UP: IconName = { ios: 'chevron.up', android: 'keyboard_arrow_up' };
@@ -66,17 +75,31 @@ export function describePlace(
   return stop.city_name ?? `City #${stop.city_id}`;
 }
 
-type RailProps = Pick<StopRowProps, 'position' | 'isFirst' | 'isLast'> & { id: string };
+type RailProps = Pick<StopRowProps, 'position' | 'isFirst' | 'isLast'> & {
+  id: string;
+  dragging: boolean;
+};
+
+/** The dot's box: the same size with or without the number, so lifting a row moves nothing. */
+const DOT = 'min-h-8 min-w-8 items-center justify-center rounded-full px-1';
 
 /** The number on its dot, with the rail running above and below it. */
-function TimelineRail({ id, position, isFirst, isLast }: RailProps) {
+function TimelineRail({ id, position, isFirst, isLast, dragging }: RailProps) {
+  if (dragging) {
+    return (
+      <View className="items-center">
+        <View className="h-3 w-0.5" />
+        <View testID={`stop-dot-${id}`} className={`${DOT} bg-border`} />
+      </View>
+    );
+  }
   return (
     <View className="items-center">
       <View
         testID={`stop-rail-top-${id}`}
         className={isFirst ? 'h-3 w-0.5' : `h-3 ${RAIL_LINE}`}
       />
-      <View className="min-h-8 min-w-8 items-center justify-center rounded-full bg-accent px-1">
+      <View testID={`stop-dot-${id}`} className={`${DOT} bg-accent`}>
         <Text
           testID={`stop-number-${id}`}
           type="numeric"
@@ -224,7 +247,7 @@ function StopHeading({
 }
 
 export function StopRow(props: StopRowProps) {
-  const { stop, position, isFirst, isLast, handle } = props;
+  const { stop, position, isFirst, isLast, handle, dragging = false } = props;
   const place = describePlace(stop);
   const country = stop.country_name ? `, ${stop.country_name}` : '';
   const dates = `${formatIsoDate(stop.arrive_date)} → ${formatIsoDate(stop.depart_date)}`;
@@ -237,7 +260,13 @@ export function StopRow(props: StopRowProps) {
       accessibilityActions={ROW_ACTIONS}
       onAccessibilityAction={rowActionHandler(props)}
       className="flex-row gap-3">
-      <TimelineRail id={stop.id} position={position} isFirst={isFirst} isLast={isLast} />
+      <TimelineRail
+        id={stop.id}
+        position={position}
+        isFirst={isFirst}
+        isLast={isLast}
+        dragging={dragging}
+      />
       <View className={isLast ? 'flex-1' : 'flex-1 pb-3'}>
         <Card variant="flat" pending={stop.is_dirty} testID={`stop-card-${stop.id}`}>
           <View className="gap-2">

@@ -140,25 +140,37 @@ jest.mock('react-native-reanimated', () => {
 // gestures, neither of which runs under Jest. The stand-in renders the items
 // in data order through the real `renderItem`, wraps `Sortable.Handle` in a
 // plain View, and keeps the latest `onDragEnd` so a suite can deliver a drop
-// exactly as the library would: `{ data }` already in the new order (D-22).
+// exactly as the library would: `{ data }` already in the new order (D-22). A drag has
+// three more moments the library reports, in this order: `onDragStart` when a row lifts,
+// `onDragEnd` at the drop (with the data), `onActiveItemDropped` once the drop animation
+// has finished; `__dragStart` and `__activeItemDropped` deliver the two around `__dropAt`.
 jest.mock('react-native-sortables', () => {
   const React = require('react') as typeof import('react');
   const { View } = require('react-native') as typeof import('react-native');
-  const registry: { onDragEnd: ((params: { data: unknown[] }) => void) | null } = {
-    onDragEnd: null,
-  };
+  type MockDragParams = { key: string };
+  const registry: {
+    onDragEnd: ((params: { data: unknown[] }) => void) | null;
+    onDragStart: ((params: MockDragParams) => void) | null;
+    onActiveItemDropped: ((params: MockDragParams) => void) | null;
+  } = { onDragEnd: null, onDragStart: null, onActiveItemDropped: null };
   const Grid = ({
     data,
     renderItem,
     onDragEnd,
+    onDragStart,
+    onActiveItemDropped,
     keyExtractor,
   }: {
     data: unknown[];
     renderItem: (info: { item: unknown; index: number }) => React.ReactNode;
     onDragEnd?: (params: { data: unknown[] }) => void;
+    onDragStart?: (params: MockDragParams) => void;
+    onActiveItemDropped?: (params: MockDragParams) => void;
     keyExtractor?: (item: unknown) => string;
   }) => {
     registry.onDragEnd = onDragEnd ?? null;
+    registry.onDragStart = onDragStart ?? null;
+    registry.onActiveItemDropped = onActiveItemDropped ?? null;
     return React.createElement(
       View,
       { testID: 'sortable-grid' },
@@ -179,6 +191,8 @@ jest.mock('react-native-sortables', () => {
     __esModule: true,
     default: { Grid, Handle, Layer, Flex: Layer },
     __dropAt: (data: unknown[]) => registry.onDragEnd?.({ data }),
+    __dragStart: (key: string) => registry.onDragStart?.({ key }),
+    __activeItemDropped: (key: string) => registry.onActiveItemDropped?.({ key }),
   };
 });
 

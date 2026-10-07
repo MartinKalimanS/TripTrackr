@@ -14,11 +14,19 @@
  * they are the path for a screen reader, a switch, and one-handed use. The
  * gesture is additive.
  *
+ * While a row is carried the order on screen is ahead of the order in `data` (which only
+ * follows the drop once it is written back), so the numbers and the rail, which come from
+ * each row's index, would read 1, 3, 2. The list keeps a `dragging` flag from the library's
+ * `onDragStart` (a row lifts) to `onActiveItemDropped` (the drop animation has finished,
+ * after `onDragEnd` has written the new order), and its rows show neutral dots meanwhile.
+ * Both callbacks are plain JS functions, called on the JS thread (react-native-sortables
+ * 1.10: `DragProvider.ts`, `useDragEndHandler`), so they may set state.
+ *
  * The gap between rows is the rows' own (a row carries 12 dp under its card), not the
  * grid's `rowGap`, so the rail between two dots is one unbroken line. The handle is the
  * grip glyph in a platform-sized target; its name and hint are what they were.
  */
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Sortable from 'react-native-sortables';
 
@@ -59,6 +67,7 @@ const keyExtractor = (stop: StopWithPlace) => stop.id;
 
 export function StopList({ stops, onMove, onReorder, onEdit, onRemove }: StopListProps) {
   const last = stops.length - 1;
+  const [dragging, setDragging] = useState(false);
 
   const renderItem = useCallback(
     ({ item, index }: { item: StopWithPlace; index: number }) => (
@@ -72,9 +81,10 @@ export function StopList({ stops, onMove, onReorder, onEdit, onRemove }: StopLis
         onEdit={() => onEdit(item)}
         onRemove={() => onRemove(item)}
         handle={stops.length > 1 ? <GripHandle stopId={item.id} /> : undefined}
+        dragging={dragging}
       />
     ),
-    [last, onEdit, onMove, onRemove, stops.length],
+    [dragging, last, onEdit, onMove, onRemove, stops.length],
   );
 
   return (
@@ -87,6 +97,8 @@ export function StopList({ stops, onMove, onReorder, onEdit, onRemove }: StopLis
         rowGap={0}
         customHandle
         dragActivationDelay={DRAG_ACTIVATION_DELAY_MS}
+        onDragStart={() => setDragging(true)}
+        onActiveItemDropped={() => setDragging(false)}
         onDragEnd={({ data }) => onReorder(data.map((stop) => stop.id))}
       />
     </View>

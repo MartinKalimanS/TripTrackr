@@ -474,6 +474,24 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(mockActions.moveStop).not.toHaveBeenCalled();
   });
 
+  test('numbers the stops again once the dragged one has landed, and not while it is carried', async () => {
+    mockStops.data = [rome, florence];
+    await render(<TripScreen />);
+    const sortables = jest.requireMock('react-native-sortables') as {
+      __dragStart: (key: string) => void;
+      __dropAt: (data: unknown[]) => void;
+      __activeItemDropped: (key: string) => void;
+    };
+
+    await act(async () => sortables.__dragStart('stop-florence'));
+    expect(screen.queryByTestId('stop-number-stop-rome')).toBeNull();
+    expect(screen.queryByTestId('stop-number-stop-florence')).toBeNull();
+
+    await act(async () => sortables.__dropAt([florence, rome]));
+    await act(async () => sortables.__activeItemDropped('stop-florence'));
+    expect(screen.getByTestId('stop-number-stop-rome')).toHaveTextContent('1');
+  });
+
   test('a single stop shows no drag handle — there is nothing to reorder', async () => {
     mockStops.data = [rome];
     await render(<TripScreen />);
