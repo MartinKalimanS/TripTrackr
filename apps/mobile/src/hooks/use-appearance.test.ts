@@ -10,6 +10,7 @@ import { AccessibilityInfo, Platform } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 
+import { __resetAppearanceStoreForTests } from './appearance-store';
 import { useAppearance } from './use-appearance';
 
 // The contrast reader is the one that decides the theme, so a test can make it fail. It wraps
@@ -47,6 +48,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // The store is shared by the whole module registry: a test must not inherit the last one's.
+  __resetAppearanceStoreForTests();
   jest.restoreAllMocks();
   delete (AccessibilityInfo as { isDarkerSystemColorsEnabled?: unknown })
     .isDarkerSystemColorsEnabled;
@@ -234,13 +237,33 @@ describe('useAppearance ready — the first accessibility read has settled (004 
     expect(result.current.prefersMoreContrast).toBe(true);
   });
 
-  test('becomes true when the whole read rejects, keeping the flags it had', async () => {
+  test('becomes true when the whole first read rejects, on the more accessible flags (C4)', async () => {
     readPrefersMoreContrast.mockRejectedValue(new Error('unexpected'));
 
     const { result } = await renderHook(() => useAppearance());
 
     await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.prefersMoreContrast).toBe(true);
+    expect(result.current.themeName).toBe('light-contrast');
+    expect(result.current.prefersLessMotion).toBe(true);
+  });
+
+  test('a later whole-read failure keeps the flags it had', async () => {
+    setIosIncreasedContrast(false);
+    const { result } = await renderHook(() => useAppearance());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    readPrefersMoreContrast.mockRejectedValue(new Error('unexpected'));
+
+    const handlers = (AccessibilityInfo.addEventListener as jest.Mock).mock.calls.map(
+      ([, handler]) => handler as () => void,
+    );
+    await act(async () => {
+      handlers.forEach((handler) => handler());
+    });
+
+    expect(result.current.ready).toBe(true);
     expect(result.current.prefersMoreContrast).toBe(false);
+    expect(result.current.themeName).toBe('light');
   });
 
   test('stays true when a later change event starts another read that has not answered', async () => {

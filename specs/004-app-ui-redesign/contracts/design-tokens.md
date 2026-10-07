@@ -139,7 +139,32 @@ The four-theme type is `PaletteName`. `surfaces.ts` still exports an older two-v
 - Single source: no component subscribes to `AccessibilityInfo` or `useColorScheme` directly.
 - Live: every field re-resolves on its platform change event, and consumers re-render (FR-031).
 - Per-platform mapping stays in `src/theme/accessibility.ts` and nowhere else.
-- Never throws; an unavailable query falls back to the **more** accessible value.
+- Never throws; an unavailable query falls back to the **more** accessible value. So does a first read
+  that fails as a whole: every signal the platform has is taken as on (`accessibleFallbackFlags`, in
+  `src/theme/accessibility.ts`), and `ready` settles. A later whole-read failure keeps the flags the
+  platform last reported.
+- **One shared subscription** (T461): the accessibility flags (`prefersMoreContrast`, `prefersLessMotion`,
+  `prefersLessTransparency`, `ready`) live in ONE module-level store, `src/hooks/appearance-store.ts`, read
+  through `useSyncExternalStore`. However many components call `useAppearance()` (every `Button` does,
+  through `useHaptics`, so a list of 200 trip cards or 1,000 expense rows mounts thousands), the app
+  registers ONE `AccessibilityInfo` listener per event type and runs ONE read per signal. The colour scheme
+  and the window's font scale stay per-component subscriptions (cheap) composed on top of the snapshot.
+- **Ref-counted, lazy and stale-while-revalidate**: the store starts its native subscriptions and a read
+  when the first consumer subscribes and removes every listener when the last one unsubscribes; nothing
+  runs at import. Stopping keeps the snapshot (the flags and `ready`): the next first consumer sees it in
+  its first render, the store re-reads at once and publishes only a result that differs. A same-commit
+  handover (one consumer out, another in), Fast Refresh and StrictMode's mount, clean up and mount again
+  therefore never flash the defaults. A consumer that mounts while the store runs sees the current value in
+  its first render.
+- **Overlapping reads**: only the newest read publishes, so an older answer that arrives late cannot
+  overwrite a newer one; `ready` still settles from whichever read is the newest.
+- **Isolation**: a failing listener cannot starve the others (its error is rethrown on its own tick), and a
+  registration that throws leaves nothing half-started. Tests reset the store with
+  `__resetAppearanceStoreForTests()` (internal), because nothing else ever returns it to the defaults.
+- **Stable snapshot**: the store hands out the same frozen object until a flag changes. A change event
+  whose read re-reports the same flags re-renders no consumer; one that changes a flag updates all
+  consumers in one commit. `useAppearance()` returns the same object between renders while the scheme, the
+  font scale and the snapshot have not changed.
 
 **New in this contract**
 
@@ -150,9 +175,10 @@ The four-theme type is `PaletteName`. `surfaces.ts` still exports an older two-v
   to `flat` so the old primitives render without shadows.
 - `prefersLessMotion` drives the kit provider's `animation` (`'disable-all'`) and `useHaptics()`.
 - `ready` is false until the first read of the accessibility flags has settled, whether it answered or
-  failed, and is never reset by a later change event. Until then `themeName` and `prefersLessMotion`
-  are defaults, so the root layout renders nothing and keeps the splash up until it is true; nothing else
-  reads it.
+  failed, and never goes false again for the life of the JavaScript runtime: not on a later change event,
+  and not when the last consumer unmounts and another mounts. Until then `themeName` and
+  `prefersLessMotion` are defaults, so the root layout renders nothing and keeps the splash up until it is
+  true; nothing else reads it.
 
 **Obligation**: consumers treat every field as able to change at any time; reading once at mount is a
 breach.

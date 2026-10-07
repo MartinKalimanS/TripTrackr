@@ -7,19 +7,22 @@
  *
  * Every field updates live: each signal has a change event, which is what
  * Acceptance Scenario 3.2 (switching appearance with the app open) requires.
+ *
+ * The accessibility flags are NOT read here. They live in one shared store
+ * (`appearance-store.ts`) that registers one listener per event type and runs one read per
+ * signal for the whole app, however many components call this hook (tasks.md T461). What
+ * stays per component is the cheap part: the colour scheme and the window's font scale.
  */
-import { useEffect, useMemo, useState } from 'react';
-import { AccessibilityInfo, Platform, useWindowDimensions } from 'react-native';
+import { useMemo, useSyncExternalStore } from 'react';
+import { useWindowDimensions } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
-  appearanceChangeEvents,
-  platformQueries,
-  readPrefersLessMotion,
-  readPrefersLessTransparency,
-  readPrefersMoreContrast,
-} from '@/theme/accessibility';
+  getAppearanceServerSnapshot,
+  getAppearanceSnapshot,
+  subscribeToAppearance,
+} from '@/hooks/appearance-store';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   resolveElevationProfile,
   type ElevationProfile,
@@ -55,92 +58,35 @@ export interface AppearanceContext {
   ready: boolean;
 }
 
-interface AccessibilityFlags {
-  prefersMoreContrast: boolean;
-  prefersLessMotion: boolean;
-  prefersLessTransparency: boolean;
-}
-
-/** What is known before the first read has answered. */
-const UNREAD: AccessibilityFlags = {
-  prefersMoreContrast: false,
-  prefersLessMotion: false,
-  prefersLessTransparency: false,
-};
-
 /**
- * Reads the platform's accessibility flags at mount and again on each change event, and
- * says whether the first read has settled (`AppearanceContext.ready`).
+ * The returned object is the same one between renders until the scheme, the font scale or a
+ * shared accessibility flag changes.
  */
-function useAccessibilityRead() {
-  // One state, so `ready` and the flags it vouches for change in the same render.
-  const [read, setRead] = useState<{ flags: AccessibilityFlags; ready: boolean }>({
-    flags: UNREAD,
-    ready: false,
-  });
-
-  useEffect(() => {
-    let active = true;
-
-    const refresh = async () => {
-      const os = Platform.OS;
-      let answered: AccessibilityFlags | null = null;
-      try {
-        const [prefersMoreContrast, prefersLessMotion, prefersLessTransparency] =
-          await Promise.all([
-            readPrefersMoreContrast(os, platformQueries),
-            readPrefersLessMotion(os, platformQueries),
-            readPrefersLessTransparency(os, platformQueries),
-          ]);
-        answered = { prefersMoreContrast, prefersLessMotion, prefersLessTransparency };
-      } catch {
-        // Each reader already falls back to the more accessible value when its query
-        // fails, so this is the read as a whole failing. Keep the flags there are, and
-        // still settle: a read that failed must not hold the splash up for good.
-      }
-      if (active) {
-        setRead((previous) => ({ flags: answered ?? previous.flags, ready: true }));
-      }
-    };
-
-    void refresh();
-
-    // Subscribe so the context updates live rather than only at launch. The
-    // event names differ per platform — see appearanceChangeEvents.
-    const subscriptions = appearanceChangeEvents(Platform.OS).map((event) =>
-      AccessibilityInfo.addEventListener(
-        event as Parameters<typeof AccessibilityInfo.addEventListener>[0],
-        () => void refresh(),
-      ),
-    );
-
-    return () => {
-      active = false;
-      subscriptions.forEach((subscription) => subscription?.remove());
-    };
-  }, []);
-
-  return read;
-}
-
 export function useAppearance(): AppearanceContext {
   const scheme = useColorScheme();
   const theme: ThemeName = scheme === 'dark' ? 'dark' : 'light';
   const { fontScale } = useWindowDimensions();
 
-  const read = useAccessibilityRead();
+  // One snapshot, so `ready` and the flags it vouches for change in the same render.
+  const accessibility = useSyncExternalStore(
+    subscribeToAppearance,
+    getAppearanceSnapshot,
+    getAppearanceServerSnapshot,
+  );
 
   return useMemo(
     () => ({
       theme,
-      themeName: resolvePaletteName(theme, read.flags.prefersMoreContrast),
-      ...read.flags,
+      themeName: resolvePaletteName(theme, accessibility.prefersMoreContrast),
+      prefersMoreContrast: accessibility.prefersMoreContrast,
+      prefersLessMotion: accessibility.prefersLessMotion,
+      prefersLessTransparency: accessibility.prefersLessTransparency,
       fontScale,
       // Forced flat (004 D4-12): no device input reaches it, so none is passed.
       elevationProfile: resolveElevationProfile(),
       tokens: Colors[theme],
-      ready: read.ready,
+      ready: accessibility.ready,
     }),
-    [theme, read, fontScale],
+    [theme, accessibility, fontScale],
   );
 }
