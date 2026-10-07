@@ -97,6 +97,20 @@ describe('palette invariants', () => {
     },
   );
 
+  test.each(BASE_THEMES)(
+    '%s accent IS the globe active-arc colour: the accent means "where you are now"',
+    (name) => {
+      // Atlas (research D4-01): one accent, everywhere. Retune the other pairs, never
+      // this one; a focus ring needs no help from it because it is drawn with an offset.
+      expect(Palettes[name].accent).toBe(GlobeColors[name].active);
+      expect(Palettes[name].statusActive).toBe(GlobeColors[name].active);
+    },
+  );
+
+  test('the dark accent is #7FA8FF', () => {
+    expect(Palettes.dark.accent).toBe('#7FA8FF');
+  });
+
   test('no key holds the same value in light and in dark by accident', () => {
     const shared = PaletteKeys.filter(
       (key) => Palettes.light[key] === Palettes.dark[key],

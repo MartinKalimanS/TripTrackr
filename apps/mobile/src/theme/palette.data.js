@@ -54,9 +54,10 @@ const light = {
   accentInk: '#FEFDFB',
   link: '#2456C7',
   border: '#7E8792',
-  // Near-black: it is the only luminance that clears 3:1 on canvas, surface, field fill
-  // AND the accent fill at once (see palette-gate.test.ts, focus ring).
-  focus: '#03060B',
+  // The ring is the accent (HeroUI's default `--focus: var(--accent)`). It is drawn with a
+  // `FocusRing.offset` gap of the surrounding neutral, so it is gated against canvas,
+  // surface and field fill only (C4-3), never against an accent fill it does not touch.
+  focus: '#2456C7',
   danger: '#B71A18',
   dangerInk: '#FEFDFB',
   // Research D4-01 had #00713E, which is 4.42:1 on its own 15% chip over canvas.
@@ -87,15 +88,13 @@ const dark = {
   ink: '#F4F1EC',
   muted: '#A3ACB8',
   placeholder: '#A3ACB8',
-  // Research D4-01 had #7FA8FF. No focus ring can clear 3:1 on the canvas, the field
-  // fill AND a #7FA8FF fill at once (that needs 9:1 between accent and canvas, and
-  // more because of the field fill); a pale cobalt does. The globe keeps #7FA8FF
-  // through `statusActive`.
-  accent: '#B9CFFF',
+  // The globe's active-arc colour, in every base theme: the accent means "where you are
+  // now" (research D4-01). Never retune it to satisfy another pair.
+  accent: '#7FA8FF',
   accentInk: '#091018',
-  link: '#B9CFFF',
+  link: '#7FA8FF',
   border: '#6B7583',
-  focus: '#6C727E',
+  focus: '#7FA8FF',
   danger: '#F7857D',
   dangerInk: '#091018',
   success: '#65C98C',
@@ -122,13 +121,13 @@ const lightContrast = {
   ink: '#0A111B',
   muted: '#353D48',
   placeholder: '#353D48',
-  // Research D4-01 had #173F99. A focus ring needs the accent at least 9:1 from the
-  // canvas to sit between them; this navy leaves room for a mid-tone ring.
-  accent: '#12307F',
+  // Research D4-01 had #173F99, whose 15% chip over canvas is 6.93:1 (7:1 plus the 0.1
+  // blend tolerance needed); this is the smallest darkening that clears it.
+  accent: '#163D94',
   accentInk: '#FEFEFC',
-  link: '#12307F',
+  link: '#163D94',
   border: '#4A525C',
-  focus: '#7F8591',
+  focus: '#163D94',
   // Research D4-01 had #8F1210, 6.60:1 on its own 15% chip over canvas (7:1 needed).
   danger: '#85110F',
   dangerInk: '#FEFEFC',
@@ -138,7 +137,7 @@ const lightContrast = {
   warningInk: '#FEFEFC',
   statusPlanning: '#7A4800',
   statusPlanningInk: '#5C3700',
-  statusActive: '#12307F',
+  statusActive: '#163D94',
   statusPast: '#3D4550',
   pending: '#4B2E96',
 };
@@ -155,12 +154,11 @@ const darkContrast = {
   ink: '#FBFAF7',
   muted: '#C6CDD6',
   placeholder: '#C6CDD6',
-  // Research D4-01 had #A9C5FF; see the dark accent above.
-  accent: '#D2E1FF',
+  accent: '#A9C5FF',
   accentInk: '#05090E',
-  link: '#D2E1FF',
+  link: '#A9C5FF',
   border: '#A3ACB8',
-  focus: '#6E7480',
+  focus: '#A9C5FF',
   danger: '#FFB1AA',
   dangerInk: '#05090E',
   success: '#8FE3B0',

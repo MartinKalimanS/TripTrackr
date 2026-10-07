@@ -58,7 +58,10 @@ export interface Palette {
   link: string;
   /** 3:1 boundary for fields and outlined controls. */
   border: string;
-  /** Focus ring. */
+  /**
+   * Focus ring colour. Drawn `FocusRing.offset` dp off the control, so it needs 3:1 on
+   * the neutral fills it touches (canvas, surface, field fill), not on an accent fill.
+   */
   focus: string;
   danger: string;
   /** Label on a danger fill. */

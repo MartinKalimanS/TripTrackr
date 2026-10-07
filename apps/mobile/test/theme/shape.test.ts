@@ -10,6 +10,7 @@ import { deepFreeze } from '@/theme/freeze';
 import {
   AtlasRadius,
   AtlasSpacing,
+  FocusRing,
   cornerStyle,
   type AtlasRadiusName,
 } from '@/theme/shape';
@@ -76,6 +77,34 @@ describe('AtlasSpacing — contract C4-6', () => {
 
   test('is deeply frozen', () => {
     expect(Object.isFrozen(AtlasSpacing)).toBe(true);
+  });
+});
+
+describe('FocusRing — contract C4-3', () => {
+  test('is a 2 dp ring drawn 2 dp off the control', () => {
+    expect(FocusRing).toEqual({ width: 2, offset: 2 });
+  });
+
+  test('keeps a gap, so the ring never touches an accent fill', () => {
+    // The gate measures the ring against canvas, surface and field fill only; that is
+    // sound only while the gap of surrounding neutral exists.
+    expect(FocusRing.offset).toBeGreaterThan(0);
+    expect(FocusRing.width).toBeGreaterThan(0);
+  });
+
+  test('the ring is at least as thick as a hairline boundary', () => {
+    expect(FocusRing.width).toBeGreaterThanOrEqual(2);
+  });
+
+  test('is deeply frozen', () => {
+    expect(Object.isFrozen(FocusRing)).toBe(true);
+    const before = FocusRing.offset;
+    try {
+      (FocusRing as { offset: number }).offset = 0;
+    } catch {
+      // Strict mode throws a TypeError; sloppy mode ignores the write. Either is fine.
+    }
+    expect(FocusRing.offset).toBe(before);
   });
 });
 

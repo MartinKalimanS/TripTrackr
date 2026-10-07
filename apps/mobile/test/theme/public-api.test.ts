@@ -9,6 +9,7 @@ import {
   AtlasRadius,
   AtlasSpacing,
   ContrastFloor,
+  FocusRing,
   Motion,
   PaletteKeys,
   PaletteNames,
@@ -68,6 +69,7 @@ describe('token layer public API — contract C7', () => {
     );
     expect(AtlasRadius.pill).toBe(999);
     expect(AtlasSpacing.twelve).toBe(12);
+    expect(FocusRing).toEqual({ width: 2, offset: 2 });
     expect(Motion.transitionMs).toBe(200);
   });
 

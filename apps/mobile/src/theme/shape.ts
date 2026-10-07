@@ -42,6 +42,16 @@ export const AtlasSpacing = deepFreeze({
 export type AtlasSpacingName = keyof typeof AtlasSpacing;
 
 /**
+ * The focus indicator (contract C4-3): a ring `width` dp thick, drawn `offset` dp OUTSIDE
+ * the control with the surrounding neutral showing in the gap, like the UI kit's ring
+ * offset. The ring therefore only ever touches a neutral fill (canvas, surface, field
+ * fill), which is why the contrast gate measures it against those and not against an
+ * accent fill. Removing the offset would turn that exemption into a hole, so the gate
+ * asserts it stays.
+ */
+export const FocusRing = deepFreeze({ width: 2, offset: 2 } as const);
+
+/**
  * A corner as a style: the radius, on the continuous (squircle) curve that matches the
  * platform's own corners. The capsule stays circular: a continuous curve on a pill reads
  * as a lopsided end.

@@ -62,6 +62,7 @@ export {
 export {
   AtlasRadius,
   AtlasSpacing,
+  FocusRing,
   cornerStyle,
   type AtlasRadiusName,
   type AtlasSpacingName,

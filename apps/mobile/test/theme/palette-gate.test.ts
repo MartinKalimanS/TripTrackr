@@ -9,6 +9,12 @@
  *      enumerated exemption allowlist (`gate-exemptions.ts`) fails the suite, so a token
  *      cannot be added unmeasured. The allowlist is a list, never a skipped assertion.
  *
+ * The focus ring is gated on the NEUTRAL fills it touches only (canvas, surface, field
+ * fill). It is drawn with an offset gap of the surrounding neutral between the ring and
+ * the control (`FocusRing.offset`), so it never touches an accent fill; a ring between
+ * a pale canvas and a mid-tone accent cannot clear 3:1 on both (that needs the accent
+ * 9:1 or more from the canvas), which is why the accent is not a ground (C4-3).
+ *
  * Derived fills (soft chips, hover, pressed) are what the kit computes with
  * `color-mix(in oklab, ...)`; this gate composites them in sRGB with `blend`, so those
  * pairs carry the 0.1 tolerance stated in C4-2 on top of their floor.
@@ -21,6 +27,7 @@ import {
   type Palette,
   type PaletteName,
 } from '@/theme/palette';
+import { FocusRing } from '@/theme/shape';
 
 import { DECORATIVE_PALETTE_KEYS } from './gate-exemptions';
 
@@ -218,7 +225,7 @@ function buildPairs(palette: Palette, name: PaletteName): Pair[] {
     plain('filled control', 'accent', surface, ContrastFloor.nonText);
   plain('row cue', 'muted', 'surface', ContrastFloor.nonText);
 
-  for (const ground of ['canvas', 'surface', 'surfaceSecondary', 'accent'] as const)
+  for (const ground of ['canvas', 'surface', 'surfaceSecondary'] as const)
     plain('focus ring', 'focus', ground, ContrastFloor.nonText);
 
   for (const mark of ['statusPlanning', 'statusActive', 'statusPast', 'pending'] as const)
@@ -362,6 +369,29 @@ describe('palette contrast gate — contract C4-3', () => {
     });
   });
 
+  describe('the focus ring is drawn with an offset gap (C4-3)', () => {
+    test('the ring is separated from the control by a gap of at least 2 dp', () => {
+      // The gate does not measure the ring against an accent fill BECAUSE of this gap:
+      // if the offset were removed, the exemption would silently become a hole.
+      expect(FocusRing.offset).toBeGreaterThanOrEqual(2);
+    });
+
+    test.each(PaletteNames)(
+      '%s: the focus ring is gated on neutral fills only',
+      (name) => {
+        const ringPairs = buildPairs(Palettes[name], name).filter(
+          (pair) => pair.cls === 'focus ring',
+        );
+        expect(ringPairs.map((pair) => pair.label).sort()).toEqual([
+          'focus on canvas',
+          'focus on surface',
+          'focus on surfaceSecondary',
+        ]);
+        expect(ringPairs.every((pair) => !pair.keys.includes('accent'))).toBe(true);
+      },
+    );
+  });
+
   describe('the exemptions are confirmed decorative, not quietly failing', () => {
     test.each(PaletteNames)('%s separator identifies nothing (below 3:1)', (name) => {
       const palette = Palettes[name];
@@ -418,6 +448,12 @@ describe('palette contrast gate — contract C4-3', () => {
         'text on derived hover and pressed fills',
       );
       expect(found.length).toBeGreaterThan(0);
+    });
+
+    test('a focus ring too pale to see on the field fill is reported', () => {
+      const broken: Palette = { ...Palettes.light, focus: '#E0DCD2' };
+      const found = failures(buildPairs(broken, 'light'), 'focus ring');
+      expect(found.map((f) => f.pair)).toContain('focus on surfaceSecondary');
     });
 
     test('a 4.5:1 pair is not enough in a contrast theme', () => {

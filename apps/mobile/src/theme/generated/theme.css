@@ -36,7 +36,7 @@
       --segment-foreground: #111b28;
       --border: #7e8792;
       --separator: #e4dfd3;
-      --focus: #03060b;
+      --focus: #2456c7;
       --link: #2456c7;
       --surface-shadow:
         0 1px 2px 0 rgba(17, 27, 40, 0.04), 0 0 1px 0 rgba(17, 27, 40, 0.05);
@@ -65,7 +65,7 @@
       --muted: #a3acb8;
       --default: #1c2530;
       --default-foreground: #f4f1ec;
-      --accent: #b9cfff;
+      --accent: #7fa8ff;
       --accent-foreground: #091018;
       --field-background: #1c2530;
       --field-foreground: #f4f1ec;
@@ -81,8 +81,8 @@
       --segment-foreground: #f4f1ec;
       --border: #6b7583;
       --separator: #222b37;
-      --focus: #6c727e;
-      --link: #b9cfff;
+      --focus: #7fa8ff;
+      --link: #7fa8ff;
       --surface-shadow: 0 0 0 0 transparent inset;
       --overlay-shadow: 0 0 0 0 transparent inset;
       --field-shadow: 0 0 0 0 transparent inset;
@@ -108,7 +108,7 @@
       --muted: #353d48;
       --default: #f2efe8;
       --default-foreground: #0a111b;
-      --accent: #12307f;
+      --accent: #163d94;
       --accent-foreground: #fefefc;
       --field-background: #f2efe8;
       --field-foreground: #0a111b;
@@ -124,14 +124,14 @@
       --segment-foreground: #0a111b;
       --border: #4a525c;
       --separator: #bdb6a8;
-      --focus: #7f8591;
-      --link: #12307f;
+      --focus: #163d94;
+      --link: #163d94;
       --surface-shadow: 0 0 0 0 transparent inset;
       --overlay-shadow: 0 0 0 0 transparent inset;
       --field-shadow: 0 0 0 0 transparent inset;
       --status-planning: #7a4800;
       --status-planning-ink: #5c3700;
-      --status-active: #12307f;
+      --status-active: #163d94;
       --status-past: #3d4550;
       --pending: #4b2e96;
     }
@@ -151,7 +151,7 @@
       --muted: #c6cdd6;
       --default: #151d27;
       --default-foreground: #fbfaf7;
-      --accent: #d2e1ff;
+      --accent: #a9c5ff;
       --accent-foreground: #05090e;
       --field-background: #151d27;
       --field-foreground: #fbfaf7;
@@ -167,8 +167,8 @@
       --segment-foreground: #fbfaf7;
       --border: #a3acb8;
       --separator: #364150;
-      --focus: #6e7480;
-      --link: #d2e1ff;
+      --focus: #a9c5ff;
+      --link: #a9c5ff;
       --surface-shadow: 0 0 0 0 transparent inset;
       --overlay-shadow: 0 0 0 0 transparent inset;
       --field-shadow: 0 0 0 0 transparent inset;
