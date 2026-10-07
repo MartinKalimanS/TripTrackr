@@ -14,9 +14,10 @@
  * movement at all; the two-finger tilt is still theirs.
  */
 import type { Camera, MapState } from '@rnmapbox/maps';
-import { useRef, type ComponentRef } from 'react';
+import { useEffect, useRef, type ComponentRef, type RefObject } from 'react';
 
-import { GlobePitch } from '@/constants/theme';
+import { GlobeCamera, GlobePitch } from '@/constants/theme';
+import type { LngLat } from '@/features/globe/great-circle';
 
 /** rnmapbox declares `CameraRef` but does not export it from the package root. */
 type CameraHandle = ComponentRef<typeof Camera>;
@@ -74,4 +75,33 @@ export function useAutoPitch(enabled: boolean) {
   };
 
   return { cameraRef, onMapIdle };
+}
+
+/**
+ * The globe is mounted before there is anything on it (feature 003), and a
+ * camera's `defaultSettings` are read once, so the first stop that appears
+ * would otherwise land off screen. This moves the camera to it — once, on the
+ * step from "nothing placed" to "something placed" — and never again: later
+ * edits and syncs leave the traveller's own pan and zoom alone. Under reduced
+ * motion the camera jumps instead of flying (FR-004).
+ */
+export function useFlyToFirstPlacement(
+  cameraRef: RefObject<CameraHandle | null>,
+  placed: boolean,
+  centre: LngLat,
+  animated: boolean,
+) {
+  const wasPlaced = useRef(placed);
+
+  useEffect(() => {
+    if (placed && !wasPlaced.current) {
+      cameraRef.current?.setCamera({
+        centerCoordinate: centre,
+        zoomLevel: GlobeCamera.zoomLevel,
+        animationMode: animated ? 'flyTo' : 'moveTo',
+        animationDuration: animated ? GlobeCamera.flyToMs : 0,
+      });
+    }
+    wasPlaced.current = placed;
+  }, [cameraRef, placed, centre, animated]);
 }

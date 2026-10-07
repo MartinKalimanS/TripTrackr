@@ -112,6 +112,24 @@ export function hasPlacedStop(trip: GlobeTrip): boolean {
 }
 
 /**
+ * What floats over a globe with nothing to draw (feature 003 FR-002): invite
+ * the first trip, or the first stop. With exactly one trip waiting for a stop
+ * the invitation names it, so its action can open that trip; with several it
+ * points at the list. `null` as soon as anything is placed.
+ */
+export type GlobeInvitation =
+  { reason: 'no-trips' } | { reason: 'no-stops'; tripId?: string; tripTitle?: string };
+
+export function globeInvitation(trips: readonly GlobeTrip[]): GlobeInvitation | null {
+  if (trips.length === 0) return { reason: 'no-trips' };
+  if (trips.some(hasPlacedStop)) return null;
+  const [only] = trips;
+  return trips.length === 1
+    ? { reason: 'no-stops', tripId: only!.id, tripTitle: only!.title }
+    : { reason: 'no-stops' };
+}
+
+/**
  * Consecutive pairs of stops, both placed. A leg touching an unplaced stop is
  * left out rather than bridged: A → ? → C is not a journey from A to C.
  */

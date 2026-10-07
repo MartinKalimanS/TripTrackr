@@ -176,33 +176,56 @@ describe('<HomeScreen> — the globe (T099, FR-045, FR-051)', () => {
     expect(screen.queryByTestId('globe-view')).toBeNull();
   });
 
-  test('shows a designed error state, never the raw error', async () => {
+  test('shows the globe with a plain-words notice over it, never the raw error (feature 003 FR-005)', async () => {
     mockGlobe.error = new Error('database is locked');
     await render(<HomeScreen />);
+    expect(screen.getByTestId('globe-view')).toBeTruthy();
     expect(screen.getByText('Couldn’t read your trips')).toBeTruthy();
     expect(screen.queryByText('database is locked')).toBeNull();
   });
 
-  test('with no trips, invites the first one instead of a blank sphere (FR-051)', async () => {
+  test('with no trips, the globe is still there and one card invites the first trip (feature 003 FR-001, FR-002)', async () => {
     await render(<HomeScreen />);
+    expect(screen.getByTestId('globe-view')).toBeTruthy();
     expect(screen.getByText('Your globe is waiting for its first trip')).toBeTruthy();
-    expect(screen.queryByTestId('globe-view')).toBeNull();
+    // Nothing to count yet: the statistics wait for the first stop.
+    expect(screen.queryByTestId('globe-stats')).toBeNull();
 
     await fireEvent.press(screen.getByLabelText('Plan a trip'));
     expect(mockPush).toHaveBeenCalledWith('/modal/add-trip');
   });
 
-  test('with trips but nothing to place, sends the traveller to add a stop', async () => {
+  test('hands the empty globe an announcement that does not claim trips it is not showing', async () => {
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('globe-view').props.accessibilityLabel).toBe(
+      'Globe with nothing drawn yet. Your trips are listed in the Trips tab.',
+    );
+  });
+
+  test('with one trip and no stop, the card opens that trip to add the first stop', async () => {
     mockGlobe.data = { ...mockGlobe.data, trips: [globeTrip('no-city-yet', false)] };
     await render(<HomeScreen />);
+    expect(screen.getByTestId('globe-view')).toBeTruthy();
+    expect(screen.getByText('Your trip needs a first stop')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('home-add-stop'));
+    expect(mockPush).toHaveBeenCalledWith('/trip/no-city-yet');
+  });
+
+  test('with several trips and no stop, the card opens the trip list', async () => {
+    mockGlobe.data = {
+      ...mockGlobe.data,
+      trips: [globeTrip('one', false), globeTrip('two', false)],
+    };
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('globe-view')).toBeTruthy();
     expect(screen.getByText('Your trips need a first stop')).toBeTruthy();
-    expect(screen.queryByTestId('globe-view')).toBeNull();
 
     await fireEvent.press(screen.getByTestId('home-open-trips'));
     expect(mockNavigate).toHaveBeenCalledWith('/trips');
   });
 
-  test('with something to place, is the globe with its statistics (FR-045, FR-050)', async () => {
+  test('with something to place, is the globe with its statistics and no invitation (FR-045, FR-050)', async () => {
     const trips = [globeTrip('italy', true), globeTrip('elsewhere', false)];
     mockGlobe.data = {
       trips,
@@ -221,6 +244,7 @@ describe('<HomeScreen> — the globe (T099, FR-045, FR-051)', () => {
     );
     expect(screen.getByTestId('globe-stat-countries')).toHaveTextContent('1');
     expect(screen.getByTestId('globe-stat-distance')).toHaveTextContent('231 km');
+    expect(screen.queryByTestId('globe-empty-state')).toBeNull();
   });
 });
 

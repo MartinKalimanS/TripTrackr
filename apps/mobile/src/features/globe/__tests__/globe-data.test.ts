@@ -7,6 +7,7 @@
  */
 import {
   focusTripIds,
+  globeInvitation,
   hasPlacedStop,
   placedLegs,
   restingCoordinate,
@@ -227,5 +228,40 @@ describe('restingCoordinate — where the beacon waits under reduced motion', ()
     expect(
       restingCoordinate(italy([stop('t', CITIES.uncached, TODAY)]), TODAY),
     ).toBeNull();
+  });
+});
+
+describe('globeInvitation — what floats over a globe with nothing to draw (feature 003, FR-002)', () => {
+  const globeOf = (...rows: GlobeStopRow[]) =>
+    toGlobeTrips([trip('a', 'Alps'), trip('b', 'Baltic')], rows, TODAY);
+
+  test('no trips: invite the first one', () => {
+    expect(globeInvitation([])).toEqual({ reason: 'no-trips' });
+  });
+
+  test('exactly one trip without a placed stop: invite its first stop and name the trip', () => {
+    const [alps] = toGlobeTrips([trip('a', 'Alps')], [], TODAY);
+    expect(globeInvitation([alps!])).toEqual({
+      reason: 'no-stops',
+      tripId: 'a',
+      tripTitle: 'Alps',
+    });
+  });
+
+  test('a trip whose only stop cannot be placed still needs a stop on the globe', () => {
+    const [alps] = toGlobeTrips(
+      [trip('a', 'Alps')],
+      [stop('a', CITIES.uncached, TODAY)],
+      TODAY,
+    );
+    expect(globeInvitation([alps!])).toMatchObject({ reason: 'no-stops', tripId: 'a' });
+  });
+
+  test('several trips without a placed stop: point at the list, naming none', () => {
+    expect(globeInvitation(globeOf())).toEqual({ reason: 'no-stops' });
+  });
+
+  test('anything placed, however few: nothing to invite', () => {
+    expect(globeInvitation(globeOf(stop('a', CITIES.rome, TODAY)))).toBeNull();
   });
 });

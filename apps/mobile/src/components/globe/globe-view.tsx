@@ -10,6 +10,10 @@
  * SDK puts them — Mapbox's terms require both — and nothing is drawn over the
  * map but the connections themselves (feature 002 contract C12).
  *
+ * It is mounted for every traveller, with or without a trip (feature 003): an
+ * empty globe opens on the whole sphere and moves to the first stop that
+ * appears (`useFlyToFirstPlacement`).
+ *
  * Close in (User Story 4), terrain relief rises from city scale
  * (`TerrainLayers`), the basemap stands its 3D buildings up at street level,
  * and the camera tilts to show them once it settles (`useAutoPitch`,
@@ -40,11 +44,12 @@ import {
   arcCollection,
   beaconRoutes,
   cameraCenter,
+  journeyCollection,
   markerCollection,
 } from './arc-features';
 import { ArcSource } from './arc-source';
 import { Beacons } from './beacon';
-import { useAutoPitch } from './camera';
+import { useAutoPitch, useFlyToFirstPlacement } from './camera';
 import { TerrainLayers } from './terrain-layers';
 import { useArcPress } from './use-arc-press';
 
@@ -67,6 +72,7 @@ function useGlobeShapes(
   return useMemo(
     () => ({
       arcs: arcCollection(trips),
+      journey: journeyCollection(trips, today),
       markers: markerCollection(trips),
       beacons: beaconRoutes(trips, focus, today),
       centre: cameraCenter(trips, focus) ?? GlobeCamera.fallbackCenter,
@@ -100,7 +106,13 @@ function GlobeMap({
   const foreground = useAppActive();
   const onPress = useArcPress();
   const { cameraRef, onMapIdle } = useAutoPitch(!prefersLessMotion);
-  const { arcs, markers, beacons, centre } = useGlobeShapes(trips, focus, today);
+  const { arcs, journey, markers, beacons, centre } = useGlobeShapes(trips, focus, today);
+  useFlyToFirstPlacement(
+    cameraRef,
+    markers.features.length > 0,
+    centre,
+    !prefersLessMotion,
+  );
   const palette = GlobeColors[theme];
 
   return (
@@ -132,7 +144,13 @@ function GlobeMap({
         defaultSettings={{ centerCoordinate: centre, zoomLevel: GlobeCamera.zoomLevel }}
       />
       <TerrainLayers />
-      <ArcSource arcs={arcs} markers={markers} palette={palette} onPress={onPress} />
+      <ArcSource
+        arcs={arcs}
+        journey={journey}
+        markers={markers}
+        palette={palette}
+        onPress={onPress}
+      />
       {beacons.length > 0 ? (
         <Beacons
           routes={beacons}

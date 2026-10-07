@@ -14,6 +14,7 @@ import {
   beaconPosition,
   beaconStyle,
   casingStyle,
+  journeyCasingStyle,
   markerStyle,
   statusFilter,
 } from '../arc-styles';
@@ -41,6 +42,14 @@ describe.each(['light', 'dark'] as const)('%s palette', (theme) => {
       GlobeGeometry.arcWidth.planning + 2 * GlobeGeometry.casingWidth,
       GlobeGeometry.arcWidth.past + 2 * GlobeGeometry.casingWidth,
     ]);
+  });
+
+  test('the journey casing is the casing token at the past line’s width, with no status to read', () => {
+    const style = journeyCasingStyle(palette);
+    expect(style.lineColor).toBe(palette.casing);
+    expect(style.lineWidth).toBe(
+      GlobeGeometry.arcWidth.past + 2 * GlobeGeometry.casingWidth,
+    );
   });
 
   test('markers and the beacon take their trip’s status colour over a casing ring', () => {

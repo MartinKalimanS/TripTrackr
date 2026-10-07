@@ -74,6 +74,20 @@ export function casingStyle(palette: GlobePalette): LineLayerStyle {
   };
 }
 
+/**
+ * Under the legs between trips (feature 003). Those features carry no status,
+ * so the casing cannot read one: it takes the past line's width, the line the
+ * journey is drawn in (`arcStyle('past')`), so both read as the same line.
+ */
+export function journeyCasingStyle(palette: GlobePalette): LineLayerStyle {
+  const { arcWidth, casingWidth } = GlobeGeometry;
+  return {
+    ...LINE_BASE,
+    lineColor: palette.casing,
+    lineWidth: arcWidth.past + 2 * casingWidth,
+  };
+}
+
 export function markerStyle(palette: GlobePalette): CircleLayerStyle {
   return {
     circleColor: byStatus(palette),
