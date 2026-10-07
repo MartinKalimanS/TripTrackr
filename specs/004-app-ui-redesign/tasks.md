@@ -121,6 +121,12 @@ After this phase every unconverted screen already renders in Atlas colours with 
       `jest.setup.ts` and `app.config.ts` (`expo-font` plugin, `assets/fonts/`), the root layout provider
       and the `Uniwind.setTheme(themeName)` effect in `src/app/_layout.tsx`, `themeName` in
       `src/hooks/use-appearance.ts`; carry over the spike's config diffs (FR-031, FR-032; D4-04, D4-05)
+      _Partly done (tokens branch):_ the sync test, `scripts/theme-css.js` (pure `buildThemeCss`),
+      `scripts/build-theme-css.mjs` (`node scripts/build-theme-css.mjs`, `--check`),
+      `src/theme/generated/theme.css` and `themeName` in `use-appearance.ts`. _Still open:_
+      `src/global.css`, the `theme:build` script (`node scripts/build-theme-css.mjs`) and the
+      `npm install`, Metro, `tsconfig.json`, `jest.config.js`, `jest.setup.ts`, `app.config.ts`, the root
+      layout provider and the `Uniwind.setTheme(themeName)` effect.
 - [ ] T413 [P] `src/theme/typography.ts` and `src/theme/motion.ts` with their tests (type roles, radii,
       timings, tabular numerals), and the display-face variables in `global.css` (FR-001, FR-004, FR-022;
       D4-07)
