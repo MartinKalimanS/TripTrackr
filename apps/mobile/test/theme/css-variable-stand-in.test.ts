@@ -5,29 +5,31 @@
  * The real hook returns `undefined` for a variable that no stylesheet defines. A stand-in
  * that answered a placeholder for ANY name would let a typo (`--surfce`) or a variable
  * dropped from the theme pass every component test and show up as a missing colour on a
- * phone. So it answers a placeholder only for the names `src/theme/generated/theme.css`
- * declares, and `undefined` for the rest.
+ * phone. So it answers a placeholder only for the names the app's own stylesheets declare,
+ * `src/theme/generated/theme.css` and `src/global.css` (the display-face variables), and
+ * `undefined` for the rest.
  */
 import { renderHook } from '@testing-library/react-native';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { useCSSVariable } from 'uniwind';
 
-const generated = readFileSync(
-  path.resolve(__dirname, '..', '..', 'src', 'theme', 'generated', 'theme.css'),
-  'utf8',
-);
-const declared = new Set(
-  [...generated.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/(--[a-z0-9-]+)\s*:/g)].map(
-    (match) => match[1],
-  ),
-);
+const SRC = path.resolve(__dirname, '..', '..', 'src');
+
+/** Every `--name:` a stylesheet declares, comments left out. */
+function declaredIn(file: string): Set<string> {
+  const css = readFileSync(path.join(SRC, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((match) => match[1]));
+}
+
+const generated = declaredIn(path.join('theme', 'generated', 'theme.css'));
+const global = declaredIn('global.css');
 
 const read = async (name: string | string[]) =>
   (await renderHook(() => useCSSVariable(name as string))).result.current as unknown;
 
 describe('useCSSVariable under Jest', () => {
-  test('the generated file declares what these tests assume it does', () => {
+  test('the stylesheets declare what these tests assume they do', () => {
     for (const name of [
       '--background',
       '--accent',
@@ -35,8 +37,9 @@ describe('useCSSVariable under Jest', () => {
       '--status-active',
       '--pending',
     ]) {
-      expect(declared.has(name)).toBe(true);
+      expect(generated.has(name)).toBe(true);
     }
+    expect([...global].sort()).toEqual(['--font-display', '--font-display-bold']);
   });
 
   test.each(['--background', '--accent', '--surface-shadow', '--status-planning-ink'])(
@@ -51,20 +54,38 @@ describe('useCSSVariable under Jest', () => {
     expect(await read('--color-status-active')).toBeDefined();
   });
 
-  // `--color-accent-soft` is the KIT's derived colour (heroui-native/styles): it is in no
-  // generated theme, so an adapter that needs its value in JS must ask for a palette token.
-  test.each(['--surfce', '--no-such-variable', '--color-accent-soft', 'background'])(
-    'answers undefined for %s, which the generated theme does not declare',
+  test.each(['--font-display', '--font-display-bold'])(
+    'answers for %s, which global.css declares for the display face',
     async (name) => {
-      expect(await read(name)).toBeUndefined();
+      // The generated theme does not declare it: the name comes from scanning global.css.
+      expect(generated.has(name)).toBe(false);
+      expect(await read(name)).toEqual(expect.any(String));
     },
   );
 
-  test('answers per name for an array, undefined where the theme has no such variable', async () => {
-    expect(await read(['--accent', '--surfce', '--pending'])).toEqual([
+  test('answers for every name either stylesheet declares, array or single', async () => {
+    const names = [...generated, ...global];
+    expect(await read(names)).toEqual(names.map(() => expect.any(String)));
+  });
+
+  // `--color-accent-soft` is the KIT's derived colour (heroui-native/styles): it is in no
+  // app stylesheet, so an adapter that needs its value in JS must ask for a palette token.
+  // `--font-normal` is the kit's family variable, which global.css deliberately leaves alone.
+  test.each([
+    '--surfce',
+    '--no-such-variable',
+    '--color-accent-soft',
+    '--font-normal',
+    'background',
+  ])('answers undefined for %s, which no app stylesheet declares', async (name) => {
+    expect(await read(name)).toBeUndefined();
+  });
+
+  test('answers per name for an array, undefined where there is no such variable', async () => {
+    expect(await read(['--accent', '--surfce', '--font-display'])).toEqual([
       expect.stringMatching(/^#/),
       undefined,
-      expect.stringMatching(/^#/),
+      expect.any(String),
     ]);
   });
 });

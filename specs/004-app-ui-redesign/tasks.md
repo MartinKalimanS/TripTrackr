@@ -93,7 +93,8 @@ are listed in [research.md](./research.md#items-to-verify-empirically).
       behaves on both platforms; load the display-face shortlist (Bricolage Grotesque, Young Serif, Geist)
       through the `expo-font` config plugin and apply it to `headerLargeTitleStyle`; **choose the face**
       and record it in research D4-07 (FR-007, FR-008, FR-009; D4-06, D4-07). _(device part pending; one font
-      fact recorded in research item 7)_
+      fact recorded in research item 7; the iOS spelling of the font CSS is unconfirmed until a device
+      run, D4-07 "How far the CSS is proven")_
 - [ ] T409 Record the go/no-go and each check's result in [research.md](./research.md) ("Go/no-go
       outcome"). **No-go**: switch to the fallback of `contracts/components.md` C4-6 (same adapters on React
       Native primitives and the same tokens) and continue; tasks below stay valid, only T412 and T413
@@ -138,12 +139,15 @@ After this phase every unconverted screen already renders in Atlas colours with 
       provider placement below the navigation theme (research D4-05, "T412 decisions"). Tests:
       `test/theme/{global-css,kit-variables,css-variable-stand-in,uniwind-adaptive-theme}.test.ts`,
       `test/config/{app-config,package-scripts,metro-config}.test.ts`, `test/app/root-layout.test.tsx`.
-      _Deviation:_ the fonts are embedded straight from `node_modules/@expo-google-fonts/...` (the test
-      fails if a file is missing), not copied to `assets/fonts/`, so no binary is duplicated in Git.
+      _Deviation:_ the fonts are embedded straight from the `@expo-google-fonts` package, named by package
+      specifier (the plugin resolves it from the project; a test runs the plugin's own resolver), not
+      copied to `assets/fonts/`, so no binary is duplicated in Git. `useAppearance()` gained `ready`, and
+      the root layout keeps the splash up until the first accessibility read has settled.
       _Device only, still open:_ rebuild the dev clients (the `expo-font` plugin changes the native
       projects, so `expo prebuild` runs), then T406 (live theme switch and no first-frame flash, with
       the more-contrast flag), T407 (live reduce-motion), T408 (the display face resolves on iOS by its
-      PostScript name and on Android by its file name; pick the final face) and a Select, Dialog and
+      PostScript name and on Android by its file name, which the `@theme static` + `@variant ios` CSS has
+      so far only had proven by the Android export; pick the final face) and a Select, Dialog and
       Toast opened from a modal screen on both platforms (the portal host sits in the root layout).
 - [x] T413 [P] `src/theme/typography.ts` and `src/theme/motion.ts` with their tests (type roles, radii,
       timings, tabular numerals), and the display-face variables in `global.css` (FR-001, FR-004, FR-022;

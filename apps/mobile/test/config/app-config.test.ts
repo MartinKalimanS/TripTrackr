@@ -19,6 +19,7 @@ import {
   embeddedFontPaths,
   expoFontEntries,
   pluginName,
+  resolveEmbeddedFont,
   resolvedConfig,
 } from './expo-font-plugin';
 
@@ -67,29 +68,43 @@ describe('app.config.ts — the expo-font plugin (004 D4-07)', () => {
     expect(Array.isArray(entry) ? Object.keys(entry[1] ?? {}) : []).toEqual(['fonts']);
   });
 
+  test('names each file by package specifier, not by a path into node_modules', () => {
+    // `expo-font` resolves an entry that is not a file under the project root as a module
+    // from it (`createRequire(projectRoot)`), so the specifier survives whichever way npm
+    // hoists the package; a `../../node_modules/...` path would not.
+    for (const file of embeddedFontPaths()) {
+      expect(file).toMatch(
+        /^@expo-google-fonts\/bricolage-grotesque\/\d{3}[A-Za-z]+\/\w+\.ttf$/,
+      );
+      expect(file).not.toContain('node_modules');
+    }
+  });
+
   test('both files exist on disk, resolved from apps/mobile as the plugin does', () => {
     for (const file of embeddedFontPaths()) {
-      expect(path.isAbsolute(file)).toBe(false);
-      expect(existsSync(path.resolve(MOBILE_ROOT, file))).toBe(true);
+      expect(existsSync(resolveEmbeddedFont(file))).toBe(true);
     }
   });
 
   test('both files are real TrueType fonts, not a pointer or an empty placeholder', () => {
     for (const file of embeddedFontPaths()) {
-      const bytes = readFileSync(path.resolve(MOBILE_ROOT, file));
+      const bytes = readFileSync(resolveEmbeddedFont(file));
       expect(bytes.readUInt32BE(0)).toBe(0x00010000);
       expect(bytes.length).toBeGreaterThan(10_000);
     }
   });
 
-  test('the plugin itself resolves both paths from the project root', async () => {
+  test('the plugin itself resolves both entries from the project root, to the files on disk', async () => {
     const resolved = await resolveFontPaths(embeddedFontPaths(), MOBILE_ROOT);
     expect(resolved.map((file) => path.basename(file))).toEqual(FONT_FILES);
+    expect(resolved).toEqual(embeddedFontPaths().map(resolveEmbeddedFont));
   });
 
   test('is the @expo-google-fonts package the app depends on, not a copied file', () => {
     for (const file of embeddedFontPaths()) {
-      expect(file).toContain('node_modules/@expo-google-fonts/bricolage-grotesque/');
+      expect(resolveEmbeddedFont(file).split(path.sep).join('/')).toContain(
+        'node_modules/@expo-google-fonts/bricolage-grotesque/',
+      );
     }
     const manifest = JSON.parse(
       readFileSync(path.join(MOBILE_ROOT, 'package.json'), 'utf8'),

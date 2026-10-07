@@ -17,6 +17,7 @@ import {
   androidFamilyName,
   embeddedFontPaths,
   fontNames,
+  resolveEmbeddedFont,
 } from '../config/expo-font-plugin';
 
 const GLOBAL_CSS = path.join(MOBILE_ROOT, 'src', 'global.css');
@@ -92,9 +93,7 @@ describe('src/global.css — the display face (research D4-07)', () => {
   });
 
   describe('each family name is the one the platform registers for the embedded file', () => {
-    const [semibold, bold] = embeddedFontPaths().map((file) =>
-      path.resolve(MOBILE_ROOT, file),
-    );
+    const [semibold, bold] = embeddedFontPaths().map(resolveEmbeddedFont);
 
     test('Android answers to the file name without its extension', () => {
       expect(declared('@theme static {', '--font-display')).toBe(

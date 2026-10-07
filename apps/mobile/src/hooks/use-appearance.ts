@@ -45,6 +45,14 @@ export interface AppearanceContext {
   elevationProfile: ElevationProfile;
   /** The two-theme legacy `Colors` until the screens migrate (phase 7). */
   tokens: (typeof Colors)['light'] | (typeof Colors)['dark'];
+  /**
+   * True once the FIRST read of the accessibility flags has settled, whether it answered
+   * or failed. Until then `themeName` and `prefersLessMotion` are the defaults, not what
+   * the OS said, so the root layout keeps the splash up and renders nothing: the first
+   * frame the traveller sees already has the contrast theme and the motion setting
+   * (research D4-05). Later change events never reset it.
+   */
+  ready: boolean;
 }
 
 interface AccessibilityFlags {
@@ -53,15 +61,22 @@ interface AccessibilityFlags {
   prefersLessTransparency: boolean;
 }
 
-export function useAppearance(): AppearanceContext {
-  const scheme = useColorScheme();
-  const theme: ThemeName = scheme === 'dark' ? 'dark' : 'light';
-  const { fontScale } = useWindowDimensions();
+/** What is known before the first read has answered. */
+const UNREAD: AccessibilityFlags = {
+  prefersMoreContrast: false,
+  prefersLessMotion: false,
+  prefersLessTransparency: false,
+};
 
-  const [flags, setFlags] = useState<AccessibilityFlags>({
-    prefersMoreContrast: false,
-    prefersLessMotion: false,
-    prefersLessTransparency: false,
+/**
+ * Reads the platform's accessibility flags at mount and again on each change event, and
+ * says whether the first read has settled (`AppearanceContext.ready`).
+ */
+function useAccessibilityRead() {
+  // One state, so `ready` and the flags it vouches for change in the same render.
+  const [read, setRead] = useState<{ flags: AccessibilityFlags; ready: boolean }>({
+    flags: UNREAD,
+    ready: false,
   });
 
   useEffect(() => {
@@ -69,14 +84,23 @@ export function useAppearance(): AppearanceContext {
 
     const refresh = async () => {
       const os = Platform.OS;
-      const [prefersMoreContrast, prefersLessMotion, prefersLessTransparency] =
-        await Promise.all([
-          readPrefersMoreContrast(os, platformQueries),
-          readPrefersLessMotion(os, platformQueries),
-          readPrefersLessTransparency(os, platformQueries),
-        ]);
-      if (active)
-        setFlags({ prefersMoreContrast, prefersLessMotion, prefersLessTransparency });
+      let answered: AccessibilityFlags | null = null;
+      try {
+        const [prefersMoreContrast, prefersLessMotion, prefersLessTransparency] =
+          await Promise.all([
+            readPrefersMoreContrast(os, platformQueries),
+            readPrefersLessMotion(os, platformQueries),
+            readPrefersLessTransparency(os, platformQueries),
+          ]);
+        answered = { prefersMoreContrast, prefersLessMotion, prefersLessTransparency };
+      } catch {
+        // Each reader already falls back to the more accessible value when its query
+        // fails, so this is the read as a whole failing. Keep the flags there are, and
+        // still settle: a read that failed must not hold the splash up for good.
+      }
+      if (active) {
+        setRead((previous) => ({ flags: answered ?? previous.flags, ready: true }));
+      }
     };
 
     void refresh();
@@ -96,16 +120,27 @@ export function useAppearance(): AppearanceContext {
     };
   }, []);
 
+  return read;
+}
+
+export function useAppearance(): AppearanceContext {
+  const scheme = useColorScheme();
+  const theme: ThemeName = scheme === 'dark' ? 'dark' : 'light';
+  const { fontScale } = useWindowDimensions();
+
+  const read = useAccessibilityRead();
+
   return useMemo(
     () => ({
       theme,
-      themeName: resolvePaletteName(theme, flags.prefersMoreContrast),
-      ...flags,
+      themeName: resolvePaletteName(theme, read.flags.prefersMoreContrast),
+      ...read.flags,
       fontScale,
       // Forced flat (004 D4-12): no device input reaches it, so none is passed.
       elevationProfile: resolveElevationProfile(),
       tokens: Colors[theme],
+      ready: read.ready,
     }),
-    [theme, flags, fontScale],
+    [theme, read, fontScale],
   );
 }
