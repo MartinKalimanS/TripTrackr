@@ -1,0 +1,178 @@
+/**
+ * The shared accessibility store behind `useAppearance` — contract C4-4, tasks.md T461.
+ *
+ * One module-level store holds the platform's accessibility flags for the whole app, so
+ * that however many components call `useAppearance()` (every `Button` does, through
+ * `useHaptics`; a list can mount thousands) the app registers ONE `AccessibilityInfo`
+ * listener per event type and runs ONE read per signal.
+ *
+ * - Lazy and ref-counted: the native subscriptions and the first read start when the first
+ *   listener subscribes and are removed when the last one unsubscribes. Nothing runs at
+ *   import, and a suite that mounts no consumer registers nothing.
+ * - A stable snapshot: `getAppearanceSnapshot()` returns the same frozen object until a
+ *   value changes, which is what `useSyncExternalStore` needs to skip a re-render, so a
+ *   change event that re-reports the same flags wakes nobody.
+ * - A late consumer needs no read of its own: the snapshot is current whenever the store is
+ *   running, so its very first render already has the traveller's settings.
+ * - A snapshot nobody is subscribed to is not vouched for: when the last listener leaves,
+ *   the snapshot returns to the unread default and the next first listener reads afresh.
+ *   `ready` is never reset while the store runs; a restart is a new start, not a reset.
+ *
+ * What the flags mean, and the per-platform mapping, stay in `src/theme/accessibility.ts`.
+ * The colour scheme and the font scale are per-component subscriptions and are composed in
+ * `useAppearance`, not held here.
+ */
+import { AccessibilityInfo, Platform } from 'react-native';
+
+import {
+  appearanceChangeEvents,
+  platformQueries,
+  readPrefersLessMotion,
+  readPrefersLessTransparency,
+  readPrefersMoreContrast,
+} from '@/theme/accessibility';
+
+export interface AppearanceSnapshot {
+  readonly prefersMoreContrast: boolean;
+  readonly prefersLessMotion: boolean;
+  readonly prefersLessTransparency: boolean;
+  /**
+   * True once the FIRST read has settled, whether it answered or failed (research D4-05).
+   * Later change events never reset it.
+   */
+  readonly ready: boolean;
+}
+
+type AccessibilityFlags = Omit<AppearanceSnapshot, 'ready'>;
+
+/** What is known before the first read has answered. */
+const UNREAD: AppearanceSnapshot = Object.freeze({
+  prefersMoreContrast: false,
+  prefersLessMotion: false,
+  prefersLessTransparency: false,
+  ready: false,
+});
+
+/** One subscriber. An object, so the same function subscribed twice counts twice. */
+interface Entry {
+  readonly listener: () => void;
+}
+
+let snapshot: AppearanceSnapshot = UNREAD;
+const entries = new Set<Entry>();
+/** Removes the native subscriptions of the running session; null while nobody listens. */
+let stopSession: (() => void) | null = null;
+
+/**
+ * Reads the three signals. Each reader already falls back to the MORE accessible value when
+ * its own query fails (contract C4), so null means the read as a whole failed.
+ */
+async function readFlags(): Promise<AccessibilityFlags | null> {
+  const os = Platform.OS;
+  try {
+    const [prefersMoreContrast, prefersLessMotion, prefersLessTransparency] =
+      await Promise.all([
+        readPrefersMoreContrast(os, platformQueries),
+        readPrefersLessMotion(os, platformQueries),
+        readPrefersLessTransparency(os, platformQueries),
+      ]);
+    return { prefersMoreContrast, prefersLessMotion, prefersLessTransparency };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Settles a read. A read that failed keeps the flags there are and still settles `ready`,
+ * so a failed read cannot hold the splash up for good. Listeners hear about it only when
+ * something differs from the snapshot they already have.
+ */
+function publish(answered: AccessibilityFlags | null): void {
+  const flags = answered ?? snapshot;
+  const unchanged =
+    snapshot.ready &&
+    flags.prefersMoreContrast === snapshot.prefersMoreContrast &&
+    flags.prefersLessMotion === snapshot.prefersLessMotion &&
+    flags.prefersLessTransparency === snapshot.prefersLessTransparency;
+  if (unchanged) return;
+
+  snapshot = Object.freeze({
+    prefersMoreContrast: flags.prefersMoreContrast,
+    prefersLessMotion: flags.prefersLessMotion,
+    prefersLessTransparency: flags.prefersLessTransparency,
+    ready: true,
+  });
+  // A copy: a listener may unsubscribe (or a consumer unmount) while it is being told.
+  [...entries].forEach(({ listener }) => listener());
+}
+
+/**
+ * Reads now and again on each change event, so the context updates live rather than only at
+ * launch. The event names differ per platform (`appearanceChangeEvents`). Once stopped, a
+ * session answers to nobody: a read still in flight is dropped, not published.
+ */
+function startSession(): () => void {
+  let active = true;
+
+  const refresh = async () => {
+    if (!active) return;
+    const answered = await readFlags();
+    if (active) publish(answered);
+  };
+
+  void refresh();
+
+  const subscriptions = appearanceChangeEvents(Platform.OS).map((event) =>
+    AccessibilityInfo.addEventListener(
+      event as Parameters<typeof AccessibilityInfo.addEventListener>[0],
+      () => void refresh(),
+    ),
+  );
+
+  return () => {
+    active = false;
+    subscriptions.forEach((subscription) => subscription?.remove());
+  };
+}
+
+/** Ends the running session, if any, and forgets what it read. */
+function stopAndForget(): void {
+  const stop = stopSession;
+  stopSession = null;
+  snapshot = UNREAD;
+  stop?.();
+}
+
+/**
+ * `useSyncExternalStore`'s `subscribe`. The first listener starts the native session; the
+ * returned function (safe to call twice) ends it when the last listener has left.
+ */
+export function subscribeToAppearance(listener: () => void): () => void {
+  const entry: Entry = { listener };
+  entries.add(entry);
+  if (stopSession === null) stopSession = startSession();
+
+  return () => {
+    if (!entries.delete(entry)) return;
+    if (entries.size === 0) stopAndForget();
+  };
+}
+
+/** `useSyncExternalStore`'s `getSnapshot`: the same object until a value changes. */
+export function getAppearanceSnapshot(): AppearanceSnapshot {
+  return snapshot;
+}
+
+/** `useSyncExternalStore`'s `getServerSnapshot`: nothing has been read on a server. */
+export function getAppearanceServerSnapshot(): AppearanceSnapshot {
+  return UNREAD;
+}
+
+/**
+ * Test isolation only: removes the native subscriptions, forgets every listener and returns
+ * the snapshot to the unread default. An unsubscribe handed out before the reset is a no-op.
+ */
+export function __resetAppearanceStoreForTests(): void {
+  entries.clear();
+  stopAndForget();
+}
