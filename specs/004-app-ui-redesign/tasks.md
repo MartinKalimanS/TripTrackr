@@ -221,10 +221,27 @@ unused by screens.
 **Independent Test**: quickstart section 3 on one iOS and one Android device, light and dark, largest text,
 increased contrast.
 
-- [ ] T426 [US1] Failing tests in `apps/mobile/test/components/tab-bar.test.tsx` (renamed from
+- [x] T426 [US1] Failing tests in `apps/mobile/test/components/tab-bar.test.tsx` (renamed from
       `neumorphic-tab-bar.test.tsx`): flat strip, one divider at 3:1, filled selected icon, mark, 56 dp
       budget, touch target, preserved ids, no literal; then rename and re-skin
       `components/navigation/tab-bar.tsx`, update `app/(tabs)/_layout.tsx` (FR-010, FR-025)
+      _As built:_ `TabBar` is a `View` of `flex-row border-t border-border bg-background` with a hairline
+      `borderTopWidth` in its style (Tailwind's `border-t` is 1 px) and the navigator's bottom inset as
+      padding; each tab is a `Tappable` (`flex-1`, role `tab`, `selected` state, the route's label as its
+      name) holding an `Icon` and a `Text type="caption"`, in the accent ink when selected and the muted
+      ink otherwise, so there is no `useAppearance` and no colour in the file. The selected tab draws the
+      filled SF Symbol (`globe.europe.africa`, `suitcase`, `person.crop.circle` plus `.fill`), a
+      `font-bold` label and the 24 x 3 dp `tab-mark-<name>` bar hanging from the divider (selected tab
+      only, absolute, so it costs no height). Android Material Symbols come from one static font in
+      `expo-symbols` with no fill axis, so the Android glyph (`globe`, `luggage`, `account_circle`) is the
+      same in both states and the accent, weight and mark carry the selection there. The label wraps
+      rather than truncates. Ids, roles, press and long-press behaviour are unchanged (40 tests; the
+      testID parity check passes). Device checks: the divider is visible in both themes and in increased
+      contrast; the filled icons draw on iOS and the same glyphs draw on Android; the mark and the heavier
+      label tell the selected tab apart in greyscale and in high contrast; the bar clears the bottom
+      inset with gesture navigation on Android and the home indicator on iOS; the focus ring (2 dp,
+      offset 2) is not clipped at the bar's edges; and the largest text size grows the bar without
+      clipping the label.
 - [ ] T427 [US1] Failing tests in `test/app/tab-screens.test.tsx` and `test/app/trip-and-modal-screens.test.tsx`
       for headers and Back; then nested stacks: move `app/(tabs)/trips.tsx` to `app/(tabs)/trips/_layout.tsx`
       and `index.tsx`, `profile.tsx` likewise (use the Prettier character-class workaround), themed header

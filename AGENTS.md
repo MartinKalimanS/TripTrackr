@@ -111,7 +111,8 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
   and when the store cannot be read; a flat bordered card (`empty-state.tsx`, contract C12) floats over
   it instead of replacing it. The legs between trips are a second, non-tappable source derived by
   `features/globe/journey.ts` and drawn under the trip arcs in the past style. The tab bar is a flat
-  strip (`PressableSurface` `bare`): keep its testIDs and never give a tab a surface or border.
+  strip (`TabBar`, one `Tappable` per tab): keep its testIDs and never give a tab a surface or
+  border.
 - Mapbox under Jest: `jest.setup.ts` turns each Mapbox component into a View tagged
   `mapbox-<Kind>-<id>` carrying its props (a layer's `style` arrives as `layerStyle`), so suites
   read a source's `shape` or fire its `onPress`. To assert on a component's own timer, spy on
