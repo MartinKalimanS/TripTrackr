@@ -283,6 +283,72 @@ describe('<HomeScreen> — the globe (T099, FR-045, FR-051)', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  // The overlay is react-native-safe-area-context's NATIVE view, laid over the whole map:
+  // a pan or a pinch that starts outside a card must reach the globe (003, FR-003).
+  describe('the overlay over the globe keeps the map interactive (T428)', () => {
+    const flat = (style: unknown) =>
+      Object.assign({}, ...[style].flat(Infinity).filter(Boolean)) as Record<
+        string,
+        unknown
+      >;
+    const states = {
+      invitation: ['globe-empty-state', () => undefined],
+      notice: [
+        'globe-notice',
+        () => {
+          mockGlobe.error = new Error('database is locked');
+        },
+      ],
+      statistics: [
+        'globe-stats',
+        () => {
+          mockGlobe.data = {
+            trips: [globeTrip('italy', true)],
+            focus: ['italy'],
+            summary: { countriesVisited: 1, distanceKm: 230.9 },
+          };
+        },
+      ],
+    } as const;
+
+    test('lets touches through to the map: box-none as a prop, and still in its style', async () => {
+      await render(<HomeScreen />);
+      const overlay = screen.getByTestId('home-overlay');
+      expect(overlay.props.pointerEvents).toBe('box-none');
+      expect(flat(overlay.props.style).pointerEvents).toBe('box-none');
+    });
+
+    test('insets the top edge only, as before: the app is portrait-locked (app.config.ts)', async () => {
+      await render(<HomeScreen />);
+      // The native view takes the edges as a map: the top added to the padding, the rest off.
+      expect(screen.getByTestId('home-overlay').props.edges).toEqual({
+        top: 'additive',
+        right: 'off',
+        bottom: 'off',
+        left: 'off',
+      });
+    });
+
+    test.each(Object.keys(states) as (keyof typeof states)[])(
+      'the %s card takes its own touches: nothing between it and the overlay is box-none or none',
+      async (name) => {
+        const [id, setup] = states[name];
+        setup();
+        await render(<HomeScreen />);
+        let node = screen.getByTestId(id) as { props: Record<string, unknown> } | null;
+        let walked = 0;
+        while (node && node.props.testID !== 'home-overlay') {
+          const own = node.props.pointerEvents ?? flat(node.props.style).pointerEvents;
+          expect([undefined, 'auto']).toContain(own);
+          node = (node as unknown as { parent: typeof node }).parent;
+          walked += 1;
+        }
+        expect(node).not.toBeNull();
+        expect(walked).toBeGreaterThan(0);
+      },
+    );
+  });
+
   test('is built on the Atlas scaffolds: none of the retired primitives (T428)', () => {
     const source = jest
       .requireActual('fs')
