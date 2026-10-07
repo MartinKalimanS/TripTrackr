@@ -245,6 +245,29 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(screen.queryByTestId('trip-add-stop')).toBeNull();
   });
 
+  // A live read that fails leaves its first-result timestamp unset, so a hook that only
+  // looked at that reported `loading` together with the error. The screen must not let the
+  // spinner hide the words, whichever way a hook reports the pair.
+  test('shows the error, not the spinner, when a failed read still says loading', async () => {
+    mockTrip.data = null;
+    mockTrip.loading = true;
+    mockTrip.error = new Error('no such table');
+    await render(<TripScreen />);
+
+    expect(screen.getByText('Couldn’t read this trip')).toBeTruthy();
+    expect(screen.queryByLabelText('Loading trip')).toBeNull();
+  });
+
+  test('shows the stops error, not the placeholders, when a failed read still says loading', async () => {
+    mockStops.loading = true;
+    mockStops.error = new Error('no such table');
+    await render(<TripScreen />);
+
+    expect(screen.getByText('Couldn’t read the stops')).toBeTruthy();
+    expect(screen.queryByLabelText('Loading stops')).toBeNull();
+    expect(screen.queryByTestId('trip-stops')).toBeNull();
+  });
+
   test('never shows its empty state while the first read is still resolving (C4-10 rule 2)', async () => {
     mockTrip.data = null;
     mockTrip.loading = true;

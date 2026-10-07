@@ -171,6 +171,50 @@ describe('useTrip / useTripStops', () => {
     expect(result.current.trip.data).toBeNull();
   });
 
+  test('is loading on the first render, before any error or result, and settles after', async () => {
+    const seen: { loading: boolean; error: Error | null }[] = [];
+    const { result } = await renderHook(
+      () => {
+        const read = { trip: useTrip('gone'), stops: useTripStops('gone') };
+        seen.push({ loading: read.trip.loading, error: read.trip.error });
+        seen.push({ loading: read.stops.loading, error: read.stops.error });
+        return read;
+      },
+      { wrapper },
+    );
+    expect(seen.slice(0, 2)).toEqual([
+      { loading: true, error: null },
+      { loading: true, error: null },
+    ]);
+    await waitFor(() => expect(result.current.trip.loading).toBe(false));
+    expect(result.current.stops.loading).toBe(false);
+  });
+
+  // Drizzle's `useLiveQuery` sets `updatedAt` only when a result arrives, so a read that
+  // FAILS leaves it unset for good. `loading: updatedAt === undefined` alone then reads
+  // "still loading" and "failed" together, and a screen that checks `loading` first never
+  // shows its error. A dropped table is a read the store cannot answer.
+  test.each([
+    ['useTrip', 'trips', () => useTrip('trip-1')],
+    ['useTripStops', 'trip_stops', () => useTripStops('trip-1')],
+  ] as const)(
+    '%s reports a failed read as an error and as no longer loading',
+    async (_name, table, useRead) => {
+      sqlite.native.exec(`DROP TABLE ${table}`);
+      const { result } = await renderHook(
+        () => {
+          const { loading, error } = useRead();
+          return { loading, error };
+        },
+        { wrapper },
+      );
+
+      await waitFor(() => expect(result.current.error).not.toBeNull());
+      expect(result.current.error?.message).toMatch(/no such table/);
+      expect(result.current.loading).toBe(false);
+    },
+  );
+
   test('removeTrip tombstones the trip so the list drops it', async () => {
     const { result } = await renderHook(
       () => ({ trips: useTrips(), actions: useTripActions() }),

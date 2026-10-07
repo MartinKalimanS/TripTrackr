@@ -154,9 +154,12 @@ function TripHero({ trip, stops }: { trip: TripRow; stops: readonly StopWithPlac
   );
 }
 
-/** What stands in for the trip until there is one: reading, unreadable, or not here. */
+/**
+ * What stands in for the trip until there is one: unreadable, reading, or not here. The
+ * error comes first: a live read that fails can still report `loading` (its first-result
+ * timestamp never arrives), and the words must win over the spinner.
+ */
 function TripPlaceholder({ loading, failed }: { loading: boolean; failed: boolean }) {
-  if (loading) return <LoadingState title="Loading trip" />;
   if (failed) {
     return (
       <ErrorState
@@ -165,6 +168,7 @@ function TripPlaceholder({ loading, failed }: { loading: boolean; failed: boolea
       />
     );
   }
+  if (loading) return <LoadingState title="Loading trip" />;
   return (
     <EmptyState
       title="This trip isn’t on this device"
