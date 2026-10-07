@@ -18,6 +18,8 @@
  * runs to the card's edge it would hang off the right of the picture. `cue={false}` is
  * the contract's provision for this (`<testID>-cue` is kept).
  *
+ * A range that cannot be read (`formatDateRange` says `null`) is simply not shown.
+ *
  * At the largest text size the rows wrap and no height or line count is fixed, so
  * nothing clips (FR-029); the title may take as many lines as it needs.
  */
@@ -48,37 +50,37 @@ const WRAP_ROW = 'flex-row flex-wrap items-center gap-x-2 gap-y-1';
 export function TripCard({ summary, onPress }: TripCardProps) {
   const { trip, stopCount, status, cover, dateRange } = summary;
   const stops = describeStopCount(stopCount);
-  const id = `trip-card-${trip.id}`;
+  const range = dateRange ? formatDateRange(dateRange) : null;
 
   return (
     <Card
-      testID={id}
+      testID={`trip-card-${trip.id}`}
       accessibilityLabel={`${trip.title}, ${status}, ${stops}`}
       accessibilityHint="Opens the trip"
       cue={false}
       onPress={onPress}>
-      <TripCoverBand cover={cover} title={trip.title} status={status} idPrefix={id} />
+      <TripCoverBand cover={cover} title={trip.title} status={status} tripId={trip.id} />
       <View className="mt-3 flex-row items-center gap-3">
         <View className="flex-1 gap-2">
           <Text type="title" accessibilityRole="text">
             {trip.title}
           </Text>
-          <View testID={`${id}-status-row`} className={WRAP_ROW}>
+          <View testID={`trip-card-${trip.id}-status-row`} className={WRAP_ROW}>
             <StatusChip status={status} />
-            {dateRange ? (
+            {range ? (
               <Text type="callout" tone="muted">
-                {formatDateRange(dateRange)}
+                {range}
               </Text>
             ) : null}
           </View>
-          <View testID={`${id}-meta-row`} className={WRAP_ROW}>
+          <View testID={`trip-card-${trip.id}-meta-row`} className={WRAP_ROW}>
             <Text type="callout" tone="muted">
               {stops} · {trip.home_currency}
             </Text>
             {trip.is_dirty ? <SyncBadge state="pending" /> : null}
           </View>
         </View>
-        <PressCue testID={`${id}-cue`} />
+        <PressCue testID={`trip-card-${trip.id}-cue`} />
       </View>
     </Card>
   );
