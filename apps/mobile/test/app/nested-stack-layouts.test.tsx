@@ -53,7 +53,7 @@ describe('the route files (same URLs, nested stacks)', () => {
 });
 
 describe('<TripsLayout> - a large title on iOS, a standard header on Android', () => {
-  test('on iOS: a large collapsing title named Trips, accent controls, flat header', async () => {
+  test('on iOS: a large title named Trips (options asserted; the collapse is a device check, T408), accent controls, flat header', async () => {
     const os = jest.replaceProperty(Platform, 'OS', 'ios');
     await render(<TripsLayout />);
     os.restore();

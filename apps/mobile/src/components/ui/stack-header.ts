@@ -13,10 +13,11 @@
  *
  * What a top-level list screen gets (`stackHeaderOptions`, the pure half, asserted per
  * platform):
- * - iOS: a large title that collapses as the list scrolls (the list must be the first
- *   child of the screen and set `contentInsetAdjustmentBehavior`: `ListScreen` and
- *   `Screen` do, with `underHeader`), no shadow under either bar, the controls in the
- *   accent and the titles in the foreground ink. The option is `headerLargeTitleEnabled`:
+ * - iOS: a large title (it collapses as a list scrolls when the list is the first child
+ *   of the screen and sets `contentInsetAdjustmentBehavior`, as `ListScreen` and
+ *   `Screen` do with `underHeader`; the options and those props are asserted, the
+ *   collapse itself is native and a device check, T408), no shadow under either bar,
+ *   the controls in the accent and the titles in the foreground ink. The option is `headerLargeTitleEnabled`:
  *   `headerLargeTitle` is deprecated in the installed router (v57 Stack reference). The
  *   header itself is NOT given a background: React Navigation leaves a large-title header
  *   transparent over the content (it is the canvas), and its own note in

@@ -9,10 +9,11 @@
  * naming the route `trips`, so `Tabs.Screen name="trips"` and the `tab-trips` id are
  * untouched.
  *
- * The header is the title: iOS shows a large "Trips" that collapses as the list scrolls,
- * Android a standard header with the same word, both themed by `useStackHeaderOptions`
- * (the canvas behind, the accent on controls, the display face on titles). The trips
- * screen then adds its "Plan a trip" action to that header on iOS.
+ * The header is the title: iOS asks for a large "Trips", Android shows a standard header
+ * with the same word, both themed by `useStackHeaderOptions` (the canvas behind, the
+ * accent on controls, the display face on titles). The trips screen then adds its
+ * "Plan a trip" action to that header on iOS. The options are asserted in the tests; the
+ * large title's collapse as the list scrolls is native behaviour, a device check (T408).
  */
 import { Stack } from 'expo-router';
 
