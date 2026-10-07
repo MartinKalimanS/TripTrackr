@@ -2,14 +2,18 @@
  * `<FormActions>` — the Cancel / Save row that closes every form sheet (add
  * trip, add expense, the stop and note editors). The testIDs and labels are
  * what the Maestro flows and the screen suites select by, so they are pinned
- * here; so are the treatments that tell the two buttons apart.
+ * here; so is the emphasis that tells the two buttons apart (FR-005: Save is the
+ * single primary, Cancel is a text button) and the row that wraps at the
+ * largest text size (FR-029).
+ *
+ * The kit's Button is a plain Pressable under Jest that forwards every prop
+ * (test/mocks/heroui-native.tsx), so the tests read what the adapter asked of it.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { FormActions, type FormActionsProps } from '@/components/ui/form-actions';
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
-import { surfaceStyle } from '@/theme/surfaces';
 
 jest.mock('@/hooks/use-appearance');
 
@@ -30,9 +34,8 @@ beforeEach(() => {
   } as AppearanceContext);
 });
 
-function styleOf(node: { props: Record<string, unknown> }) {
-  return Object.assign({}, ...[node.props.style].flat(Infinity).filter(Boolean));
-}
+const classesOf = (node: { props: Record<string, unknown> }) =>
+  String(node.props.className ?? '').split(/\s+/);
 
 async function renderActions(overrides: Partial<FormActionsProps> = {}) {
   const props: FormActionsProps = {
@@ -77,23 +80,39 @@ describe('<FormActions>', () => {
     expect(props.onCancel).toHaveBeenCalledTimes(1);
   });
 
-  test('Cancel rests flat and Save stands raised at depth 2, side by side at equal width', async () => {
+  test('Save is the single primary and Cancel a text button (FR-005)', async () => {
     await renderActions();
 
-    const cancel = styleOf(screen.getByTestId('add-expense-cancel'));
-    const save = styleOf(screen.getByTestId('add-expense-save'));
-    const options = {
-      theme: 'light',
-      profile: 'full',
-      radius: 'md',
-      interactive: true,
-    } as const;
-    expect(cancel.boxShadow).toBeUndefined();
-    expect(save.boxShadow).toEqual(
-      surfaceStyle('raised', { ...options, depth: 2 }).boxShadow,
+    const cancel = screen.getByTestId('add-expense-cancel');
+    const save = screen.getByTestId('add-expense-save');
+    expect(save.props.variant).toBe('primary');
+    expect(cancel.props.variant).toBe('ghost');
+    expect(
+      screen.getAllByRole('button').filter((b) => b.props.variant === 'primary'),
+    ).toHaveLength(1);
+  });
+
+  test('keeps the reading order Cancel then Save', async () => {
+    await renderActions();
+    const labels = screen.getAllByRole('button').map((b) => b.props.accessibilityLabel);
+    expect(labels).toEqual(['Cancel', 'Save expense']);
+  });
+
+  test('the row wraps at large text, each button growing to share the line', async () => {
+    await renderActions();
+
+    const cancel = screen.getByTestId('add-expense-cancel');
+    const save = screen.getByTestId('add-expense-save');
+    const row = cancel.parent;
+    expect(row).toBe(save.parent);
+    expect(classesOf(row!)).toEqual(
+      expect.arrayContaining(['flex-row', 'flex-wrap', 'gap-3']),
     );
-    expect(cancel.flex).toBe(1);
-    expect(save.flex).toBe(1);
+    for (const button of [cancel, save]) {
+      // grow shares the line; max-w-full lets a long label wrap inside a button that
+      // already fills the row instead of overflowing it.
+      expect(classesOf(button)).toEqual(expect.arrayContaining(['grow', 'max-w-full']));
+    }
   });
 
   test('a disabled save is announced unavailable and inert, while Cancel still works', async () => {
