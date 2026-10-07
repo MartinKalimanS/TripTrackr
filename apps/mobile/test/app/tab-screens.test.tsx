@@ -22,14 +22,40 @@ import type { TripSummary } from '@/features/trips/use-trips';
 const mockPush = jest.fn();
 const mockNavigate = jest.fn();
 
-jest.mock('expo-router', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    navigate: mockNavigate,
-    back: jest.fn(),
-    replace: jest.fn(),
-  }),
-}));
+jest.mock('expo-router', () => {
+  const React = require('react') as typeof import('react');
+  return {
+    useRouter: () => ({
+      push: mockPush,
+      navigate: mockNavigate,
+      back: jest.fn(),
+      replace: jest.fn(),
+    }),
+    // The trips header is the navigator's: this draws its `headerRight` where a screen
+    // would put it, so a test finds the iOS "Plan a trip" action by its id.
+    Stack: {
+      Screen: ({
+        options,
+      }: {
+        options?: { headerRight?: (props: Record<string, unknown>) => React.ReactNode };
+      }) =>
+        React.createElement(
+          React.Fragment,
+          null,
+          options?.headerRight?.({ tintColor: 'tint', canGoBack: false }),
+        ),
+    },
+  };
+});
+
+// The trip card's cover draws a thumbnail through expo-image, whose real module needs
+// the `experienceUrl` the expo-constants stand-in below does not have.
+jest.mock('expo-image', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+  const Host = View as unknown as React.ComponentType<Record<string, unknown>>;
+  return { Image: (props: Record<string, unknown>) => React.createElement(Host, props) };
+});
 
 const mockGlobe: { data: GlobeData; loading: boolean; error: Error | null } = {
   data: { trips: [], focus: [], summary: { countriesVisited: 0, distanceKm: 0 } },
@@ -306,6 +332,11 @@ describe('<TripsScreen> — the local trip list (T066)', () => {
     expect(screen.getByText('No trips yet')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('trips-plan-trip'));
     expect(mockPush).toHaveBeenCalledWith('/modal/add-trip');
+
+    // The empty state names the same next step with an action of its own (a distinct id).
+    mockPush.mockReset();
+    await fireEvent.press(screen.getByTestId('trips-empty-plan-trip'));
+    expect(mockPush).toHaveBeenCalledWith('/modal/add-trip');
   });
 
   test('shows a designed error state when the store fails', async () => {
@@ -335,6 +366,7 @@ describe('<TripsScreen> — the local trip list (T066)', () => {
     ];
     await render(<TripsScreen />);
 
+    expect(screen.getByTestId('trips-list')).toBeTruthy();
     expect(screen.getByText('Italy, spring 2026')).toBeTruthy();
     expect(screen.getByText('2 stops · EUR')).toBeTruthy();
     expect(screen.getByText('1 stop · EUR')).toBeTruthy();

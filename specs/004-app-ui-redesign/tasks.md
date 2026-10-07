@@ -259,6 +259,25 @@ increased contrast.
       and `index.tsx`, `profile.tsx` likewise (use the Prettier character-class workaround), themed header
       options for `trip/[id]/_layout.tsx` and `modal/_layout.tsx`, `HeaderBackButton` where T408 needs it
       (FR-007, FR-008; D4-06)
+      _Done (trips and profile only; the box stays open for the trip and modal stacks):_ `(tabs)/trips` and
+      `(tabs)/profile` are directories (`git mv`; same URLs; `(tabs)/_layout.tsx` untouched, `Tabs.Screen`
+      names still match). `trips/_layout.tsx` is a `Stack` whose `screenOptions` come from the new adapter hook
+      `useStackHeaderOptions('Trips')` (`components/ui/stack-header.ts`, reusable by `trip/[id]` and `modal`);
+      `profile/_layout.tsx` is a `Stack` with `headerShown: false` until phase 6. Tests:
+      `src/components/ui/stack-header.test.tsx` (options per platform, the hook), `test/app/nested-stack-layouts.test.tsx`
+      (route files, what each layout hands `Stack`). Decisions: (1) the option is `headerLargeTitleEnabled`, not
+      `headerLargeTitle`, which is `@deprecated` in the installed router 57.0.22 types (the v57 Stack page lists
+      `headerLargeTitleEnabled`); (2) the helper is an adapter because `useThemeColor` and `useCSSVariable` may
+      not be imported under `src/app` (C4-6; the layouts only call the hook); (3) on iOS the header gets NO
+      `headerStyle.backgroundColor`: with a large title React Navigation leaves the header transparent over the
+      canvas, and its own comment in `useHeaderConfigProps` says a background there hides the title on iOS 26;
+      Android paints the header with the canvas; (4) the collapsed title uses `--font-display` (SemiBold, weight
+      `'600'`) and the large title `--font-display-bold` (Bold, `'700'`), the quotes the stylesheet writes
+      stripped, each weight being that file's own because React Native picks the nearest weight of a family.
+      _Still to do under T427:_ `trip/[id]/_layout.tsx` and `modal/_layout.tsx` header options,
+      `HeaderBackButton` where T408 needs it, and the headers-and-Back tests in
+      `trip-and-modal-screens.test.tsx`. _Device-only:_ the large title collapses as the trips list scrolls on iOS
+      (and the title stays visible on iOS 26); both titles draw the display face on both platforms (T408).
 - [x] T428 [P] [US1] Failing tests in `components/globe/__tests__/stats-overlay.test.tsx` and
       `empty-state.test.tsx`; then restyle `stats-overlay.tsx` and `empty-state.tsx` as opaque hairline cards
       with display-face tabular figures; `GlobeView`, arcs, camera and `GlobeColors` untouched (FR-018,
@@ -292,10 +311,31 @@ increased contrast.
       Follow-up (not now): reduce cover candidates to one row per trip in SQL (usable-path predicate
       mirrored in SQL, designated cover included, partial index or denormalised `earliest_photo_id`) when a
       library of several thousand photos is a target
-- [ ] T430 [US2] Failing tests in `test/components/trip-components.test.tsx` and `test/app/tab-screens.test.tsx`
+- [x] T430 [US2] Failing tests in `test/components/trip-components.test.tsx` and `test/app/tab-screens.test.tsx`
       for the card (cover, status chip, range, stops, currency, pending, whole-card control, chevron),
       skeletons, empty state, iOS header action versus Android FAB with the same `trips-plan-trip`; then
       `components/trip/trip-card.tsx`, `app/(tabs)/trips/index.tsx` (FR-011, FR-021, FR-035)
+      _As built:_ tests are `test/components/trip-card.test.tsx` (the card: one button named "title, status, N
+      stops" with the hint "Opens the trip", cover, chip, range, stops line, badge, chevron, large text, no neumorphic
+      import), `test/components/trip-components.test.tsx` (announcement parity), `test/app/trips-screen.test.tsx`
+      (states, iOS header action versus Android FAB, list as scroller, clearance), `test/app/tab-screens.test.tsx`
+      (trips parts), `src/features/trips/__tests__/trip-date-range.test.ts` and `list-screen.test.tsx`. New:
+      `components/trip/trip-cover-band.tsx` (thumbnail or status-tinted initial, fallback to the typographic cover
+      per thumbnail address when `expo-image` reports an error), `plan-trip-action.tsx`,
+      `features/trips/trip-date-range.ts` ("12 Mar – 20 Mar 2026", year once, en dash). The screen is a
+      `ListScreen` (`underHeader`, `edges={[]}`: the tab bar clears the home indicator) with `listTestID`, a
+      small additive prop on `ListScreen` so `trips-list` stays on the list (populated state only, as before; the
+      unresolved-id ratchet goes 34 to 35 for that forward). The error state keeps its title and detail and has no
+      retry (the live query offers none), a known gap against C4-10 rule 2. The card passes `cue={false}` and draws
+      its own chevron beside the text: the cover runs to the card's edge with `-mx-4 -mt-4` over the kit Surface's
+      16 dp padding, and the default chevron would hang off the picture. Maestro: no flow depends on text that
+      changed (ids, 'No trips yet', 'Planning', '2 stops.*', the card title are all kept), so no flow was edited.
+      _Device-only checks:_ the iOS large title collapse over the `FlashList` (and "Plan a trip" in the header
+      reachable by Maestro on iOS 26, where header items sit in a glass capsule); the Android FAB placement against
+      the tab bar and gesture area, the last card reachable above it, and no flow tapping a card centre under it;
+      the photo cover with a real thumbnail, and the typographic fallback when the file is gone; VoiceOver and
+      TalkBack read each card as ONE element ("title, status, N stops", hint "Opens the trip"); every card at the
+      largest text size (the chip and date rows wrap, the initial grows); light, dark and both contrast themes.
 - [ ] T431 [US2] Failing tests in `test/app/trip-and-modal-screens.test.tsx` for the hero title
       (`trip-title`), status row, areas row (`trip-links`, `trip-open-<segment>`), timeline and preserved stop
       controls and accessibility actions; then `app/trip/[id]/index.tsx`, `components/trip/stop-row.tsx`,

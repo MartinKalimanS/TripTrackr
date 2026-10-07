@@ -235,3 +235,17 @@ describe('<ListScreen underHeader> - research D4-06, contract C4-9', () => {
     }
   });
 });
+
+describe('<ListScreen> listTestID - T430', () => {
+  test('names the scroller, which is the list itself, apart from the screen root', async () => {
+    await renderList({ listTestID: 'rows' });
+    expect(scroller().props.testID).toBe('rows');
+    expect(screen.getByTestId('rows').type).toBe('RCTScrollView');
+    expect(screen.getByTestId('list').type).not.toBe('RCTScrollView');
+  });
+
+  test('is optional: with none, the scroller carries no id', async () => {
+    await renderList();
+    expect(scroller().props.testID).toBeUndefined();
+  });
+});

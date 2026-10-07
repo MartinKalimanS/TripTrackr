@@ -160,7 +160,13 @@ describe('<TripCard>', () => {
         onPress={onPress}
       />,
     );
-    await fireEvent.press(screen.getByLabelText('Italy, active, 2 stops'));
+    const card = screen.getByLabelText('Italy, active, 2 stops');
+    // The announcement is exactly what the card made before Atlas (FR-030): the name, the
+    // hint, one button. The rest of the card is `test/components/trip-card.test.tsx`.
+    expect(card.props.accessibilityHint).toBe('Opens the trip');
+    expect(card.props.accessibilityRole).toBe('button');
+    expect(card.props.testID).toBe('trip-card-t1');
+    await fireEvent.press(card);
     expect(onPress).toHaveBeenCalled();
     expect(screen.queryByLabelText('Sync pending')).toBeNull();
   });

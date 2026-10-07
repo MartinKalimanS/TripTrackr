@@ -1,17 +1,35 @@
 /**
- * One row of the trip list — tasks.md T066.
+ * One card of the trip list — tasks.md T066, restyled for Atlas by T430 (contract C4-11
+ * "Trip card"; FR-011, FR-012, FR-024, FR-029, FR-030, FR-034, FR-037).
  *
- * Title, derived status (text + icon, FR-010/FR-013), stop count, and the
- * pending-sync marker whenever the row has local changes the server has not
- * confirmed (`is_dirty`; Constitution II, feature 002 contract C11).
+ * A photo-forward card: the cover band, then the title, the status chip with the date
+ * range, the stops-and-currency line and, while the row has local changes the server has
+ * not confirmed (`is_dirty`; Constitution II, feature 002 contract C11), the pending
+ * badge.
+ *
+ * The whole card is ONE control (`Card` with `onPress`): role button, one accessible name
+ * and the hint "Opens the trip", exactly what the previous card announced
+ * (`<title>, <status>, <stops>`; FR-030), and the ids it always had (`trip-card-<id>`,
+ * `status-pill-<status>`). Everything inside is part of that one element, so nothing in
+ * it is a control and nothing in it is a card (FR-006).
+ *
+ * The chevron cue (FR-024) is the card's own, at the foot beside the text, not the
+ * `Card`'s default one: the default sits beside the whole content, so with a cover that
+ * runs to the card's edge it would hang off the right of the picture. `cue={false}` is
+ * the contract's provision for this (`<testID>-cue` is kept).
+ *
+ * At the largest text size the rows wrap and no height or line count is fixed, so
+ * nothing clips (FR-029); the title may take as many lines as it needs.
  */
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { StatusPill } from '@/components/trip/status-pill';
-import { PressableSurface } from '@/components/ui/pressable-surface';
+import { TripCoverBand } from '@/components/trip/trip-cover-band';
+import { Card } from '@/components/ui/card';
+import { StatusChip } from '@/components/ui/chip';
+import { PressCue } from '@/components/ui/press-cue';
 import { SyncBadge } from '@/components/ui/sync-badge';
-import { Spacing } from '@/constants/theme';
+import { Text } from '@/components/ui/text';
+import { formatDateRange } from '@/features/trips/trip-date-range';
 import type { TripSummary } from '@/features/trips/use-trips';
 
 export type TripCardProps = {
@@ -24,56 +42,44 @@ export function describeStopCount(count: number): string {
   return count === 1 ? '1 stop' : `${count} stops`;
 }
 
+/** A row of inline items that wraps under large text instead of clipping. */
+const WRAP_ROW = 'flex-row flex-wrap items-center gap-x-2 gap-y-1';
+
 export function TripCard({ summary, onPress }: TripCardProps) {
-  const { trip, stopCount, status } = summary;
+  const { trip, stopCount, status, cover, dateRange } = summary;
   const stops = describeStopCount(stopCount);
+  const id = `trip-card-${trip.id}`;
 
   return (
-    <PressableSurface
-      testID={`trip-card-${trip.id}`}
+    <Card
+      testID={id}
       accessibilityLabel={`${trip.title}, ${status}, ${stops}`}
       accessibilityHint="Opens the trip"
-      depth={1}
-      radius="lg"
-      onPress={onPress}
-      style={styles.card}>
-      <View style={styles.titleRow}>
-        <ThemedText type="default" style={styles.title} numberOfLines={2}>
-          {trip.title}
-        </ThemedText>
-        <StatusPill status={status} />
+      cue={false}
+      onPress={onPress}>
+      <TripCoverBand cover={cover} title={trip.title} status={status} idPrefix={id} />
+      <View className="mt-3 flex-row items-center gap-3">
+        <View className="flex-1 gap-2">
+          <Text type="title" accessibilityRole="text">
+            {trip.title}
+          </Text>
+          <View testID={`${id}-status-row`} className={WRAP_ROW}>
+            <StatusChip status={status} />
+            {dateRange ? (
+              <Text type="callout" tone="muted">
+                {formatDateRange(dateRange)}
+              </Text>
+            ) : null}
+          </View>
+          <View testID={`${id}-meta-row`} className={WRAP_ROW}>
+            <Text type="callout" tone="muted">
+              {stops} · {trip.home_currency}
+            </Text>
+            {trip.is_dirty ? <SyncBadge state="pending" /> : null}
+          </View>
+        </View>
+        <PressCue testID={`${id}-cue`} />
       </View>
-      <View style={styles.metaRow}>
-        <ThemedText type="small" themeColor="textMuted">
-          {stops} · {trip.home_currency}
-        </ThemedText>
-        {trip.is_dirty ? <SyncBadge state="pending" /> : null}
-      </View>
-    </PressableSurface>
+    </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    alignItems: 'stretch',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  title: {
-    flex: 1,
-    fontWeight: 600,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-});
