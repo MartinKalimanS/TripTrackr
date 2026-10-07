@@ -255,6 +255,17 @@ jest.mock('expo-screen-capture', () => ({
   disableAppSwitcherProtectionAsync: jest.fn(async () => undefined),
 }));
 
+// Haptics need a vibration motor; every suite that renders a Button reaches expo-haptics
+// through useHaptics. A real import loads expo and expo-asset, which a suite that
+// mocks expo-constants cannot satisfy, so nothing imports it for real under Jest.
+jest.mock('expo-haptics', () => ({
+  selectionAsync: jest.fn(async () => undefined),
+  notificationAsync: jest.fn(async () => undefined),
+  impactAsync: jest.fn(async () => undefined),
+  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+}));
+
 // Mapbox draws through native views; the globe suites assert on the props the
 // app hands it, not on pixels. Each component becomes a View tagged
 // `mapbox-<Kind>-<id>` (or the testID it was given) carrying every prop, so a
