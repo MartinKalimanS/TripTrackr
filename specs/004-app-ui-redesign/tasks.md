@@ -127,7 +127,7 @@ After this phase every unconverted screen already renders in Atlas colours with 
 
 ### Adapters (each: failing test first, in `apps/mobile/src/components/ui/*.test.tsx`)
 
-- [ ] T414 [P] Parity tooling: `apps/mobile/scripts/testid-baseline.mjs` and
+- [x] T414 [P] Parity tooling: `apps/mobile/scripts/testid-baseline.mjs` and
       `apps/mobile/test/testid-parity.test.ts` that extract every `testID` and accessible name from the
       `pre-004-baseline` tag and fail when one is missing or renamed (allowlist file for recorded
       exceptions) (FR-037, SC-003)
