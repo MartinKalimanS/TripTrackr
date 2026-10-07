@@ -5,10 +5,12 @@
  *   <Avatar name="Ada Lovelace" />                    announced "Ada Lovelace", shows AL
  *   <Avatar name="Ada Lovelace" size="lg" decorative /> beside the name: hidden from AT
  *
- * - The initials are the first letters of up to two words of `name`, upper-cased
- *   (`initialsOf`); an empty name shows `?`. A letter keeps its accent, an emoji or a
- *   flag counts as ONE letter (never half a surrogate pair), extra and unusual spaces
- *   are ignored.
+ * - The initials are the first letters of up to two words of `name`, capitalised
+ *   (`initialsOf`); a name with none shows `?`. A letter is one GRAPHEME as the reader
+ *   sees it: a base with its combining marks in any script, an emoji with its skin
+ *   tone or ZWJ sequence, a flag, a keycap. Leading punctuation is skipped (a bracket,
+ *   a quote, an '@'), a word with no letter, number or pictograph is not a word, and
+ *   'ß' is 'S', never 'SS'. Extra and unusual spaces are ignored.
  * - The fill is the kit's solid `default` with its ink-coloured fallback text (a pair
  *   the contrast gate measures at 4.5:1). A soft fill is never used: review rule 5.
  * - Accessibility: the avatar is an image whose name is the person's name (not their
@@ -36,46 +38,47 @@ export interface AvatarProps {
 }
 
 const EMPTY_INITIALS = '?';
-const REGIONAL_INDICATOR_START = 0x1f1e6;
-const REGIONAL_INDICATOR_END = 0x1f1ff;
 
-function isRegionalIndicator(glyph: string | undefined): boolean {
-  const point = glyph?.codePointAt(0) ?? 0;
-  return point >= REGIONAL_INDICATOR_START && point <= REGIONAL_INDICATOR_END;
-}
+/**
+ * Where a word's initial can start: a keycap (its base, '#' or '*', is punctuation), or a
+ * letter, a number, a pictograph or a flag. Anything before it (a bracket, a quote, a
+ * dash, an '@') is skipped, and a word with none of them is not a word.
+ */
+const INITIAL_START =
+  /(?:[0-9#*]\uFE0F?\u20E3|[\p{L}\p{N}\p{Extended_Pictographic}\p{Regional_Indicator}])/u;
 
-/** A combining accent (U+0300 to U+036F) or the emoji variation selector (U+FE0F). */
-function isCombining(glyph: string): boolean {
-  const point = glyph.codePointAt(0) ?? 0;
-  return (point >= 0x300 && point <= 0x36f) || point === 0xfe0f;
+/**
+ * The grapheme that starts a string, as the reader sees one letter: a flag (two regional
+ * indicators), or a base with its combining marks of every script (accents, vowel signs,
+ * harakat, niqqud, the emoji variation selector, a keycap's enclosing mark), then any
+ * skin-tone modifier, subdivision-flag tag, or zero-width-joined base that follows (a
+ * family, a rainbow flag, a woman astronaut). It is one regular expression with the u
+ * flag, no look-behind and only \p{...} escapes, which Hermes supports (the literals were
+ * compiled with hermesc). Indic conjuncts joined by a virama are not kept whole.
+ */
+const GRAPHEME =
+  /^(?:\p{Regional_Indicator}{2}|\P{M}\p{M}*(?:\p{Emoji_Modifier}|[\u{E0020}-\u{E007F}]|\u200D\P{M}\p{M}*)*)/u;
+
+/** The initial of a word, or '' for a word without one. */
+function initialOf(word: string): string {
+  const at = word.search(INITIAL_START);
+  if (at < 0) return '';
+  const glyph = GRAPHEME.exec(word.slice(at))?.[0] ?? '';
+  // Capitalise the base only, and keep ONE code point of it: 'ß' is 'SS' to
+  // toUpperCase(), and an initial is a single letter. Marks and the rest are untouched.
+  const [base = '', ...rest] = Array.from(glyph);
+  const capital = Array.from(base.toUpperCase())[0] ?? base;
+  return capital + rest.join('');
 }
 
 /**
- * The first letter of a word as the reader sees it: a whole code point (not half a
- * surrogate pair), with the accents or variation selector that follow it, and both
- * halves of a flag.
+ * The first letter of up to two words of a display name, capitalised; '?' when there is
+ * none. Words are split on whitespace and a word with no letter, number or pictograph
+ * ('&', '-') is skipped, so "Ada & Bob" is "AB".
  */
-function firstGlyph(word: string): string {
-  const points = Array.from(word);
-  let glyph = points[0] ?? '';
-  let next = 1;
-  if (isRegionalIndicator(points[0]) && isRegionalIndicator(points[1])) {
-    glyph += points[1];
-    next = 2;
-  }
-  while (next < points.length && isCombining(points[next])) {
-    glyph += points[next];
-    next += 1;
-  }
-  return glyph;
-}
-
-/** The first letters of up to two words of a display name, upper-cased; `?` when empty. */
 export function initialsOf(name: string): string {
-  const words = name.split(/\s+/).filter(Boolean).slice(0, 2);
-  return words.length === 0
-    ? EMPTY_INITIALS
-    : words.map((word) => firstGlyph(word).toUpperCase()).join('');
+  const initials = name.split(/\s+/).map(initialOf).filter(Boolean).slice(0, 2);
+  return initials.length === 0 ? EMPTY_INITIALS : initials.join('');
 }
 
 const HIDDEN = {
