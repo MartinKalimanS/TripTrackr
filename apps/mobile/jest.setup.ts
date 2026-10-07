@@ -428,6 +428,29 @@ jest.mock('@rnmapbox/maps', () => {
   return { __esModule: true, default: Mapbox, ...Mapbox };
 });
 
+// Feature 004 (research D4-13). The kit runs on Reanimated worklets, Uniwind's Metro
+// transform and a Tailwind stylesheet, none of which exist under Jest. Every suite
+// therefore gets ONE stand-in for `heroui-native` (test/mocks/heroui-native.tsx):
+// plain React Native nodes carrying the props the adapters pass. The real components
+// are rendered once, on purpose, by test/ui-kit/real-render.test.tsx
+// (`jest.requireActual`), which proves the contract the stand-in assumes.
+jest.mock('heroui-native', () => require('./test/mocks/heroui-native'));
+
+// Uniwind reads CSS variables the Metro transform registered; with no transform
+// there is nothing to read. The real module is kept (`Uniwind.setTheme`, `useUniwind`,
+// `withUniwind` all work), and `useCSSVariable` answers every name with a fixed
+// placeholder so a component that needs a colour value gets a string, never
+// `undefined`. A test that cares about a value mocks the hook itself.
+jest.mock('uniwind', () => {
+  const actual = jest.requireActual('uniwind');
+  const placeholder = '#808080';
+  return {
+    ...actual,
+    useCSSVariable: (name: string | string[]) =>
+      Array.isArray(name) ? name.map(() => placeholder) : placeholder,
+  };
+});
+
 afterEach(() => {
   jest.clearAllMocks();
 });
