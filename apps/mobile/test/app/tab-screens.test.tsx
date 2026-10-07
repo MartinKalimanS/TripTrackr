@@ -68,6 +68,16 @@ jest.mock('expo-constants', () => ({
   },
 }));
 
+// The state views and `FormActions` press through the Atlas `Button`, which plays haptics
+// (`use-haptics`). The real `expo-haptics` loads `expo`, whose asset module reads
+// `expo-constants`' `experienceUrl` at import time, and the stand-in above has none: this
+// suite never asserts a haptic, so it takes the same stub as `use-haptics.test.ts`.
+jest.mock('expo-haptics', () => ({
+  selectionAsync: jest.fn(),
+  notificationAsync: jest.fn(),
+  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+}));
+
 const mockTrips: { data: TripSummary[]; loading: boolean; error: Error | null } = {
   data: [],
   loading: false,
