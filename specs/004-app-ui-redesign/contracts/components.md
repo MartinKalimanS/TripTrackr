@@ -226,6 +226,18 @@ built API goes beyond it.
   (research "Items to verify", item 7).
 - iOS top-level list screens use large titles; Android uses a standard header with the same title.
 
+**As built (T427, trip part)**
+
+- `useHeaderTheme()` (`components/ui/header-theme.ts`) is how a layout themes a native header without importing the
+  kit: it returns `headerStyle` and `contentStyle` (the kit's `background`), `headerTintColor` (`accent`) and
+  `headerShadowVisible: false`, memoised on the two colours. It sets no title, title face or large title; the first
+  screen that shows a native title adds `headerTitleStyle` and `headerLargeTitleStyle` (D4-07) beside it.
+- The trip overview is the first screen to use `HeaderBackButton` as its `headerLeft`, called WITHOUT the props React
+  Navigation passes. `canGoBack` is false for a trip opened with nothing beneath it; the button then replaces with
+  `/` instead of drawing nothing. The native back button is replaced, not added to (`backButtonInCustomView` stays
+  false), and a nested stack's first screen would otherwise carry the parent's previous route name (`(tabs)`) as
+  its label (`NativeStackView.native.js`: `parentHeaderBack`).
+
 ---
 
 ## Review rules for new adapters
