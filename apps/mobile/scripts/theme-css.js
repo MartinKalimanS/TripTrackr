@@ -18,9 +18,6 @@
  * variables (Uniwind warns in development when one is missing).
  */
 
-/** The four themes, in output order. `light` and `dark` are the kit's own variants. */
-const THEME_NAMES = ['light', 'dark', 'light-contrast', 'dark-contrast'];
-
 /**
  * Every HeroUI Native colour variable and the palette key that supplies it. Neutral
  * foregrounds are all `ink`; `surfaceSecondary` doubles as the field fill and the
@@ -66,8 +63,9 @@ const KIT_VARIABLES = [
 
 /**
  * The app's own variables (trip status, pending marker). Each is also exposed to
- * Tailwind as `--color-<name>` in an `@theme inline` block so `bg-status-active`,
- * `text-pending` and friends work.
+ * Tailwind as `--color-<name>` in an `@theme inline static` block (the kit's own form,
+ * `heroui-native/src/styles/theme.css`) so `bg-status-active`, `text-pending` and
+ * friends work.
  *
  * @type {ReadonlyArray<readonly [string, string]>}
  */
@@ -79,13 +77,32 @@ const APP_VARIABLES = [
   ['--pending', 'pending'],
 ];
 
+/**
+ * Variables shared by every theme, written once in a plain `@theme { }` block, the form
+ * in which the kit declares them (`heroui-native/src/styles/variables.css`).
+ *
+ * The kit ships `--field-border-width: 0px` (its fields are borderless) and reads it in
+ * `@theme inline static` as `--border-width-field-width: var(--field-border-width, ...)`.
+ * Atlas draws the field boundary FR-024 requires (`--field-border` is the 3:1 `border`
+ * colour), so the width is overridden here; a later `@theme` declaration wins.
+ *
+ * @type {ReadonlyArray<readonly [string, string]>}
+ */
+const SHARED_VARIABLES = [['--field-border-width', '1px']];
+
 /** Only the plain light theme casts a shadow; the others are flat (research D4-11). */
 const SHADOWED_THEMES = ['light'];
 
 /** A zero shadow that still lets the kit's ring utilities work (HeroUI docs). */
 const NO_SHADOW = '0 0 0 0 transparent inset';
 
-const HEX_COLOUR = /^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$/;
+/** Every colour is `#RRGGBB`; only the `backdrop` scrim may also be `#RRGGBBAA`. */
+const HEX_OPAQUE = /^#[0-9A-Fa-f]{6}$/;
+const HEX_TRANSLUCENT = /^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$/;
+const TRANSLUCENT_KEYS = ['backdrop'];
+
+/** A theme name becomes a CSS identifier, so it is checked rather than trusted. */
+const THEME_NAME = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 /** Prettier's `printWidth` (see .prettierrc); the generated file must be Prettier-stable. */
 const PRINT_WIDTH = 90;
@@ -99,13 +116,23 @@ const HEADER = [
 ].join('\n');
 
 /**
- * @param {Readonly<Record<string, Readonly<Record<string, string>>>>} palettes
- * @param {string} theme
+ * The themes are whatever the palette data holds, in its order: the generator has no
+ * second list to drift from the data. A name must be a safe CSS identifier.
+ *
+ * @param {Readonly<Record<string, unknown>>} palettes
+ * @returns {string[]}
  */
-function paletteOf(palettes, theme) {
-  const palette = palettes[theme];
-  if (!palette) throw new Error(`Palette "${theme}" is missing.`);
-  return palette;
+function themeNames(palettes) {
+  const names = Object.keys(palettes);
+  if (names.length === 0) throw new Error('The palette data holds no theme.');
+  for (const name of names) {
+    if (!THEME_NAME.test(name)) {
+      throw new Error(
+        `Invalid theme name "${name}": expected a lowercase CSS identifier.`,
+      );
+    }
+  }
+  return names;
 }
 
 /**
@@ -118,7 +145,8 @@ function colourOf(palette, theme, key) {
   if (typeof value !== 'string' || value === '') {
     throw new Error(`Palette "${theme}" has no "${key}" colour.`);
   }
-  if (!HEX_COLOUR.test(value)) {
+  const pattern = TRANSLUCENT_KEYS.includes(key) ? HEX_TRANSLUCENT : HEX_OPAQUE;
+  if (!pattern.test(value)) {
     throw new Error(`Palette "${theme}" "${key}" is not a hex colour: "${value}".`);
   }
   return value;
@@ -168,12 +196,14 @@ function shadowVariables(theme, palette) {
 function declaration(variable, value) {
   const line = `${DECLARATION_INDENT}${variable}: ${value};`;
   if (line.length <= PRINT_WIDTH) return line;
-  return `${DECLARATION_INDENT}${variable}:
-${DECLARATION_INDENT}  ${value};`;
+  return `${DECLARATION_INDENT}${variable}:\n${DECLARATION_INDENT}  ${value};`;
 }
 
 /** One `@variant` block: kit colours, shadows, then the app's own variables. */
 function themeBlock(theme, palette) {
+  if (palette === null || typeof palette !== 'object') {
+    throw new Error(`Palette "${theme}" is missing.`);
+  }
   const resolve = ([variable, key]) => [variable, cssColour(palette, theme, key)];
   const declarations = [
     ...KIT_VARIABLES.map(resolve),
@@ -188,24 +218,51 @@ function tailwindColour(variable) {
   return `--color-${variable.slice(2)}`;
 }
 
+/** The plain `@theme { }` block of variables every theme shares. */
+function sharedBlock() {
+  const declarations = SHARED_VARIABLES.map(
+    ([variable, value]) => `  ${variable}: ${value};`,
+  );
+  return [
+    '/* The kit ships --field-border-width: 0px (borderless fields); Atlas draws the',
+    ' * field boundary that FR-024 requires. */',
+    '@theme {',
+    ...declarations,
+    '}',
+  ].join('\n');
+}
+
+/** Fails when a theme in the data did not reach the stylesheet. */
+function assertEveryThemeEmitted(css, names) {
+  for (const name of names) {
+    if (!css.includes(`@variant ${name} {`)) {
+      throw new Error(
+        `Theme "${name}" is in the palette data but not in the stylesheet.`,
+      );
+    }
+  }
+}
+
 /**
  * The generated stylesheet for a set of palettes. Pure: no I/O, no mutation, the same
  * palettes always give the same text (LF line endings, one trailing newline).
  *
  * @param {Readonly<Record<string, Readonly<Record<string, string>>>>} palettes
- *   Theme name to palette, for every name in `THEME_NAMES`.
+ *   Theme name to palette. Every theme in the data, in its order, is emitted.
  * @returns {string}
- * @throws if a theme, or a key a theme needs, is missing or is not a hex colour.
+ * @throws if there is no theme, a theme name is unsafe, or a key a theme needs is
+ *   missing or is not a hex colour.
  */
 function buildThemeCss(palettes) {
-  const blocks = THEME_NAMES.map((theme) =>
-    themeBlock(theme, paletteOf(palettes, theme)),
-  );
+  const names = themeNames(palettes);
+  const blocks = names.map((theme) => themeBlock(theme, palettes[theme]));
   const exposed = APP_VARIABLES.map(
     ([variable]) => `  ${tailwindColour(variable)}: var(${variable});`,
   );
-  return [
+  const css = [
     HEADER,
+    '',
+    sharedBlock(),
     '',
     '@layer theme {',
     '  :root {',
@@ -213,11 +270,13 @@ function buildThemeCss(palettes) {
     '  }',
     '}',
     '',
-    '@theme inline {',
+    '@theme inline static {',
     ...exposed,
     '}',
     '',
   ].join('\n');
+  assertEveryThemeEmitted(css, names);
+  return css;
 }
 
-module.exports = { THEME_NAMES, buildThemeCss };
+module.exports = { buildThemeCss };

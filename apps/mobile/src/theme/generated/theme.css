@@ -3,6 +3,12 @@
  *   node scripts/build-theme-css.mjs
  * A Jest test fails when this file differs from the generator's output. */
 
+/* The kit ships --field-border-width: 0px (borderless fields); Atlas draws the
+ * field boundary that FR-024 requires. */
+@theme {
+  --field-border-width: 1px;
+}
+
 @layer theme {
   :root {
     @variant light {
@@ -181,7 +187,7 @@
   }
 }
 
-@theme inline {
+@theme inline static {
   --color-status-planning: var(--status-planning);
   --color-status-planning-ink: var(--status-planning-ink);
   --color-status-active: var(--status-active);

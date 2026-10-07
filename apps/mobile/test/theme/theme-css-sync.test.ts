@@ -9,6 +9,11 @@
  *      output.
  *   2. A theme missing a variable another theme defines: the kit and Uniwind require
  *      identical variable sets, and a missing one falls back silently in production.
+ *
+ * It also pins the one non-colour override the file carries: the kit ships
+ * `--field-border-width: 0px`, so its fields have no boundary, and the kit reads that
+ * variable in its own `@theme inline static` block. Left alone, the field border that
+ * FR-024 requires would never be drawn.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -16,7 +21,12 @@ import path from 'node:path';
 import { PaletteNames, Palettes, type Palette, type PaletteName } from '@/theme/palette';
 
 import { buildThemeCss } from '../../scripts/theme-css';
-import { DECORATIVE_GENERATED_VARIABLES } from './gate-exemptions';
+import {
+  DECORATIVE_GENERATED_VARIABLES,
+  DECORATIVE_PALETTE_KEYS,
+  SHARED_NON_COLOUR_VARIABLES,
+} from './gate-exemptions';
+import { buildPairs, coveredKeys } from './palette-gate-support';
 
 const CSS_PATH = path.resolve(__dirname, '../../src/theme/generated/theme.css');
 
@@ -70,6 +80,8 @@ const APP_VARIABLES: Record<string, { key: keyof Palette; colour: string }> = {
 
 const SHADOWS = DECORATIVE_GENERATED_VARIABLES as readonly string[];
 
+const SHARED = SHARED_NON_COLOUR_VARIABLES as readonly string[];
+
 const REQUIRED_VARIABLES = [
   ...Object.keys(KIT_COLOUR_VARIABLES),
   ...SHADOWS,
@@ -84,6 +96,18 @@ const lowercase = (hex: string) => hex.toLowerCase();
 function committedCss(): string {
   // The repository stores LF; a Windows checkout with autocrlf must not fail the gate.
   return readFileSync(CSS_PATH, 'utf8').replace(/\r\n/g, '\n');
+}
+
+/** The variables of the plain, non-themed `@theme { ... }` block (shared by all themes). */
+function parseSharedTheme(css: string): Record<string, string> {
+  const block = /^@theme \{([\s\S]*?)\n\}/m.exec(css);
+  const variables: Record<string, string> = {};
+  for (const [, variable, value] of (block?.[1] ?? '').matchAll(
+    /(--[a-z0-9-]+):\s*([^;]*);/g,
+  )) {
+    variables[variable] = value.trim();
+  }
+  return variables;
 }
 
 /** Variables per `@variant` block, in file order. */
@@ -156,9 +180,53 @@ describe('buildThemeCss', () => {
     expect(buildThemeCss(Palettes)).not.toMatch(/#[0-9a-f]*[A-F][0-9a-fA-F]*;/);
   });
 
-  test('fails loudly when a whole theme is missing', () => {
+  test('derives the themes from the palette data, in data order', () => {
+    const extended = { ...Palettes, sepia: { ...Palettes.light } };
+    const names = [...buildThemeCss(extended).matchAll(/@variant ([a-z-]+) \{/g)].map(
+      (m) => m[1],
+    );
+    expect(names).toEqual([...Object.keys(Palettes), 'sepia']);
+  });
+
+  test('a theme removed from the data is removed from the stylesheet', () => {
     const { dark: _dark, ...withoutDark } = Palettes;
-    expect(() => buildThemeCss(withoutDark as never)).toThrow(/dark/);
+    const names = [...buildThemeCss(withoutDark).matchAll(/@variant ([a-z-]+) \{/g)].map(
+      (m) => m[1],
+    );
+    expect(names).toEqual(['light', 'light-contrast', 'dark-contrast']);
+  });
+
+  test('refuses palettes that hold no theme', () => {
+    expect(() => buildThemeCss({})).toThrow(/no theme/i);
+  });
+
+  test('refuses a theme name that is not a safe CSS identifier', () => {
+    const bad = { ...Palettes, 'x { } @import "evil"; y': Palettes.light };
+    expect(() => buildThemeCss(bad as never)).toThrow(/theme name/i);
+  });
+
+  test('only the backdrop may carry an alpha channel (8-digit hex)', () => {
+    const withAlpha = { ...Palettes, dark: { ...Palettes.dark, ink: '#F4F1ECCC' } };
+    expect(() => buildThemeCss(withAlpha)).toThrow(/dark.*ink.*hex/);
+    const translucent = {
+      ...Palettes,
+      dark: { ...Palettes.dark, backdrop: '#04080E99' },
+    };
+    expect(() => buildThemeCss(translucent)).not.toThrow();
+    expect(parseThemes(buildThemeCss(translucent)).dark['--backdrop']).toBe('#04080e99');
+  });
+
+  test('refuses an 8-digit hex on every non-backdrop key, not just ink', () => {
+    for (const key of Object.keys(Palettes.dark) as (keyof Palette)[]) {
+      if (key === 'backdrop') continue;
+      const bad = { ...Palettes, dark: { ...Palettes.dark, [key]: '#11223344' } };
+      expect(() => buildThemeCss(bad)).toThrow(new RegExp(`dark.*${key}.*hex`));
+    }
+  });
+
+  test('declares the shared field border width once, outside every theme', () => {
+    const declarations = buildThemeCss(Palettes).replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(declarations.match(/--field-border-width:/g)).toHaveLength(1);
   });
 });
 
@@ -167,8 +235,29 @@ describe('generated/theme.css — contract C4-5', () => {
     expect(committedCss()).toBe(buildThemeCss(Palettes));
   });
 
-  test('defines the four themes', () => {
-    expect(Object.keys(parseThemes(committedCss()))).toEqual([...PaletteNames]);
+  test('defines every theme in the palette data, and no other', () => {
+    expect(Object.keys(parseThemes(committedCss()))).toEqual(Object.keys(Palettes));
+    expect(Object.keys(Palettes)).toEqual([...PaletteNames]);
+  });
+
+  describe('the kit field border width override', () => {
+    test("is declared in the shared @theme block, in the kit's own form", () => {
+      expect(Object.keys(parseSharedTheme(committedCss()))).toEqual([...SHARED]);
+    });
+
+    test('is a visible width, not the kit default of 0 / 0px', () => {
+      const width = parseSharedTheme(committedCss())['--field-border-width'];
+      expect(width).toBeDefined();
+      expect(width).not.toMatch(/^0(px)?$/);
+      expect(width).toMatch(/^[1-9][0-9]*(\.[0-9]+)?px$/);
+      expect(width).toBe('1px');
+    });
+
+    test('is not repeated inside a theme, so no theme can switch it back off', () => {
+      for (const variables of Object.values(parseThemes(committedCss()))) {
+        expect(Object.keys(variables)).not.toContain('--field-border-width');
+      }
+    });
   });
 
   test.each(PaletteNames)('%s defines exactly the required variable set', (name) => {
@@ -205,10 +294,13 @@ describe('generated/theme.css — contract C4-5', () => {
     }
   });
 
-  test('exposes the app variables to Tailwind in an @theme inline block', () => {
+  test('exposes the app variables to Tailwind in an @theme inline static block', () => {
+    // The kit's own form (heroui-native/src/styles/theme.css): inline, so the utility
+    // reads the variable the active theme sets, and static, so it is always emitted.
     const css = committedCss();
-    const inline = css.slice(css.indexOf('@theme inline {'));
-    expect(inline.startsWith('@theme inline {')).toBe(true);
+    const inline = css.slice(css.indexOf('@theme inline static {'));
+    expect(inline.startsWith('@theme inline static {')).toBe(true);
+    expect(css).not.toMatch(/@theme inline \{/);
     for (const [variable, { colour }] of Object.entries(APP_VARIABLES)) {
       expect(inline).toContain(`${colour}: var(${variable});`);
     }
@@ -224,6 +316,38 @@ describe('generated/theme.css — contract C4-5', () => {
         .map(([variable]) => `${name} ${variable}`);
       expect(unknown).toEqual([]);
     }
+  });
+
+  describe('every generated variable is classified (gate-exemptions.ts)', () => {
+    const decorativeKeys = new Set<string>(DECORATIVE_PALETTE_KEYS);
+    const mapped: Record<string, keyof Palette> = {
+      ...KIT_COLOUR_VARIABLES,
+      ...Object.fromEntries(
+        Object.entries(APP_VARIABLES).map(([variable, { key }]) => [variable, key]),
+      ),
+    };
+
+    test.each(PaletteNames)(
+      '%s: each colour variable maps to a palette key the gate measures or allowlists',
+      (name) => {
+        const measured = coveredKeys(buildPairs(Palettes[name], name));
+        const unclassified = Object.entries(mapped)
+          .filter(([, key]) => !measured.has(key) && !decorativeKeys.has(key))
+          .map(([variable]) => variable);
+        expect(unclassified).toEqual([]);
+      },
+    );
+
+    test.each(PaletteNames)(
+      '%s: every variable in the file is a mapped colour, a named shadow or a named shared variable',
+      (name) => {
+        const defined = Object.keys(parseThemes(committedCss())[name]);
+        const known = new Set<string>([...Object.keys(mapped), ...SHADOWS]);
+        expect(defined.filter((variable) => !known.has(variable))).toEqual([]);
+        const shared = Object.keys(parseSharedTheme(committedCss()));
+        expect(shared.filter((variable) => !SHARED.includes(variable))).toEqual([]);
+      },
+    );
   });
 
   describe('shadows (research D4-11)', () => {
