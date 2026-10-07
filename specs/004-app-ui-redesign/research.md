@@ -338,24 +338,188 @@ These could not be confirmed from documentation and are the acceptance checks of
 1. **Metro**: `withUniwindConfig` as the outermost wrapper over `getSentryExpoConfig`, the `.sql`
    source extension and the test-file block list still bundles on iOS and Android, and the Sentry Debug
    ID is still embedded. (T402)
+
+   Result (desk, 2026-10-07): **pass.** `withUniwindConfig` is the outermost wrapper in
+   `metro.config.js` (pinned by `test/config/metro-config.test.ts`: Uniwind's transformer and resolver,
+   Sentry's serializer, the `.sql` extension and the test-file block list are all present).
+   `npx expo export --platform android` and `--platform ios`, both with `--no-minify`, bundle
+   (Android 5115 modules, 219 s cold and 68 s warm; iOS 5028 modules, 311 s cold) and print "React
+   Compiler enabled". The Sentry Debug ID is in both bundles (`sentry-dbid-<uuid>` in the Hermes
+   bytecode; `_sentryDebugIds[stack]="<uuid>"` in a `--no-bytecode` export). No environment variable had
+   to be set: Expo loads `apps/mobile/.env.local` by itself. Findings: (a) Uniwind prints "Uniwind Error -
+   Theme <name> is missing variable --<x>" (35 lines per theme) for every `extraThemes` entry that does
+   not define all of the kit's variables; the bundle still builds, and declaring the two themes with
+   `@variant` in `global.css` removes it; (b) `import '@/global.css'` through the tsconfig alias is
+   transformed correctly (four variable tables are in the bundle); (c) Uniwind
+   redirects every `react-native` import made outside React Native itself to `uniwind/components`
+   (className-aware wrappers), so the whole app, Mapbox and FlashList included, now runs through them:
+   it needs the on-device smoke test listed under the go/no-go outcome.
+
 2. **React Compiler**: kit and adapter components render correctly with `experiments.reactCompiler`
    on; any file that needs `"use no memo"` is listed. (T403)
+
+   Result (desk, 2026-10-07): **pass; no file needs `"use no memo"`.** `babel-preset-expo` never runs
+   the compiler on `node_modules` (`isNodeModule`), so the kit itself is not compiled; only first-party
+   files are. Compiled with `babel-plugin-react-compiler` and its logger: `app/_layout.tsx` (with the
+   provider) 1 function compiled, 0 bail-outs; a throwaway screen using Button, Card, ListGroup, Chip
+   and TextField/Label/Input/FieldError with state, `useMemo`, `useCallback`, an effect and a custom hook
+   2 functions compiled, 0 bail-outs. That compiled screen (49 memo slots) rendered against the REAL
+   kit under Jest and stayed correct while typing, pressing and toggling a chip. Jest does not enable
+   the compiler (jest-expo's Babel caller lacks `supportsReactCompiler`), so ordinary suites test the
+   uncompiled source; forcing it onto a whole suite also breaks `jest.setup.ts`, whose hoisted
+   `jest.mock` factories get a `_c` cache variable and then fail the out-of-scope check.
+
 3. **Jest**: the extended `transformIgnorePatterns`, mocks and `.css` handling run the whole existing
    suite and one real render of `Button` and `Field`. (T404)
+
+   Result (desk, 2026-10-07): **pass.** `transformIgnorePatterns` extended, `.css` mapped to
+   `test/stubs/css-stub.js` (first in `moduleNameMapper`, ahead of the `@/` alias), one shared stand-in
+   `test/mocks/heroui-native.tsx`, and a `uniwind` mock that keeps the real module and answers
+   `useCSSVariable` with a placeholder. The whole suite is green: 110 suites, 1875 tests (108 and 1848
+   before the spike), 59 s on an idle machine. The REAL Button, Chip, Card, ListGroup and
+   TextField/Label/Input/FieldError render under Jest (`test/ui-kit/real-render.test.tsx`, 19 tests), but
+   only with fuller Reanimated and worklets doubles than the global ones (`react-native-reanimated/mock`
+   plus a worklets double plus `useReducedMotion`, kept local to that suite): with the global minimal
+   mocks the kit fails at import (`createAnimatedComponent is not a function`). Nine parity scenarios
+   compare the real kit's host props with the stand-in's, so the stand-in cannot drift. Surprises:
+   Card, ListGroup and Surface throw without `HeroUINativeProvider` above them (a non-strict context is
+   destructured in `useCombinedAnimationDisabledState`); the first test of a suite that mounts the
+   whole router tree costs 11 to 20 s on a cold transform cache against the 20 s `testTimeout`, so under CPU
+   load `root-layout` and `sync-runtime-shell` timed out once and passed when run alone; and
+   `document-upload` ("works through a trip's documents one after another") failed once on its
+   upload-order assertion, which does not touch anything this spike changed, and passed on every rerun.
+
 4. **Pass-through**: `testID`, `accessibilityLabel`, role, state and hint reach the native node on
    Button, Card, ListGroup item, Input and Chip; touch targets of sizes sm, md, lg are at least 44 dp on
    iOS and 48 dp on Android; busy and disabled are announced. (T405)
+
+   Result (desk, 2026-10-07): **desk part done, device part pending.** From the kit's source, its compiled
+   stylesheet (`--spacing` = 4 dp) and the real render under Jest. Props: Button, Chip and
+   ListGroup.Item are Pressables and Card and ListGroup are Surface views, all spreading caller props on
+   the host, so `testID`, `accessibilityLabel`, `accessibilityHint`, `accessibilityRole`,
+   `accessibilityState` and `onPress` arrive; Input forwards to the TextInput. Gaps: Chip and
+   ListGroup.Item set no `accessibilityRole` (adapters pass `button`); Input only sets `editable={false}`
+   when disabled and announces nothing; the kit has no busy prop (an adapter passes
+   `accessibilityState={{ busy: true, disabled: true }}`; React Native's Pressable keeps both). Sizes:
+   Button has a fixed `height` of 40 (sm), 48 (md) and 56 dp (lg) and icon-only is square, so sm misses
+   both 44 and 48 and md and lg meet both; Input min-height 48; Select trigger 48; ListGroup.Item is 16 dp
+   padding around its content, at least 56 for a one-line title; Chip has no floor (about 20, 28 and 36 dp
+   for sm, md and lg) and is itself the Pressable, so an interactive chip needs `hitSlop` or a `min-h`;
+   Switch is 48 x 24 dp; the SearchField clear button is 24 dp. All still to be measured on a device.
+
 5. **Themes**: four themes switch live with the system theme; the increased-contrast themes follow
    `useAppearance()`; no flash beyond the splash. (T406)
+
+   Result (desk, 2026-10-07): **desk part done, device part pending.** Both themes are registered
+   (`extraThemes`) and declared in `global.css` with `@variant <name>` inside `@layer theme { :root { } }`, each defining
+   all 35 variables (the placeholder values are the kit's, with foreground, border and separator
+   pushed to the extremes). `Uniwind.setTheme(name)` throws for an unregistered name. For a custom theme it
+   turns adaptive mode off and calls `Appearance.setColorScheme('unspecified')` on React Native 0.82 to
+   0.86, so native chrome keeps following the system scheme, which suits contrast themes chosen from the
+   system scheme plus the more-contrast flag; the root-layout effect must therefore call `setTheme` on
+   every change, including back to `light` or `dark`. Naming risk: the kit compares `theme === 'dark'`
+   for the Skeleton shimmer and the default PressableFeedback highlight and ripple colours (a
+   `dark-contrast` theme gets the light defaults; Button passes its own colours and is unaffected) and
+   `theme.endsWith('dark')` for the popup blur and glass tint (`dark-contrast` does not match,
+   `contrast-dark` would). Pass explicit colours from the adapters, or rename the themes
+   `contrast-light` and `contrast-dark` before T411.
+
 6. **Reduced motion and largest text**: `animation: 'disable-all'` removes the kit's animation; at font
    scale 2.0 Button, Chip and ListGroup do not clip. (T407)
+
+   Result (desk, 2026-10-07): **desk part done, device part pending.** The provider's
+   `animation: 'disable-all'` is read by `GlobalAnimationSettingsProvider` and cascaded, global over
+   parent over own, by `useCombinedAnimationDisabledState` into every animated part (Button, Chip,
+   TextField, Skeleton, Toast and the rest). The same provider also ORs in Reanimated's
+   `useReducedMotion()`, which reports the OS setting **as it was when the app started** and never
+   updates, so the kit follows the OS only at launch: the live behaviour comes from feeding `animation`
+   from `useAppearance().prefersLessMotion`, as D4-05 plans. Text: the kit sets no
+   `maxFontSizeMultiplier` on Button, Chip, ListGroup, Input or Select (only Avatar's fallback, 1.4, and
+   InputOTP, 1.6), so text stays uncapped. Clipping risk to check at scale 2.0: Button's `height` is
+   fixed (a wrapped label will clip, so the adapter will need `h-auto min-h-12`); Input and the Select
+   trigger use a min-height or padding and grow; Chip and ListGroup.Item size from padding plus line
+   height and grow.
+
 7. **Back parity**: `tapOn: 'Back'` resolves on a native header on iOS and Android, else a custom
    `headerLeft` labelled "Back" is used; `formSheet` behaves on both platforms; the display face loads
    from the `expo-font` plugin and applies to `headerLargeTitleStyle`. (T408)
+
+   Result (desk, 2026-10-07): **pending on device; one fact about fonts is known.**
+   `heroui-native/styles` defines no `--font-*` variable: the kit's `font-normal`, `font-medium`,
+   `font-semibold` and `font-bold` classes compile to `fontWeight` 400, 500, 600 and 700 through
+   `--font-weight-*` (read in the export's compiled stylesheet). The kit documents one way to set a
+   family: declare `--font-normal`, `--font-medium`, `--font-semibold` and `--font-bold` in `@theme`
+   with the font's PostScript name (Tailwind prefers a family over a weight of the same name in a `font-*`
+   utility). Whether Uniwind honours that on both platforms is for T408 to prove.
+
 8. **Bottom-sheet peer**: `heroui-native` loads and renders without `@gorhom/bottom-sheet` installed.
    (T401)
+
+   Result (desk, 2026-10-07): **pass.** Metro does not complain: the kit reaches
+   `@gorhom/bottom-sheet` through `optional/gorhom-bottom-sheet.ts`, a `require` inside `try/catch` (the
+   same pattern covers `expo-blur` and `react-native-screens`), and both exports above succeeded without
+   the package. `tsc` is clean without it too (the kit's declaration files import its types and
+   `skipLibCheck` is on), and the real components render under Jest. Only BottomSheet, and the Menu,
+   Popover and Select that opt into `presentation="bottom-sheet"`, use it; none is planned.
+
 9. **Continuous corners**: whether the kit's rounded views honour `borderCurve: 'continuous'`; if not,
    adapters set it. (T405)
+
+   Result (desk, 2026-10-07): **pass in source, device confirmation pending.** The kit sets
+   `borderCurve: 'continuous'` itself, in a `StyleSheet` rather than a class, on Button, Chip, Surface
+   (so Card and ListGroup), Input (so SearchField), the Select trigger, Switch, Alert, Avatar, Skeleton
+   and others, so adapters do not need to. It is an iOS-only effect: confirm on a phone that a large
+   radius on a Card renders as a continuous curve.
+
 10. **Windows and CI**: `npm ci` succeeds and the checks pass on Windows and on the CI runners. (T401)
 
-**Go/no-go outcome** (filled in by T409): _pending_.
+    Result (desk, 2026-10-07): **pass on Windows; CI runners pending the first push.** `npm ci --dry-run`
+    at the root exits 0 (Node 24.18, npm 11.16): the lockfile agrees with every
+    `package.json` and the only packages it would add are two optional native extras for `ssh2`
+    (`cpu-features`, `buildcheck`). A real `npm ci` was deliberately not run. The lockfile carries the
+    per-platform binaries of `@tailwindcss/oxide` and `lightningcss` for `win32-x64`, `linux-x64-gnu`,
+    `linux-x64-musl` and macOS, so a Linux runner finds its own. On Windows `npm run lint`,
+    `npm run typecheck` and the whole Jest suite pass (110 suites, 1875 tests). Still to see: the CI
+    run of this branch (SC-012).
+
+**Go/no-go outcome** (T409, desk part, 2026-10-07): **Conditional go: desk checks 1-3, 8-10 passed;
+device checks 4-7 pending (see list).**
+
+Nothing found so far is fundamental: the kit bundles and renders inside the Sentry-wrapped Metro
+config with the React Compiler on and without `@gorhom/bottom-sheet`, and the suite stays green. The
+findings that shape Phase 2, none of them a blocker:
+
+- Uniwind routes every `react-native` import through `uniwind/components`; the globe, FlashList and the
+  forms must be smoke-tested on a device before this is trusted (item 1c).
+- Every theme must define all 35 variables, or Uniwind logs an error per missing one on each bundle;
+  T411's generated stylesheet has to cover the two contrast themes completely (item 5). The theme
+  names interact with the kit's `theme === 'dark'` comparisons; decide before T411.
+- Adapters supply what the kit leaves out: `accessibilityRole` on Chip and ListGroup.Item, the busy state,
+  a touch-target floor for sm Button, Chip, Switch and the search clear button, and `min-h` instead of a
+  fixed Button height for large text (items 4, 6).
+- Card, ListGroup and Surface need `HeroUINativeProvider` above them; the root layout provides it
+  (item 3).
+- The kit follows the OS reduce-motion setting only as of app start; `animation` must be fed from
+  `useAppearance()` for the live behaviour (item 6).
+
+Device checks pending (each needs the dev clients rebuilt, because `react-native-svg`, `expo-blur` and
+`expo-haptics` are new native modules):
+
+1. **Smoke** (item 1c): launch on iOS and Android, sign in, open the globe, a trip, a form and the
+   Profile tab; run Maestro `00-smoke`.
+2. **Pass-through and targets** (item 4, T405): a throwaway screen with Button sm, md and lg, an
+   icon-only Button, an interactive Chip, a ListGroup row, an Input and a Switch; measure each with the
+   layout inspector or an accessibility inspector, and check TalkBack and VoiceOver announce label,
+   role, disabled and busy.
+3. **Corners** (item 9, T405): large-radius Card and Button on an iPhone; compare one soft chip's
+   screenshot with `blend()` (0.1 tolerance).
+4. **Themes** (item 5, T406): call `Uniwind.setTheme` from `useAppearance()` in a throwaway effect;
+   switch system dark mode and the more-contrast setting with the app open; look for a flash after the
+   splash.
+5. **Motion and text** (item 6, T407): turn OS reduce motion on, then off, with the app open, and
+   compare with `animation` fed from `useAppearance()`; set the largest font size and check Button,
+   Chip and ListGroup.
+6. **Navigation and font** (item 7, T408): native header Back for `tapOn: 'Back'`, `formSheet`, the
+   display-face shortlist through the `expo-font` plugin, applied to `headerLargeTitleStyle`; record
+   the face in D4-07.
+7. **CI** (item 10): the first CI run of this branch.
