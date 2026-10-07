@@ -73,7 +73,9 @@ export function fontFamilyOf(value: unknown): string | undefined {
 
 /** The ink, and the family with the weight of its own file when there is a family. */
 function titleStyle(color: string, family: string | undefined, weight: FaceWeight) {
-  return family === undefined ? { color } : { color, fontFamily: family, fontWeight: weight };
+  return family === undefined
+    ? { color }
+    : { color, fontFamily: family, fontWeight: weight };
 }
 
 /** The options for a header over the canvas, for `platform`. Pure. */
