@@ -436,12 +436,49 @@ describe('`ready` and the failure fallbacks (contract C4, research D4-05)', () =
     unsubscribe();
   });
 
-  test('the whole read failing settles `ready` and keeps the flags there were', async () => {
+  test('the FIRST read failing as a whole settles `ready` on the MORE accessible set (iOS)', async () => {
     readPrefersMoreContrast.mockRejectedValue(new Error('unexpected'));
     const listener = jest.fn();
 
     const unsubscribe = subscribeToAppearance(listener);
     await settle();
+
+    expect(getAppearanceSnapshot()).toEqual({
+      prefersMoreContrast: true,
+      prefersLessMotion: true,
+      prefersLessTransparency: true,
+      ready: true,
+    });
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  test('the same on Android, where reduced transparency stays structurally false', async () => {
+    os.restore();
+    os = jest.replaceProperty(Platform, 'OS', 'android');
+    readPrefersMoreContrast.mockRejectedValue(new Error('unexpected'));
+
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    await settle();
+
+    expect(getAppearanceSnapshot()).toEqual({
+      prefersMoreContrast: true,
+      prefersLessMotion: true,
+      prefersLessTransparency: false,
+      ready: true,
+    });
+    unsubscribe();
+  });
+
+  test('the fallback is not sticky: the next read that answers replaces it', async () => {
+    readPrefersMoreContrast.mockRejectedValueOnce(new Error('unexpected'));
+    const listener = jest.fn();
+    const unsubscribe = subscribeToAppearance(listener);
+    await settle();
+    expect(getAppearanceSnapshot().prefersLessMotion).toBe(true);
+    listener.mockClear();
+
+    await fireEvents();
 
     expect(getAppearanceSnapshot()).toEqual({
       prefersMoreContrast: false,
@@ -453,7 +490,7 @@ describe('`ready` and the failure fallbacks (contract C4, research D4-05)', () =
     unsubscribe();
   });
 
-  test('a later read failing as a whole keeps the last answer, and tells nobody', async () => {
+  test('a LATER read failing as a whole keeps the last answer, and tells nobody', async () => {
     flags.darker = true;
     const listener = jest.fn();
     const unsubscribe = subscribeToAppearance(listener);
@@ -561,10 +598,16 @@ describe('overlapping reads: the newest read wins', () => {
     readPrefersMoreContrast.mockRejectedValueOnce(new Error('unexpected'));
     registrations[0].handler();
     await settle();
-    expect(getAppearanceSnapshot().ready).toBe(true);
+    // The newest read failed as a whole: `ready`, on the MORE accessible set.
+    expect(getAppearanceSnapshot()).toEqual({
+      prefersMoreContrast: true,
+      prefersLessMotion: true,
+      prefersLessTransparency: true,
+      ready: true,
+    });
     const settled = getAppearanceSnapshot();
 
-    reads[0].resolve(!settled.prefersMoreContrast);
+    reads[0].resolve(false);
     await settle();
 
     expect(getAppearanceSnapshot()).toBe(settled);

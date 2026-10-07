@@ -70,6 +70,25 @@ export async function readPrefersLessMotion(
   return query(queries.isReduceMotionEnabled, true);
 }
 
+/**
+ * What the three readers above return when NONE of their queries can answer: the value that
+ * produces the MORE accessible rendering, and `false` where the platform has no such signal
+ * (contract C4). Used when a read fails as a whole, so that it does not leave the signals at
+ * their less accessible defaults. `test/theme/appearance.test.ts` pins that it matches the
+ * readers, so the two cannot drift apart.
+ */
+export function accessibleFallbackFlags(os: string): {
+  prefersMoreContrast: boolean;
+  prefersLessMotion: boolean;
+  prefersLessTransparency: boolean;
+} {
+  return {
+    prefersMoreContrast: os === 'ios' || os === 'android',
+    prefersLessMotion: true,
+    prefersLessTransparency: os === 'ios',
+  };
+}
+
 /** The real platform queries, bound to React Native's AccessibilityInfo. */
 export const platformQueries: AccessibilityQueries = {
   isReduceMotionEnabled: () => AccessibilityInfo.isReduceMotionEnabled(),

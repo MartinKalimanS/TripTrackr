@@ -25,6 +25,7 @@
 import { AccessibilityInfo, Platform } from 'react-native';
 
 import {
+  accessibleFallbackFlags,
   appearanceChangeEvents,
   platformQueries,
   readPrefersLessMotion,
@@ -65,7 +66,8 @@ let stopSession: (() => void) | null = null;
 
 /**
  * Reads the three signals. Each reader already falls back to the MORE accessible value when
- * its own query fails (contract C4), so null means the read as a whole failed.
+ * its own query fails (contract C4), so null means the read as a whole failed (see `publish`
+ * for what that means for the snapshot).
  */
 async function readFlags(): Promise<AccessibilityFlags | null> {
   const os = Platform.OS;
@@ -83,12 +85,17 @@ async function readFlags(): Promise<AccessibilityFlags | null> {
 }
 
 /**
- * Settles a read. A read that failed keeps the flags there are and still settles `ready`,
- * so a failed read cannot hold the splash up for good. Listeners hear about it only when
- * something differs from the snapshot they already have.
+ * Settles a read, and always settles `ready`, so a failed read cannot hold the splash up for
+ * good. A read that failed as a whole (`answered` is null) means:
+ * - the FIRST read: nothing is known, so the flags fall back to the MORE accessible set
+ *   (`accessibleFallbackFlags`, contract C4: never the less accessible rendering), not to
+ *   the less accessible defaults;
+ * - a LATER read: the flags there are were read from the platform, so they are kept.
+ * Listeners hear about it only when something differs from the snapshot they already have.
  */
 function publish(answered: AccessibilityFlags | null): void {
-  const flags = answered ?? snapshot;
+  const flags =
+    answered ?? (snapshot.ready ? snapshot : accessibleFallbackFlags(Platform.OS));
   const unchanged =
     snapshot.ready &&
     flags.prefersMoreContrast === snapshot.prefersMoreContrast &&
