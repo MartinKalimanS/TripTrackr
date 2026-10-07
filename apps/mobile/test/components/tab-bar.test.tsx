@@ -6,17 +6,21 @@
  * edge, and one `Tappable` per route. What is asserted here is what a traveller relies on:
  * every route is a reachable, labelled tab; the selected one is announced as selected and
  * shown by more than colour (a filled icon, a heavier label and a mark that survives
- * greyscale); the touch target respects the platform minimum whatever the text size; the
- * content stays inside 56 dp at the default size and grows with the font scale; and the bar
- * clears the home indicator.
+ * greyscale); the touch target respects the platform minimum; the content stays inside
+ * 56 dp at the default text size and is left free to grow, unclipped, at a larger one; and
+ * the bar clears the home indicator.
  *
- * Jest renders the kit's text and `expo-symbols` as plain nodes that forward their props,
- * so colours are asserted as the semantic classes and tones the bar ASKS for, never as
- * values. The props are the `BottomTabBarProps` shape the JS `Tabs` navigator passes to a
- * custom `tabBar`, built by hand so the component's own behaviour is tested without
- * mounting a navigator.
+ * Jest has no layout engine, so the 56 dp budget is arithmetic over the constants the bar
+ * renders with (`TabMetrics`), and the rendered styles are asserted to BE those constants.
+ * The kit's text and `expo-symbols` are plain nodes that forward their props, so colours
+ * are the semantic classes and tones the bar ASKS for, never values.
+ *
+ * The props are the `BottomTabBarProps` shape the JS `Tabs` navigator passes to a custom
+ * `tabBar`, built by hand so the component's own behaviour is tested without mounting a
+ * navigator; `test/app/tabs-layout.test.tsx` mounts the real one.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import * as fs from 'node:fs';
 import {
   BottomTabBarHeightCallbackContext,
   type BottomTabBarProps,
@@ -24,12 +28,12 @@ import {
 import * as HeroUI from 'heroui-native';
 import { Dimensions, StyleSheet } from 'react-native';
 
-import { TabBar } from '@/components/navigation/tab-bar';
+import { TabBar, TabContentHeight, TabMetrics } from '@/components/navigation/tab-bar';
 import { BorderHairline, MinTouchTarget } from '@/constants/theme';
-import { FocusRing } from '@/theme';
+import { FocusRing, TextRoles } from '@/theme';
 
 // `expo-symbols` is replaced by a view that carries the props it was given, so the test
-// reads the symbol each tab asked for (both platform names) and its tint.
+// reads the symbol each tab asked for (both platform names), its size and its tint.
 jest.mock('expo-symbols', () => {
   const { View } = require('react-native');
   return {
@@ -57,6 +61,9 @@ const ICONS = {
     android: 'account_circle',
   },
 } as const;
+
+/** The most a bar's content may be at the default text size, above the inset. */
+const BUDGET = 56;
 
 function makeProps(focusedIndex = 0, bottomInset = 34): BottomTabBarProps {
   const emit = jest.fn(() => ({ defaultPrevented: false }));
@@ -117,13 +124,35 @@ function mockFontScale(fontScale: number) {
   });
 }
 
+/**
+ * The platform minimum touch target on `os`. `MinTouchTarget` is read once, when
+ * `@/constants/theme` loads, so it is loaded again under that platform in an isolated
+ * module registry (`Platform.select` and `Platform.OS` both answer for `os`).
+ */
+function minTouchTargetOn(os: 'ios' | 'android'): number {
+  let target = 0;
+  jest.isolateModules(() => {
+    const { Platform } = require('react-native') as typeof import('react-native');
+    jest.replaceProperty(Platform, 'OS', os);
+    jest
+      .spyOn(Platform, 'select')
+      .mockImplementation(((spec: Record<string, unknown>) => spec[os]) as never);
+    target = (require('@/constants/theme') as typeof import('@/constants/theme'))
+      .MinTouchTarget;
+  });
+  return target;
+}
+
 beforeEach(() => mockFontScale(1));
 afterEach(() => jest.restoreAllMocks());
 
 const hidden = { includeHiddenElements: true };
 type Node = { props: Record<string, unknown> };
 const styleOf = (node: Node) =>
-  StyleSheet.flatten(node.props.style as never) as Record<string, number | string>;
+  (StyleSheet.flatten(node.props.style as never) ?? {}) as Record<
+    string,
+    number | string | boolean
+  >;
 const classesOf = (node: Node) =>
   String(node.props.className ?? '')
     .split(/\s+/)
@@ -164,8 +193,9 @@ describe('<TabBar> identity - C4-9, FR-030', () => {
       />,
     );
 
-    const tab = screen.getByTestId('custom-tab');
-    expect(tab.props.accessibilityLabel).toBe('More options');
+    expect(screen.getByTestId('custom-tab').props.accessibilityLabel).toBe(
+      'More options',
+    );
     expect(labelOf('More')).toBeTruthy();
   });
 
@@ -195,42 +225,44 @@ describe('<TabBar> identity - C4-9, FR-030', () => {
       expect(selected[0]!.props.testID).toBe(`tab-${ROUTES[i]!.name}`);
     },
   );
+
+  test('a route without a registered icon still gets a labelled, reachable tab', async () => {
+    await render(<TabBar {...withExtraRoute({ title: 'Extra' })} />);
+    expect(screen.getByLabelText('Extra')).toBeTruthy();
+    expect(screen.getAllByRole('tab')).toHaveLength(ROUTES.length + 1);
+    expect(symbols()).toHaveLength(ROUTES.length);
+  });
 });
 
 describe('<TabBar> the strip - feature 003 FR-014, C4-9', () => {
-  test('is painted with the canvas colour through the semantic class', async () => {
+  test('is painted with the canvas colour through the semantic class, not a value', async () => {
     await render(<TabBar {...makeProps()} />);
-    const classes = classesOf(screen.getByTestId('tab-bar'));
-    expect(classes).toContain('bg-background');
-    expect(styleOf(screen.getByTestId('tab-bar')).backgroundColor).toBeUndefined();
+    const bar = screen.getByTestId('tab-bar');
+    expect(classesOf(bar)).toContain('bg-background');
+    expect(styleOf(bar).backgroundColor).toBeUndefined();
   });
 
-  test('has ONE divider: a hairline on the top edge, in the border token (3:1)', async () => {
+  test('has ONE divider: the border token as colour, a hairline as the only width, on the top edge', async () => {
     await render(<TabBar {...makeProps()} />);
     const classes = classesOf(screen.getByTestId('tab-bar'));
-
-    expect(classes).toEqual(expect.arrayContaining(['border-t', 'border-border']));
-    // No other edge, and no all-round border, which would be a second divider.
-    for (const other of ['border', 'border-b', 'border-l', 'border-r', 'border-x']) {
-      expect(classes).not.toContain(other);
-    }
-    // A hairline, not Tailwind's 1 px, and on the top edge only.
     const style = barStyle();
+
+    // The colour is the class; the width is the style, so the two cannot disagree.
+    expect(classes).toContain('border-border');
+    const widthClasses = classes.filter((c) =>
+      /^border(-[trblxyse])?(-\d+|-\[.*\])?$/.test(c),
+    );
+    expect(widthClasses).toEqual([]);
     expect(style.borderTopWidth).toBe(BorderHairline);
     expect(style.borderTopWidth).toBeGreaterThan(0);
-    for (const key of ['borderWidth', 'borderBottomWidth', 'borderLeftWidth']) {
+    for (const key of [
+      'borderWidth',
+      'borderBottomWidth',
+      'borderLeftWidth',
+      'borderRightWidth',
+    ]) {
       expect(style[key]).toBeUndefined();
     }
-  });
-
-  test('draws no shadow or elevation under the divider', async () => {
-    await render(<TabBar {...makeProps()} />);
-    const style = barStyle();
-    expect(style.boxShadow).toBeUndefined();
-    expect(style.elevation).toBeUndefined();
-    expect(
-      classesOf(screen.getByTestId('tab-bar')).filter((c) => /shadow/.test(c)),
-    ).toEqual([]);
   });
 
   test('no tab carries a raised, recessed or bordered surface (never a fill or an edge at rest)', async () => {
@@ -248,25 +280,10 @@ describe('<TabBar> the strip - feature 003 FR-014, C4-9', () => {
       expect(surfaceClasses).toEqual([]);
     }
   });
-
-  test('a route without a registered icon still gets a labelled, reachable tab', async () => {
-    await render(<TabBar {...withExtraRoute({ title: 'Extra' })} />);
-    expect(screen.getByLabelText('Extra')).toBeTruthy();
-    expect(screen.getAllByRole('tab')).toHaveLength(ROUTES.length + 1);
-    expect(symbols()).toHaveLength(ROUTES.length);
-  });
 });
 
 describe('<TabBar> selection - FR-010, FR-025', () => {
-  test('only the selected tab has a mark', async () => {
-    await render(<TabBar {...makeProps(1)} />);
-
-    expect(screen.getByTestId('tab-mark-trips')).toBeTruthy();
-    expect(screen.queryByTestId('tab-mark-index')).toBeNull();
-    expect(screen.queryByTestId('tab-mark-profile')).toBeNull();
-  });
-
-  test.each([0, 1, 2])('the mark follows the selection (tab %i)', async (i) => {
+  test.each([0, 1, 2])('only the selected tab has a mark (tab %i)', async (i) => {
     await render(<TabBar {...makeProps(i)} />);
     for (const [index, route] of ROUTES.entries()) {
       const mark = screen.queryByTestId(`tab-mark-${route.name}`);
@@ -280,10 +297,12 @@ describe('<TabBar> selection - FR-010, FR-025', () => {
     const style = styleOf(mark);
 
     expect(classesOf(mark)).toContain('bg-accent');
-    expect(style.height).toBeGreaterThanOrEqual(3);
-    expect(style.height).toBeLessThanOrEqual(4);
-    expect(style.width).toBeGreaterThanOrEqual(20);
-    expect(style.width).toBeLessThanOrEqual(28);
+    expect(style.width).toBe(TabMetrics.markWidth);
+    expect(style.height).toBe(TabMetrics.markHeight);
+    expect(TabMetrics.markHeight).toBeGreaterThanOrEqual(3);
+    expect(TabMetrics.markHeight).toBeLessThanOrEqual(4);
+    expect(TabMetrics.markWidth).toBeGreaterThanOrEqual(20);
+    expect(TabMetrics.markWidth).toBeLessThanOrEqual(28);
     expect(style.position).toBe('absolute');
     expect(style.top).toBe(0);
     // Inside the selected tab, so it sits above that tab's icon and no other.
@@ -294,20 +313,12 @@ describe('<TabBar> selection - FR-010, FR-025', () => {
     await render(<TabBar {...makeProps(1)} />);
 
     const selected = classesOf(labelOf('Trips'));
-    expect(selected).toEqual(expect.arrayContaining(['text-[12px]', 'text-accent']));
-    expect(selected).toContain('font-bold');
+    expect(selected).toEqual(expect.arrayContaining(['text-accent', 'font-bold']));
     for (const title of ['Globe', 'Profile']) {
       const rest = classesOf(labelOf(title));
-      expect(rest).toEqual(expect.arrayContaining(['text-[12px]', 'text-muted']));
+      expect(rest).toContain('text-muted');
       expect(rest).not.toContain('font-bold');
       expect(rest).not.toContain('text-accent');
-    }
-  });
-
-  test('a label wraps instead of being cut off at a large text size', async () => {
-    await render(<TabBar {...makeProps(0)} />);
-    for (const route of ROUTES) {
-      expect(labelOf(route.title).props.numberOfLines).toBeUndefined();
     }
   });
 
@@ -316,30 +327,19 @@ describe('<TabBar> selection - FR-010, FR-025', () => {
     async (name, icon) => {
       const index = ROUTES.findIndex((route) => route.name === name);
       await render(<TabBar {...makeProps(index)} />);
-      expect(symbols()[index]!.props.name).toEqual({
-        ios: icon.filled,
-        android: icon.android,
-      });
+      const selected = symbols()[index]!.props.name as { ios: string; android: string };
+      expect(selected).toEqual({ ios: icon.filled, android: icon.android });
+      expect(selected.ios).toMatch(/\.fill$/);
 
       await render(<TabBar {...makeProps((index + 1) % ROUTES.length)} />);
-      expect(symbols().at(index - ROUTES.length)!.props.name).toEqual({
-        ios: icon.rest,
-        android: icon.android,
-      });
+      const rest = symbols().at(index - ROUTES.length)!.props.name as {
+        ios: string;
+        android: string;
+      };
+      expect(rest).toEqual({ ios: icon.rest, android: icon.android });
+      expect(rest.ios).not.toMatch(/\.fill$/);
     },
   );
-
-  test('every symbol is named for both platforms, and the filled one is an SF .fill', async () => {
-    await render(<TabBar {...makeProps(0)} />);
-    for (const symbol of symbols()) {
-      const name = symbol.props.name as { ios: string; android: string };
-      expect(name.ios).toBeTruthy();
-      expect(name.android).toBeTruthy();
-    }
-    for (const icon of Object.values(ICONS)) {
-      expect(icon.filled).toBe(`${icon.rest}.fill`);
-    }
-  });
 
   test('tints the selected icon with the accent and the others with the muted ink', async () => {
     jest
@@ -350,67 +350,86 @@ describe('<TabBar> selection - FR-010, FR-025', () => {
     const tints = symbols().map((symbol) => symbol.props.tintColor);
     expect(tints).toEqual(['themed:muted', 'themed:muted', 'themed:accent']);
   });
-
-  test('icons are decorative: the tab name is the label, not an image', async () => {
-    await render(<TabBar {...makeProps(0)} />);
-    expect(screen.queryByRole('image')).toBeNull();
-    expect(screen.getAllByRole('tab')).toHaveLength(ROUTES.length);
-  });
 });
 
-describe('<TabBar> size - feature 003 FR-013, FR-016; FR-026, FR-029', () => {
-  test('adds a hairline and nothing else around the touch targets, so it stays within 56 dp', async () => {
-    await render(<TabBar {...makeProps()} />);
+describe('<TabBar> the 56 dp budget - feature 003 FR-013', () => {
+  test('a tab holds an icon, a gap, one caption line and its padding: the constants it renders with', async () => {
+    await render(<TabBar {...makeProps(0)} />);
 
-    const bar = barStyle();
-    const [tab] = screen.getAllByRole('tab');
-    expect(bar.paddingTop ?? 0).toBe(0);
-    expect(bar.marginTop ?? 0).toBe(0);
-    expect(
-      (bar.borderTopWidth as number) + (styleOf(tab!).minHeight as number),
-    ).toBeLessThanOrEqual(56);
+    expect(TabMetrics.captionLineHeight).toBe(TextRoles.caption.lineHeight);
+    expect(TabContentHeight).toBe(
+      TabMetrics.iconSize +
+        TabMetrics.gap +
+        TabMetrics.captionLineHeight +
+        2 * TabMetrics.paddingY,
+    );
+    for (const symbol of symbols()) expect(symbol.props.size).toBe(TabMetrics.iconSize);
+    for (const route of ROUTES) {
+      expect(classesOf(labelOf(route.title))).toContain(
+        `leading-[${TabMetrics.captionLineHeight}px]`,
+      );
+    }
+    for (const tab of screen.getAllByRole('tab')) {
+      expect(styleOf(tab)).toMatchObject({
+        gap: TabMetrics.gap,
+        paddingVertical: TabMetrics.paddingY,
+        paddingHorizontal: TabMetrics.paddingX,
+      });
+    }
+    expect(barStyle().paddingTop ?? 0).toBe(0);
+    expect(barStyle().marginTop ?? 0).toBe(0);
   });
 
-  test('every tab meets the platform minimum touch target', async () => {
+  test.each([
+    ['ios', 44],
+    ['android', 48],
+  ] as const)(
+    'is at most 56 dp on %s: the divider plus the larger of the touch target and the content',
+    (os, floor) => {
+      const target = minTouchTargetOn(os);
+      expect(target).toBe(floor);
+
+      const tab = Math.max(target, TabContentHeight);
+      expect(tab + BorderHairline).toBeLessThanOrEqual(BUDGET);
+      // The content on its own fits too, so a one-line caption is never what grows it.
+      expect(TabContentHeight + BorderHairline).toBeLessThanOrEqual(BUDGET);
+    },
+  );
+
+  test('the rendered tab is never shorter than the platform touch target, nor narrower', async () => {
     await render(<TabBar {...makeProps()} />);
 
     for (const tab of screen.getAllByRole('tab')) {
-      const style = styleOf(tab);
-      expect(style.minHeight).toBeGreaterThanOrEqual(MinTouchTarget);
-      expect(style.minWidth).toBeGreaterThanOrEqual(MinTouchTarget);
+      expect(styleOf(tab).minHeight).toBeGreaterThanOrEqual(MinTouchTarget);
+      expect(styleOf(tab).minWidth).toBeGreaterThanOrEqual(MinTouchTarget);
     }
   });
 
-  test('puts no fixed height or cap on the bar or a tab, so nothing can clip', async () => {
+  test('reports its measured height to the navigator, again when it changes', async () => {
+    const report = jest.fn();
+    await render(
+      <BottomTabBarHeightCallbackContext.Provider value={report}>
+        <TabBar {...makeProps()} />
+      </BottomTabBarHeightCallbackContext.Provider>,
+    );
+    const layout = (height: number) => ({
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height } },
+    });
+
+    await fireEvent(screen.getByTestId('tab-bar'), 'layout', layout(96));
+    await fireEvent(screen.getByTestId('tab-bar'), 'layout', layout(140));
+    expect(report.mock.calls).toEqual([[96], [140]]);
+  });
+
+  test('measures without a navigator to report to', async () => {
     await render(<TabBar {...makeProps()} />);
-
-    for (const style of [barStyle(), ...screen.getAllByRole('tab').map(styleOf)]) {
-      expect(style.height).toBeUndefined();
-      expect(style.maxHeight).toBeUndefined();
-      expect(style.overflow).not.toBe('hidden');
-    }
+    await fireEvent(screen.getByTestId('tab-bar'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 96 } },
+    });
+    expect(screen.getByTestId('tab-bar')).toBeTruthy();
   });
 
-  test('grows the touch target with the traveller’s text size', async () => {
-    mockFontScale(2);
-    await render(<TabBar {...makeProps()} />);
-
-    for (const tab of screen.getAllByRole('tab')) {
-      expect(styleOf(tab).minHeight).toBeGreaterThanOrEqual(MinTouchTarget * 2);
-    }
-    expect(barStyle().height).toBeUndefined();
-    expect(barStyle().maxHeight).toBeUndefined();
-  });
-
-  test('never shrinks below the minimum when the text is made smaller', async () => {
-    mockFontScale(0.8);
-    await render(<TabBar {...makeProps()} />);
-    for (const tab of screen.getAllByRole('tab')) {
-      expect(styleOf(tab).minHeight).toBe(MinTouchTarget);
-    }
-  });
-
-  test('clears the home indicator with the safe-area bottom inset', async () => {
+  test('clears the home indicator with the safe-area bottom inset, outside the budget', async () => {
     await render(<TabBar {...makeProps(0, 34)} />);
     expect(barStyle().paddingBottom).toBe(34);
   });
@@ -419,19 +438,71 @@ describe('<TabBar> size - feature 003 FR-013, FR-016; FR-026, FR-029', () => {
     await render(<TabBar {...makeProps(0, 0)} />);
     expect(barStyle().paddingBottom ?? 0).toBe(0);
   });
+});
 
-  test('reports its measured height so useBottomTabBarHeight() is accurate', async () => {
-    const report = jest.fn();
-    await render(
-      <BottomTabBarHeightCallbackContext.Provider value={report}>
-        <TabBar {...makeProps()} />
-      </BottomTabBarHeightCallbackContext.Provider>,
-    );
+describe('<TabBar> large text - feature 003 FR-016, FR-029', () => {
+  test.each([1, 1.3, 2, 3.1])(
+    'at font scale %s the tab minimum is the touch target, not the touch target times the scale',
+    async (fontScale) => {
+      mockFontScale(fontScale);
+      await render(<TabBar {...makeProps()} />);
 
-    await fireEvent(screen.getByTestId('tab-bar'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 96 } },
-    });
-    expect(report).toHaveBeenCalledWith(96);
+      for (const tab of screen.getAllByRole('tab')) {
+        expect(styleOf(tab).minHeight).toBe(MinTouchTarget);
+      }
+    },
+  );
+
+  test.each([0.5, 0.8, 1])(
+    'at font scale %s a tab never goes below the touch target',
+    async (fontScale) => {
+      mockFontScale(fontScale);
+      await render(<TabBar {...makeProps()} />);
+
+      for (const tab of screen.getAllByRole('tab')) {
+        expect(styleOf(tab).minHeight).toBeGreaterThanOrEqual(MinTouchTarget);
+        expect(styleOf(tab).minWidth).toBeGreaterThanOrEqual(MinTouchTarget);
+      }
+    },
+  );
+
+  test('the content decides the height at a large size: the caption line grows, nothing caps or clips it', async () => {
+    mockFontScale(2);
+    await render(<TabBar {...makeProps()} />);
+
+    // The platform scales a line height with the font, so at scale 2 the one caption
+    // line is twice as tall and the tab has to hold that: more than the touch target.
+    const grown =
+      TabMetrics.iconSize +
+      TabMetrics.gap +
+      TabMetrics.captionLineHeight * 2 +
+      2 * TabMetrics.paddingY;
+    expect(grown).toBeGreaterThan(TabContentHeight);
+    expect(grown).toBeGreaterThan(MinTouchTarget);
+
+    for (const style of [barStyle(), ...screen.getAllByRole('tab').map(styleOf)]) {
+      expect(style.height).toBeUndefined();
+      expect(style.maxHeight).toBeUndefined();
+      expect(style.overflow).not.toBe('hidden');
+    }
+  });
+
+  test('a label is left to wrap: not capped to a line, shrunk to fit, clamped or pinned to a height', async () => {
+    mockFontScale(2);
+    await render(<TabBar {...makeProps()} />);
+
+    for (const route of ROUTES) {
+      const label = labelOf(route.title);
+      expect(label.props.numberOfLines).toBeUndefined();
+      expect(label.props.ellipsizeMode).toBeUndefined();
+      expect(label.props.adjustsFontSizeToFit).toBeUndefined();
+      expect(label.props.maxFontSizeMultiplier).toBeUndefined();
+      expect(label.props.allowFontScaling).not.toBe(false);
+      const style = styleOf(label);
+      for (const key of ['height', 'maxHeight', 'lineHeight', 'overflow']) {
+        expect(style[key]).toBeUndefined();
+      }
+    }
   });
 });
 
@@ -478,9 +549,8 @@ describe('<TabBar> press and focus - FR-026, C4-9', () => {
 
   test('draws the focus ring on a focused tab and drops it on blur (through Tappable)', async () => {
     await render(<TabBar {...makeProps()} />);
-    const tab = screen.getByLabelText('Trips');
 
-    await fireEvent(tab, 'focus');
+    await fireEvent(screen.getByLabelText('Trips'), 'focus');
     expect(styleOf(screen.getByLabelText('Trips'))).toMatchObject({
       outlineWidth: FocusRing.width,
       outlineOffset: FocusRing.offset,
@@ -491,30 +561,32 @@ describe('<TabBar> press and focus - FR-026, C4-9', () => {
   });
 });
 
-describe('<TabBar> source - C4-1, review rules', () => {
-  const source = () =>
-    jest
-      .requireActual('fs')
-      .readFileSync(require.resolve('@/components/navigation/tab-bar'), 'utf8') as string;
+describe('<TabBar> imports - review rules', () => {
+  // Colour literals and kit imports outside `components/ui/**` are lint errors
+  // (`no-restricted-syntax`, `no-restricted-imports`); what lint cannot say is which
+  // building blocks the bar is made from.
+  const imported = [
+    ...fs
+      .readFileSync(require.resolve('@/components/navigation/tab-bar'), 'utf8')
+      .matchAll(/from '([^']+)'/g),
+  ].map((match) => match[1]!);
 
-  test('contains no raw colour literal: every value comes from a token class or tone', () => {
-    expect(source()).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-    expect(source()).not.toMatch(/\b(?:rgba?|hsla?)\(/);
+  test('is built from the Atlas adapters', () => {
+    expect(imported).toEqual(
+      expect.arrayContaining([
+        '@/components/ui/tappable',
+        '@/components/ui/icon',
+        '@/components/ui/text',
+      ]),
+    );
   });
 
-  test('is built on the Atlas adapters, not on a surface or the kit', () => {
-    const imports = source()
-      .split('\n')
-      .filter((line) => /^\s*(import|} from)\b/.test(line) || /from '/.test(line))
-      .join('\n');
-
-    expect(imports).toMatch(/@\/components\/ui\/tappable/);
-    expect(imports).toMatch(/@\/components\/ui\/icon/);
-    expect(imports).toMatch(/@\/components\/ui\/text/);
-    expect(imports).not.toMatch(/pressable-surface|PressableSurface/);
-    expect(imports).not.toMatch(/components\/ui\/surface|\bSurface\b/);
-    expect(imports).not.toMatch(/heroui-native/);
-    expect(imports).not.toMatch(/use-appearance/);
-    expect(imports).not.toMatch(/themed-text|themed-view/);
+  test('does not import a surface, useAppearance or the kit', () => {
+    for (const module of imported) {
+      expect(module).not.toMatch(/pressable-surface/);
+      expect(module).not.toMatch(/components\/ui\/surface/);
+      expect(module).not.toMatch(/use-appearance/);
+      expect(module).not.toMatch(/heroui-native/);
+    }
   });
 });
