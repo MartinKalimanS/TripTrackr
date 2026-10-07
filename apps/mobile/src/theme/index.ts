@@ -6,6 +6,7 @@
  * minor change, removing or repurposing one is breaking.
  */
 export {
+  blend,
   contrastRatio,
   relativeLuminance,
   meetsFloor,
@@ -26,7 +27,16 @@ export {
   type ThemeName,
 } from './surfaces';
 
-export { resolveInk, type InkRole, type Palette } from './ink';
+export { resolveInk, type InkRole, type InkPalette } from './ink';
+
+export {
+  PaletteKeys,
+  PaletteNames,
+  Palettes,
+  resolvePaletteName,
+  type Palette,
+  type PaletteName,
+} from './palette';
 
 export {
   appearanceChangeEvents,
@@ -36,3 +46,35 @@ export {
   platformQueries,
   type AccessibilityQueries,
 } from './accessibility';
+
+export {
+  TextRoleNames,
+  TextRoles,
+  numericStyle,
+  textStyle,
+  type FontFamilyRole,
+  type FontWeight,
+  type TextRole,
+  type TextSize,
+  type TextStyleToken,
+} from './typography';
+
+export {
+  AtlasRadius,
+  AtlasSpacing,
+  FocusRing,
+  cornerStyle,
+  type AtlasRadiusName,
+  type AtlasSpacingName,
+} from './shape';
+
+export {
+  Motion,
+  MotionProperties,
+  isMotionProperty,
+  motionDuration,
+  type MotionName,
+  type MotionProperty,
+} from './motion';
+
+export { deepFreeze, type DeepReadonly } from './freeze';

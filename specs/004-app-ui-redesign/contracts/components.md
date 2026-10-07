@@ -115,3 +115,11 @@ the allowed folders imports the kit.
    largest-text rendering, reduced-motion behaviour.
 3. No literal colour; no kit import outside this folder; no `useAppearance` re-implementation.
 4. A tappable surface names its cue (chevron, icon or label) at 3:1.
+5. An adapter MUST NOT use a 20% soft fill (the kit's soft hover) for text that has to be read: the
+   gate measures soft chips at 15% only, and hover is not reachable on touch devices. At 20% the text
+   can fall below 4.5:1 (light-theme danger text on canvas is about 4.2:1).
+6. A focus indicator is drawn with `FocusRing.offset` (2 dp) of the surrounding neutral between the
+   ring and the control, so it never touches an accent fill (`design-tokens.md` C4-3).
+7. A soft chip is placed on canvas, surface or overlay only, never on the field fill
+   (`surfaceSecondary`) or on `surfaceTertiary`: the light accent's soft chip over those two cannot reach
+   4.5:1 and is the one pair exception in `design-tokens.md` C4-3.

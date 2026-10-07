@@ -30,6 +30,7 @@ afterEach(() => {
 beforeEach(() => {
   useAppearance.mockReturnValue({
     theme: 'light',
+    themeName: 'light',
     prefersMoreContrast: false,
     prefersLessMotion: false,
     prefersLessTransparency: false,

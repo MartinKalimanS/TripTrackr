@@ -141,6 +141,15 @@ export function surfaceStyle(
   if (interactive) {
     base.borderWidth = BorderHairline;
     base.borderColor = profile === 'full' ? palette.border : palette.borderStrong;
+  } else if (profile === 'flat' && hasElevation(treatment)) {
+    // 004 D4-12 interim look. The profile is forced to `flat`, so the shadow that used to
+    // separate a static card from the canvas is gone, and the Atlas canvas and surface
+    // are nearly the same tone. Until phase 7 deletes this module, a non-interactive
+    // surface that used to be shadowed carries a hairline in the palette's separator
+    // colour (decorative, below 3:1 by design). Interactive surfaces keep their stronger
+    // border above; dense rows and disabled surfaces were never shadowed.
+    base.borderWidth = BorderHairline;
+    base.borderColor = palette.separator;
   }
 
   if (profile !== 'flat' && hasElevation(treatment)) {

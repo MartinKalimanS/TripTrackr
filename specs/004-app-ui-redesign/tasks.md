@@ -110,13 +110,13 @@ After this phase every unconverted screen already renders in Atlas colours with 
 
 ### Tokens and themes
 
-- [ ] T410 [P] Failing tests in `apps/mobile/test/theme/palette.test.ts`: every key defined in all four
+- [x] T410 [P] Failing tests in `apps/mobile/test/theme/palette.test.ts`: every key defined in all four
       themes; status colours equal `GlobeColors` where specified; no pure `#000000`/`#FFFFFF` in the base
       themes; failing tests in `test/theme/contrast-gate.test.ts` extended per `contracts/design-tokens.md`
       C4-3 (four themes, soft blends, hover mixes, planning ink, field border, focus, 7:1 in the contrast
       themes, the enumerated exemption allowlist) and in `test/theme/contrast.test.ts` for `blend()`
       (FR-023, FR-024, FR-027; D4-04)
-- [ ] T411 Implement `apps/mobile/src/theme/palette.ts` and `blend()` in `src/theme/contrast.ts`; re-point
+- [x] T411 Implement `apps/mobile/src/theme/palette.ts` and `blend()` in `src/theme/contrast.ts`; re-point
       `Colors` in `src/constants/theme.ts` at the palette (keys preserved); force the elevation profile to
       `flat` in `src/theme/elevation-profile.ts`; update the tests that asserted the old neumorphic values
       (FR-001, FR-002; D4-04, D4-12)
@@ -127,9 +127,18 @@ After this phase every unconverted screen already renders in Atlas colours with 
       `jest.setup.ts` and `app.config.ts` (`expo-font` plugin, `assets/fonts/`), the root layout provider
       and the `Uniwind.setTheme(themeName)` effect in `src/app/_layout.tsx`, `themeName` in
       `src/hooks/use-appearance.ts`; carry over the spike's config diffs (FR-031, FR-032; D4-04, D4-05)
-- [ ] T413 [P] `src/theme/typography.ts` and `src/theme/motion.ts` with their tests (type roles, radii,
+      _Partly done (tokens branch):_ the sync test, `scripts/theme-css.js` (pure `buildThemeCss`),
+      `scripts/build-theme-css.mjs` (`node scripts/build-theme-css.mjs`, `--check`),
+      `src/theme/generated/theme.css` and `themeName` in `use-appearance.ts`. _Still open:_
+      `src/global.css`, the `theme:build` script (`node scripts/build-theme-css.mjs`) and the
+      `npm install`, Metro, `tsconfig.json`, `jest.config.js`, `jest.setup.ts`, `app.config.ts`, the root
+      layout provider and the `Uniwind.setTheme(themeName)` effect.
+- [x] T413 [P] `src/theme/typography.ts` and `src/theme/motion.ts` with their tests (type roles, radii,
       timings, tabular numerals), and the display-face variables in `global.css` (FR-001, FR-004, FR-022;
       D4-07)
+      _Done:_ `typography.ts`, `motion.ts`, `shape.ts` (`AtlasRadius`, `AtlasSpacing`, `cornerStyle`) and
+      `freeze.ts`, exported from `src/theme/index.ts`. _Still open, with T412's `global.css`:_ the
+      display-face variables.
 
 ### Adapters (each: failing test first, in `apps/mobile/src/components/ui/*.test.tsx`)
 
@@ -303,6 +312,10 @@ language.
       shadows, and the `shadowLight`, `shadowDark`, `surfaceSunk` keys from `constants/theme.ts`; delete
       `elevationProfile` and `prefersLessTransparency`-only branches that no longer apply from
       `hooks/use-appearance.ts` (keep the flag) (FR-038)
+      **Also, when the last unmigrated screen moves:** `useAppearance().tokens` must switch from the
+      two-theme `Colors` to the `Palette` for `themeName` (including `light-contrast` and
+      `dark-contrast`). Until then unmigrated screens read `Colors[theme]` and ignore the increased-contrast
+      palettes; only the kit-based screens follow `themeName`.
 - [ ] T454 Rewrite `eslint.config.js` comments that cite 002 contract C1 to cite C4-1; update
       `apps/mobile/README.md` (dev-client rebuild for the new native modules, theme build, fonts)
 - [ ] T455 Rename leftovers (`NeumorphicTabBar` references, test names, comments), remove the 002-only

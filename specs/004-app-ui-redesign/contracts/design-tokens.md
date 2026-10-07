@@ -58,24 +58,53 @@ than a manual audit (Constitution IV applied to the palette itself).
 **Guarantee**: the test suite fails if any listed pair falls below its floor, in each of the four themes
 (`light`, `dark`, `light-contrast`, `dark-contrast`).
 
-| Pair class                                                                                       | Floor   | Requirement |
-| ------------------------------------------------------------------------------------------------ | ------- | ----------- |
-| ink and muted text on canvas, surface, surface-secondary                                         | **4.5** | FR-023      |
-| placeholder text on field fill                                                                   | **4.5** | FR-023      |
-| accent, danger, success, warning, past, planning ink text on canvas and surface                  | **4.5** | FR-023      |
-| the same text on its **15% soft blend** over canvas and over surface                             | **4.5** | FR-023      |
-| accent ink on accent (filled button label); danger ink on danger                                 | **4.5** | FR-023      |
-| text on the kit's derived hover and pressed fills (`blend` of ink or ink-on-accent at 4% or 10%) | **4.5** | FR-023      |
-| large text (largest title, display numerals) on its surface                                      | **3.0** | FR-023      |
-| field border on canvas, surface and field fill                                                   | **3.0** | FR-024      |
-| filled control (accent) on canvas and surface                                                    | **3.0** | FR-024      |
-| tappable-row cue (chevron, `muted`) on surface                                                   | **3.0** | FR-024      |
-| focus ring on canvas, surface, field fill and accent                                             | **3.0** | FR-024      |
-| every text pair above, in `light-contrast` and `dark-contrast`                                   | **7.0** | FR-027      |
+| Pair class                                                                                                    | Floor   | Requirement |
+| ------------------------------------------------------------------------------------------------------------- | ------- | ----------- |
+| ink and muted text on canvas, surface, overlay, surface-secondary and surface-tertiary                        | **4.5** | FR-023      |
+| placeholder text on field fill                                                                                | **4.5** | FR-023      |
+| accent, link, danger, success, warning, past, planning ink and pending text on each of those five fills       | **4.5** | FR-023      |
+| the same text on its **15% soft blend** over each of those five fills (one exception, below)                  | **4.5** | FR-023      |
+| accent ink on accent (filled button label); danger ink on danger                                              | **4.5** | FR-023      |
+| text on the kit's derived hover and pressed fills (`blend` of ink or ink-on-accent at 4% or 10%)              | **4.5** | FR-023      |
+| large text (largest title, display numerals) on its surface                                                   | **3.0** | FR-023      |
+| field border on canvas, surface and field fill                                                                | **3.0** | FR-024      |
+| filled control (accent) on canvas and surface                                                                 | **3.0** | FR-024      |
+| tappable-row cue (chevron, `muted`) on surface                                                                | **3.0** | FR-024      |
+| focus ring on canvas, surface and field fill; drawn with a 2 dp offset gap so it never touches an accent fill | **3.0** | FR-024      |
+| every text pair above, in `light-contrast` and `dark-contrast`                                                | **7.0** | FR-027      |
 
 **Explicitly exempt** (decorative, carry no state or affordance, so WCAG 1.4.11 does not apply):
 `separator`, `backdrop`, and the shadow tones. The exemption is an **enumerated allowlist in code**, never
 a skipped assertion, so a token cannot be added silently.
+
+**Coloured text is gated on every neutral fill it can sit on.** Canvas and surface are not the only
+grounds: menus and sheets are `overlay`, fields and segments are `surfaceSecondary`, skeletons and the pressed
+base are `surfaceTertiary`. The gate measures each coloured text, and its 15% soft chip, on all five, so a
+colour cannot pass on the two lightest fills and fail on a darker one. The derived pairs (soft chips, hover,
+pressed) carry the 0.1 tolerance of C4-2 on top of their floor (4.6, or 7.1 in the contrast themes).
+
+**One enumerated pair exception.** The light accent family (`accent`, `link`, `statusActive`) is pinned to
+the globe's active arc `#2456C7`, so it cannot be retuned, and its 15% soft chip clears 4.6:1 only over a
+ground at least as light as `#F4F0E8`, which is the canvas itself. A field fill or a tertiary fill that
+light would erase the neutral ramp. So the light accent's soft chip over `surfaceSecondary` and
+`surfaceTertiary` is the single entry of `PINNED_SOFT_CHIP_EXCEPTIONS` in `test/theme/gate-exemptions.ts`,
+and the adapters never place a soft chip on those two fills (`contracts/components.md`, review rule 7). The
+gate verifies the exception: it fails if an excepted pair starts to pass (the entry must then be deleted) or
+if the excepted colour is not the pinned one. Every other colour, in every theme, passes on all five fills.
+
+**The focus ring is gated on neutrals only.** The ring is drawn `FocusRing.offset` (2 dp) outside the
+control, with the surrounding neutral showing in the gap, like the kit's ring offset. It therefore only
+touches canvas, surface or field fill, and the gate measures it against those. It is not measured against
+an accent fill, because a ring cannot clear 3:1 on a pale canvas and a mid-tone accent at once (it would
+need the accent 9:1 or more from the canvas). The offset is a named constant (`FocusRing = { width: 2,
+offset: 2 }` in `src/theme/shape.ts`), and the gate asserts that it stays at 2 dp or more, so the exemption
+cannot become a hole. An adapter MUST draw the ring with the offset.
+
+**Soft chips are gated at 15%, not 20%.** The kit mixes a soft chip at 15% and its hover at **20%**. Hover
+is not reachable on touch devices, so the gate measures the 15% blend only. A 20% soft fill is NOT
+guaranteed to carry readable text (light-theme danger text on a 20% chip over canvas is about 4.2:1), so an
+adapter MUST NOT use a 20% soft fill for text that has to be read (`contracts/components.md`, review rule
+5).
 
 **Obligation**: a new token pair is added to the gate in the same change that introduces it. The gate is
 exhaustive over the palette: a key that is neither classified nor allowlisted fails the suite.
@@ -88,11 +117,11 @@ exhaustive over the palette: a key that is neither classified nor allowlisted fa
 ## C4-4. `useAppearance(): AppearanceContext` and theme resolution
 
 ```ts
-type ThemeName = 'light' | 'dark' | 'light-contrast' | 'dark-contrast';
+type PaletteName = 'light' | 'dark' | 'light-contrast' | 'dark-contrast';
 
 interface AppearanceContext {
   theme: 'light' | 'dark'; // the device scheme
-  themeName: ThemeName; // theme + increased contrast
+  themeName: PaletteName; // theme + increased contrast
   prefersMoreContrast: boolean;
   prefersLessMotion: boolean;
   prefersLessTransparency: boolean; // structurally false on Android
@@ -100,6 +129,9 @@ interface AppearanceContext {
   tokens: Palette; // the resolved palette for themeName
 }
 ```
+
+The four-theme type is `PaletteName`. `surfaces.ts` still exports an older two-value `ThemeName`
+(`'light' | 'dark'`) for the neumorphic primitives; it goes away in phase 7 (research D4-12).
 
 **Guarantees** (inherited from 002 C4)
 
@@ -126,7 +158,13 @@ breach.
 
 **Guarantee**: `src/theme/generated/theme.css` is a pure function of `palette.ts` and the variable map in
 `scripts/build-theme-css.mjs`. It contains every kit variable for all four themes plus the app's own
-`--status-*` and `--pending` variables, and nothing hand-written.
+`--status-*` and `--pending` variables, exposed to Tailwind in an `@theme inline static` block (the kit's
+own form), and nothing hand-written.
+
+It also overrides one non-colour kit variable, once for all four themes, in a plain `@theme { }` block (the
+form in which the kit declares it): `--field-border-width: 1px`. The kit ships `0px` (its fields are
+borderless) and reads that variable in its own `@theme inline static` block, so without the override the 3:1
+field border that C4-3 gates would never be drawn.
 
 **Enforcement**
 
@@ -135,6 +173,9 @@ breach.
   failing build, not a silent drift).
 - A second test fails when any theme lacks a variable another theme defines (the kit and Uniwind require
   identical variable sets).
+- The same suite fails when the field border width is missing, is `0` or `0px`, or is repeated inside a
+  theme, and when a generated variable is neither a colour mapped from a palette key the gate measures or
+  allowlists, a named shadow, nor a named shared variable.
 
 ---
 
@@ -152,6 +193,7 @@ breach.
 
 - Radii: sm 8, md 12, lg 16, xl 24, pill; `borderCurve: 'continuous'` except capsules.
 - Spacing: the existing 2 / 4 / 8 / 16 / 24 / 32 / 64 steps, plus 12 and 48 added to the table.
+- Focus ring: `FocusRing = { width: 2, offset: 2 }` (dp), drawn outside the control (C4-3).
 - Motion: press 100 ms or less; in-place transitions 200 ms or less; list entrance about 150 ms; transform
   and opacity only; no bounce or overshoot (FR-022).
 

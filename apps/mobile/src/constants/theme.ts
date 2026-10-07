@@ -2,61 +2,53 @@
  * Design tokens — the only source of visual values (feature 002, contract C1).
  *
  * Every colour, radius, depth, and spacing step used anywhere in `src/`
- * originates here. Screens and components import tokens; they never write a
- * literal, and an ESLint rule (eslint.config.js) rejects one that tries.
+ * originates here or in `src/theme/`. Screens and components import tokens; they
+ * never write a literal, and an ESLint rule (eslint.config.js) rejects one that tries.
+ * Colours are authored once, in `src/theme/palette.data.js` (feature 004, contract C4-1).
  */
 
 import { Platform, StyleSheet } from 'react-native';
 
+import { Palettes, type Palette } from '@/theme/palette';
+
 /**
- * The neumorphic surface ramps (feature 002, data-model §1.1–1.2).
+ * The legacy colour keys, read from the Atlas palette (feature 004, research D4-12).
  *
- * Every ratio in the table below was MEASURED, not chosen by eye, and is
- * re-verified on every run by test/theme/contrast-gate.test.ts. Retuning a
- * value is fine; retuning it past its floor fails the build.
+ * Step 1 of the migration: every unconverted screen and the old `Surface` and
+ * `PressableSurface` primitives keep their keys and are already drawn in Atlas colours
+ * and in a real dark mode. The authoritative values are in `src/theme/palette.ts`
+ * (contract C4-1); nothing here is authored, so nothing here can drift from the gate.
  *
- * `canvas` and `surface` are deliberately identical: in neumorphism depth comes
- * entirely from the two shadows, not from a tonal step. `surfaceSunk` exists
- * only for the profiles where inset shadows are unavailable.
+ *   surfaceSunk   <- surfaceSecondary   textPrimary <- ink       border <- border
+ *   textMuted     <- muted              borderStrong <- border   danger <- danger
+ *   separator     <- separator (added by the 004 review: the flat card hairline)
  *
- * The shadow tones sit at 1.16–1.52:1 against their canvas and can never reach
- * the 3:1 non-text floor. That is why `border` exists and why it is applied to
- * interactive elements only — see research R-002.
- *
- * The create-expo-app scaffold tokens (`text`, `background`, `backgroundElement`,
- * `backgroundSelected`, `textSecondary`) were removed with the template (R008):
- * every consumer now reads from the ramp, so keeping them would have been two
- * palettes for one product — the half-converted state FR-023 forbids.
+ * `shadowLight` and `shadowDark` are both the canvas colour, so a leftover neumorphic
+ * shadow is invisible. They, `surfaceSunk`, `borderStrong` and `separator` go with the
+ * old primitives in phase 7. Only light and dark exist here; the increased-contrast themes are reached
+ * through `useAppearance().themeName` and the generated stylesheet.
  */
+function legacyColors(palette: Palette) {
+  return {
+    canvas: palette.canvas,
+    surface: palette.surface,
+    surfaceSunk: palette.surfaceSecondary,
+    shadowLight: palette.canvas,
+    shadowDark: palette.canvas,
+    textPrimary: palette.ink,
+    textMuted: palette.muted,
+    border: palette.border,
+    borderStrong: palette.border,
+    accent: palette.accent,
+    accentInk: palette.accentInk,
+    danger: palette.danger,
+    separator: palette.separator,
+  };
+}
+
 export const Colors = {
-  light: {
-    canvas: '#E3E8EF',
-    surface: '#E3E8EF',
-    surfaceSunk: '#DCE2EA',
-    shadowLight: '#FFFFFF',
-    shadowDark: '#B4BECD',
-    textPrimary: '#151A21', // 14.19:1 vs canvas
-    textMuted: '#4C5666', //  6.03:1 vs canvas
-    border: '#767F8C', //  3.29:1 vs canvas, 3.11:1 vs surfaceSunk
-    borderStrong: '#6A737F', //  3.90:1 vs canvas, 3.69:1 vs surfaceSunk
-    accent: '#2456C7', //  5.28:1 vs canvas
-    accentInk: '#FFFFFF', //  6.50:1 vs accent
-    danger: '#B3261E', //  5.31:1 vs canvas
-  },
-  dark: {
-    canvas: '#23272F',
-    surface: '#23272F',
-    surfaceSunk: '#1E222A',
-    shadowLight: '#2E343E',
-    shadowDark: '#171A20',
-    textPrimary: '#EDF0F5', // 13.11:1 vs canvas
-    textMuted: '#A3ADBC', //  6.60:1 vs canvas
-    border: '#6B7482', //  3.17:1 vs canvas, 3.37:1 vs surfaceSunk
-    borderStrong: '#727B89', //  3.50:1 vs canvas, 3.73:1 vs surfaceSunk
-    accent: '#7FA8FF', //  6.38:1 vs canvas
-    accentInk: '#101318',
-    danger: '#FF897D', //  6.51:1 vs canvas
-  },
+  light: legacyColors(Palettes.light),
+  dark: legacyColors(Palettes.dark),
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;

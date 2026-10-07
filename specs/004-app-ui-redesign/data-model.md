@@ -11,7 +11,7 @@ presentation state or a build-time constant.
 The authoritative colour source (`apps/mobile/src/theme/palette.ts`). Hex strings, one set per theme.
 
 ```ts
-type ThemeName = 'light' | 'dark' | 'light-contrast' | 'dark-contrast';
+type PaletteName = 'light' | 'dark' | 'light-contrast' | 'dark-contrast';
 
 interface Palette {
   // Neutral ramp
@@ -89,6 +89,7 @@ const Spacing = {
   six: 64,
 } as const; // kept
 const Motion = { pressMs: 100, transitionMs: 200, listEntranceMs: 150 } as const;
+const FocusRing = { width: 2, offset: 2 } as const; // ring drawn offset dp outside the control
 ```
 
 Depth is two levels (canvas; raised card) plus overlays; there is no `Depth` table.

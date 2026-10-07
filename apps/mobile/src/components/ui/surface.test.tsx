@@ -101,6 +101,20 @@ describe('<Surface> — contract C8', () => {
     expect(styleOf('card').boxShadow).toBeUndefined();
   });
 
+  test('keeps a separator hairline for a static card in the flat profile (004 D4-12)', async () => {
+    mockAppearance({ elevationProfile: 'flat' });
+    await render(<Surface testID="card" treatment="raised" />);
+    const style = styleOf('card');
+    expect(style.borderWidth).toBeGreaterThan(0);
+    expect(style.borderColor).toBe(Colors.light.separator);
+  });
+
+  test('a flat dense row stays borderless in the flat profile', async () => {
+    mockAppearance({ elevationProfile: 'flat' });
+    await render(<Surface testID="row" treatment="flat" />);
+    expect(styleOf('row').borderWidth).toBeUndefined();
+  });
+
   test('uses the dark ramp under the dark theme', async () => {
     mockAppearance({ theme: 'dark' });
     await render(<Surface testID="card" treatment="raised" />);
