@@ -88,6 +88,11 @@ describe('<Field> error in words - FR-025', () => {
     expect(alert.props.testID).toBe('destination-error');
   });
 
+  test('the alert is one accessibility element, or its role would not be announced', async () => {
+    await renderField({ error: 'Enter a destination' });
+    expect(screen.getByRole('alert').props.accessible).toBe(true);
+  });
+
   test('marks the input invalid, so the state is not colour alone', async () => {
     await renderField({ error: 'Enter a destination' });
     expect(input().props['aria-invalid']).toBe(true);

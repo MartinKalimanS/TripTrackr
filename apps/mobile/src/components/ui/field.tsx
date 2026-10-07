@@ -18,7 +18,9 @@
  *   depend on it. `style` is not accepted, as before.
  * - An error is WORDS under the field, never colour alone (FR-025): the kit's FieldError
  *   shows the message while the field is invalid, announced as an `alert`, and the input
- *   carries `aria-invalid`. The kit also turns the border and the label danger-coloured;
+ *   carries `aria-invalid`. The kit's FieldError is a plain View around its text, and a
+ *   role is not announced unless the View is itself an accessibility element, so it is
+ *   made one (`accessible`): the message is then ONE alert element. The kit also turns the border and the label danger-coloured;
  *   that is reinforcement. `${testID}-error` names the message for a flow that asserts it.
  *   An empty string is no error.
  * - A `description` is helper text that stays under the error and stays neutral: the kit
@@ -129,7 +131,10 @@ export function Field({
         style={{ minHeight: fieldMinHeight(fontScale) }}
         {...rest}
       />
-      <FieldError accessibilityRole="alert" testID={testID && `${testID}-error`}>
+      <FieldError
+        accessible
+        accessibilityRole="alert"
+        testID={testID && `${testID}-error`}>
         {error}
       </FieldError>
       {description ? <Description isInvalid={false}>{description}</Description> : null}
