@@ -380,9 +380,10 @@ language.
       font scale from `useWindowDimensions` and do not call `useAppearance` themselves. Follow-up, before the
       list baseline:
   - [x] Share ONE accessibility subscription across all consumers of `useAppearance`: a module-level
-        `useSyncExternalStore` store (`hooks/appearance-store.ts`), ref-counted, with a stable snapshot, so
-        `useHaptics` (so every `Button`) no longer runs its own `AccessibilityInfo` reads and listeners
-        (contract C4-4; `hooks/appearance-store.test.ts`, `hooks/use-appearance-shared.test.tsx`).
+        `useSyncExternalStore` store (`hooks/appearance-store.ts`), ref-counted, stale-while-revalidate and
+        with a stable snapshot, so `useHaptics` (so every `Button`) no longer runs its own
+        `AccessibilityInfo` reads and listeners (contract C4-4; `hooks/appearance-store.test.ts`,
+        `hooks/use-appearance-shared.test.tsx`).
 - [ ] T462 Re-run the 15 offline Maestro phases on two real devices and record them in
       `apps/mobile/e2e/offline/gate-evidence.md` (SC-010)
 - [ ] T463 Final gates on the root and on a clean Windows install and the CI runners: `npm ci`,
