@@ -1,4 +1,8 @@
 {
+  "source": {
+    "ref": "pre-004-baseline",
+    "sha": "307778d47895ed0396c28ea61349564be5771803"
+  },
   "testIDs": [
     "<param>-picker",
     "<param>-sign-in",
