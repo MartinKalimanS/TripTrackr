@@ -168,10 +168,14 @@ After this phase every unconverted screen already renders in Atlas colours with 
 - [x] T417 [P] `Tappable` and `Button` with required accessible name, busy and disabled exclusivity,
       44/48 dp scaled minimum, focus ring, 100 ms pressed state, haptic hook (`components/ui/tappable.tsx`,
       `components/ui/button.tsx`, `hooks/use-haptics.ts`) (FR-005, FR-019, FR-020, FR-026; C4-7)
-- [ ] T418 [P] `Card` and `Panel` (`variant`, `overMap`, `pending`), no shadow or tint over map content
-      (`components/ui/card.tsx`, `components/ui/panel.tsx`) (FR-002, FR-006, FR-018, FR-033, FR-034)
-- [ ] T419 [P] `ListGroup` and `ListRow` with chevron cue and forwarded `accessibilityActions`
-      (`components/ui/list-group.tsx`) (FR-013, FR-024)
+- [x] T418 [P] `Card` and `Panel` (`variant`, `overMap`, `pending`), no shadow or tint over map content
+      (`components/ui/card.tsx`, `components/ui/panel.tsx`) (FR-002, FR-006, FR-018, FR-033, FR-034).
+      _Done:_ `Panel` lives in `card.tsx` (a small, flat container sharing the nesting guard in
+      `surface-nesting.tsx` and the chevron in `press-cue.tsx`), not in a `panel.tsx`; the decisions are in
+      `contracts/components.md`, "As built (T418, T419, T424)".
+- [x] T419 [P] `ListGroup` and `ListRow` with chevron cue and forwarded `accessibilityActions`
+      (`components/ui/list-group.tsx`) (FR-013, FR-024). _Done:_ also rendered once over the real kit
+      (`test/ui-kit/surfaces-real-render.test.tsx`).
 - [ ] T420 [P] `Field` with the `TextField` prop surface and error words under the field
       (`components/ui/field.tsx`) (FR-025; auth and form props pass through unchanged)
 - [ ] T421 [P] `Chip`, `StatusChip` (keeps `status-pill-<status>`), `ChipGroup` (keeps radio roles and ids,
@@ -182,8 +186,10 @@ After this phase every unconverted screen already renders in Atlas colours with 
       FR-035)
 - [x] T423 [P] `Icon`, `Avatar`, `HeaderBackButton` (`components/ui/icon.tsx`, `avatar.tsx`,
       `header-back-button.tsx`) (FR-008; D4-08)
-- [ ] T424 [P] `Screen` and `ListScreen` restyle (canvas, `contentInsetAdjustmentBehavior`, safe areas,
-      largest-text scroll) (`components/ui/screen.tsx`, `list-screen.tsx`) (FR-029; C4-8)
+- [x] T424 [P] `Screen` and `ListScreen` restyle (canvas, `contentInsetAdjustmentBehavior`, safe areas,
+      largest-text scroll) (`components/ui/screen.tsx`, `list-screen.tsx`) (FR-029; C4-8). _Done as an opt-in
+      `underHeader` prop (default off), so the unmigrated screens are untouched; the canvas gains `bg-background`
+      beside the existing token style in both modes._
 - [x] T425 ESLint in `apps/mobile/eslint.config.js`: arbitrary-value colour classes rejected in `src/app`
       and `src/components`; `no-restricted-imports` for `heroui-native` and `uniwind` outside
       `src/components/ui/**` and tests; a test that fails when a file outside the folder imports the kit
