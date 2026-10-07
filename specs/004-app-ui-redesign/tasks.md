@@ -230,10 +230,31 @@ increased contrast.
       and `index.tsx`, `profile.tsx` likewise (use the Prettier character-class workaround), themed header
       options for `trip/[id]/_layout.tsx` and `modal/_layout.tsx`, `HeaderBackButton` where T408 needs it
       (FR-007, FR-008; D4-06)
-- [ ] T428 [P] [US1] Failing tests in `components/globe/__tests__/stats-overlay.test.tsx` and
+- [x] T428 [P] [US1] Failing tests in `components/globe/__tests__/stats-overlay.test.tsx` and
       `empty-state.test.tsx`; then restyle `stats-overlay.tsx` and `empty-state.tsx` as opaque hairline cards
       with display-face tabular figures; `GlobeView`, arcs, camera and `GlobeColors` untouched (FR-018,
-      FR-033; D4-11)
+      FR-033; D4-11). _As built:_ all three cards are `Card overMap` (the `bg-surface` fill, a `border-border`
+      hairline, `shadow-none`, no opacity suffix; pinned per card). **Stats**: two `numeric` figures at the
+      `title` size (display face, tabular numerals) over muted `caption` labels, in the chip's old inset;
+      ids, role `summary` and the spoken label are as before, but sit on an outer `View` (`globe-stats`),
+      because a plain `Card` announces nothing of its own and has no `accessible` prop; the card inside is
+      `globe-stats-card`. **Invitation** (`globe-empty-state`): `title`, muted `callout` reason, ONE primary
+      `Button` with the unchanged id, label and navigation per reason (there was never a second action, so
+      no text button). **Notice** (`globe-notice`): `alert`, leading alert icon, danger-ink headline, muted
+      detail; no retry, because `useGlobe` has no reload and the copy says to restart. Both messages share
+      one `OverlayCard`: `self-stretch` with `max-w-md`, the reason wraps in full (the old `numberOfLines`
+      cap of 3 is gone), and an inner `ScrollView` caps the card at 60% of the window height, so at the
+      largest text size every word and the action stay reachable and the globe is never covered whole; the
+      Home overlay keeps `pointerEvents: 'box-none'`. Home route: a `bg-background` view instead of
+      `ThemedView`, `LoadingState` straight on `Screen`; no `ErrorState`, because a failed read keeps the
+      globe and floats the notice (003 FR-001). Unresolved-id ratchet 34 to 35 (`OverlayCard` forwards
+      `testID`). `GlobeView`, arcs, camera, beacon and `GlobeColors` are untouched. Device checks (Jest
+      renders no styles): the cards over bright ocean and ice and over the dark night basemap (hairline
+      visible, no halo); display-face figures and tabular digits on both platforms; large text on a small
+      phone (the invitation wraps, scrolls inside its cap, the primary button stays reachable, the globe
+      still pans and zooms around it); the top safe area under the notch and the status bar; TalkBack and
+      VoiceOver read the stats as ONE summary, the notice as an alert on appearance, and the invitation
+      title as a heading followed by the button.
 - [x] T429 [P] [US2] Failing tests in `apps/mobile/test/db/` and `src/features/trips/__tests__/` for the
       cover rule (designated, earliest, typographic, thumbnail failure) and date range; then
       `db/repositories/photos.ts` (earliest photo per trip, thumbnails only) and the `TripSummary` extension
