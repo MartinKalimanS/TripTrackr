@@ -78,9 +78,9 @@ describe('theme switching — FR-022, FR-023', () => {
   );
 
   test('the theme does not influence which elevation profile is chosen', () => {
-    // Profile depends on capability and contrast preference only. If theme ever
-    // leaked into it, dark mode could silently lose its shadows.
+    // 004 D4-12: the profile is forced flat for every device and preference, so it
+    // cannot depend on the theme either. (The resolver takes no theme at all.)
     const input = { os: 'ios', apiLevel: null, prefersMoreContrast: false };
-    expect(resolveElevationProfile(input)).toBe('full');
+    expect(resolveElevationProfile(input)).toBe('flat');
   });
 });

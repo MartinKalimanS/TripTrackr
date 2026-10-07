@@ -32,7 +32,20 @@ beforeEach(() => {
   jest.spyOn(AccessibilityInfo, 'isReduceTransparencyEnabled').mockResolvedValue(false);
 });
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  delete (AccessibilityInfo as { isDarkerSystemColorsEnabled?: unknown })
+    .isDarkerSystemColorsEnabled;
+  delete (AccessibilityInfo as { isHighTextContrastEnabled?: unknown })
+    .isHighTextContrastEnabled;
+});
+
+/** iOS's "Increase Contrast" accessor: present on the real module, absent from the Jest mock. */
+function setIosIncreasedContrast(enabled: boolean) {
+  Object.assign(AccessibilityInfo, {
+    isDarkerSystemColorsEnabled: jest.fn().mockResolvedValue(enabled),
+  });
+}
 
 describe('useAppearance', () => {
   test('resolves the light theme and its ramp', async () => {
@@ -54,10 +67,10 @@ describe('useAppearance', () => {
     await waitFor(() => expect(result.current.theme).toBe('light'));
   });
 
-  test('exposes a font scale and an elevation profile', async () => {
+  test('exposes a font scale and the forced flat elevation profile (004 D4-12)', async () => {
     const { result } = await renderHook(() => useAppearance());
     await waitFor(() => expect(result.current.fontScale).toBeGreaterThan(0));
-    expect(['full', 'reduced', 'flat']).toContain(result.current.elevationProfile);
+    expect(result.current.elevationProfile).toBe('flat');
   });
 
   test('subscribes to accessibility change events so it updates live (FR-023)', async () => {
@@ -87,5 +100,47 @@ describe('useAppearance', () => {
     await waitFor(() => expect(result.current.prefersLessTransparency).toBe(false));
 
     Object.defineProperty(Platform, 'OS', { value: original, configurable: true });
+  });
+});
+
+describe('useAppearance themeName — contract C4-4', () => {
+  test('equals the device scheme when more contrast is not requested', async () => {
+    setIosIncreasedContrast(false);
+    const { result } = await renderHook(() => useAppearance());
+    await waitFor(() => expect(result.current.theme).toBe('light'));
+    expect(result.current.themeName).toBe('light');
+    expect(result.current.prefersMoreContrast).toBe(false);
+  });
+
+  test('is dark when the device is dark and more contrast is not requested', async () => {
+    useColorScheme.mockReturnValue('dark');
+    setIosIncreasedContrast(false);
+    const { result } = await renderHook(() => useAppearance());
+    await waitFor(() => expect(result.current.theme).toBe('dark'));
+    expect(result.current.themeName).toBe('dark');
+  });
+
+  test('is light-contrast when a light device asks for more contrast', async () => {
+    setIosIncreasedContrast(true);
+    const { result } = await renderHook(() => useAppearance());
+    await waitFor(() => expect(result.current.themeName).toBe('light-contrast'));
+    expect(result.current.theme).toBe('light');
+    expect(result.current.prefersMoreContrast).toBe(true);
+  });
+
+  test('is dark-contrast when a dark device asks for more contrast', async () => {
+    useColorScheme.mockReturnValue('dark');
+    setIosIncreasedContrast(true);
+    const { result } = await renderHook(() => useAppearance());
+    await waitFor(() => expect(result.current.themeName).toBe('dark-contrast'));
+    expect(result.current.theme).toBe('dark');
+  });
+
+  test('keeps the two-theme tokens until the screens migrate', async () => {
+    useColorScheme.mockReturnValue('dark');
+    setIosIncreasedContrast(true);
+    const { result } = await renderHook(() => useAppearance());
+    await waitFor(() => expect(result.current.themeName).toBe('dark-contrast'));
+    expect(result.current.tokens).toBe(Colors.dark);
   });
 });

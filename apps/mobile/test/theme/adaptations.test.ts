@@ -22,7 +22,8 @@ describe('increased contrast — FR-013', () => {
     });
     const style = surfaceStyle('raised', { theme, profile, interactive: true });
 
-    expect(profile).toBe('reduced');
+    // 004 D4-12: every profile is flat now, and a flat surface carries the stronger border.
+    expect(profile).toBe('flat');
     expect(style.borderWidth).toBeGreaterThan(0);
     // The stronger tone, not the minimum-passing one.
     expect(style.borderColor).toBe(Colors[theme].borderStrong);
@@ -31,10 +32,12 @@ describe('increased contrast — FR-013', () => {
   test.each(THEMES)('promotes muted text to primary ink in the %s theme', (theme) => {
     const palette = Colors[theme];
 
-    // Muted text clears AA but not AAA, so under increased contrast it is
-    // promoted rather than the token being darkened past its design intent.
-    expect(contrastRatio(palette.textMuted, palette.canvas)).toBeLessThan(
-      ContrastFloor.increasedContrast,
+    // Muted text clears AA. Under increased contrast it is promoted to primary ink
+    // for the unmigrated screens that still read the two-theme `Colors`; the Atlas
+    // contrast themes carry their own 7:1 muted tone (palette-gate.test.ts), so the
+    // promotion is a fallback now, not the only route to AAA. It never lowers contrast.
+    expect(contrastRatio(palette.textMuted, palette.canvas)).toBeGreaterThanOrEqual(
+      ContrastFloor.normalText,
     );
 
     const promoted = resolveInk(palette, 'muted', true);
