@@ -10,6 +10,15 @@
  * tree. `expo-router/js-tabs` is the non-deprecated import path in the installed v57
  * router; the bare `expo-router` export of `Tabs` is marked deprecated in its typings.
  *
+ * `tabBar` is a render function: React Navigation calls it inside a context consumer's
+ * callback, not as a component. The bar is therefore rendered as an element
+ * (`<TabBar {...props} />`) so it keeps its own hook scope; `tabBar={TabBar}` type-checks
+ * and happens to work while the bar's only hook is `use()`, but would crash at the first
+ * `useState`. `test/app/tabs-layout.test.tsx` mounts this layout over the real navigator.
+ * The scenes are painted with the canvas TOKEN and the bar with the `bg-background` class:
+ * one colour, because the generated stylesheet's `--background` is the palette's `canvas`
+ * (pinned by `test/theme/theme-css-sync.test.ts` and, for this pair, by the same suite).
+ *
  * Every tab reads the local store, so the navigator mounts only once the
  * store is open (`RequireLocalStore`, T041) — and, on a device that has never
  * synced this account, only once the first snapshot has arrived
