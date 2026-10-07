@@ -177,7 +177,7 @@ After this phase every unconverted screen already renders in Atlas colours with 
 - [ ] T421 [P] `Chip`, `StatusChip` (keeps `status-pill-<status>`), `ChipGroup` (keeps radio roles and ids,
       sideways scroll option), `SyncBadge` restyle (`components/ui/chip.tsx`, `components/ui/sync-badge.tsx`)
       (FR-025, FR-034, 003 FR-017)
-- [ ] T422 [P] State views: `Skeleton*`, `EmptyState`, `LoadingState`, `ErrorState`, `FormActions`,
+- [x] T422 [P] State views: `Skeleton*`, `EmptyState`, `LoadingState`, `ErrorState`, `FormActions`,
       `InlineError` (`components/ui/state-view.tsx`, `form-actions.tsx`, `inline-error.tsx`) (FR-021,
       FR-035)
 - [x] T423 [P] `Icon`, `Avatar`, `HeaderBackButton` (`components/ui/icon.tsx`, `avatar.tsx`,

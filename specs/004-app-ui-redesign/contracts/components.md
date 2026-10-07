@@ -92,12 +92,36 @@ the allowed folders imports the kit.
 | `ChipGroup`                                             | `PillGroup`    | `options[{key,label,testID,accessibilityLabel}]`, `selectedKey`, `onSelect`                | Keeps `radiogroup` and `radio` roles with `selected` and `checked`; selection plays a selection haptic; may scroll sideways (FR-009 and 003 FR-017)                                                                                                              |
 | `StatusChip`                                            | `StatusPill`   | `status: 'planning' \| 'active' \| 'past'`                                                 | Keeps `testID="status-pill-<status>"` and label "Status: …"; icon and text carry the state; colours from the status tokens                                                                                                                                       |
 | `SyncBadge`                                             | `SyncBadge`    | `state: 'pending' \| 'syncing' \| 'failed'`                                                | Icon and text, announced with a text equivalent; reflects props, queries nothing (002 C11 kept)                                                                                                                                                                  |
-| `EmptyState`, `LoadingState`, `ErrorState`, `Skeleton*` | `state-view`   | `title`, `detail?`, `onRetry?`; skeleton variants for trip card, row, list                 | Loading is announced (`progressbar`); skeletons mimic the shape of the content; error offers retry (FR-021, FR-035)                                                                                                                                              |
-| `FormActions`                                           | `FormActions`  | `testIDPrefix`, `saveLabel`, `onCancel`, `onSave`, `saveDisabled?`                         | Keeps `<prefix>-cancel` and `<prefix>-save`; Save is the single primary; sticky above the keyboard (FR-009)                                                                                                                                                      |
-| `InlineError`                                           | `InlineError`  | `message`, `testID`                                                                        | `accessibilityRole="alert"`                                                                                                                                                                                                                                      |
+| `EmptyState`, `LoadingState`, `ErrorState`, `Skeleton*` | `state-view`   | `title`, `detail?`, `icon?`, `action?`, `onRetry?`; lists: `variant`, `rows?`, `label?`    | Flat surface, no nested card; loading is ONE `progressbar` (spinner hidden); error = words, alert icon, danger ink, secondary "Try again"; empty names its next action; a skeleton is ONE `progressbar` named `label`, shapes hidden (FR-021, FR-025, FR-035)    |
+| `FormActions`                                           | `FormActions`  | `testIDPrefix`, `saveLabel`, `onCancel`, `onSave`, `saveDisabled?`                         | Keeps `<prefix>-cancel` and `<prefix>-save`; Save is the single primary, Cancel a text button; the row wraps at large text; sticky above the keyboard is the screen's concern (FR-005, FR-009, FR-029)                                                           |
+| `InlineError`                                           | `InlineError`  | `message`, `testID`                                                                        | `accessibilityRole="alert"` and `testID` on one focusable node; danger ink with a leading alert icon, never colour alone (FR-025)                                                                                                                                |
 | `Icon`                                                  | ad-hoc symbols | `name: { ios, android }`, `size: 16 \| 20 \| 24`, `tone?`, `label?`                        | One vocabulary over `expo-symbols`; decorative icons are hidden from assistive technology, meaningful ones (`label`) are announced as images                                                                                                                     |
 | `Avatar`                                                | none           | `name`, `size?`, `decorative?`                                                             | Initials from the display name (up to two words, `?` when empty); announced by the name unless decorative                                                                                                                                                        |
 | `MediaFrame`                                            | `MediaFrame`   | unchanged                                                                                  | Frames photographs with a hairline; **never** wraps them in a parent whose shadow bleeds inward (002 C12)                                                                                                                                                        |
+
+**As built (T422)**
+
+- `state-view.tsx`, `form-actions.tsx` and `inline-error.tsx` are restyled in place: every export, prop, role and test id is
+  the one the unmigrated screens already use. `Surface`, `PressableSurface` and `ThemedText` are no longer used inside them.
+- The API is `EmptyState({ title, detail?, icon?, action?: { label, onPress, testID? } })`, `LoadingState({ title? = 'Loading' })`,
+  `ErrorState({ title, detail?, onRetry? })`, `TripCardSkeleton`, `RowSkeleton` and `ListSkeleton({ variant: 'card' | 'row', rows? = 3 })`;
+  each skeleton takes `label? = 'Loading'` and `testID?`.
+- The state container is a plain `View` (`bg-surface rounded-2xl p-6 items-center gap-2`, continuous corners by style), not the
+  kit's `Surface`, because that carries a 16 dp padding, a 3xl radius and the light theme's `--surface-shadow`.
+- `LoadingState` is `accessible` with role `progressbar` and the title as its name. The kit `Spinner` is itself an accessible
+  `progressbar`, so it is hidden (`accessibilityElementsHidden`, `no-hide-descendants`) and the region is announced once.
+- `EmptyState` gained `icon?` and `action?`. The action is a `secondary` `Button` named by its label, `testID` forwarded; it is
+  never a primary (FR-005). `ErrorState` gained the leading alert icon, and its retry is a `secondary` `Button` still named
+  "Try again". Both buttons call back with no arguments (the press event is not passed on).
+- Skeletons are built from the kit `SkeletonGroup` and `SkeletonGroup.Item`. A group root hands every prop except `className`,
+  `style` and `children` to EACH item, so the accessibility props live on a wrapping `View`, never on the group. A region
+  (`accessible`, `progressbar`, named `label`) wraps a second `View` that hides every shape. `ListSkeleton` draws `rows` shapes
+  under one region: a fraction is truncated, a negative is none, a non-finite value is the default. Under reduced motion the
+  provider (`animation: 'disable-all'`) stops the shimmer and the fades, so the shapes stay as static placeholders.
+- `FormActions` renders Cancel (`text`) then Save (`primary`) in a `flex-row flex-wrap gap-3` row; each button is `grow max-w-full`,
+  so they share the line and Save drops to its own line when the labels no longer fit at the largest text size. Save plays the
+  `Button`'s selection haptic on press (silent under reduced motion); the success haptic is still the caller's.
+- `alert-icon.ts` holds the one alert glyph (`exclamationmark.triangle` / `warning`) shared by `ErrorState` and `InlineError`.
 
 ---
 
