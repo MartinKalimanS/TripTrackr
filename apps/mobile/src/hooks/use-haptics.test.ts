@@ -103,16 +103,39 @@ describe('useHaptics - FR-020', () => {
     expect(() => result.current.selection()).not.toThrow();
   });
 
-  test('swallows a rejected promise, so nothing is left unhandled', async () => {
-    const unhandled = jest.fn();
-    process.on('unhandledRejection', unhandled);
-    haptics.notificationAsync.mockRejectedValue(new Error('unavailable'));
+  // A rejection nobody handles is reported by the runtime, not thrown at the caller, and
+  // Jest swallows the report, so "nothing was reported" cannot fail. What can: that the
+  // adapter ATTACHES a handler to the promise it was given. Remove the `.catch` in
+  // use-haptics.ts and both tests below fail.
+  test('consumes a rejected promise by attaching a catch handler to it', async () => {
+    // Rejected only when the haptic is played: a rejection created earlier would be
+    // reported as unhandled while the hook renders, before the adapter could consume it.
+    let attach = jest.fn() as jest.SpyInstance<Promise<void>>;
+    haptics.notificationAsync.mockImplementation(() => {
+      const rejection = Promise.reject(new Error('unavailable'));
+      attach = jest.spyOn(rejection, 'catch') as typeof attach;
+      return rejection;
+    });
     const { result } = await renderHook(() => useHaptics());
 
-    expect(() => result.current.success()).not.toThrow();
-    await new Promise((resolve) => setImmediate(resolve));
+    result.current.success();
 
-    process.off('unhandledRejection', unhandled);
-    expect(unhandled).not.toHaveBeenCalled();
+    expect(attach).toHaveBeenCalledTimes(1);
+    expect(attach).toHaveBeenCalledWith(expect.any(Function));
+    // The handler swallows: the promise the adapter leaves behind resolves.
+    await expect(attach.mock.results[0].value).resolves.toBeUndefined();
+  });
+
+  test('the handler it attaches returns nothing and does not rethrow', async () => {
+    const attach = jest.fn();
+    haptics.selectionAsync.mockReturnValue({ catch: attach } as unknown as Promise<void>);
+    const { result } = await renderHook(() => useHaptics());
+
+    result.current.selection();
+
+    expect(attach).toHaveBeenCalledTimes(1);
+    const handler = attach.mock.calls[0][0] as (error: unknown) => unknown;
+    expect(() => handler(new Error('unavailable'))).not.toThrow();
+    expect(handler(new Error('unavailable'))).toBeUndefined();
   });
 });

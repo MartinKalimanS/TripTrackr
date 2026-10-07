@@ -65,16 +65,23 @@ the allowed folders imports the kit.
 - `icon` is an `IconName` drawn by `Icon` in the ink that reads on the variant's fill, so a caller cannot choose an
   unreadable one. `variant` defaults to `primary` and `size` to `md`.
 - A busy button is announced `{ busy: true, disabled: true }` (the kit has no busy state), keeps its label and swaps
-  its icon for a spinner. `busy` and `disabled` both set throws in development, as does a blank label.
+  its icon for a spinner, and is not dimmed (a disabled one is). `busy` and `disabled` both set throws in
+  development, as does a blank label. Neither the kit nor React Native can announce a button unavailable while the
+  kit still sees it enabled, so both go to the kit as `isDisabled` and a busy one cancels the 50% opacity.
 - The kit's fixed heights (sm 40, md 48, lg 56 dp) are replaced by a minimum: the larger of the kit height and the
   platform floor scaled by the font scale (`h-auto` plus a style `minHeight`), so `sm` is raised to the floor and a
   wrapping label grows the button. An icon-only button is a fixed square of the floor.
 - The kit's press highlight is turned off (it overlays the 20% soft hover, which review rule 5 forbids under text,
-  and it disappears under `animation: 'disable-all'`); each variant swaps to a fixed `active:` fill instead
-  (`accent-hover` for primary, `surface-tertiary` for the others). The kit's scale stays.
+  and it disappears under `animation: 'disable-all'`); each variant swaps to a fixed `active:` fill instead:
+  `accent-hover` for primary, `separator-secondary` for secondary and text, a 5% danger tint for destructive. Each
+  is at least a 1.08:1 step from the resting fill on canvas, surface and overlay and keeps its label at 4.5:1 (7:1
+  in the contrast themes) in all four themes, measured by `test/theme/adapter-pressed-fills.test.ts`. The kit's
+  4% hover and `surface-tertiary` (which IS the overlay colour in dark) were measured and rejected. The kit's scale
+  stays.
 - `primary` plays the selection haptic and `destructive` the warning haptic; the success haptic is the caller's,
-  once a save has succeeded. `Tappable` is the bare form: no fill, a `surface-tertiary` pressed fill, a 2 dp focus
-  outline 2 dp outside the control, a minimum target scaled by the font scale.
+  once a save has succeeded. `Tappable` is the bare form: no fill, a `separator-secondary` pressed fill, a 2 dp focus
+  outline 2 dp outside the control, a minimum target scaled by the font scale. `Tappable` and `Button` read the
+  font scale from `useWindowDimensions`, not `useAppearance` (T461 follow-up).
 
 ---
 
