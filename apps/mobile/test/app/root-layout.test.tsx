@@ -29,6 +29,7 @@ import { useLocalStore } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
 import { SECURE_KEYS, setSession } from '@/lib/secure-store';
 import { Sentry } from '@/lib/sentry';
+import { PaletteNames } from '@/theme/palette';
 
 // The first render of the whole router tree pays for transforming every module it touches:
 // 11 to 20 s on a cold cache, which hit the 20 s default under parallel load (004 spike).
@@ -485,6 +486,10 @@ describe('root layout — the kit follows useAppearance (feature 004, T402, T412
         'light-contrast',
         'system',
       ]);
+      // Only 'system' or a palette theme is ever asked for. Uniwind throws for a name it has
+      // not registered; test/config/metro-config.test.ts checks every palette theme is.
+      const known: string[] = ['system', ...PaletteNames];
+      expect(themesAsked().filter((name) => !known.includes(name))).toEqual([]);
     });
 
     test('leaves the contrast theme for "system" again, so a traveller is not stuck in it', async () => {

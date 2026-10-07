@@ -82,6 +82,22 @@ describe('metro.config.js with Uniwind (T402)', () => {
     ]);
   });
 
+  test('registers every palette theme, so Uniwind.setTheme can never throw "not registered"', () => {
+    // `setTheme` throws for a name outside light, dark and extraThemes. The root layout
+    // passes it 'system' or a PaletteName, and nothing else (test/app/root-layout.test.tsx).
+    const registered = [
+      'light',
+      'dark',
+      ...(config.transformer.uniwind?.extraThemes ?? []),
+    ];
+    for (const name of PaletteNames) {
+      expect({ name, registered: registered.includes(name) }).toEqual({
+        name,
+        registered: true,
+      });
+    }
+  });
+
   test('keeps the Sentry Debug ID serializer (FR-073)', () => {
     expect(typeof config.serializer.customSerializer).toBe('function');
   });
