@@ -258,6 +258,24 @@ increased contrast.
       button and gesture; the header over the hero at the largest text size (the word in the Back control
       drops above font scale 1.3; the bar is fixed-height); the iOS 26 glass capsule behind a custom left
       item; no flash of the previous background while the header animates in.
+      _Review follow-up, device checks (T408, T433):_ (1) the iOS edge swipe on the trip overview
+      with the custom `headerLeft`. If it does not pop the trip, the fallbacks in order: set
+      `gestureEnabled: true` (and, if the edge is too narrow, `fullScreenGestureEnabled: true`) on the
+      root stack's `trip/[id]` screen; then drop the custom `headerLeft` and keep the native button
+      with `headerBackButtonDisplayMode: 'minimal'` plus a label that reads "Back" (Maestro's
+      `tapOn: 'Back'` then needs the native label to resolve, which is item 7 of the research list).
+      (2) Maestro `tapOn: 'Back'` TWICE in a row on both platforms (notes then Back to the overview,
+      then Back again to the trips list, as 03-globe and the offline flows do): the second tap must
+      land on the header's custom view of the overview, with no stale "Back" of the screen above it
+      still in the accessibility hierarchy. (3) Header colours in all four themes, including a LIVE
+      switch with the trip open (system dark mode, and the increased-contrast setting): the bar, the
+      scene and the screen's canvas are one colour with no seam. Known gap, found in review:
+      `useAppearance().tokens` is the two-theme `Colors`, so under increased contrast the root stack,
+      the navigation theme and `Screen`'s token style paint the BASE canvas (`#F5F2EB`, `#091018`)
+      while the kit's `--background`, which the trip header and scene use, is the contrast canvas
+      (`#FAF8F3`, `#05090E`). `header-theme.test.tsx` pins light and dark only; whether the contrast
+      themes show a seam under the bar is for the device to say, and the fix (a contrast-aware
+      `tokens`, or dropping the token style from `Screen`) is phase 7's.
 - [ ] T428 [P] [US1] Failing tests in `components/globe/__tests__/stats-overlay.test.tsx` and
       `empty-state.test.tsx`; then restyle `stats-overlay.tsx` and `empty-state.tsx` as opaque hairline cards
       with display-face tabular figures; `GlobeView`, arcs, camera and `GlobeColors` untouched (FR-018,
@@ -345,6 +363,34 @@ increased contrast.
       largest size; (h) the dashed edge and the soft Remove in all four themes, and the dot's ink on its
       fill; (i) the kit's ghost `Button` hover blend needs variables Jest cannot register, so
       `test/ui-kit/trip-screen-real-render.test.tsx` drops that one console message and nothing else.
+      _Review fixes (after the first review):_ (1) `useTrip` and `useTripStops` reported `loading: true`
+      together with the error of a failed read: drizzle's `useLiveQuery` sets `updatedAt` only when a
+      result arrives, so a failure leaves it unset for good, and the screen's `loading` branch, checked
+      first, hid the "Couldn't read this trip" state for ever. Fixed twice: both hooks now say
+      `loading` only while neither a result nor an error has arrived (`isAwaitingFirstResult`), and the
+      screen checks the error before `loading`. Regression tests: through the real hooks over real SQLite
+      (`test/features/use-trips.test.tsx`: a dropped table is a read that fails; the first render is still
+      loading), and through the screen with `{ loading: true, error }` for the trip and for the stops.
+      `useTrips` was left alone. Consumers checked: the add-expense sheet showed a blank page for a
+      failed trip read and now shows its "not on this device" state; notes, expenses, photos, documents and
+      offline-maps read only `trip.data?.title`; offline-maps already checks `stops.error` before
+      `stops.loading`. (2) While a stop is dragged the dots and rail derive from the data index, which only follows the
+      drop once it is written back, so they read 1, 3, 2 and the last-row rail stayed on the old last item.
+      `StopList` keeps a `dragging` flag from `Sortable.Grid`'s `onDragStart` to `onActiveItemDropped` (the
+      drop animation has finished, after `onDragEnd` has written the new order; both are plain JS callbacks
+      in react-native-sortables 1.10) and every row shows a neutral dot (`stop-dot-<id>`, same box, no
+      number, no rail) meanwhile. The jest stand-in for the library gained `__dragStart` and
+      `__activeItemDropped` beside `__dropAt`. Limit: the flag is the list's, not the library's active
+      item, so every row goes neutral, not only the carried one; and a `renderItem` that changes with the
+      flag re-renders every row on lift and on landing (the library's store notifies on that, by design).
+      (3) `useHeaderTheme` colours are now pinned against the root's canvas for light and dark
+      (`header-theme.test.tsx`); the contrast themes are a recorded gap (see the T427 device checks).
+      (4) `Screen` exports `SCREEN_GUTTER` (its side padding) and the areas row's bleed reads it instead
+      of repeating the number.
+      _Review follow-up, device checks:_ drag rail artefacts (neutral dots from the lift to the landing,
+      numbers back and in order with no flash of the old numbering between the drop and the redraw, the
+      lifted row's scale and shadow, auto-scroll while dragging near the screen edge); and the T427
+      checks above (swipe-back, Back twice, header colours in all four themes with a live switch).
 - [ ] T432 [US1] Update `apps/mobile/e2e/01-account-and-trip.yaml` and `03-globe.yaml` only where visible
       text changed; run both on iOS and Android; list each edit and its reason here (FR-037)
 - [ ] T433 [US1] **Checkpoint: on-phone review.** Run quickstart section 3 and the testID parity test;
