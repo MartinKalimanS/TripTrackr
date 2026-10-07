@@ -206,6 +206,9 @@ increased contrast.
       `db/repositories/photos.ts` (earliest photo per trip, thumbnails only) and the `TripSummary` extension
       in `features/trips/use-trips.ts` per data-model §4 and §5; state the visibility posture in the commit
       (FR-011, FR-012; D4-09)
+      Follow-up (not now): reduce cover candidates to one row per trip in SQL (usable-path predicate
+      mirrored in SQL, designated cover included, partial index or denormalised `earliest_photo_id`) when a
+      library of several thousand photos is a target
 - [ ] T430 [US2] Failing tests in `test/components/trip-components.test.tsx` and `test/app/tab-screens.test.tsx`
       for the card (cover, status chip, range, stops, currency, pending, whole-card control, chevron),
       skeletons, empty state, iOS header action versus Android FAB with the same `trips-plan-trip`; then
