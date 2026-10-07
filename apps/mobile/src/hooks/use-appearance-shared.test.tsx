@@ -8,7 +8,7 @@
  * `use-appearance.test.ts` pin what one consumer sees; this one pins what many cost.
  */
 import { act, render, renderHook } from '@testing-library/react-native';
-import { Profiler } from 'react';
+import { Profiler, StrictMode } from 'react';
 import { AccessibilityInfo, Platform } from 'react-native';
 
 import { __resetAppearanceStoreForTests } from './appearance-store';
@@ -199,28 +199,19 @@ describe('the subscription lives exactly as long as there are consumers (T461)',
     ]);
   });
 
-  test('mounting again restarts cleanly: fresh listeners, fresh reads, ready false again', async () => {
-    darker = true;
+  test('mounting again restarts the native side: fresh listeners, fresh reads', async () => {
     const first = await render(<Probes count={5} onRender={ignore} />);
     await settle();
     await first.unmount();
 
-    const renders: AppearanceContext[] = [];
-    await render(
-      <Probes count={5} onRender={(appearance) => renders.push(appearance)} />,
-    );
-
-    // The old session's answer is not carried over: nothing vouches for it any more.
-    expect(renders[0]).toEqual(
-      expect.objectContaining({ ready: false, prefersMoreContrast: false }),
-    );
+    await render(<Probes count={5} onRender={ignore} />);
     await settle();
 
     expect(AccessibilityInfo.addEventListener).toHaveBeenCalledTimes(6);
     expect(darkerQuery).toHaveBeenCalledTimes(2);
-    expect(renders.at(-1)).toEqual(
-      expect.objectContaining({ ready: true, prefersMoreContrast: true }),
-    );
+    expect(registrations.map(({ remove }) => remove.mock.calls.length)).toEqual([
+      1, 1, 1, 0, 0, 0,
+    ]);
   });
 
   test('a handler of a torn-down subscription is inert: no read, no render, no warning', async () => {
@@ -254,6 +245,141 @@ describe('the subscription lives exactly as long as there are consumers (T461)',
     expect(renders.at(-1)).toEqual(
       expect.objectContaining({ ready: true, prefersMoreContrast: false }),
     );
+  });
+});
+
+describe('stale while revalidate: no default ever flashes back (T461)', () => {
+  /** What the contrast flags and `ready` looked like in each render, in order. */
+  const shape = (renders: AppearanceContext[]) =>
+    renders.map(({ ready, prefersMoreContrast }) => ({ ready, prefersMoreContrast }));
+
+  test('a same-commit handover (consumer A out, consumer B in) never shows B a default', async () => {
+    darker = true;
+    const firstRenders: AppearanceContext[] = [];
+    const secondRenders: AppearanceContext[] = [];
+    function Handover({ showFirst }: { showFirst: boolean }) {
+      return showFirst ? (
+        <Probe key="first" onRender={(appearance) => firstRenders.push(appearance)} />
+      ) : (
+        <Probe key="second" onRender={(appearance) => secondRenders.push(appearance)} />
+      );
+    }
+    const { rerender } = await render(<Handover showFirst />);
+    await settle();
+    expect(firstRenders.at(-1)).toEqual(
+      expect.objectContaining({ ready: true, prefersMoreContrast: true }),
+    );
+
+    await rerender(<Handover showFirst={false} />);
+    await settle();
+
+    expect(secondRenders.length).toBeGreaterThan(0);
+    expect(shape(secondRenders)).toEqual(
+      Array(secondRenders.length).fill({ ready: true, prefersMoreContrast: true }),
+    );
+    expect(secondRenders.at(-1)?.themeName).toBe('light-contrast');
+  });
+
+  test('a handover leaves exactly one live native subscription behind', async () => {
+    function Handover({ showFirst }: { showFirst: boolean }) {
+      return <Probe key={showFirst ? 'first' : 'second'} onRender={ignore} />;
+    }
+    const { rerender } = await render(<Handover showFirst />);
+    await settle();
+
+    await rerender(<Handover showFirst={false} />);
+    await settle();
+
+    const live = registrations.filter(({ remove }) => remove.mock.calls.length === 0);
+    expect(live).toHaveLength(3);
+    expect(registrations).toHaveLength(6);
+  });
+
+  test('a <StrictMode> mount (effects run, clean up and run again) never reverts `ready`', async () => {
+    darker = true;
+    const renders: AppearanceContext[] = [];
+    await render(
+      <StrictMode>
+        <Probe onRender={(appearance) => renders.push(appearance)} />
+      </StrictMode>,
+    );
+    await settle();
+
+    const readiness = renders.map(({ ready }) => ready).join(',');
+    // false... then true...: once `ready` is true it never goes back.
+    expect(readiness).toMatch(/^(false,)*(true,)*true$/);
+    expect(renders.at(-1)).toEqual(
+      expect.objectContaining({ ready: true, prefersMoreContrast: true }),
+    );
+    // One session is live; the one the first effect pass started was stopped.
+    const live = registrations.filter(({ remove }) => remove.mock.calls.length === 0);
+    expect(live).toHaveLength(3);
+  });
+
+  test('a <StrictMode> mount on a settled store renders ready with the real flags every time', async () => {
+    darker = true;
+    const warm = await render(<Probe onRender={ignore} />);
+    await settle();
+    await warm.unmount();
+
+    const renders: AppearanceContext[] = [];
+    await render(
+      <StrictMode>
+        <Probe onRender={(appearance) => renders.push(appearance)} />
+      </StrictMode>,
+    );
+    await settle();
+
+    expect(renders.length).toBeGreaterThan(0);
+    expect(shape(renders)).toEqual(
+      Array(renders.length).fill({ ready: true, prefersMoreContrast: true }),
+    );
+  });
+
+  test('a remount after a full unmount keeps the previous flags while it re-reads, then shows a changed answer', async () => {
+    darker = true;
+    const first = await render(<Probe onRender={ignore} />);
+    await settle();
+    await first.unmount();
+    darker = false;
+
+    const renders: AppearanceContext[] = [];
+    await render(<Probe onRender={(appearance) => renders.push(appearance)} />);
+
+    // Before the re-read answers: the last known flags, `ready` still true, no default.
+    expect(renders[0]).toEqual(
+      expect.objectContaining({
+        ready: true,
+        prefersMoreContrast: true,
+        themeName: 'light-contrast',
+      }),
+    );
+
+    await settle();
+
+    expect(darkerQuery).toHaveBeenCalledTimes(2);
+    expect(renders.every(({ ready }) => ready)).toBe(true);
+    expect(renders.at(-1)).toEqual(
+      expect.objectContaining({
+        ready: true,
+        prefersMoreContrast: false,
+        themeName: 'light',
+      }),
+    );
+  });
+
+  test('a remount whose re-read agrees renders exactly once: nothing changed, nobody is woken', async () => {
+    darker = true;
+    const first = await render(<Probe onRender={ignore} />);
+    await settle();
+    await first.unmount();
+
+    const renders: AppearanceContext[] = [];
+    await render(<Probe onRender={(appearance) => renders.push(appearance)} />);
+    await settle();
+
+    expect(darkerQuery).toHaveBeenCalledTimes(2);
+    expect(renders).toHaveLength(1);
   });
 });
 

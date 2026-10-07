@@ -27,6 +27,7 @@ import { Uniwind } from 'uniwind';
 import { Colors } from '@/constants/theme';
 import { useLocalStore } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
+import { __resetAppearanceStoreForTests } from '@/hooks/appearance-store';
 import { SECURE_KEYS, setSession } from '@/lib/secure-store';
 import { Sentry } from '@/lib/sentry';
 import { PaletteNames } from '@/theme/palette';
@@ -156,6 +157,12 @@ beforeEach(() => {
   secureStore.__reset();
   useSessionStore.setState({ status: 'loading', user: null });
   openDatabaseAsync.mockReset().mockResolvedValue(fakeClient());
+});
+
+afterEach(() => {
+  // The shared appearance store keeps what it read for the life of the module registry, and
+  // `ready` never goes false again: without this a test would inherit the last one's first read.
+  __resetAppearanceStoreForTests();
 });
 
 describe('root layout — auth gate (R009, D-17)', () => {

@@ -6,17 +6,21 @@
  * `useHaptics`; a list can mount thousands) the app registers ONE `AccessibilityInfo`
  * listener per event type and runs ONE read per signal.
  *
- * - Lazy and ref-counted: the native subscriptions and the first read start when the first
- *   listener subscribes and are removed when the last one unsubscribes. Nothing runs at
- *   import, and a suite that mounts no consumer registers nothing.
+ * - Lazy and ref-counted: the native subscriptions and a read start when the first listener
+ *   subscribes and are removed when the last one unsubscribes. Nothing runs at import, and a
+ *   suite that mounts no consumer registers nothing.
  * - A stable snapshot: `getAppearanceSnapshot()` returns the same frozen object until a
  *   value changes, which is what `useSyncExternalStore` needs to skip a re-render, so a
  *   change event that re-reports the same flags wakes nobody.
  * - A late consumer needs no read of its own: the snapshot is current whenever the store is
  *   running, so its very first render already has the traveller's settings.
- * - A snapshot nobody is subscribed to is not vouched for: when the last listener leaves,
- *   the snapshot returns to the unread default and the next first listener reads afresh.
- *   `ready` is never reset while the store runs; a restart is a new start, not a reset.
+ * - Stale while revalidate: when the last listener leaves, only the native subscriptions
+ *   stop; the snapshot (the flags AND `ready`) is kept. The next first listener re-reads at
+ *   once and publishes only a result that differs. So a same-commit handover (one consumer
+ *   out, another in), Fast Refresh and StrictMode's mount, clean up and mount again never
+ *   flash the defaults, and `ready` never goes false again after the first read settles, for
+ *   the life of the JavaScript runtime. The kept flags may be out of date after a stretch
+ *   with no listener; the re-read corrects them as soon as the OS answers.
  *
  * What the flags mean, and the per-platform mapping, stay in `src/theme/accessibility.ts`.
  * The colour scheme and the font scale are per-component subscriptions and are composed in
@@ -39,7 +43,8 @@ export interface AppearanceSnapshot {
   readonly prefersLessTransparency: boolean;
   /**
    * True once the FIRST read has settled, whether it answered or failed (research D4-05).
-   * Later change events never reset it.
+   * Later change events never reset it, and neither does the store stopping and starting
+   * again: it stays true for the life of the JavaScript runtime.
    */
   readonly ready: boolean;
 }
@@ -201,11 +206,10 @@ function startSession(): () => void {
   return stop;
 }
 
-/** Ends the running session, if any, and forgets what it read. */
-function stopAndForget(): void {
+/** Ends the running session, if any. What it read stays: see "stale while revalidate". */
+function stopNative(): void {
   const stop = stopSession;
   stopSession = null;
-  snapshot = UNREAD;
   stop?.();
 }
 
@@ -222,7 +226,7 @@ export function subscribeToAppearance(listener: () => void): () => void {
 
   return () => {
     if (!entries.delete(entry)) return;
-    if (entries.size === 0) stopAndForget();
+    if (entries.size === 0) stopNative();
   };
 }
 
@@ -238,9 +242,14 @@ export function getAppearanceServerSnapshot(): AppearanceSnapshot {
 
 /**
  * Test isolation only: removes the native subscriptions, forgets every listener and returns
- * the snapshot to the unread default. An unsubscribe handed out before the reset is a no-op.
+ * the snapshot to the unread default, which is the one thing nothing else ever does. An
+ * unsubscribe handed out before the reset is a no-op. Call it in `afterEach` of every suite
+ * that mounts `useAppearance`, so isolation does not depend on the order of cleanup hooks.
+ *
+ * @internal Not part of the store's API: production code must never call it.
  */
 export function __resetAppearanceStoreForTests(): void {
   entries.clear();
-  stopAndForget();
+  stopNative();
+  snapshot = UNREAD;
 }

@@ -202,22 +202,29 @@ describe('ref counting', () => {
     restarted();
   });
 
-  test('a restart begins from the unread default: what was read is not vouched for any more', async () => {
+  test('the last unsubscribe stops the native session but KEEPS the snapshot, `ready` included', async () => {
     flags.darker = true;
     const first = subscribeToAppearance(() => undefined);
     await settle();
-    expect(getAppearanceSnapshot()).toEqual(
+    const settled = getAppearanceSnapshot();
+    expect(settled).toEqual(
       expect.objectContaining({ ready: true, prefersMoreContrast: true }),
     );
 
     first();
 
-    expect(getAppearanceSnapshot()).toEqual({
-      prefersMoreContrast: false,
-      prefersLessMotion: false,
-      prefersLessTransparency: false,
-      ready: false,
-    });
+    expect(registrations.every(({ remove }) => remove.mock.calls.length === 1)).toBe(
+      true,
+    );
+    expect(getAppearanceSnapshot()).toBe(settled);
+  });
+
+  test('the server snapshot stays the unread default, whatever the store has read', async () => {
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    await settle();
+    unsubscribe();
+
+    expect(getAppearanceServerSnapshot().ready).toBe(false);
   });
 
   test('reads the platform when it starts, not when the module loads', async () => {
@@ -516,6 +523,134 @@ describe('`ready` and the failure fallbacks (contract C4, research D4-05)', () =
 
     expect(getAppearanceSnapshot().ready).toBe(true);
     unsubscribe();
+  });
+});
+
+describe('stale while revalidate: a restart keeps what was read and re-reads at once', () => {
+  /** A store that has settled once and has no subscriber left. */
+  async function settledThenIdle(initial: Partial<typeof flags> = {}) {
+    Object.assign(flags, initial);
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    await settle();
+    unsubscribe();
+    registrations.length = 0;
+    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockClear();
+    return getAppearanceSnapshot();
+  }
+
+  test('a new subscriber sees the previous flags and `ready` in its very first snapshot', async () => {
+    const before = await settledThenIdle({ darker: true });
+
+    const unsubscribe = subscribeToAppearance(() => undefined);
+
+    expect(getAppearanceSnapshot()).toBe(before);
+    expect(getAppearanceSnapshot()).toEqual(
+      expect.objectContaining({ ready: true, prefersMoreContrast: true }),
+    );
+    unsubscribe();
+  });
+
+  test('it re-reads immediately and registers fresh listeners', async () => {
+    await settledThenIdle({ darker: true });
+
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    await settle();
+
+    expect(AccessibilityInfo.isReduceMotionEnabled).toHaveBeenCalledTimes(1);
+    expect(registrations).toHaveLength(3);
+    unsubscribe();
+  });
+
+  test('a re-read that agrees changes nothing and tells nobody', async () => {
+    const before = await settledThenIdle({ darker: true });
+    const listener = jest.fn();
+
+    const unsubscribe = subscribeToAppearance(listener);
+    await settle();
+
+    expect(listener).not.toHaveBeenCalled();
+    expect(getAppearanceSnapshot()).toBe(before);
+    unsubscribe();
+  });
+
+  test('a re-read that disagrees publishes the new answer, once', async () => {
+    const before = await settledThenIdle({ darker: true });
+    flags.darker = false;
+    const listener = jest.fn();
+
+    const unsubscribe = subscribeToAppearance(listener);
+    await settle();
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(getAppearanceSnapshot()).not.toBe(before);
+    expect(getAppearanceSnapshot()).toEqual({ ...before, prefersMoreContrast: false });
+    unsubscribe();
+  });
+
+  test('`ready` never goes false again while the re-read is pending', async () => {
+    await settledThenIdle({ darker: true });
+    pendingContrast();
+
+    const unsubscribe = subscribeToAppearance(() => undefined);
+    await settle();
+
+    expect(getAppearanceSnapshot()).toEqual(
+      expect.objectContaining({ ready: true, prefersMoreContrast: true }),
+    );
+    unsubscribe();
+  });
+
+  test('a re-read that fails as a whole keeps the flags the platform last reported', async () => {
+    const before = await settledThenIdle({ darker: false });
+    readPrefersMoreContrast.mockRejectedValue(new Error('unexpected'));
+    const listener = jest.fn();
+
+    const unsubscribe = subscribeToAppearance(listener);
+    await settle();
+
+    expect(getAppearanceSnapshot()).toBe(before);
+    expect(listener).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
+  test('`ready` is monotonic across any number of stops and starts', async () => {
+    const seen: boolean[] = [];
+    const record = () => seen.push(getAppearanceSnapshot().ready);
+    for (let round = 0; round < 4; round += 1) {
+      const unsubscribe = subscribeToAppearance(record);
+      record();
+      await settle();
+      unsubscribe();
+      record();
+    }
+
+    const firstReady = seen.indexOf(true);
+    expect(firstReady).toBeGreaterThan(-1);
+    expect(seen.slice(firstReady).every(Boolean)).toBe(true);
+  });
+
+  test('an answer to the PREVIOUS session is still dropped after a restart', async () => {
+    const reads = controlledContrastReads();
+    subscribeToAppearance(() => undefined)();
+    const unsubscribe = subscribeToAppearance(() => undefined);
+
+    reads[1].resolve(false);
+    await settle();
+    reads[0].resolve(true);
+    await settle();
+
+    expect(getAppearanceSnapshot()).toEqual(
+      expect.objectContaining({ ready: true, prefersMoreContrast: false }),
+    );
+    unsubscribe();
+  });
+
+  test('the reset helper is what returns the store to the unread default', async () => {
+    await settledThenIdle({ darker: true });
+
+    __resetAppearanceStoreForTests();
+
+    expect(getAppearanceSnapshot()).toEqual(getAppearanceServerSnapshot());
   });
 });
 
