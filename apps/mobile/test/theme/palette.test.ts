@@ -9,7 +9,13 @@
  */
 import { Colors, GlobeColors } from '@/constants/theme';
 import { contrastRatio } from '@/theme/contrast';
-import { PaletteKeys, PaletteNames, Palettes, type Palette } from '@/theme/palette';
+import {
+  PaletteKeys,
+  PaletteNames,
+  Palettes,
+  resolvePaletteName,
+  type Palette,
+} from '@/theme/palette';
 
 /** data-model §1, in document order. */
 const DATA_MODEL_KEYS = [
@@ -131,9 +137,30 @@ describe('palette invariants', () => {
   test('the palette is deeply frozen: a screen cannot mutate a token', () => {
     expect(Object.isFrozen(Palettes)).toBe(true);
     for (const name of PaletteNames) expect(Object.isFrozen(Palettes[name])).toBe(true);
-    expect(() => {
+    const before = Palettes.light.canvas;
+    try {
       (Palettes.light as { canvas: string }).canvas = '#123456';
-    }).toThrow(TypeError);
+    } catch {
+      // Strict mode throws a TypeError; sloppy mode ignores the write. Either is fine.
+    }
+    expect(Palettes.light.canvas).toBe(before);
+  });
+});
+
+describe('resolvePaletteName — contract C4-4', () => {
+  test.each([
+    ['light', false, 'light'],
+    ['dark', false, 'dark'],
+    ['light', true, 'light-contrast'],
+    ['dark', true, 'dark-contrast'],
+  ] as const)('%s with more contrast=%s resolves to %s', (scheme, more, expected) => {
+    expect(resolvePaletteName(scheme, more)).toBe(expected);
+  });
+
+  test('every resolved name selects a defined palette', () => {
+    for (const scheme of BASE_THEMES)
+      for (const more of [false, true])
+        expect(Palettes[resolvePaletteName(scheme, more)]).toBeDefined();
   });
 });
 

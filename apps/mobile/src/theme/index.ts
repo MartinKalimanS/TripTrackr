@@ -6,6 +6,7 @@
  * minor change, removing or repurposing one is breaking.
  */
 export {
+  blend,
   contrastRatio,
   relativeLuminance,
   meetsFloor,
@@ -26,7 +27,16 @@ export {
   type ThemeName,
 } from './surfaces';
 
-export { resolveInk, type InkRole, type Palette } from './ink';
+export { resolveInk, type InkRole, type InkPalette } from './ink';
+
+export {
+  PaletteKeys,
+  PaletteNames,
+  Palettes,
+  resolvePaletteName,
+  type Palette,
+  type PaletteName,
+} from './palette';
 
 export {
   appearanceChangeEvents,

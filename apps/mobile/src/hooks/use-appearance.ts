@@ -24,16 +24,26 @@ import {
   resolveElevationProfile,
   type ElevationProfile,
 } from '@/theme/elevation-profile';
+import { resolvePaletteName, type PaletteName } from '@/theme/palette';
 import type { ThemeName } from '@/theme/surfaces';
 
 export interface AppearanceContext {
+  /** The device scheme. */
   theme: ThemeName;
+  /**
+   * `theme` plus increased contrast: `light-contrast` or `dark-contrast` when
+   * `prefersMoreContrast` is true, otherwise equal to `theme` (contract C4-4). The root
+   * layout hands it to `Uniwind.setTheme`; nothing else sets the kit's theme.
+   */
+  themeName: PaletteName;
   prefersMoreContrast: boolean;
   prefersLessMotion: boolean;
   /** Structurally false on Android — the platform has no such setting. */
   prefersLessTransparency: boolean;
   fontScale: number;
+  /** Forced to `flat` until the neumorphic primitives are deleted (004 D4-12). */
   elevationProfile: ElevationProfile;
+  /** The two-theme legacy `Colors` until the screens migrate (phase 7). */
   tokens: (typeof Colors)['light'] | (typeof Colors)['dark'];
 }
 
@@ -96,6 +106,7 @@ export function useAppearance(): AppearanceContext {
   return useMemo(
     () => ({
       theme,
+      themeName: resolvePaletteName(theme, flags.prefersMoreContrast),
       ...flags,
       fontScale,
       elevationProfile: resolveElevationProfile({

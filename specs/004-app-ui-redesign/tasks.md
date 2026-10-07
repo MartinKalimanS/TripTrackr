@@ -104,13 +104,13 @@ After this phase every unconverted screen already renders in Atlas colours with 
 
 ### Tokens and themes
 
-- [ ] T410 [P] Failing tests in `apps/mobile/test/theme/palette.test.ts`: every key defined in all four
+- [x] T410 [P] Failing tests in `apps/mobile/test/theme/palette.test.ts`: every key defined in all four
       themes; status colours equal `GlobeColors` where specified; no pure `#000000`/`#FFFFFF` in the base
       themes; failing tests in `test/theme/contrast-gate.test.ts` extended per `contracts/design-tokens.md`
       C4-3 (four themes, soft blends, hover mixes, planning ink, field border, focus, 7:1 in the contrast
       themes, the enumerated exemption allowlist) and in `test/theme/contrast.test.ts` for `blend()`
       (FR-023, FR-024, FR-027; D4-04)
-- [ ] T411 Implement `apps/mobile/src/theme/palette.ts` and `blend()` in `src/theme/contrast.ts`; re-point
+- [x] T411 Implement `apps/mobile/src/theme/palette.ts` and `blend()` in `src/theme/contrast.ts`; re-point
       `Colors` in `src/constants/theme.ts` at the palette (keys preserved); force the elevation profile to
       `flat` in `src/theme/elevation-profile.ts`; update the tests that asserted the old neumorphic values
       (FR-001, FR-002; D4-04, D4-12)
