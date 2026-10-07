@@ -4,11 +4,13 @@
  * Runs the real `eslint.config.js` through ESLint's Node API on inline sources, so
  * the rules are pinned by behaviour and not by reading the config:
  *
- * - an arbitrary-value colour class (`bg-[#fff]`, `text-[rgb(1,2,3)]`) is rejected
- *   in `src/app` and `src/components`, next to the colour literals the config
- *   already rejected;
+ * - a colour inside the brackets of a utility class (`bg-[#fff]`,
+ *   `text-[rgb(1,2,3)]`, `shadow-[0_0_0_1px_#fff]`, `[color:#fff]`) is rejected in
+ *   `src/app` and `src/components`, next to the colour literals the config already
+ *   rejected; prose such as "Ticket [#123]" and `bg-[var(--x)]` are not;
  * - `heroui-native` and `uniwind` are importable only from `src/components/ui/**`,
- *   tests, the root layout and the appearance hook.
+ *   tests, the root layout and the appearance hook. The rule sees static imports
+ *   only; `kit-imports.test.ts` reads the files for the rest.
  *
  * Starting ESLint (config, TypeScript parser, plugins) takes several seconds on a
  * cold cache, hence the generous timeouts.
@@ -16,8 +18,6 @@
 import path from 'node:path';
 
 import { ESLint } from 'eslint';
-
-import { readWorkingTreeSources } from '../../scripts/lib/extract-ids';
 
 const root = path.resolve(__dirname, '../..');
 const STARTUP_TIMEOUT = 120_000;
@@ -37,8 +37,9 @@ async function messagesFor(code: string, file: string, ruleId: string) {
   const [result] = await eslint.lintText(code, { filePath: path.join(root, file) });
   // An ignored file reports one warning and nothing else; "no violations" would
   // then be vacuous, so refuse to answer.
-  const ignored = result.messages.find((message) => /ignored/i.test(message.message));
-  if (ignored) throw new Error(`${file} is not linted: ${ignored.message}`);
+  if (result.messages[0]?.message.startsWith('File ignored')) {
+    throw new Error(`${file} is not linted: ${result.messages[0].message}`);
+  }
   return result.messages.filter((message) => message.ruleId === ruleId);
 }
 
@@ -94,6 +95,22 @@ describe('colour literals (C4-1)', () => {
     'text-[lch(50%_40_59)]',
     'bg-[color(display-p3_1_0_0)]',
     'dark:hover:bg-[rgb(var(--x))]',
+    'bg-[hwb(1_2%_3%)]',
+    'text-[#fff]/50',
+    '!bg-[#fff]',
+    'data-[state=open]:bg-[#fff]',
+    // Arbitrary properties: the property is a colour, the value a literal.
+    '[color:#fff]',
+    '[color:rgb(1,2,3)]',
+    'hover:[color:#fff]',
+    '[--brand:#ff0000]',
+    '[background:oklch(0.7_0.1_200)]',
+    // A colour anywhere inside the brackets of a utility.
+    'bg-[color-mix(in_oklab,red_50%,blue)]',
+    'shadow-[0_0_0_1px_#fff]',
+    'shadow-[0_1px_2px_rgba(0,0,0,0.2)]',
+    'border-[1px_solid_#fff]',
+    'bg-[linear-gradient(#fff,#000)]',
   ])(
     'rejects %s as a string and inside a template literal',
     async (utility) => {
@@ -115,6 +132,15 @@ describe('colour literals (C4-1)', () => {
     'p-[4px]',
     'w-[calc(100%-8px)]',
     'bg-[var(--surface)]',
+    'bg-[color:var(--surface)]',
+    'text-[length:var(--size)]',
+    'border-[length:var(--hair)]',
+    'shadow-[0_0_0_1px_var(--ring)]',
+    'grid-cols-[1fr_2fr]',
+    'font-[600]',
+    "bg-[url('/pattern.png')]",
+    'data-[state=open]:p-2',
+    '[&>*]:p-2',
   ])(
     'accepts %s',
     async (utility) => {
@@ -122,6 +148,28 @@ describe('colour literals (C4-1)', () => {
         `export const a = "${utility}";`,
         `export const b = \`${utility} \${size}\`;`,
         `export const C = () => <View className="${utility}" />;`,
+      ].join('\n');
+      for (const file of COLOUR_FILES) {
+        expect(await colourMessages(code, file)).toEqual([]);
+      }
+    },
+    LINT_TIMEOUT,
+  );
+
+  it.each([
+    'Ticket [#123]',
+    'Issue [#abc] is fixed',
+    'Reply to [#1234abcd] today',
+    'See the [color] note',
+    'Items [1] and [2]',
+  ])(
+    'leaves the prose "%s" alone',
+    async (text) => {
+      const quoted = JSON.stringify(text);
+      const code = [
+        `export const a = ${quoted};`,
+        `export const b = \`${text} \${size}\`;`,
+        `export const C = () => <Text accessibilityLabel={${quoted}}>x</Text>;`,
       ].join('\n');
       for (const file of COLOUR_FILES) {
         expect(await colourMessages(code, file)).toEqual([]);
@@ -224,46 +272,4 @@ describe('other imports (C4-6)', () => {
     },
     LINT_TIMEOUT,
   );
-});
-
-/**
- * The lint rule sees static `import` and `export … from` only. This is the same
- * boundary read from the files themselves, so a `require()` or a dynamic
- * `import()` of the kit outside the adapter folder fails too.
- */
-const KIT_REFERENCE =
-  /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)['"](?:heroui-native|uniwind)(?:\/[^'"]*)?['"]/;
-const KIT_ALLOWED = [
-  /^src\/components\/ui\//,
-  /^src\/app\/_layout\.tsx$/,
-  /^src\/hooks\/use-appearance\.ts$/,
-];
-
-describe('the sources outside the adapter folder (C4-6)', () => {
-  it.each([
-    "import { A } from 'heroui-native';",
-    'import { B } from "uniwind";',
-    "export { C } from 'uniwind/types';",
-    "import 'heroui-native';",
-    "const d = require('heroui-native');",
-    "const e = await import('uniwind');",
-  ])('recognises %s as a kit reference', (line) => {
-    expect(KIT_REFERENCE.test(line)).toBe(true);
-  });
-
-  it.each([
-    "import { View } from 'react-native';",
-    "import { x } from 'uniwind-utils';",
-    "const label = 'powered by heroui-native';",
-  ])('does not mistake %s for one', (line) => {
-    expect(KIT_REFERENCE.test(line)).toBe(false);
-  });
-
-  it('none imports the kit', () => {
-    const offenders = readWorkingTreeSources(root)
-      .filter((file) => !KIT_ALLOWED.some((allowed) => allowed.test(file.path)))
-      .filter((file) => KIT_REFERENCE.test(file.text))
-      .map((file) => file.path);
-    expect(offenders).toEqual([]);
-  });
 });

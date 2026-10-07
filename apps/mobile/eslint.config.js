@@ -5,13 +5,25 @@ const prettierConfig = require('eslint-config-prettier');
 const tseslint = require('typescript-eslint');
 
 /**
- * A colour as an arbitrary-value utility class: `[#fff]`, `[rgb(1,2,3)]`,
- * `[oklch(0.7 0.1 200)]`. It is the source of a regular expression used in two
- * `no-restricted-syntax` selectors, so it holds no slash (an esquery regex ends
- * at the next one).
+ * A colour written inside the square brackets of a utility class: a hex literal
+ * (`#fff`, `#a1b2c3d4`) or a colour function (`rgb(`, `hsl(`, `oklch(`,
+ * `color-mix(`, ...) anywhere in the brackets, so `bg-[#fff]`, `text-[rgb(1,2,3)]`,
+ * `shadow-[0_0_0_1px_#fff]` and `border-[1px_solid_#fff]` are all caught. A function
+ * name may follow an underscore (a space in a utility), but not a letter or hyphen
+ * (`my-rgb(`).
  */
-const ARBITRARY_COLOUR_CLASS =
-  '\\[(#[0-9a-fA-F]{3,8}|(rgb|rgba|hsl|hsla|oklch|oklab|lab|lch|color)\\(.*?\\))\\]';
+const COLOUR_TOKEN = String.raw`(?:#[0-9a-fA-F]{3,8}\b|(?<![A-Za-z0-9-])(?:rgba?|hsla?|hwb|oklch|oklab|lab|lch|color|color-mix)\()`;
+
+/**
+ * What makes the brackets a utility's and not prose ("Ticket [#123]"): they follow
+ * a utility name (`bg-[`, `hover:bg-[`), or they hold an arbitrary property
+ * (`[color:#fff]`, `hover:[--brand:#f00]`). `bg-[var(--x)]` and `rounded-[12px]`
+ * hold no colour token and pass.
+ *
+ * This is the source of a regular expression used in two `no-restricted-syntax`
+ * selectors, so it holds no slash (an esquery regex ends at the next one).
+ */
+const ARBITRARY_COLOUR_CLASS = String.raw`(?:[\w:-]+-\[|(?:^|[\s:])\[[\w-]+:)[^\]]*${COLOUR_TOKEN}[^\]]*\]`;
 
 const ARBITRARY_COLOUR_MESSAGE =
   'Arbitrary-value colour class. A colour comes from the token layer, never from a utility such as bg-[#fff] or text-[rgb(1,2,3)]: add it to the palette and use its semantic class (specs/004-app-ui-redesign/contracts/design-tokens.md, C4-1).';
