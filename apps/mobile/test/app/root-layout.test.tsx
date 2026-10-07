@@ -329,3 +329,35 @@ describe('root layout — local store gate (T041)', () => {
     expect(SplashScreen.hide).toHaveBeenCalled();
   });
 });
+
+describe('root layout — Uniwind and the kit provider (feature 004, T402)', () => {
+  const { HeroUINativeProvider } = jest.requireMock('heroui-native') as {
+    HeroUINativeProvider: jest.Mock;
+  };
+
+  test('mounts HeroUINativeProvider around the app, with the kit’s development banner off', async () => {
+    await renderApp();
+
+    expect(await screen.findByText('welcome-screen')).toBeTruthy();
+    expect(HeroUINativeProvider).toHaveBeenCalled();
+    expect(HeroUINativeProvider.mock.calls[0][0].config).toEqual({
+      devInfo: { stylingPrinciples: false },
+    });
+  });
+
+  test('imports global.css once, from this layout, never from the package entry', () => {
+    const fs = jest.requireActual('fs') as typeof import('fs');
+    const path = jest.requireActual('path') as typeof import('path');
+    const srcRoot = path.resolve(__dirname, '..', '..', 'src');
+    const importers = (fs.readdirSync(srcRoot, { recursive: true }) as string[])
+      .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.d\.ts$/.test(file))
+      .filter((file) =>
+        /^\s*import\s+['"][^'"]*global\.css['"]/m.test(
+          fs.readFileSync(path.join(srcRoot, file), 'utf8'),
+        ),
+      )
+      .map((file) => file.split(path.sep).join('/'));
+
+    expect(importers).toEqual(['app/_layout.tsx']);
+  });
+});
