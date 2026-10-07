@@ -24,6 +24,10 @@ import { useSessionStore } from '@/features/auth/session-store';
 import { SECURE_KEYS, setSession } from '@/lib/secure-store';
 import { Sentry } from '@/lib/sentry';
 
+// The first render of the whole router tree pays for transforming every module it touches:
+// 11 to 20 s on a cold cache, which hit the 20 s default under parallel load (004 spike).
+jest.setTimeout(60_000);
+
 jest.mock('@/lib/sentry', () => ({
   Sentry: { captureException: jest.fn(), wrap: (component: unknown) => component },
   initSentry: jest.fn(),

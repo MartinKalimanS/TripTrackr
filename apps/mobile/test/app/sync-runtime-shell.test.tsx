@@ -19,6 +19,10 @@ import { SECURE_KEYS, setSession } from '@/lib/secure-store';
 import { useConflictStore } from '@/sync/conflicts';
 import { resetFirstLaunch } from '@/sync/triggers';
 
+// The first render of the whole router tree pays for transforming every module it touches:
+// 11 to 20 s on a cold cache, which hit the 20 s default under parallel load (004 spike).
+jest.setTimeout(60_000);
+
 jest.mock('@/lib/sentry', () => ({
   Sentry: { captureException: jest.fn(), wrap: (component: unknown) => component },
   initSentry: jest.fn(),
