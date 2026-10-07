@@ -172,11 +172,21 @@ After this phase every unconverted screen already renders in Atlas colours with 
       (`components/ui/card.tsx`, `components/ui/panel.tsx`) (FR-002, FR-006, FR-018, FR-033, FR-034)
 - [ ] T419 [P] `ListGroup` and `ListRow` with chevron cue and forwarded `accessibilityActions`
       (`components/ui/list-group.tsx`) (FR-013, FR-024)
-- [ ] T420 [P] `Field` with the `TextField` prop surface and error words under the field
-      (`components/ui/field.tsx`) (FR-025; auth and form props pass through unchanged)
-- [ ] T421 [P] `Chip`, `StatusChip` (keeps `status-pill-<status>`), `ChipGroup` (keeps radio roles and ids,
+- [x] T420 [P] `Field` with the `TextField` prop surface and error words under the field
+      (`components/ui/field.tsx`) (FR-025; auth and form props pass through unchanged). _As built:_ the
+      kit's Android classes make the field border transparent until focus, so `Field` asks for
+      `android:border-field-border` again (FR-024; pinned in `test/ui-kit/field-chip-kit-facts.test.ts`);
+      the error is one `alert` element (the kit's FieldError needed `accessible`); `isRequired` adds a
+      "Required" hint, because the asterisk is a glyph. Device checks: the Android border and the focus
+      indicator on both platforms, a multiline field, and the kit's FieldError animation (C4-8).
+- [x] T421 [P] `Chip`, `StatusChip` (keeps `status-pill-<status>`), `ChipGroup` (keeps radio roles and ids,
       sideways scroll option), `SyncBadge` restyle (`components/ui/chip.tsx`, `components/ui/sync-badge.tsx`)
-      (FR-025, FR-034, 003 FR-017)
+      (FR-025, FR-034, 003 FR-017). _As built:_ `Icon` gained the `statusPlanning`, `statusActive`,
+      `statusPast` and `pending` tones, because the status and sync chips tint their glyph like their
+      text; an interactive chip has a platform-floor minimum size and 4 dp of slop (the kit chip has no
+      height); `SyncBadge` keeps its ids, announcements and visible words. Device checks: chip target
+      sizes and focus ring, `bg-<status>/15` through Uniwind, the sideways row at the largest text size,
+      and the two glyph vocabularies on both platforms (C4-8).
 - [ ] T422 [P] State views: `Skeleton*`, `EmptyState`, `LoadingState`, `ErrorState`, `FormActions`,
       `InlineError` (`components/ui/state-view.tsx`, `form-actions.tsx`, `inline-error.tsx`) (FR-021,
       FR-035)
