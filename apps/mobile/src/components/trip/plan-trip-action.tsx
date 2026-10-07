@@ -5,11 +5,12 @@
  * One action, two places, one id and one name on both: `trips-plan-trip`, "Plan a trip".
  * The screen renders exactly one of them per platform.
  *
- *   - iOS: `PlanTripHeaderAction`, the `headerRight` of the native header. A `text`
- *     button (a header holds no filled control) with a plus and the words. A header is a
- *     fixed-height bar, so, like `HeaderBackButton`, its minimum height is the platform
- *     floor and is NOT scaled with the font scale; `Button` lets the label wrap, so
- *     nothing is cut at the largest text size.
+ *   - iOS: `PlanTripHeaderAction`, the `headerRight` of the native header. An ICON-ONLY
+ *     `text` button (a header holds no filled control): a plus, named "Plan a trip". A
+ *     header is a fixed-height bar, so it carries no words that the largest Dynamic Type
+ *     size could clip or widen; an icon-only `Button` is a fixed square of the platform
+ *     floor (44 pt), which is not scaled with the font scale (unlike a button in a page).
+ *     The words are in the empty state's own action, and every state has the plus.
  *   - Android: `PlanTripFab`, an extended floating button, the screen's one `primary`
  *     (FR-005), over the bottom end of the list. The tab bar is in the navigator's flow
  *     below the screen, so the bottom of the screen is already above it and above the
@@ -26,15 +27,12 @@ import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { Button, buttonFrame } from '@/components/ui/button';
 import type { IconName } from '@/components/ui/icon';
-import { MinTouchTarget, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 const PLUS: IconName = { ios: 'plus', android: 'add' };
 
 /** The kit's `lg` button height, when the frame does not say. */
 const FAB_MIN_HEIGHT = 56;
-
-/** A header is a fixed-height bar: the floor, not the floor times the font scale. */
-const HEADER_ACTION = { minHeight: MinTouchTarget } as const;
 
 export interface PlanTripActionProps {
   onPress: () => void;
@@ -46,13 +44,12 @@ export function PlanTripHeaderAction({ onPress }: PlanTripActionProps) {
     <Button
       variant="text"
       size="sm"
+      iconOnly
       icon={PLUS}
       accessibilityLabel="Plan a trip"
       testID="trips-plan-trip"
-      style={HEADER_ACTION}
-      onPress={onPress}>
-      Plan a trip
-    </Button>
+      onPress={onPress}
+    />
   );
 }
 

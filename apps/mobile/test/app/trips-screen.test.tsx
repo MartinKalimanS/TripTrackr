@@ -15,11 +15,11 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { Platform } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import TripsScreen from '@/app/(tabs)/trips';
-import { Spacing } from '@/constants/theme';
+import { MinTouchTarget, Spacing } from '@/constants/theme';
 import type { TripSummary } from '@/features/trips/use-trips';
 
 const mockPush = jest.fn();
@@ -174,7 +174,7 @@ describe('<TripsScreen> - the screen and its states (FR-021, FR-035)', () => {
     expect(mockPush).toHaveBeenCalledWith('/trip/b');
   });
 
-  test('the list is the scroller and lets the native header inset it, so the large title collapses', async () => {
+  test('the list is the scroller and takes the content inset the native header needs (props asserted; the collapse itself is a device check, T408)', async () => {
     mockTrips.data = [summary('a')];
     platform = await renderOn('ios');
 
@@ -216,14 +216,40 @@ describe('<TripsScreen> - Plan a trip on iOS: a header action', () => {
     expect(mockPush).toHaveBeenCalledWith('/modal/add-trip');
   });
 
-  test('is a text button: the header holds no filled control, and it is not scaled with the text', async () => {
+  test('is an icon-only text button named "Plan a trip": no words in the header to clip or widen it', async () => {
+    mockTrips.data = [summary('a')];
     platform = await renderOn('ios');
     const plan = screen.getByTestId('trips-plan-trip');
+
     expect(plan.props.variant).toBe('ghost');
-    const style = [plan.props.style].flat(Infinity).filter(Boolean) as {
-      minHeight?: number;
-    }[];
-    expect(style.at(-1)?.minHeight).toBeLessThanOrEqual(48);
+    expect(plan.props.isIconOnly).toBe(true);
+    expect(plan.props.accessibilityLabel).toBe('Plan a trip');
+    expect(within(plan).queryByText('Plan a trip')).toBeNull();
+    // The glyph is decorative: the name is the button's own.
+    expect(within(plan).getByTestId('trips-plan-trip-icon', hidden)).toBeTruthy();
+  });
+
+  test('is a square of the 44 pt floor whatever the text size (a header is a fixed-height bar)', async () => {
+    platform = await renderOn('ios');
+    // The jest window reports a font scale of 2, as a large Dynamic Type setting would.
+    expect(Dimensions.get('window').fontScale).toBeGreaterThan(1);
+
+    const style = Object.assign(
+      {},
+      ...[screen.getByTestId('trips-plan-trip').props.style]
+        .flat(Infinity)
+        .filter(Boolean),
+    );
+    expect(MinTouchTarget).toBe(44);
+    expect(style.width).toBe(MinTouchTarget);
+    expect(style.height).toBe(MinTouchTarget);
+    expect(style.minHeight).toBeUndefined();
+  });
+
+  test('in the empty state the words are the empty state action, not drawn twice', async () => {
+    platform = await renderOn('ios');
+    expect(screen.getAllByText('Plan a trip')).toHaveLength(1);
+    expect(screen.getByTestId('trips-empty-plan-trip')).toBeTruthy();
   });
 
   test('draws no floating button', async () => {
