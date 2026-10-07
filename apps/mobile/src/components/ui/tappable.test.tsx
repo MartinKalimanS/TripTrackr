@@ -7,35 +7,32 @@
  * retired `PressableSurface` suite did; the rest is asserted on the host node.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { useThemeColor } from 'heroui-native';
-import { StyleSheet, Text } from 'react-native';
+import * as HeroUI from 'heroui-native';
+import { Dimensions, StyleSheet, Text } from 'react-native';
 
-import { Colors, MinTouchTarget } from '@/constants/theme';
-import type { AppearanceContext } from '@/hooks/use-appearance';
+import { MinTouchTarget } from '@/constants/theme';
+import { useAppearance } from '@/hooks/use-appearance';
 import { FocusRing } from '@/theme';
 
-import { Tappable, tappableStyle } from './tappable';
+import { TAPPABLE_PRESSED_TOKEN, Tappable, tappableStyle } from './tappable';
 
-jest.mock('@/hooks/use-appearance');
+// The adapter reads the font scale from the window, not from `useAppearance`: that hook
+// subscribes to AccessibilityInfo once per consumer, which a control repeated down a
+// list must not pay for (research D4-05; tasks.md T461).
+jest.mock('@/hooks/use-appearance', () => ({ useAppearance: jest.fn() }));
 
-const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
-  useAppearance: jest.Mock<AppearanceContext, []>;
-};
-
-function mockAppearance(overrides: Partial<AppearanceContext> = {}) {
-  useAppearance.mockReturnValue({
-    theme: 'light',
-    prefersMoreContrast: false,
-    prefersLessMotion: false,
-    prefersLessTransparency: false,
-    fontScale: 1,
-    elevationProfile: 'flat',
-    tokens: Colors.light,
-    ...overrides,
-  } as AppearanceContext);
+/** Sets the window font scale `useWindowDimensions` reports. */
+function mockFontScale(fontScale: number) {
+  jest.spyOn(Dimensions, 'get').mockReturnValue({
+    width: 390,
+    height: 844,
+    scale: 3,
+    fontScale,
+  });
 }
 
-beforeEach(() => mockAppearance());
+beforeEach(() => mockFontScale(1));
+afterEach(() => jest.restoreAllMocks());
 
 /** The style the host node carries now, flattened. */
 const styleNow = () =>
@@ -152,20 +149,41 @@ describe('<Tappable> touch target - FR-026, FR-029', () => {
   });
 
   test('grows with the text size instead of clipping the label', async () => {
-    mockAppearance({ fontScale: 2 });
+    mockFontScale(2);
     await renderTappable();
     expect(styleNow().minHeight).toBe(MinTouchTarget * 2);
   });
 
   test('a caller style may override the minimum (a fixed-height header)', async () => {
-    mockAppearance({ fontScale: 2 });
+    mockFontScale(2);
     await renderTappable({ style: { minHeight: MinTouchTarget } });
     expect(styleNow().minHeight).toBe(MinTouchTarget);
   });
 });
 
+describe('<Tappable> cost in a list - research D4-05', () => {
+  test('reads the font scale from the window and never subscribes to useAppearance', async () => {
+    await renderTappable();
+    expect(useAppearance).not.toHaveBeenCalled();
+  });
+
+  test('follows a change of the window font scale', async () => {
+    mockFontScale(1.5);
+    await renderTappable();
+    expect(styleNow().minHeight).toBe(MinTouchTarget * 1.5);
+  });
+
+  test('asks the theme for its pressed fill: one that is visible on every ground', async () => {
+    const spy = jest.spyOn(HeroUI, 'useThemeColor');
+    await renderTappable();
+    expect(TAPPABLE_PRESSED_TOKEN).toBe('separator-secondary');
+    expect(spy).toHaveBeenCalledWith(TAPPABLE_PRESSED_TOKEN);
+    expect(spy).toHaveBeenCalledWith('focus');
+  });
+});
+
 describe('<Tappable> focus ring - FR-024, design-tokens C4-3', () => {
-  const focusColor = useThemeColor('focus');
+  const focusColor = HeroUI.useThemeColor('focus');
 
   test('draws a 2 dp ring 2 dp outside the control while focused, and drops it on blur', async () => {
     await renderTappable();

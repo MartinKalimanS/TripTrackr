@@ -9,40 +9,36 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 
-import { Colors, MinTouchTarget } from '@/constants/theme';
-import type { AppearanceContext } from '@/hooks/use-appearance';
+import { MinTouchTarget } from '@/constants/theme';
+import { useAppearance } from '@/hooks/use-appearance';
 import type { Haptics } from '@/hooks/use-haptics';
 
-import { Button, buttonFrame, type ButtonVariant } from './button';
+import { Button, PRESSED_CLASS, buttonFrame, type ButtonVariant } from './button';
 
-jest.mock('@/hooks/use-appearance');
+// The adapter reads the font scale from the window, not from `useAppearance` (see
+// tappable.tsx); `useHaptics` is replaced wholesale, so it cannot reach the real hook.
+jest.mock('@/hooks/use-appearance', () => ({ useAppearance: jest.fn() }));
 jest.mock('@/hooks/use-haptics');
 
-const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
-  useAppearance: jest.Mock<AppearanceContext, []>;
-};
 const { useHaptics } = jest.requireMock('@/hooks/use-haptics') as {
   useHaptics: jest.Mock<Haptics, []>;
 };
 const haptics: Haptics = { selection: jest.fn(), success: jest.fn(), warning: jest.fn() };
 
-function mockAppearance(overrides: Partial<AppearanceContext> = {}) {
-  useAppearance.mockReturnValue({
-    theme: 'light',
-    prefersMoreContrast: false,
-    prefersLessMotion: false,
-    prefersLessTransparency: false,
-    fontScale: 1,
-    elevationProfile: 'flat',
-    tokens: Colors.light,
-    ...overrides,
-  } as AppearanceContext);
+/** Sets the window font scale `useWindowDimensions` reports. */
+function mockFontScale(fontScale: number) {
+  jest.spyOn(Dimensions, 'get').mockReturnValue({
+    width: 390,
+    height: 844,
+    scale: 3,
+    fontScale,
+  });
 }
 
 beforeEach(() => {
-  mockAppearance();
+  mockFontScale(1);
   useHaptics.mockReturnValue(haptics);
 });
 afterEach(() => jest.restoreAllMocks());
@@ -173,6 +169,16 @@ describe('<Button> busy and disabled - FR-019, data-model section 6', () => {
     expect(screen.getByTestId('save-spinner', hidden)).toBeTruthy();
   });
 
+  test('busy is not dimmed to the disabled opacity: it cancels the kit disabled: class', async () => {
+    await renderButton({ busy: true });
+    const classes = classesOf(node());
+    expect(classes).toContain('disabled:opacity-100');
+    await renderButton({ disabled: true, accessibilityLabel: 'Other' });
+    expect(classesOf(screen.getByLabelText('Other'))).not.toContain(
+      'disabled:opacity-100',
+    );
+  });
+
   test('busy keeps the label announced and visible', async () => {
     await renderButton({ busy: true });
     expect(node().props.accessibilityLabel).toBe('Save trip');
@@ -279,7 +285,7 @@ describe('<Button> touch target and wrapping - FR-026, FR-029', () => {
   });
 
   test('grows with the text size', async () => {
-    mockAppearance({ fontScale: 2 });
+    mockFontScale(2);
     await renderButton();
     expect(styleOf().minHeight).toBe(Math.max(48, MinTouchTarget * 2));
   });
@@ -335,13 +341,16 @@ describe('<Button> pressed state and kit animation - FR-019, FR-022, review rule
     }
   });
 
-  test('replaces it with a discrete pressed fill from a gated neutral or accent token', async () => {
+  test('replaces it with a discrete pressed fill, measured in adapter-pressed-fills', async () => {
+    // The classes are pinned here; that each is a visible step from the resting fill and
+    // keeps the label readable in all four themes is test/theme/adapter-pressed-fills.test.ts.
     const PRESSED: Record<ButtonVariant, string> = {
       primary: 'active:bg-accent-hover',
-      secondary: 'active:bg-surface-tertiary',
-      text: 'active:bg-surface-tertiary',
-      destructive: 'active:bg-surface-tertiary',
+      secondary: 'active:bg-separator-secondary',
+      text: 'active:bg-separator-secondary',
+      destructive: 'active:bg-danger/5',
     };
+    expect(PRESSED_CLASS).toEqual(PRESSED);
     for (const [variant, expected] of Object.entries(PRESSED)) {
       await renderButton({ variant, testID: variant, accessibilityLabel: variant });
       expect(classesOf(screen.getByTestId(variant))).toContain(expected);
@@ -351,6 +360,19 @@ describe('<Button> pressed state and kit animation - FR-019, FR-022, review rule
   test('never asks for a soft-hover fill', async () => {
     await renderButton({ variant: 'destructive' });
     expect(String(node().props.className)).not.toMatch(/soft-hover|danger-soft|\/20/);
+  });
+
+  test('never pulls in the neutral that vanishes on a dark overlay', async () => {
+    for (const variant of ['primary', 'secondary', 'text', 'destructive'] as const) {
+      expect(PRESSED_CLASS[variant]).not.toContain('surface-tertiary');
+    }
+  });
+});
+
+describe('<Button> cost in a list - research D4-05', () => {
+  test('reads the font scale from the window and never subscribes to useAppearance', async () => {
+    await renderButton();
+    expect(useAppearance).not.toHaveBeenCalled();
   });
 });
 

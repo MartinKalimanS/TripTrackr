@@ -23,7 +23,12 @@
  *   makes the button inert: the press is dropped, and no haptic plays. The kit has no
  *   busy state, so a busy button is announced `{ busy: true, disabled: true }`; it keeps
  *   its label (visible and announced) and swaps its icon for a spinner. A disabled one
- *   is announced unavailable and dimmed by the kit.
+ *   is announced unavailable and dimmed by the kit. A busy one is NOT dimmed: both go to
+ *   the kit as `isDisabled` (React Native's Pressable replaces `accessibilityState.disabled`
+ *   with its own `disabled` prop, so a kit-enabled button could not be announced
+ *   unavailable), which makes the kit add `disabled:element-disabled` (50% opacity), and
+ *   a busy button then adds `disabled:opacity-100` after it. The two classes set the same
+ *   property at the same weight and Uniwind lets the later class win.
  * - Touch target (FR-026): the kit's heights are fixed (sm 40, md 48, lg 56 dp), so the
  *   adapter drops the fixed height (`h-auto`, with vertical padding) and asks for a
  *   MINIMUM instead: the larger of the kit height and `MinTouchTarget` (44 iOS, 48
@@ -39,11 +44,23 @@
  *   gate guarantees readable text on 15% only (review rule 5). It also vanishes under
  *   `animation: 'disable-all'`, which would leave a reduced-motion traveller with no
  *   pressed state at all. Instead each variant swaps to a fixed fill at once with an
- *   `active:` class: `accent-hover` for primary (ink on accent at 10% is gated) and
- *   `surface-tertiary` for the rest (every text colour is gated on it). The kit's scale
- *   animation stays: movement only, and the provider removes it for reduced motion.
+ *   `active:` class (`PRESSED_CLASS`): `accent-hover` for primary, `separator-secondary`
+ *   (the surface pulled 15% toward the ink) for secondary and text, and a 5% danger tint
+ *   for destructive (the soft fill drains; a deeper one cannot keep 7:1 under its label
+ *   on an overlay in dark-contrast). Each is at least a 1.08:1 step from the resting
+ *   fill on canvas, surface and overlay, and keeps its label at 4.5:1 (7:1 in the contrast
+ *   themes) in all four themes: `test/theme/adapter-pressed-fills.test.ts` measures them.
+ *   The kit's own 4% hover and the `surface-tertiary` fill were measured and rejected.
+ *   The kit's scale animation stays: movement only, and the provider removes it for
+ *   reduced motion.
  * - The icon is an `IconName`, drawn by `Icon` with the ink that reads on the variant's
  *   fill, so a caller cannot pick an unreadable one. It is decorative.
+ *
+ * UNVERIFIED ON A DEVICE until research D4-02 item 4 is ticked (two checks, listed
+ * there): that `h-auto` really replaces the kit's fixed height, and that the `active:`
+ * fills fire through the kit's Animated Pressable. Both rest on the kit's and Uniwind's
+ * source (`test/ui-kit/button-class-merge.test.ts` pins what that source says) and on the
+ * Jest stand-in, which renders no styles.
  *
  * Colours come from semantic classes and `useThemeColor`, never a literal.
  */
@@ -53,15 +70,15 @@ import {
   useThemeColor,
   type ThemeColor,
 } from 'heroui-native';
-import type {
-  GestureResponderEvent,
-  PressableProps,
-  StyleProp,
-  ViewStyle,
+import {
+  useWindowDimensions,
+  type GestureResponderEvent,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
-import { useAppearance } from '@/hooks/use-appearance';
 import { useHaptics, type Haptics } from '@/hooks/use-haptics';
 
 import { assertAccessibleName, assertNotBusyAndDisabled } from './adapter-guards';
@@ -119,13 +136,19 @@ const SPINNER_TOKEN: Record<ButtonVariant, ThemeColor> = {
   destructive: 'danger-soft-foreground',
 };
 
-/** The discrete pressed fill (FR-019); see the header for why not the kit's highlight. */
-const PRESSED_CLASS: Record<ButtonVariant, string> = {
+/**
+ * The discrete pressed fill (FR-019); see the header for why not the kit's highlight.
+ * Exported so `test/theme/adapter-pressed-fills.test.ts` measures exactly these.
+ */
+export const PRESSED_CLASS: Record<ButtonVariant, string> = {
   primary: 'active:bg-accent-hover',
-  secondary: 'active:bg-surface-tertiary',
-  text: 'active:bg-surface-tertiary',
-  destructive: 'active:bg-surface-tertiary',
+  secondary: 'active:bg-separator-secondary',
+  text: 'active:bg-separator-secondary',
+  destructive: 'active:bg-danger/5',
 };
+
+/** Cancels the kit's `disabled:element-disabled` (50% opacity) on a busy button. */
+const BUSY_NOT_DIMMED = 'disabled:opacity-100';
 
 const PRESS_HAPTIC: Partial<Record<ButtonVariant, keyof Haptics>> = {
   primary: 'selection',
@@ -156,9 +179,18 @@ export function buttonFrame(
   };
 }
 
-function buttonClasses(variant: ButtonVariant, iconOnly: boolean, className?: string) {
+interface ClassOptions {
+  variant: ButtonVariant;
+  iconOnly: boolean;
+  busy: boolean;
+  className?: string;
+}
+
+function buttonClasses({ variant, iconOnly, busy, className }: ClassOptions) {
   const layout = iconOnly ? '' : 'h-auto py-2';
-  return [layout, PRESSED_CLASS[variant], className].filter(Boolean).join(' ');
+  return [layout, PRESSED_CLASS[variant], busy ? BUSY_NOT_DIMMED : '', className]
+    .filter(Boolean)
+    .join(' ');
 }
 
 interface LeadingProps {
@@ -215,7 +247,7 @@ export function Button({
   assertAccessibleName('Button', accessibilityLabel);
   assertNotBusyAndDisabled('Button', busy, disabled);
 
-  const { fontScale } = useAppearance();
+  const { fontScale } = useWindowDimensions();
   const haptics = useHaptics();
   const inert = busy || disabled;
 
@@ -235,7 +267,7 @@ export function Button({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ busy, disabled: inert }}
       onPress={inert ? undefined : handlePress}
-      className={buttonClasses(variant, iconOnly, className)}
+      className={buttonClasses({ variant, iconOnly, busy, className })}
       style={[buttonFrame(size, iconOnly, fontScale), style]}
       testID={testID}
       {...rest}>

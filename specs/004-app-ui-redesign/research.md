@@ -475,6 +475,28 @@ These could not be confirmed from documentation and are the acceptance checks of
    for sm, md and lg) and is itself the Pressable, so an interactive chip needs `hitSlop` or a `min-h`;
    Switch is 48 x 24 dp; the SearchField clear button is 24 dp. All still to be measured on a device.
 
+   Adapter claims (T417): **four device-only checks, UNVERIFIED until ticked.** The `Button`
+   and `Tappable` adapters rest on the kit's and Uniwind's source and on Jest, which renders no styles
+   (`test/ui-kit/button-class-merge.test.ts` and `button-busy.test.tsx` pin what the source says). Each
+   needs one look on an iOS and an Android device, with the dev client rebuilt:
+   1. [ ] **`h-auto` beats the kit's fixed height.** Set the OS font size to its largest, open a screen with
+          a `Button` whose label is long enough to wrap, and check with the layout inspector that the button
+          grows past 48 dp and the label is not clipped (the kit declares `height: 48` in
+          `.button__root--size-md`; the adapter adds `h-auto` after it, relying on Uniwind letting the later
+          class win). Also check `sm` is at least 44 dp on iOS and 48 dp on Android.
+   2. [ ] **`active:` fires through the kit's Animated Pressable.** Hold a primary, a secondary, a text and a
+          destructive `Button`, with reduce motion on and off: each must show its pressed fill at once
+          (`PRESSED_CLASS`). The kit passes `className` to `Animated.createAnimatedComponent(Pressable)`, whose
+          inner Pressable is Uniwind's, the only one that reads the pressed state; if the fill does not
+          appear, the fix is an `onPressIn`/`onPressOut` state in `Button`, as `Tappable` already does with
+          `style={({ pressed }) => ...}`.
+   3. [ ] **A busy `Button` is not dimmed.** Set `busy` and check it keeps full opacity while TalkBack and
+          VoiceOver announce it busy and unavailable (`disabled:opacity-100` is written after the kit's
+          `disabled:element-disabled`; both set `opacity` at the same weight).
+   4. [ ] **The focus ring draws on Android.** The `Tappable` ring is an `outline` (2 dp wide, 2 dp offset,
+          React Native 0.86): focus a control with a hardware keyboard on both platforms and check it is
+          drawn outside the control with the neutral showing in the gap.
+
 5. **Themes**: four themes switch live with the system theme; the increased-contrast themes follow
    `useAppearance()`; no flash beyond the splash. (T406)
 
