@@ -188,6 +188,15 @@ describe('<HomeScreen> — the globe (T099, FR-045, FR-051)', () => {
     expect(screen.queryByTestId('globe-view')).toBeNull();
   });
 
+  test('the loading state is one announced progressbar on the `home-screen` scaffold (T428)', async () => {
+    mockGlobe.loading = true;
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('home-screen')).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: 'Loading your globe' })).toBeTruthy();
+    expect(screen.queryByTestId('globe-empty-state')).toBeNull();
+    expect(screen.queryByTestId('globe-notice')).toBeNull();
+  });
+
   test('shows the globe with a plain-words notice over it, never the raw error (feature 003 FR-005)', async () => {
     mockGlobe.error = new Error('database is locked');
     await render(<HomeScreen />);
@@ -196,12 +205,24 @@ describe('<HomeScreen> — the globe (T099, FR-045, FR-051)', () => {
     expect(screen.queryByText('database is locked')).toBeNull();
   });
 
+  test('the notice over the globe is an alert and the screen keeps its `home-screen` id (T428)', async () => {
+    mockGlobe.error = new Error('database is locked');
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('home-screen')).toBeTruthy();
+    expect(screen.getByTestId('globe-notice').props.accessibilityRole).toBe('alert');
+    expect(screen.queryByTestId('globe-stats')).toBeNull();
+    expect(screen.queryByTestId('globe-empty-state')).toBeNull();
+  });
+
   test('with no trips, the globe is still there and one card invites the first trip (feature 003 FR-001, FR-002)', async () => {
     await render(<HomeScreen />);
     expect(screen.getByTestId('globe-view')).toBeTruthy();
+    expect(screen.getByTestId('home-screen')).toBeTruthy();
     expect(screen.getByText('Your globe is waiting for its first trip')).toBeTruthy();
     // Nothing to count yet: the statistics wait for the first stop.
     expect(screen.queryByTestId('globe-stats')).toBeNull();
+    // One primary control per state (FR-005, C4-10 rule 3).
+    expect(screen.getAllByRole('button')).toHaveLength(1);
 
     await fireEvent.press(screen.getByLabelText('Plan a trip'));
     expect(mockPush).toHaveBeenCalledWith('/modal/add-trip');
@@ -257,6 +278,19 @@ describe('<HomeScreen> — the globe (T099, FR-045, FR-051)', () => {
     expect(screen.getByTestId('globe-stat-countries')).toHaveTextContent('1');
     expect(screen.getByTestId('globe-stat-distance')).toHaveTextContent('231 km');
     expect(screen.queryByTestId('globe-empty-state')).toBeNull();
+    // The statistics are a summary, not a control: nothing to press over the globe.
+    expect(screen.getByTestId('globe-stats').props.accessibilityRole).toBe('summary');
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  test('is built on the Atlas scaffolds: none of the retired primitives (T428)', () => {
+    const source = jest
+      .requireActual('fs')
+      .readFileSync(require.resolve('@/app/(tabs)/index'), 'utf8') as string;
+    expect(source).not.toMatch(
+      /from '@\/components\/(themed-text|themed-view|ui\/surface|ui\/pressable-surface)'/,
+    );
+    expect(source).not.toMatch(/from 'heroui-native|from 'uniwind/);
   });
 });
 

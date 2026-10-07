@@ -15,16 +15,21 @@
  * The globe is full-bleed, so it does not sit in `Screen`'s ScrollView — a map
  * inside a scroller fights it for every pan. The loading message does, so it
  * still scrolls at the largest text size (contract C13).
+ *
+ * Atlas (feature 004, T428; contract C4-10): the loading wait is the Atlas
+ * `LoadingState` on `Screen`; the globe's canvas is the semantic `bg-background`
+ * (what shows for the instant before the map's first frame); the cards over the
+ * globe (`globe/empty-state.tsx`, `globe/stats-overlay.tsx`) are opaque hairline
+ * cards. A read failure is not a full-screen error here: the globe stays and a
+ * notice floats over it (feature 003 FR-001), so there is no `ErrorState`.
  */
 import { useRouter } from 'expo-router';
-import type { PropsWithChildren } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GlobeEmptyState, GlobeNotice } from '@/components/globe/empty-state';
 import { GlobeView } from '@/components/globe/globe-view';
 import { StatsOverlay } from '@/components/globe/stats-overlay';
-import { ThemedView } from '@/components/themed-view';
 import { Screen } from '@/components/ui/screen';
 import { LoadingState } from '@/components/ui/state-view';
 import { Spacing } from '@/constants/theme';
@@ -44,9 +49,9 @@ export default function HomeScreen() {
 
   if (loading && !error) {
     return (
-      <HomeMessage>
+      <Screen testID="home-screen" edges={['top']} style={styles.message}>
         <LoadingState title="Loading your globe" />
-      </HomeMessage>
+      </Screen>
     );
   }
   return <HomeGlobe data={data} today={today} failed={error !== null} />;
@@ -64,7 +69,7 @@ function HomeGlobe({
 }) {
   const drawn = data.trips.some(hasPlacedStop);
   return (
-    <ThemedView type="canvas" style={styles.fill} testID="home-screen">
+    <View className="bg-background" style={styles.fill} testID="home-screen">
       <GlobeView
         trips={data.trips}
         focus={data.focus}
@@ -74,7 +79,7 @@ function HomeGlobe({
       <SafeAreaView edges={['top']} style={styles.overlay}>
         <HomeCard data={data} failed={failed} />
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
@@ -108,14 +113,6 @@ function invitationAction(
   if (invitation.reason === 'no-trips') return () => router.push('/modal/add-trip');
   const { tripId } = invitation;
   return tripId ? () => router.push(`/trip/${tripId}`) : () => router.navigate('/trips');
-}
-
-function HomeMessage({ children }: PropsWithChildren) {
-  return (
-    <Screen testID="home-screen" edges={['top']} style={styles.message}>
-      <View>{children}</View>
-    </Screen>
-  );
 }
 
 function describeGlobe({ trips, summary }: GlobeData, drawn: boolean): string {
