@@ -94,7 +94,7 @@ The traveller opens the app and lands on a globe showing every trip they have ta
 3. **Given** an active trip on the globe, **When** the traveller watches the home screen, **Then** that trip's arc is animated while others are static.
 4. **Given** a rendered globe, **When** the traveller taps an arc, **Then** the corresponding trip opens.
 5. **Given** a traveller with recorded trips, **When** they view the globe, **Then** a summary overlay shows countries visited and total distance travelled.
-6. **Given** a traveller with no trips yet, **When** they open the home screen, **Then** they see an inviting empty state prompting them to create their first trip, not a blank sphere.
+6. **Given** a traveller with no trips yet, **When** they open the home screen, **Then** they see an inviting empty state prompting them to create their first trip, not a blank sphere. _(Amended by 003-globe-first-home: the globe itself stays visible and the invitation floats over it.)_
 
 ---
 
@@ -246,7 +246,7 @@ Stories 1–5, 8, and 9 have no such gate and may be reordered on delivery groun
 - A connection crosses the date line or passes near a pole — it is drawn the short way round, unbroken, never as a line sweeping across the whole map.
 - Two consecutive stops are in the same city — no connection is drawn between them; the city itself is marked.
 - A stop names a city this device has not stored yet (a trip that arrived from another device, for instance) — the connections touching that stop are left out until the city is known, and the city does not count towards the statistics; nothing is ever drawn at a guessed position.
-- The traveller has trips but none of them has a stop yet — the home screen invites them to add a stop rather than showing a bare globe.
+- The traveller has trips but none of them has a stop yet — the home screen invites them to add a stop rather than showing a bare globe. _(Amended by 003-globe-first-home: the invitation floats over the globe, which stays visible.)_
 - Connections of two trips overlap where the traveller taps — the active trip opens first, then a planned one, then a past one.
 
 **Money**

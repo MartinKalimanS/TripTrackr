@@ -102,6 +102,11 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
   comes from `features/globe/great-circle.ts`: do not re-add `@turf/great-circle` (defective at the
   date line and poles). Map colours are the `GlobeColors` tokens with their own contrast gate; no
   map mounts before `useMapboxReady()` says `ready` (token set, telemetry off).
+- **The home is always the globe** (feature 003): it is mounted with no trips, with trips but no stop
+  and when the store cannot be read; a flat bordered card (`empty-state.tsx`, contract C12) floats over
+  it instead of replacing it. The legs between trips are a second, non-tappable source derived by
+  `features/globe/journey.ts` and drawn under the trip arcs in the past style. The tab bar is a flat
+  strip (`PressableSurface` `bare`): keep its testIDs and never give a tab a surface or border.
 - Mapbox under Jest: `jest.setup.ts` turns each Mapbox component into a View tagged
   `mapbox-<Kind>-<id>` carrying its props (a layer's `style` arrives as `layerStyle`), so suites
   read a source's `shape` or fire its `onPress`. To assert on a component's own timer, spy on
