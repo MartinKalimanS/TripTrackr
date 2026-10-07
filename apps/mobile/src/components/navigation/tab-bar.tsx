@@ -54,7 +54,7 @@ const IconSize = 20;
 const MarkWidth = 24;
 const MarkHeight = 3;
 
-export function NeumorphicTabBar({
+export function TabBar({
   state,
   descriptors,
   navigation,

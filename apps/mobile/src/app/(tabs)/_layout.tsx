@@ -18,7 +18,7 @@
  */
 import { Tabs } from 'expo-router/js-tabs';
 
-import { NeumorphicTabBar } from '@/components/navigation/neumorphic-tab-bar';
+import { TabBar } from '@/components/navigation/tab-bar';
 import { RequireLocalStore } from '@/components/require-local-store';
 import { FirstSyncGate } from '@/components/sync/first-sync-gate';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -30,7 +30,7 @@ export default function TabsLayout() {
     <RequireLocalStore>
       <FirstSyncGate>
         <Tabs
-          tabBar={(props) => <NeumorphicTabBar {...props} />}
+          tabBar={(props) => <TabBar {...props} />}
           screenOptions={{
             headerShown: false,
             sceneStyle: { backgroundColor: tokens.canvas },

@@ -20,7 +20,7 @@ import {
   type BottomTabBarProps,
 } from 'expo-router/js-tabs';
 
-import { NeumorphicTabBar } from '@/components/navigation/neumorphic-tab-bar';
+import { TabBar } from '@/components/navigation/tab-bar';
 import { Colors, MinTouchTarget } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
@@ -89,9 +89,9 @@ function styleOf(node: { props: Record<string, unknown> }) {
 
 beforeEach(() => mockAppearance());
 
-describe('<NeumorphicTabBar> — D-17, FR-003', () => {
+describe('<TabBar> — D-17, FR-003', () => {
   test('renders one tab per route, labelled from the route title', async () => {
-    await render(<NeumorphicTabBar {...makeProps()} />);
+    await render(<TabBar {...makeProps()} />);
 
     const tabs = screen.getAllByRole('tab');
     expect(tabs).toHaveLength(ROUTES.length);
@@ -102,7 +102,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
   });
 
   test('announces the focused tab as selected and no other (FR-017)', async () => {
-    await render(<NeumorphicTabBar {...makeProps(1)} />);
+    await render(<TabBar {...makeProps(1)} />);
 
     const [globe, trips, profile] = screen.getAllByRole('tab');
     expect(trips.props.accessibilityState).toMatchObject({ selected: true });
@@ -111,7 +111,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
   });
 
   test('no tab carries a raised, recessed or bordered surface: the bar is one flat strip (feature 003 FR-014)', async () => {
-    await render(<NeumorphicTabBar {...makeProps(0)} />);
+    await render(<TabBar {...makeProps(0)} />);
 
     for (const tab of screen.getAllByRole('tab')) {
       const style = styleOf(tab);
@@ -125,7 +125,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
     'is separated from the screen by one %s divider that meets the 3:1 boundary (feature 003 FR-014)',
     async (theme) => {
       mockAppearance({ theme });
-      await render(<NeumorphicTabBar {...makeProps()} />);
+      await render(<TabBar {...makeProps()} />);
 
       const bar = styleOf(screen.getByTestId('tab-bar'));
       expect(bar.borderTopWidth).toBeGreaterThan(0);
@@ -134,7 +134,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
   );
 
   test('marks the selected tab by more than colour: a heavier label and a mark above its icon (feature 003 FR-015)', async () => {
-    await render(<NeumorphicTabBar {...makeProps(1)} />);
+    await render(<TabBar {...makeProps(1)} />);
 
     expect(screen.getByTestId('tab-mark-trips')).toBeTruthy();
     expect(screen.queryByTestId('tab-mark-index')).toBeNull();
@@ -149,7 +149,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
   });
 
   test('adds a hairline and nothing else around the touch targets, so it stays within 56 dp (feature 003 FR-013)', async () => {
-    await render(<NeumorphicTabBar {...makeProps()} />);
+    await render(<TabBar {...makeProps()} />);
 
     const bar = styleOf(screen.getByTestId('tab-bar'));
     const [tab] = screen.getAllByRole('tab');
@@ -160,7 +160,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
   });
 
   test('every tab meets the platform minimum touch target (FR-011)', async () => {
-    await render(<NeumorphicTabBar {...makeProps()} />);
+    await render(<TabBar {...makeProps()} />);
 
     for (const tab of screen.getAllByRole('tab')) {
       const style = styleOf(tab);
@@ -171,7 +171,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
 
   test('grows the touch target with the traveller’s text size (FR-016)', async () => {
     mockAppearance({ fontScale: 2 });
-    await render(<NeumorphicTabBar {...makeProps()} />);
+    await render(<TabBar {...makeProps()} />);
 
     for (const tab of screen.getAllByRole('tab')) {
       expect(styleOf(tab).minHeight).toBeGreaterThanOrEqual(MinTouchTarget * 2);
@@ -179,7 +179,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
   });
 
   test('clears the home indicator with the safe-area bottom inset', async () => {
-    await render(<NeumorphicTabBar {...makeProps(0, 34)} />);
+    await render(<TabBar {...makeProps(0, 34)} />);
     expect(styleOf(screen.getByTestId('tab-bar')).paddingBottom).toBeGreaterThanOrEqual(
       34,
     );
@@ -187,7 +187,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
 
   test('navigates to a tab when it is pressed, after giving listeners a veto', async () => {
     const props = makeProps(0);
-    await render(<NeumorphicTabBar {...props} />);
+    await render(<TabBar {...props} />);
 
     await fireEvent.press(screen.getByLabelText('Trips'));
 
@@ -207,7 +207,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
   test('does not navigate when a tabPress listener prevents it', async () => {
     const props = makeProps(0);
     (props.navigation.emit as jest.Mock).mockReturnValue({ defaultPrevented: true });
-    await render(<NeumorphicTabBar {...props} />);
+    await render(<TabBar {...props} />);
 
     await fireEvent.press(screen.getByLabelText('Trips'));
 
@@ -216,7 +216,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
 
   test('paints the canvas, never a platform default (FR-023)', async () => {
     mockAppearance({ theme: 'dark' });
-    await render(<NeumorphicTabBar {...makeProps()} />);
+    await render(<TabBar {...makeProps()} />);
     expect(styleOf(screen.getByTestId('tab-bar')).backgroundColor).toBe(
       Colors.dark.canvas,
     );
@@ -226,7 +226,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
     const report = jest.fn();
     await render(
       <BottomTabBarHeightCallbackContext.Provider value={report}>
-        <NeumorphicTabBar {...makeProps()} />
+        <TabBar {...makeProps()} />
       </BottomTabBarHeightCallbackContext.Provider>,
     );
 
@@ -254,13 +254,13 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
       },
     } as unknown as BottomTabBarProps;
 
-    await render(<NeumorphicTabBar {...props} />);
+    await render(<TabBar {...props} />);
     expect(screen.getByLabelText('Extra')).toBeTruthy();
   });
 
   test('emits tabLongPress on a long press, as the default bar does', async () => {
     const props = makeProps();
-    await render(<NeumorphicTabBar {...props} />);
+    await render(<TabBar {...props} />);
 
     await fireEvent(screen.getByLabelText('Trips'), 'longPress');
     expect(props.navigation.emit).toHaveBeenCalledWith(
@@ -272,7 +272,7 @@ describe('<NeumorphicTabBar> — D-17, FR-003', () => {
     const source = jest
       .requireActual('fs')
       .readFileSync(
-        require.resolve('@/components/navigation/neumorphic-tab-bar'),
+        require.resolve('@/components/navigation/tab-bar'),
         'utf8',
       ) as string;
     expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
