@@ -153,6 +153,9 @@ function stop(overrides: Partial<StopWithPlace>): StopWithPlace {
 
 const rome = stop({});
 
+/** Icons are decorative, so a query for one has to look at hidden elements too. */
+const hidden = { includeHiddenElements: true };
+
 /** The local calendar day `offset` days from now, as the wire's IsoDate. */
 function iso(offset: number): string {
   const d = new Date();
@@ -228,6 +231,38 @@ describe('<TripScreen> — trip/[id]', () => {
     await render(<TripScreen />);
     expect(screen.getByText('This trip isn’t on this device')).toBeTruthy();
     expect(screen.queryByTestId('trip-add-stop')).toBeNull();
+    expect(screen.queryByTestId('trip-title')).toBeNull();
+    expect(screen.queryByTestId('trip-links')).toBeNull();
+  });
+
+  test('says in words that the trip could not be read, rather than that it is missing (FR-035)', async () => {
+    mockTrip.data = null;
+    mockTrip.error = new Error('locked');
+    await render(<TripScreen />);
+
+    expect(screen.getByText('Couldn’t read this trip')).toBeTruthy();
+    expect(screen.queryByText('This trip isn’t on this device')).toBeNull();
+    expect(screen.queryByTestId('trip-add-stop')).toBeNull();
+  });
+
+  test('never shows its empty state while the first read is still resolving (C4-10 rule 2)', async () => {
+    mockTrip.data = null;
+    mockTrip.loading = true;
+    await render(<TripScreen />);
+    expect(screen.queryByText('This trip isn’t on this device')).toBeNull();
+    expect(screen.queryByTestId('trip-header-row')).toBeNull();
+  });
+
+  test('shows placeholders shaped like the stops while they load, named for assistive technology (FR-021)', async () => {
+    mockStops.loading = true;
+    await render(<TripScreen />);
+
+    const region = screen.getByLabelText('Loading stops');
+    expect(region.props.accessibilityRole).toBe('progressbar');
+    expect(screen.queryByText('No stops yet')).toBeNull();
+    // The rest of the screen is already there while the stops load.
+    expect(screen.getByTestId('trip-title')).toBeTruthy();
+    expect(screen.getByTestId('trip-add-stop')).toBeTruthy();
   });
 
   test('lists stops in order with place, country, and dates', async () => {
@@ -237,8 +272,27 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(screen.getByText('Roma')).toBeTruthy();
     expect(screen.getByText('Firenze')).toBeTruthy();
     expect(screen.getByTestId('stop-dates-stop-rome')).toHaveTextContent(/10.*12/);
-    expect(screen.getByText('Stop 1')).toBeTruthy();
-    expect(screen.getByText('Stop 2')).toBeTruthy();
+    // The timeline numbers each stop by its place in the order; the row's own name
+    // (`Stop 1: Roma, Italy. ...`) is what screen readers and the Maestro flows use.
+    expect(screen.getByTestId('stop-number-stop-rome')).toHaveTextContent('1');
+    expect(screen.getByTestId('stop-number-stop-florence')).toHaveTextContent('2');
+    expect(screen.getByTestId('stop-row-stop-rome').props.accessibilityLabel).toMatch(
+      /^Stop 1: Roma, Italy\./,
+    );
+    expect(screen.getByTestId('stop-row-stop-florence').props.accessibilityLabel).toMatch(
+      /^Stop 2: Firenze, Italy\./,
+    );
+  });
+
+  test('draws the stops in the order the repository returns them, inside the stops list', async () => {
+    mockStops.data = [rome, florence];
+    await render(<TripScreen />);
+
+    const rows = within(screen.getByTestId('trip-stops')).getAllByTestId(/^stop-row-/);
+    expect(rows.map((row) => row.props.testID)).toEqual([
+      'stop-row-stop-rome',
+      'stop-row-stop-florence',
+    ]);
   });
 
   test('a stop whose city is not cached still has a name', async () => {
@@ -253,20 +307,56 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(screen.getByTestId('trip-title')).toBeTruthy();
   });
 
-  test('offers a way back to the tabs', async () => {
+  test('draws no Back of its own: the native header carries it (trip-layout.test.tsx)', async () => {
     await render(<TripScreen />);
-    await fireEvent.press(screen.getByLabelText('Back'));
-    expect(mockBack).toHaveBeenCalled();
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.queryByText('Back')).toBeNull();
   });
 
-  test('puts Back and the status on one row, with the title beneath (feature 003 FR-018)', async () => {
+  test('is a hero: the title is a large title announced as a heading, in the exact words of the trip', async () => {
+    await render(<TripScreen />);
+
+    const title = screen.getByTestId('trip-title');
+    expect(title).toHaveTextContent('Italy, spring 2026');
+    expect(title.props.accessibilityRole).toBe('header');
+    expect(title.props.className).toContain('text-[32px]');
+  });
+
+  test('puts the status, the currency and the sync marker on one row beneath the title (004 FR-007; 003 FR-018 as superseded)', async () => {
     await render(<TripScreen />);
 
     const row = within(screen.getByTestId('trip-header-row'));
-    expect(row.getByLabelText('Back')).toBeTruthy();
+    expect(row.getByTestId('status-pill-planning')).toBeTruthy();
     expect(row.getByLabelText('Status: Planning')).toBeTruthy();
+    expect(row.getByText('EUR')).toBeTruthy();
+    // The fixture trip is dirty: the pending marker sits in the same row.
+    expect(row.getByLabelText('Sync pending')).toBeTruthy();
     expect(row.queryByTestId('trip-title')).toBeNull();
-    expect(screen.getByTestId('trip-title')).toHaveTextContent('Italy, spring 2026');
+    expect(row.queryByLabelText('Back')).toBeNull();
+  });
+
+  test('shows no sync marker beside a trip that is already on the server', async () => {
+    mockTrip.data = { ...trip, is_dirty: false };
+    await render(<TripScreen />);
+    expect(
+      within(screen.getByTestId('trip-header-row')).queryByLabelText('Sync pending'),
+    ).toBeNull();
+  });
+
+  test('reads top to bottom: title, status row, areas, stops header, stops', async () => {
+    mockStops.data = [rome];
+    await render(<TripScreen />);
+
+    const order = screen
+      .getAllByTestId(/^trip-(title|header-row|links|add-stop|stops)$/)
+      .map((node) => node.props.testID);
+    expect(order).toEqual([
+      'trip-title',
+      'trip-header-row',
+      'trip-links',
+      'trip-add-stop',
+      'trip-stops',
+    ]);
   });
 
   test('keeps the five areas in one row that scrolls sideways instead of wrapping (feature 003 FR-018)', async () => {
@@ -275,8 +365,27 @@ describe('<TripScreen> — trip/[id]', () => {
     const row = screen.getByTestId('trip-links');
     expect(row.props.horizontal).toBe(true);
     expect(row.props.showsHorizontalScrollIndicator).toBe(false);
-    for (const segment of ['notes', 'expenses', 'photos', 'documents', 'offline-maps']) {
+    const segments = ['notes', 'expenses', 'photos', 'documents', 'offline-maps'];
+    for (const segment of segments) {
       expect(within(row).getByTestId(`trip-open-${segment}`)).toBeTruthy();
+    }
+    expect(within(row).getAllByRole('button')).toHaveLength(segments.length);
+  });
+
+  test('each area is an icon and a label in a chip, and the words are never capped, so the row stays reachable at the largest text size (FR-029)', async () => {
+    await render(<TripScreen />);
+
+    const row = screen.getByTestId('trip-links');
+    for (const segment of ['notes', 'expenses', 'photos', 'documents', 'offline-maps']) {
+      const link = within(row).getByTestId(`trip-open-${segment}`);
+      expect(link.props.accessibilityRole).toBe('button');
+      expect(within(link).getByTestId(`trip-open-${segment}-icon`, hidden)).toBeTruthy();
+    }
+    for (const label of within(row).getAllByText(
+      /Notes|Spending|Photos|Documents|Offline maps/,
+    )) {
+      expect(label.props.numberOfLines).toBeUndefined();
+      expect(label.props.maxFontSizeMultiplier).toBeUndefined();
     }
   });
 
@@ -390,6 +499,31 @@ describe('<TripScreen> — trip/[id]', () => {
     alert.mockRestore();
   });
 
+  test('the Stops header pairs a heading with a secondary "Add stop" button, and offers no primary (FR-005)', async () => {
+    mockStops.data = [rome];
+    await render(<TripScreen />);
+
+    const header = screen.getByText('Stops');
+    expect(header.props.accessibilityRole).not.toBe('button');
+    const add = screen.getByTestId('trip-add-stop');
+    expect(add.props.accessibilityLabel).toBe('Add stop');
+    expect(add.props.accessibilityRole).toBe('button');
+    expect(add.props.variant).toBe('secondary');
+    expect(within(add).getByText('Add stop')).toBeTruthy();
+    // Nothing on this screen state is a primary control.
+    const primaries = screen
+      .getAllByRole('button')
+      .filter((button) => button.props.variant === 'primary');
+    expect(primaries).toHaveLength(0);
+  });
+
+  test('"Add stop" is reachable with no stops yet, and is named once', async () => {
+    await render(<TripScreen />);
+    expect(screen.getAllByLabelText('Add stop')).toHaveLength(1);
+    await fireEvent.press(screen.getByTestId('trip-add-stop'));
+    expect(screen.getByTestId('stop-editor')).toBeTruthy();
+  });
+
   test('"Add stop" opens the editor with arrival pre-suggested from the last departure (FR-015), and saves through the repository', async () => {
     mockStops.data = [rome];
     await render(<TripScreen />);
@@ -458,6 +592,36 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(screen.getByTestId('trip-write-error')).toHaveTextContent(
       /could not be saved/,
     );
+    // An alert the platform announces on appearance; it reads after the list, as before.
+    expect(screen.getByTestId('trip-write-error').props.accessibilityRole).toBe('alert');
+  });
+
+  test('a successful write clears an earlier failure', async () => {
+    mockStops.data = [rome, florence];
+    mockActions.moveStop.mockImplementationOnce(() => {
+      throw new Error('database is locked');
+    });
+    await render(<TripScreen />);
+
+    await fireEvent.press(screen.getByTestId('stop-move-down-stop-rome'));
+    expect(screen.getByTestId('trip-write-error')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('stop-move-down-stop-rome'));
+    expect(screen.queryByTestId('trip-write-error')).toBeNull();
+  });
+
+  test('is composed from the adapter layer only: no raised-surface primitive, no legacy text or status pill, no kit', () => {
+    const { readFileSync } = jest.requireActual('fs') as typeof import('fs');
+    for (const module of [
+      '@/app/trip/[id]/index',
+      '@/components/trip/stop-row',
+      '@/components/trip/stop-list',
+    ]) {
+      const source = readFileSync(require.resolve(module), 'utf8');
+      expect(source).not.toMatch(/\bSurface\b|PressableSurface|ThemedText|ThemedView/);
+      expect(source).not.toMatch(/components\/trip\/status-pill|StatusPill/);
+      expect(source).not.toMatch(/from 'heroui-native'|from 'uniwind'/);
+      expect(source).not.toMatch(/use-appearance|Colors\[/);
+    }
   });
 
   test('shows a designed empty state for a trip with no stops yet', async () => {
