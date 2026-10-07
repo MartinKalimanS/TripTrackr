@@ -8,11 +8,12 @@
  * failed local write is reported and shown rather than swallowed.
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 
 import NotFoundScreen from '@/app/+not-found';
 import AddTripScreen from '@/app/modal/add-trip';
 import TripScreen from '@/app/trip/[id]/index';
+import { SCREEN_GUTTER } from '@/components/ui/screen';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import type { TripRow } from '@/db/schema';
 import { useSessionStore } from '@/features/auth/session-store';
@@ -393,6 +394,21 @@ describe('<TripScreen> — trip/[id]', () => {
       expect(within(row).getByTestId(`trip-open-${segment}`)).toBeTruthy();
     }
     expect(within(row).getAllByRole('button')).toHaveLength(segments.length);
+  });
+
+  test('bleeds to the screen edges by exactly the screen’s own side padding, which it reads from the Screen adapter', async () => {
+    await render(<TripScreen />);
+
+    const row = screen.getByTestId('trip-links');
+    expect(StyleSheet.flatten(row.props.style).marginHorizontal).toBe(-SCREEN_GUTTER);
+    expect(StyleSheet.flatten(row.props.contentContainerStyle).paddingHorizontal).toBe(
+      SCREEN_GUTTER,
+    );
+    // Not a second copy of the number.
+    const { readFileSync } = jest.requireActual('fs') as typeof import('fs');
+    const source = readFileSync(require.resolve('@/app/trip/[id]/index'), 'utf8');
+    expect(source).toMatch(/SCREEN_GUTTER/);
+    expect(source).not.toMatch(/Spacing\.four/);
   });
 
   test('each area is an icon and a label in a chip, and the words are never capped, so the row stays reachable at the largest text size (FR-029)', async () => {

@@ -17,7 +17,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
-import { Screen } from './screen';
+import { SCREEN_GUTTER, Screen } from './screen';
 
 jest.mock('@/hooks/use-appearance');
 
@@ -119,6 +119,16 @@ describe('<Screen> as it is today - nothing may regress', () => {
       justifyContent: 'center',
       paddingHorizontal: Spacing.four,
     });
+  });
+
+  test('exports its side padding as SCREEN_GUTTER, and pads both sides by exactly that', async () => {
+    // A row that bleeds to the screen edge (`marginHorizontal: -SCREEN_GUTTER`) reads this
+    // instead of repeating the number, so the two cannot drift apart.
+    expect(SCREEN_GUTTER).toBe(Spacing.four);
+    for (const props of [{}, { underHeader: true }]) {
+      await render(<Screen {...props}>{body}</Screen>);
+      expect(flat(section().props.style).paddingHorizontal).toBe(SCREEN_GUTTER);
+    }
   });
 
   test('scrolls, and keeps taps working while the keyboard is up', async () => {

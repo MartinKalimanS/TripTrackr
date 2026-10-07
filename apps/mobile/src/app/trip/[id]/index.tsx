@@ -38,7 +38,7 @@ import { Button } from '@/components/ui/button';
 import { Chip, StatusChip } from '@/components/ui/chip';
 import type { IconName } from '@/components/ui/icon';
 import { InlineError } from '@/components/ui/inline-error';
-import { Screen } from '@/components/ui/screen';
+import { SCREEN_GUTTER, Screen } from '@/components/ui/screen';
 import {
   EmptyState,
   ErrorState,
@@ -47,7 +47,6 @@ import {
 } from '@/components/ui/state-view';
 import { SyncBadge } from '@/components/ui/sync-badge';
 import { Text } from '@/components/ui/text';
-import { Spacing } from '@/constants/theme';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import type { TripRow } from '@/db/schema';
 import { deriveTripStatus } from '@/features/trips/trip-status';
@@ -334,17 +333,18 @@ export default function TripScreen() {
 }
 
 const styles = StyleSheet.create({
-  // The row bleeds into the screen's own side padding (`Screen`: `Spacing.four`) so a chip
-  // is cut by the screen edge, not by an invisible one 24 dp inside it, and gives its
-  // content that padding back so the first chip lines up with the title. The vertical room
-  // is for the focus ring a chip draws outside itself, which a scroller would clip.
+  // The row bleeds into the screen's own side padding (`SCREEN_GUTTER`, exported by the
+  // `Screen` adapter so the two cannot drift) so a chip is cut by the screen edge, not by an
+  // invisible one a gutter inside it, and gives its content that padding back so the first
+  // chip lines up with the title. The vertical room is for the focus ring a chip draws
+  // outside itself, which a scroller would clip.
   linksBleed: {
-    marginHorizontal: -Spacing.four,
+    marginHorizontal: -SCREEN_GUTTER,
   },
   links: {
     flexDirection: 'row',
     gap: AtlasSpacing.two,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: SCREEN_GUTTER,
     paddingVertical: AtlasSpacing.one,
   },
 });
