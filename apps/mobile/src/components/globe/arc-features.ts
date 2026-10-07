@@ -15,6 +15,7 @@ import {
   type GlobeTrip,
 } from '@/features/globe/globe-data';
 import { greatCircle, type LngLat } from '@/features/globe/great-circle';
+import { journeyLegs } from '@/features/globe/journey';
 import type { TripStatus } from '@/features/trips/trip-status';
 
 export type LineGeometry =
@@ -33,6 +34,9 @@ export type ArcProperties = {
 
 export type MarkerProperties = { trip_id: string; status: TripStatus; city_id: number };
 
+/** No trip id and no status: a leg between trips belongs to neither (feature 003). */
+export type JourneyProperties = { from_city_id: number; to_city_id: number };
+
 export type Feature<G, P> = { type: 'Feature'; id: string; geometry: G; properties: P };
 
 export type FeatureCollection<G, P> = {
@@ -42,6 +46,7 @@ export type FeatureCollection<G, P> = {
 
 export type ArcCollection = FeatureCollection<LineGeometry, ArcProperties>;
 export type MarkerCollection = FeatureCollection<PointGeometry, MarkerProperties>;
+export type JourneyCollection = FeatureCollection<LineGeometry, JourneyProperties>;
 
 function lineGeometry(parts: LngLat[][]): LineGeometry {
   return parts.length === 1
@@ -69,6 +74,33 @@ export function arcCollection(trips: readonly GlobeTrip[]): ArcCollection {
         },
       ];
     }),
+  );
+  return { type: 'FeatureCollection', features };
+}
+
+/**
+ * The legs that join one trip to the next (feature 003, FR-006 to FR-010):
+ * together with each trip's own connections they make one line through every
+ * place the traveller has been. A leg between two places at one position
+ * draws nothing, as a trip's does.
+ */
+export function journeyCollection(
+  trips: readonly GlobeTrip[],
+  today: string,
+): JourneyCollection {
+  const features = journeyLegs(trips, today).flatMap(
+    ({ from, to }): Feature<LineGeometry, JourneyProperties>[] => {
+      const parts = greatCircle(from.coordinate, to.coordinate);
+      if (parts.length === 0) return [];
+      return [
+        {
+          type: 'Feature',
+          id: `journey:${from.id}:${to.id}`,
+          geometry: lineGeometry(parts),
+          properties: { from_city_id: from.cityId, to_city_id: to.cityId },
+        },
+      ];
+    },
   );
   return { type: 'FeatureCollection', features };
 }

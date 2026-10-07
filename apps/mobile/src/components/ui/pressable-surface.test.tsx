@@ -9,11 +9,11 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Radius } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 import { surfaceStyle } from '@/theme/surfaces';
 
-import { PressableSurface, treatmentFor } from './pressable-surface';
+import { PressableSurface, bareStyle, treatmentFor } from './pressable-surface';
 
 jest.mock('@/hooks/use-appearance');
 
@@ -196,5 +196,97 @@ describe('<PressableSurface> state machine — data-model §5', () => {
   test('announces itself as a button with its label', async () => {
     await render(<PressableSurface accessibilityLabel="Save trip" onPress={jest.fn()} />);
     expect(screen.getByLabelText('Save trip').props.accessibilityRole).toBe('button');
+  });
+});
+
+describe('<PressableSurface bare> — a control that is its own glyph (feature 003, FR-014, FR-016)', () => {
+  const renderBare = (props: Record<string, unknown> = {}) =>
+    render(
+      <PressableSurface
+        bare
+        accessibilityLabel="Save trip"
+        onPress={jest.fn()}
+        {...props}
+      />,
+    );
+
+  test('rests with no fill, no border and no shadow', async () => {
+    await renderBare();
+    const style = currentStyle();
+
+    expect(style.boxShadow).toBeUndefined();
+    expect(style.borderWidth).toBeUndefined();
+    expect(style.backgroundColor).toBeUndefined();
+  });
+
+  test('keeps the platform minimum touch target (FR-011)', async () => {
+    await renderBare();
+    expect(currentStyle().minHeight).toBeGreaterThanOrEqual(44);
+    expect(currentStyle().minWidth).toBeGreaterThanOrEqual(44);
+  });
+
+  test('grows the touch target with the text size (FR-016)', async () => {
+    mockAppearance({ fontScale: 2 });
+    await renderBare();
+    expect(currentStyle().minHeight).toBeGreaterThanOrEqual(88);
+  });
+
+  test('keeps the focus ring, and drops it again on blur (FR-012)', async () => {
+    await renderBare();
+    const node = screen.getByLabelText('Save trip');
+
+    await fireEvent(node, 'focus');
+    expect(currentStyle()).toMatchObject({
+      borderWidth: 2,
+      borderColor: Colors.light.accent,
+    });
+
+    await fireEvent(node, 'blur');
+    expect(currentStyle().borderWidth).toBeUndefined();
+  });
+
+  test('still presses, announces itself a button, and is inert when busy or disabled', async () => {
+    const onPress = jest.fn();
+    await renderBare({ onPress });
+    await fireEvent.press(screen.getByLabelText('Save trip'));
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Save trip').props.accessibilityRole).toBe('button');
+
+    const inert = jest.fn();
+    await renderBare({ onPress: inert, disabled: true, accessibilityLabel: 'Other' });
+    await fireEvent.press(screen.getByLabelText('Other'));
+    expect(inert).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Other').props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+  });
+});
+
+describe('bareStyle — the recipes behind it', () => {
+  const options = { theme: 'light', profile: 'full', radius: 'md' } as const;
+
+  test('rest is only the corner, so a press has a shape to fill', () => {
+    const style = bareStyle('flat', options);
+    expect(style.borderRadius).toBe(Radius.md);
+    expect(style.backgroundColor).toBeUndefined();
+    expect(style.boxShadow).toBeUndefined();
+    expect(style.borderWidth).toBeUndefined();
+  });
+
+  test('a held press is a discrete swap to the sunken fill, in either theme (FR-018)', () => {
+    for (const theme of ['light', 'dark'] as const) {
+      const style = bareStyle('pressed', { ...options, theme });
+      expect(style.backgroundColor).toBe(Colors[theme].surfaceSunk);
+      expect(style.boxShadow).toBeUndefined();
+      expect(style.borderWidth).toBeUndefined();
+    }
+  });
+
+  test('busy and disabled dim exactly as every other surface does (FR-019, FR-020)', () => {
+    for (const treatment of ['busy', 'disabled'] as const) {
+      expect(bareStyle(treatment, options).opacity).toBe(
+        surfaceStyle(treatment, { ...options, interactive: true }).opacity,
+      );
+    }
   });
 });

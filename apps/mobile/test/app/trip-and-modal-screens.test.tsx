@@ -7,7 +7,7 @@
  * reaches the right repository call with the right arguments (FR-012), and a
  * failed local write is reported and shown rather than swallowed.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 import NotFoundScreen from '@/app/+not-found';
@@ -259,6 +259,27 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(mockBack).toHaveBeenCalled();
   });
 
+  test('puts Back and the status on one row, with the title beneath (feature 003 FR-018)', async () => {
+    await render(<TripScreen />);
+
+    const row = within(screen.getByTestId('trip-header-row'));
+    expect(row.getByLabelText('Back')).toBeTruthy();
+    expect(row.getByLabelText('Status: Planning')).toBeTruthy();
+    expect(row.queryByTestId('trip-title')).toBeNull();
+    expect(screen.getByTestId('trip-title')).toHaveTextContent('Italy, spring 2026');
+  });
+
+  test('keeps the five areas in one row that scrolls sideways instead of wrapping (feature 003 FR-018)', async () => {
+    await render(<TripScreen />);
+
+    const row = screen.getByTestId('trip-links');
+    expect(row.props.horizontal).toBe(true);
+    expect(row.props.showsHorizontalScrollIndicator).toBe(false);
+    for (const segment of ['notes', 'expenses', 'photos', 'documents', 'offline-maps']) {
+      expect(within(row).getByTestId(`trip-open-${segment}`)).toBeTruthy();
+    }
+  });
+
   test.each([
     ['notes', 'Notes', 'Notes for this trip'],
     ['expenses', 'Spending', 'Spending for this trip'],
@@ -470,6 +491,7 @@ describe('<AddTripScreen> — modal/add-trip (T066)', () => {
   test('refuses a malformed currency code in words', async () => {
     await render(<AddTripScreen />);
     await fireEvent.changeText(screen.getByLabelText('Trip name'), 'Italy');
+    await fireEvent.press(screen.getByTestId('currency-other-toggle'));
     await fireEvent.changeText(screen.getByLabelText('Other currency code'), 'eu');
     await fireEvent.press(screen.getByTestId('add-trip-save'));
 
@@ -498,6 +520,7 @@ describe('<AddTripScreen> — modal/add-trip (T066)', () => {
     mockActions.createTrip.mockReturnValue({ ...trip, id: 'thai' });
     await render(<AddTripScreen />);
     await fireEvent.changeText(screen.getByLabelText('Trip name'), 'Thailand');
+    await fireEvent.press(screen.getByTestId('currency-other-toggle'));
     await fireEvent.changeText(screen.getByLabelText('Other currency code'), 'thb');
     await fireEvent.press(screen.getByTestId('add-trip-save'));
 

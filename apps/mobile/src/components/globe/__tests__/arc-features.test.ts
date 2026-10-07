@@ -12,6 +12,7 @@ import {
   arcCollection,
   beaconRoutes,
   cameraCenter,
+  journeyCollection,
   markerCollection,
   tripRoute,
 } from '../arc-features';
@@ -112,6 +113,77 @@ describe('markerCollection', () => {
       geometry: { type: 'Point', coordinates: [12.4964, 41.9028] },
       properties: { trip_id: 'single', status: 'past', city_id: 1 },
     });
+  });
+});
+
+describe('journeyCollection — the legs between trips (feature 003, FR-006, FR-009, FR-010)', () => {
+  test('one feature per leg a trip does not draw, naming only its two cities', () => {
+    const trips = globe(
+      ['italy', '2026-01-01', [ROME, FLORENCE]],
+      ['japan', '2026-03-01', [TOKYO]],
+    );
+    const { type, features } = journeyCollection(trips, TODAY);
+
+    expect(type).toBe('FeatureCollection');
+    expect(features).toHaveLength(1);
+    expect(features[0]!.type).toBe('Feature');
+    expect(features[0]!.geometry.type).toBe('LineString');
+    expect(features[0]!.properties).toEqual({ from_city_id: 2, to_city_id: 4 });
+  });
+
+  test('belongs to no trip: a feature without a trip id can never open one (FR-010)', () => {
+    const trips = globe(
+      ['italy', '2026-01-01', [ROME]],
+      ['japan', '2026-03-01', [TOKYO]],
+    );
+    const [leg] = journeyCollection(trips, TODAY).features;
+
+    expect(leg!.properties).not.toHaveProperty('trip_id');
+    expect(String(leg!.id)).toMatch(/^journey:/);
+  });
+
+  test('crossing the date line is one MultiLineString split on ±180°, like a trip leg', () => {
+    const [leg] = journeyCollection(
+      globe(['asia', '2026-01-01', [TOKYO]], ['america', '2026-02-01', [SAN_FRANCISCO]]),
+      TODAY,
+    ).features;
+
+    expect(leg!.geometry.type).toBe('MultiLineString');
+    const parts = leg!.geometry.coordinates as [number, number][][];
+    expect(parts[0]!.at(-1)![0]).toBe(180);
+    expect(parts[1]![0]![0]).toBe(-180);
+  });
+
+  test('draws nothing for a single trip, for planned places, or across an unplaced one', () => {
+    expect(
+      journeyCollection(globe(['italy', '2026-01-01', [ROME, FLORENCE]]), TODAY).features,
+    ).toEqual([]);
+    expect(
+      journeyCollection(
+        globe(['italy', '2026-01-01', [ROME]], ['later', '2026-09-01', [TOKYO]]),
+        TODAY,
+      ).features,
+    ).toEqual([]);
+    expect(
+      journeyCollection(
+        globe(
+          ['a', '2026-01-01', [ROME]],
+          ['b', '2026-02-01', [UNCACHED]],
+          ['c', '2026-03-01', [TOKYO]],
+        ),
+        TODAY,
+      ).features,
+    ).toEqual([]);
+  });
+
+  test('two places at one position draw no leg', () => {
+    const SAME_SPOT = { city_id: 9, country_id: 39, lng: 12.4964, lat: 41.9028 };
+    expect(
+      journeyCollection(
+        globe(['a', '2026-01-01', [ROME]], ['b', '2026-02-01', [SAME_SPOT]]),
+        TODAY,
+      ).features,
+    ).toEqual([]);
   });
 });
 

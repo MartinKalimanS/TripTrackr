@@ -25,8 +25,18 @@ import {
 } from '@/features/globe/globe-data';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
-import { arcCollection, cameraCenter, markerCollection } from '../arc-features';
-import { BEACON_FRAME_MS, LEG_DURATION_MS } from '../arc-styles';
+import {
+  arcCollection,
+  cameraCenter,
+  journeyCollection,
+  markerCollection,
+} from '../arc-features';
+import {
+  BEACON_FRAME_MS,
+  LEG_DURATION_MS,
+  arcStyle,
+  journeyCasingStyle,
+} from '../arc-styles';
 import { GlobeView } from '../globe-view';
 import { TERRAIN_SOURCE_ID } from '../terrain-layers';
 
@@ -79,6 +89,7 @@ const ROME = { city_id: 1, country_id: 39, lng: 12.4964, lat: 41.9028 };
 const FLORENCE = { city_id: 2, country_id: 39, lng: 11.2558, lat: 43.7696 };
 const VENICE = { city_id: 3, country_id: 39, lng: 12.3155, lat: 45.4408 };
 const PARIS = { city_id: 4, country_id: 33, lng: 2.3522, lat: 48.8566 };
+const TOKYO = { city_id: 5, country_id: 81, lng: 139.6917, lat: 35.6895 };
 
 let n = 0;
 function stop(
@@ -110,6 +121,25 @@ function sampleTrips(): GlobeTrip[] {
       stop('italy', VENICE, '2026-05-12', '2026-05-14'),
       stop('france', PARIS, '2025-03-01'),
       stop('france', ROME, '2025-03-04'),
+    ],
+    TODAY,
+  );
+}
+
+/** `sampleTrips` plus a past Japanese trip between the two, so two trips need joining. */
+function tripsWithJourney(): GlobeTrip[] {
+  return toGlobeTrips(
+    [
+      { id: 'italy', title: 'Italy' },
+      { id: 'france', title: 'France' },
+      { id: 'japan', title: 'Japan' },
+    ],
+    [
+      stop('italy', ROME, '2026-05-08', '2026-05-09'),
+      stop('italy', FLORENCE, '2026-05-09', '2026-05-12'),
+      stop('france', PARIS, '2025-03-01'),
+      stop('france', ROME, '2025-03-04'),
+      stop('japan', TOKYO, '2025-09-01'),
     ],
     TODAY,
   );
@@ -326,12 +356,14 @@ describe('<GlobeView> — the arc source and its layers (T094, T095)', () => {
     }
   });
 
-  test('stacks casing, then past, planned and active lines, so the active trip is on top', async () => {
+  test('stacks the journey under casing, then past, planned and active lines, so the active trip is on top', async () => {
     await renderGlobe();
     const layers = screen
       .getAllByTestId(/^mapbox-LineLayer-/)
       .map((node) => node.props.id);
     expect(layers).toEqual([
+      'globe-journey-casing',
+      'globe-journey-line',
       'globe-arc-casing',
       'globe-arc-past',
       'globe-arc-planning',
@@ -348,6 +380,120 @@ describe('<GlobeView> — the arc source and its layers (T094, T095)', () => {
     expect(
       screen.getByTestId('mapbox-LineLayer-globe-arc-active').props.layerStyle.lineColor,
     ).toBe(GlobeColors.dark.active);
+  });
+});
+
+function globeElement(trips: GlobeTrip[], focus: string[]) {
+  return (
+    <GlobeView trips={trips} focus={focus} accessibilityLabel={LABEL} today={TODAY} />
+  );
+}
+
+describe('<GlobeView> — a globe with nothing on it, then the first stop (feature 003, FR-001, FR-004)', () => {
+  test('opens on the whole sphere when nothing is placed, with nothing drawn', async () => {
+    await renderGlobe([], []);
+
+    expect(screen.getByTestId('mapbox-Camera').props.defaultSettings).toEqual({
+      centerCoordinate: GlobeCamera.fallbackCenter,
+      zoomLevel: GlobeCamera.zoomLevel,
+    });
+    expect(
+      screen.getByTestId('mapbox-ShapeSource-globe-arcs').props.shape.features,
+    ).toEqual([]);
+    expect(screen.queryByTestId('mapbox-ShapeSource-globe-beacons')).toBeNull();
+  });
+
+  test('flies to the first stop the moment it appears, and only then', async () => {
+    const view = await renderGlobe([], []);
+    expect(camera().setCamera).not.toHaveBeenCalled();
+
+    const trips = sampleTrips();
+    await view.rerender(globeElement(trips, ['italy']));
+    expect(camera().setCamera).toHaveBeenCalledTimes(1);
+    expect(camera().setCamera).toHaveBeenCalledWith({
+      centerCoordinate: cameraCenter(trips, ['italy']),
+      zoomLevel: GlobeCamera.zoomLevel,
+      animationMode: 'flyTo',
+      animationDuration: GlobeCamera.flyToMs,
+    });
+
+    // Later edits and syncs never pull the camera out of the traveller's hands.
+    await view.rerender(globeElement(tripsWithJourney(), ['italy']));
+    expect(camera().setCamera).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not move a globe that opens with something already placed', async () => {
+    await renderGlobe();
+    expect(camera().setCamera).not.toHaveBeenCalled();
+  });
+
+  test('does not move when the last placed stop goes away', async () => {
+    const view = await renderGlobe();
+    await view.rerender(globeElement([], []));
+    expect(camera().setCamera).not.toHaveBeenCalled();
+  });
+
+  test('flies again if the globe is emptied and then given a stop again', async () => {
+    const view = await renderGlobe([], []);
+    await view.rerender(globeElement(sampleTrips(), ['italy']));
+    await view.rerender(globeElement([], []));
+    await view.rerender(globeElement(sampleTrips(), ['italy']));
+    expect(camera().setCamera).toHaveBeenCalledTimes(2);
+  });
+
+  test('jumps without animation for a traveller who prefers less motion', async () => {
+    mockAppearance({ prefersLessMotion: true });
+    const view = await renderGlobe([], []);
+    await view.rerender(globeElement(sampleTrips(), ['italy']));
+
+    expect(camera().setCamera).toHaveBeenCalledWith(
+      expect.objectContaining({ animationMode: 'moveTo', animationDuration: 0 }),
+    );
+  });
+});
+
+describe('<GlobeView> — one line through every place been to (feature 003, FR-006 to FR-011)', () => {
+  test('draws the legs between trips in a source of its own', async () => {
+    const trips = tripsWithJourney();
+    await renderGlobe(trips);
+
+    const journey = screen.getByTestId('mapbox-ShapeSource-globe-journey');
+    expect(journey.props.shape).toEqual(journeyCollection(trips, TODAY));
+    // France → Japan → Italy: the two legs no trip draws.
+    expect(journey.props.shape.features).toHaveLength(2);
+  });
+
+  test('is not tappable: a leg belongs to no trip (FR-010)', async () => {
+    await renderGlobe(tripsWithJourney());
+    const journey = screen.getByTestId('mapbox-ShapeSource-globe-journey');
+    expect(journey.props.onPress).toBeUndefined();
+    expect(journey.props.hitbox).toBeUndefined();
+  });
+
+  test('reads as one line with the past connections: their style, on a casing (FR-011)', async () => {
+    await renderGlobe(tripsWithJourney());
+    expect(
+      screen.getByTestId('mapbox-LineLayer-globe-journey-line').props.layerStyle,
+    ).toEqual(arcStyle('past', GlobeColors.light));
+    expect(
+      screen.getByTestId('mapbox-LineLayer-globe-journey-casing').props.layerStyle,
+    ).toEqual(journeyCasingStyle(GlobeColors.light));
+  });
+
+  test('follows the theme like every other connection', async () => {
+    mockAppearance({ theme: 'dark' });
+    await renderGlobe(tripsWithJourney());
+    expect(
+      screen.getByTestId('mapbox-LineLayer-globe-journey-line').props.layerStyle
+        .lineColor,
+    ).toBe(GlobeColors.dark.past);
+  });
+
+  test('is an empty collection, not an absent source, when nothing needs joining', async () => {
+    await renderGlobe(sampleTrips());
+    expect(
+      screen.getByTestId('mapbox-ShapeSource-globe-journey').props.shape.features,
+    ).toEqual([]);
   });
 });
 

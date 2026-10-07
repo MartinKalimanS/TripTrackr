@@ -207,8 +207,10 @@ export const GlobeBasemap = {
 /** Where the globe opens: the whole sphere in view, the animated trip centred. */
 export const GlobeCamera = {
   zoomLevel: 1.4,
-  /** Only when nothing is placed — the home screen does not mount the map then. */
+  /** Where the sphere opens while nothing is placed (feature 003: the map is always mounted). */
   fallbackCenter: [0, 20] as [number, number],
+  /** The flight to the first stop that appears (feature 003 FR-004). */
+  flyToMs: 1200,
   /**
    * How far the one camera may travel (FR-048): from the whole sphere down to
    * the streets, where the basemap's buildings stand (FR-049).

@@ -3,8 +3,12 @@
 # The story's Independent Test, end to end: an account holding three trips in
 # three statuses opens the home screen on a globe with three arcs, the active
 # trip animated, and tapping an arc opens that trip (FR-045 to FR-047). On the
-# way it walks the two designed empty states (FR-051; spec Edge Cases, Globe)
-# and checks the statistics overlay (FR-050).
+# way it walks the two designed empty states, each shown over the globe, which
+# is mounted from the first launch (FR-051; spec Edge Cases, Globe; feature 003
+# FR-001, FR-002), and checks the statistics overlay (FR-050). Feature 003 also
+# draws one line through every visited place; like the arcs it is native and
+# not in the accessibility tree, so the `03-globe-*` screenshots are its
+# evidence.
 #
 # Everything the globe draws is LOCAL (research D-30): arcs and statistics are
 # derived from the device's SQLCipher store, so the flow proves the local-first
@@ -73,14 +77,16 @@ env:
       id: 'tab-bar'
     timeout: 20000
 
-# --- No trips: an invitation, not a blank sphere (FR-051) --------------------
+# --- No trips: the globe is there, with an invitation over it (FR-051; 003 FR-001) ---
+- extendedWaitUntil:
+    visible:
+      id: 'globe-map'
+    timeout: 20000
 - assertVisible:
     id: 'globe-empty-state'
 - assertVisible: 'Your globe is waiting for its first trip'
-- assertNotVisible:
-    id: 'globe-map'
 
-# --- A trip without a stop: sent to add one (spec Edge Cases, Globe) --------
+# --- A trip without a stop: the card opens it to add one (spec Edge Cases, Globe; 003 FR-002) ---
 - tapOn:
     id: 'home-plan-trip'
 - tapOn:
@@ -96,14 +102,17 @@ env:
 - tapOn: 'Back'
 - tapOn:
     id: 'tab-index'
-- assertVisible: 'Your trips need a first stop'
-- tapOn:
-    id: 'home-open-trips'
 - assertVisible:
-    id: 'trips-screen'
+    id: 'globe-map'
+- assertVisible: 'Your trip needs a first stop'
+# With exactly one trip waiting for a stop the card opens that trip itself.
+- tapOn:
+    id: 'home-add-stop'
+- assertVisible:
+    id: 'trip-screen'
+- assertVisible: 'Past trip'
 
 # --- Past trip: Paris → New York, last month --------------------------------
-- tapOn: 'Past trip'
 - tapOn:
     id: 'trip-add-stop'
 - tapOn:
@@ -146,6 +155,9 @@ env:
     id: 'stop-editor-save'
 - assertVisible: 'Past'
 - tapOn: 'Back'
+# The trip was opened from the globe, so Back lands on the globe.
+- tapOn:
+    id: 'tab-trips'
 
 # --- Planned trip: Tokyo → Sydney, next month --------------------------------
 - tapOn:

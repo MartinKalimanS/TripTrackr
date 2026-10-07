@@ -12,7 +12,11 @@ import { Pressable, type PressableProps, type ViewStyle } from 'react-native';
 
 import { Colors, MinTouchTarget, type DepthLevel, type Radius } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
-import { surfaceStyle, type SurfaceTreatment } from '@/theme/surfaces';
+import {
+  surfaceStyle,
+  type SurfaceOptions,
+  type SurfaceTreatment,
+} from '@/theme/surfaces';
 
 /**
  * Resting treatments a control may have. `recessed` is the "currently
@@ -34,6 +38,16 @@ export type PressableSurfaceProps = Omit<PressableProps, 'style' | 'disabled'> &
   disabled?: boolean;
   /** Required: a soft low-contrast control with no label is the worst case. */
   accessibilityLabel: string;
+  /**
+   * The control is only its glyph (feature 003, the tab bar): no resting fill,
+   * border or shadow, so it blends into what it sits on. The compliance border
+   * of FR-009 is then the caller's to replace with something else that is
+   * visible — an icon and label at text contrast, a selection mark — and the
+   * rest of the contract holds: touch target (FR-011), focus ring (FR-012),
+   * discrete press feedback (FR-018), busy and disabled. `treatment` and
+   * `depth` are ignored.
+   */
+  bare?: boolean;
   style?: ViewStyle;
 };
 
@@ -58,12 +72,36 @@ export function treatmentFor(
   return resting;
 }
 
+/**
+ * The recipe behind `bare`: the corner a press fills, the busy/disabled
+ * dimming every surface shares, and a sunken fill while held. Nothing at rest.
+ * Exported, like `treatmentFor`, so it is asserted directly: Pressable's pressed
+ * state is not observable through the host node.
+ */
+export function bareStyle(
+  treatment: SurfaceTreatment,
+  options: Pick<SurfaceOptions, 'theme' | 'profile' | 'radius'>,
+): ViewStyle {
+  const { borderRadius, opacity } = surfaceStyle(treatment, {
+    ...options,
+    interactive: false,
+  });
+  return {
+    borderRadius,
+    ...(opacity === undefined ? {} : { opacity }),
+    ...(treatment === 'pressed'
+      ? { backgroundColor: Colors[options.theme].surfaceSunk }
+      : {}),
+  };
+}
+
 export function PressableSurface({
   treatment = 'raised',
   depth = 1,
   radius = 'md',
   busy = false,
   disabled = false,
+  bare = false,
   accessibilityLabel,
   style,
   onPress,
@@ -92,13 +130,19 @@ export function PressableSurface({
       onBlur={() => setFocused(false)}
       hitSlop={0}
       style={({ pressed }) => [
-        surfaceStyle(treatmentFor(treatment, { pressed, busy, disabled }), {
-          theme,
-          profile: elevationProfile,
-          depth,
-          radius,
-          interactive: true,
-        }),
+        bare
+          ? bareStyle(treatmentFor(treatment, { pressed, busy, disabled }), {
+              theme,
+              profile: elevationProfile,
+              radius,
+            })
+          : surfaceStyle(treatmentFor(treatment, { pressed, busy, disabled }), {
+              theme,
+              profile: elevationProfile,
+              depth,
+              radius,
+              interactive: true,
+            }),
         // FR-011 — the touch target never shrinks to fit the decoration.
         // FR-016 — and it grows with the traveller's text size rather than
         // clipping the label inside a fixed box.
