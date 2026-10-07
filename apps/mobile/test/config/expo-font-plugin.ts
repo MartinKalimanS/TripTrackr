@@ -9,6 +9,7 @@
  * both without a device.
  */
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 import type { ConfigContext, ExpoConfig } from 'expo/config';
@@ -40,6 +41,22 @@ export function embeddedFontPaths(config = resolvedConfig()): string[] {
   const [entry] = expoFontEntries(config);
   const props = Array.isArray(entry) ? entry[1] : undefined;
   return (props?.fonts as string[] | undefined) ?? [];
+}
+
+/**
+ * The file a `fonts` entry names, found the way the plugin finds it: its own
+ * `resolveFontPaths` tries the entry against the project root and, if nothing is there,
+ * resolves it as a module from the project (`createRequire(projectRoot)`), so a package
+ * specifier survives any hoisting layout of `node_modules`.
+ */
+export function resolveEmbeddedFont(entry: string): string {
+  const fromRoot = path.resolve(MOBILE_ROOT, entry);
+  try {
+    readFileSync(fromRoot);
+    return fromRoot;
+  } catch {
+    return createRequire(path.join(MOBILE_ROOT, 'package.json')).resolve(entry);
+  }
 }
 
 /** The `name` table records a platform can answer to, keyed by OpenType name id. */
