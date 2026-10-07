@@ -55,6 +55,7 @@ export interface StackHeaderTheme {
 /** The weight of each display face's own file; see the header. */
 const TITLE_WEIGHT = '600';
 const LARGE_TITLE_WEIGHT = '700';
+type FaceWeight = typeof TITLE_WEIGHT | typeof LARGE_TITLE_WEIGHT;
 
 /**
  * A family name from what `useCSSVariable` returns. The stylesheet writes the name in
@@ -70,10 +71,9 @@ export function fontFamilyOf(value: unknown): string | undefined {
   return bare === '' ? undefined : bare;
 }
 
-function titleStyle(color: string, family?: string, weight?: string) {
-  return family === undefined
-    ? { color }
-    : { color, fontFamily: family, fontWeight: weight };
+/** The ink, and the family with the weight of its own file when there is a family. */
+function titleStyle(color: string, family: string | undefined, weight: FaceWeight) {
+  return family === undefined ? { color } : { color, fontFamily: family, fontWeight: weight };
 }
 
 /** The options for a header over the canvas, for `platform`. Pure. */
