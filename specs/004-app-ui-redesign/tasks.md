@@ -376,11 +376,13 @@ language.
       `components/ui/tappable.test.tsx` and `hooks/use-haptics.test.ts` extended where gaps show (FR-019,
       FR-020, FR-022, SC-005)
 - [ ] T461 Performance and size: repeat T415's measurements; fix any regression (virtualisation, memoised
-      rows, image recycling); report the bundle and font delta (SC-006, SC-011). Known follow-up: share ONE
-      accessibility subscription across all consumers of `useAppearance` (a `useSyncExternalStore` store)
-      before the list baseline: today each consumer (`useHaptics`, so every `Button`) runs its own
-      `AccessibilityInfo` reads and listeners. `Tappable` and `Button` already read the font scale from
-      `useWindowDimensions` and no longer call `useAppearance` themselves.
+      rows, image recycling); report the bundle and font delta (SC-006, SC-011). `Tappable` and `Button` read the
+      font scale from `useWindowDimensions` and do not call `useAppearance` themselves. Follow-up, before the
+      list baseline:
+  - [x] Share ONE accessibility subscription across all consumers of `useAppearance`: a module-level
+        `useSyncExternalStore` store (`hooks/appearance-store.ts`), ref-counted, with a stable snapshot, so
+        `useHaptics` (so every `Button`) no longer runs its own `AccessibilityInfo` reads and listeners
+        (contract C4-4; `hooks/appearance-store.test.ts`, `hooks/use-appearance-shared.test.tsx`).
 - [ ] T462 Re-run the 15 offline Maestro phases on two real devices and record them in
       `apps/mobile/e2e/offline/gate-evidence.md` (SC-010)
 - [ ] T463 Final gates on the root and on a clean Windows install and the CI runners: `npm ci`,

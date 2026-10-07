@@ -30,9 +30,11 @@
  *   `surface-tertiary` is not used: in the dark themes it IS the overlay colour, so a press
  *   on a menu or sheet would show nothing. `test/theme/adapter-pressed-fills.test.ts`
  *   measures it.
- * - The font scale comes from `useWindowDimensions`, not from `useAppearance`: that hook
- *   subscribes to the platform's accessibility settings once per consumer, and a control
- *   repeated down a list must not pay for that (tasks.md T461).
+ * - The font scale comes from `useWindowDimensions`, not from `useAppearance`: a control
+ *   repeated down a list needs nothing else from that hook, so it skips the hook's
+ *   per-component colour-scheme subscription and derived object. The platform's
+ *   accessibility settings are one app-wide subscription (`hooks/appearance-store.ts`),
+ *   so a consumer adds no listener of its own either way (tasks.md T461).
  * - A focused control draws a ring `FocusRing.width` thick, `FocusRing.offset` OUTSIDE it
  *   (an `outline`, which takes no layout space), in the `focus` token. It does not depend
  *   on the pressed appearance, and the offset keeps it off any accent fill (review rule 6).

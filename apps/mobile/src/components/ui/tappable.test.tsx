@@ -16,9 +16,9 @@ import { FocusRing } from '@/theme';
 
 import { TAPPABLE_PRESSED_TOKEN, Tappable, tappableStyle } from './tappable';
 
-// The adapter reads the font scale from the window, not from `useAppearance`: that hook
-// subscribes to AccessibilityInfo once per consumer, which a control repeated down a
-// list must not pay for (research D4-05; tasks.md T461).
+// The adapter reads the font scale from the window, not from `useAppearance`: a control
+// repeated down a list needs nothing else from that hook, so it skips the hook's
+// per-component colour-scheme subscription (research D4-05; tasks.md T461).
 jest.mock('@/hooks/use-appearance', () => ({ useAppearance: jest.fn() }));
 
 /** Sets the window font scale `useWindowDimensions` reports. */

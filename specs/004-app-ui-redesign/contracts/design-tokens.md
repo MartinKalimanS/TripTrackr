@@ -140,6 +140,21 @@ The four-theme type is `PaletteName`. `surfaces.ts` still exports an older two-v
 - Live: every field re-resolves on its platform change event, and consumers re-render (FR-031).
 - Per-platform mapping stays in `src/theme/accessibility.ts` and nowhere else.
 - Never throws; an unavailable query falls back to the **more** accessible value.
+- **One shared subscription** (T461): the accessibility flags (`prefersMoreContrast`, `prefersLessMotion`,
+  `prefersLessTransparency`, `ready`) live in ONE module-level store, `src/hooks/appearance-store.ts`, read
+  through `useSyncExternalStore`. However many components call `useAppearance()` (every `Button` does,
+  through `useHaptics`, so a list of 200 trip cards or 1,000 expense rows mounts thousands), the app
+  registers ONE `AccessibilityInfo` listener per event type and runs ONE read per signal. The colour scheme
+  and the window's font scale stay per-component subscriptions (cheap) composed on top of the snapshot.
+- **Ref-counted and lazy**: the store starts its native subscriptions and its first read when the first
+  consumer subscribes and removes every listener when the last one unsubscribes; nothing runs at import.
+  With no consumer left the snapshot returns to the unread default (`ready` false), so the next first
+  consumer reads afresh instead of trusting a value nothing was keeping current. A consumer that mounts
+  while the store runs sees the current value in its first render.
+- **Stable snapshot**: the store hands out the same frozen object until a flag changes. A change event
+  whose read re-reports the same flags re-renders no consumer; one that changes a flag updates all
+  consumers in one commit. `useAppearance()` returns the same object between renders while the scheme, the
+  font scale and the snapshot have not changed.
 
 **New in this contract**
 
@@ -150,9 +165,9 @@ The four-theme type is `PaletteName`. `surfaces.ts` still exports an older two-v
   to `flat` so the old primitives render without shadows.
 - `prefersLessMotion` drives the kit provider's `animation` (`'disable-all'`) and `useHaptics()`.
 - `ready` is false until the first read of the accessibility flags has settled, whether it answered or
-  failed, and is never reset by a later change event. Until then `themeName` and `prefersLessMotion`
-  are defaults, so the root layout renders nothing and keeps the splash up until it is true; nothing else
-  reads it.
+  failed, and is never reset by a later change event (only the store losing its last consumer returns it to
+  false). Until then `themeName` and `prefersLessMotion` are defaults, so the root layout renders nothing
+  and keeps the splash up until it is true; nothing else reads it.
 
 **Obligation**: consumers treat every field as able to change at any time; reading once at mount is a
 breach.
