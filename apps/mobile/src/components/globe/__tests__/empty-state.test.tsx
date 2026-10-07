@@ -17,8 +17,15 @@ import { Dimensions, StyleSheet } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
+import { FocusRing } from '@/theme';
 
-import { GlobeEmptyState, GlobeNotice } from '../empty-state';
+import {
+  GlobeEmptyState,
+  GlobeNotice,
+  OVERLAY_CARD_INSET,
+  OVERLAY_MAX_HEIGHT_SHARE,
+  overlayMaxHeight,
+} from '../empty-state';
 
 jest.mock('@/hooks/use-appearance');
 jest.mock('expo-symbols', () => {
@@ -164,9 +171,54 @@ describe('<GlobeEmptyState> — a card over the map, never a replacement for it 
     // 60% of the window less the card's own 16 dp padding either side: the globe
     // stays in view and in reach.
     const { height } = Dimensions.get('window');
-    expect(style.maxHeight).toBe(Math.round(height * 0.6 - 32));
+    expect(style.maxHeight).toBe(overlayMaxHeight(height));
     // A card that fits does not rubber-band.
     expect(scroller.props.alwaysBounceVertical).toBe(false);
+  });
+
+  test('the cap is a share of the window, from one constant', () => {
+    expect(OVERLAY_MAX_HEIGHT_SHARE).toBeGreaterThan(0);
+    expect(OVERLAY_MAX_HEIGHT_SHARE).toBeLessThan(1);
+    expect(overlayMaxHeight(1000)).toBe(Math.round(1000 * OVERLAY_MAX_HEIGHT_SHARE));
+    expect(overlayMaxHeight(0)).toBe(0);
+    expect(overlayMaxHeight(-50)).toBe(0);
+  });
+
+  test('owns its padding: none on the card, the inset on the scroller content', async () => {
+    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
+    // The kit surface pads 16 dp by class; an explicit style says what this card means,
+    // and with nothing outside the scroller the cap IS the card's whole height.
+    expect(styleOf('globe-empty-state').padding).toBe(0);
+    const scroller = findByType(screen.toJSON(), 'RCTScrollView') as Json;
+    expect(
+      StyleSheet.flatten(scroller.props.contentContainerStyle as never),
+    ).toMatchObject({ padding: OVERLAY_CARD_INSET });
+  });
+
+  test('the inset is a gutter for a focus ring, which the scroller would otherwise clip', () => {
+    expect(OVERLAY_CARD_INSET).toBeGreaterThanOrEqual(FocusRing.width + FocusRing.offset);
+  });
+});
+
+describe('<GlobeEmptyState> — what a screen reader meets (FR-030)', () => {
+  test('is not one merged focus stop: the title, the reason and the button stay separate', async () => {
+    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
+    const card = screen.getByTestId('globe-empty-state');
+    expect(card.props.accessible).toBeUndefined();
+    expect(card.props.accessibilityLabel).toBeUndefined();
+    expect(card.props.accessibilityRole).toBeUndefined();
+    // The button is its own, labelled focus stop.
+    const action = screen.getByTestId('home-plan-trip');
+    expect(action.props.accessible).toBe(true);
+    expect(action.props.accessibilityLabel).toBe('Plan a trip');
+  });
+
+  test('presses call onAction with no arguments: the press event is not its business', async () => {
+    const onAction = jest.fn();
+    await render(<GlobeEmptyState reason="no-trips" onAction={onAction} />);
+    await fireEvent.press(screen.getByTestId('home-plan-trip'));
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(onAction).toHaveBeenCalledWith();
   });
 });
 
@@ -218,6 +270,34 @@ describe('<GlobeNotice> — a plain-words problem shown over the globe', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  test('is ONE announced alert: accessible, named by its title and its reason (FR-030)', async () => {
+    await render(
+      <GlobeNotice title="Couldn’t read your trips" detail="Restart the app." />,
+    );
+    const alert = screen.getByTestId('globe-notice');
+    expect(alert.props.accessible).toBe(true);
+    expect(alert.props.accessibilityRole).toBe('alert');
+    expect(alert.props.accessibilityLabel).toBe(
+      'Couldn’t read your trips. Restart the app.',
+    );
+  });
+
+  test('without a reason, the title is the whole announcement', async () => {
+    await render(<GlobeNotice title="Couldn’t read your trips" />);
+    const alert = screen.getByTestId('globe-notice');
+    expect(alert.props.accessible).toBe(true);
+    expect(alert.props.accessibilityLabel).toBe('Couldn’t read your trips');
+  });
+
+  test('the alert is only a layout box: the card inside paints, it does not speak', async () => {
+    await render(<GlobeNotice title="Couldn’t read your trips" detail="Restart." />);
+    expect(classesOf('globe-notice')).toEqual(['self-stretch', 'max-w-md']);
+    const card = screen.getByTestId('globe-notice-card');
+    expect(card.props.accessible).toBeUndefined();
+    expect(card.props.accessibilityRole).toBeUndefined();
+    expect(card.props.accessibilityLabel).toBeUndefined();
+  });
+
   test('is not colour alone: a leading alert icon, the title in the danger ink', async () => {
     await render(<GlobeNotice title="Couldn’t read your trips" detail="Restart." />);
     expect(screen.getAllByTestId('symbol', hidden)).toHaveLength(1);
@@ -238,12 +318,13 @@ describe('<GlobeNotice> — a plain-words problem shown over the globe', () => {
 
   test('is an opaque hairline card with no shadow, like the invitation (FR-018, FR-033)', async () => {
     await render(<GlobeNotice title="Couldn’t read your trips" />);
-    const classes = classesOf('globe-notice');
+    const classes = classesOf('globe-notice-card');
     expect(classes).toEqual(
       expect.arrayContaining(['bg-surface', 'border', 'border-border', 'shadow-none']),
     );
     expect(classes.filter((token) => token.includes('/'))).toEqual([]);
-    expect(styleOf('globe-notice').boxShadow).toBeUndefined();
+    expect(styleOf('globe-notice-card').boxShadow).toBeUndefined();
+    expect(styleOf('globe-notice-card').padding).toBe(0);
   });
 });
 
