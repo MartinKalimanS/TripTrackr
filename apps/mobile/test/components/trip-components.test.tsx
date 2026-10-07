@@ -439,6 +439,40 @@ describe('<StopRow>', () => {
       expect(screen.queryByTestId('grip')).toBeNull();
     });
 
+    test('the dot carries the number, which is the order of the stop', async () => {
+      await renderRow({ position: 3 });
+
+      const dot = screen.getByTestId('stop-dot-s1');
+      expect(within(dot).getByTestId('stop-number-s1')).toHaveTextContent('3');
+    });
+
+    test('while a stop is being dragged the dot is neutral: no number, no rail, same box', async () => {
+      await renderRow({ dragging: true, position: 3 });
+
+      const dot = screen.getByTestId('stop-dot-s1');
+      expect(within(dot).queryByTestId('stop-number-s1')).toBeNull();
+      expect(screen.queryByText('3')).toBeNull();
+      expect(screen.queryByTestId('stop-rail-top-s1')).toBeNull();
+      expect(screen.queryByTestId('stop-rail-bottom-s1')).toBeNull();
+      // The box keeps its size classes, so lifting a row moves nothing.
+      expect(screen.getByTestId('stop-dot-s1').props.className).toContain('min-h-8');
+      expect(screen.getByTestId('stop-dot-s1').props.className).toContain('min-w-8');
+    });
+
+    test('dragging changes the dot only: the row keeps its name, actions and controls', async () => {
+      const onMoveUp = jest.fn();
+      await renderRow({ dragging: true, onMoveUp });
+
+      expect(screen.getByTestId('stop-row-s1').props.accessibilityLabel).toMatch(
+        /^Stop 2: Roma, Italy\./,
+      );
+      expect(screen.getByTestId('stop-row-s1').props.accessibilityActions).toHaveLength(
+        4,
+      );
+      await fireEvent.press(screen.getByTestId('stop-move-up-s1'));
+      expect(onMoveUp).toHaveBeenCalledTimes(1);
+    });
+
     test('is built from the adapter layer only', () => {
       const source = jest
         .requireActual('fs')

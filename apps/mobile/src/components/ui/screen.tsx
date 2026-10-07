@@ -71,6 +71,13 @@ export type ScreenProps = PropsWithChildren<{
   underHeader?: boolean;
 }>;
 
+/**
+ * The padding on the left and right of every screen. A row that bleeds to the screen's
+ * edges (`marginHorizontal: -SCREEN_GUTTER`, its content padded by `SCREEN_GUTTER`) reads
+ * this rather than repeating the number, so it cannot drift from the screen's own.
+ */
+export const SCREEN_GUTTER = Spacing.four;
+
 const DEFAULT_EDGES: Edge[] = ['top', 'bottom'];
 /** The native header already covers the top: only the bottom needs padding. */
 const UNDER_HEADER_EDGES: Edge[] = ['bottom'];
@@ -139,7 +146,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexShrink: 0,
     flexBasis: 'auto',
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: SCREEN_GUTTER,
     paddingVertical: Spacing.four,
     gap: Spacing.three,
   },

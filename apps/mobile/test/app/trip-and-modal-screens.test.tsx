@@ -8,11 +8,12 @@
  * failed local write is reported and shown rather than swallowed.
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 
 import NotFoundScreen from '@/app/+not-found';
 import AddTripScreen from '@/app/modal/add-trip';
 import TripScreen from '@/app/trip/[id]/index';
+import { SCREEN_GUTTER } from '@/components/ui/screen';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import type { TripRow } from '@/db/schema';
 import { useSessionStore } from '@/features/auth/session-store';
@@ -245,6 +246,29 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(screen.queryByTestId('trip-add-stop')).toBeNull();
   });
 
+  // A live read that fails leaves its first-result timestamp unset, so a hook that only
+  // looked at that reported `loading` together with the error. The screen must not let the
+  // spinner hide the words, whichever way a hook reports the pair.
+  test('shows the error, not the spinner, when a failed read still says loading', async () => {
+    mockTrip.data = null;
+    mockTrip.loading = true;
+    mockTrip.error = new Error('no such table');
+    await render(<TripScreen />);
+
+    expect(screen.getByText('Couldn’t read this trip')).toBeTruthy();
+    expect(screen.queryByLabelText('Loading trip')).toBeNull();
+  });
+
+  test('shows the stops error, not the placeholders, when a failed read still says loading', async () => {
+    mockStops.loading = true;
+    mockStops.error = new Error('no such table');
+    await render(<TripScreen />);
+
+    expect(screen.getByText('Couldn’t read the stops')).toBeTruthy();
+    expect(screen.queryByLabelText('Loading stops')).toBeNull();
+    expect(screen.queryByTestId('trip-stops')).toBeNull();
+  });
+
   test('never shows its empty state while the first read is still resolving (C4-10 rule 2)', async () => {
     mockTrip.data = null;
     mockTrip.loading = true;
@@ -372,6 +396,21 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(within(row).getAllByRole('button')).toHaveLength(segments.length);
   });
 
+  test('bleeds to the screen edges by exactly the screen’s own side padding, which it reads from the Screen adapter', async () => {
+    await render(<TripScreen />);
+
+    const row = screen.getByTestId('trip-links');
+    expect(StyleSheet.flatten(row.props.style).marginHorizontal).toBe(-SCREEN_GUTTER);
+    expect(StyleSheet.flatten(row.props.contentContainerStyle).paddingHorizontal).toBe(
+      SCREEN_GUTTER,
+    );
+    // Not a second copy of the number.
+    const { readFileSync } = jest.requireActual('fs') as typeof import('fs');
+    const source = readFileSync(require.resolve('@/app/trip/[id]/index'), 'utf8');
+    expect(source).toMatch(/SCREEN_GUTTER/);
+    expect(source).not.toMatch(/Spacing\.four/);
+  });
+
   test('each area is an icon and a label in a chip, and the words are never capped, so the row stays reachable at the largest text size (FR-029)', async () => {
     await render(<TripScreen />);
 
@@ -449,6 +488,24 @@ describe('<TripScreen> — trip/[id]', () => {
       'stop-rome',
     ]);
     expect(mockActions.moveStop).not.toHaveBeenCalled();
+  });
+
+  test('numbers the stops again once the dragged one has landed, and not while it is carried', async () => {
+    mockStops.data = [rome, florence];
+    await render(<TripScreen />);
+    const sortables = jest.requireMock('react-native-sortables') as {
+      __dragStart: (key: string) => void;
+      __dropAt: (data: unknown[]) => void;
+      __activeItemDropped: (key: string) => void;
+    };
+
+    await act(async () => sortables.__dragStart('stop-florence'));
+    expect(screen.queryByTestId('stop-number-stop-rome')).toBeNull();
+    expect(screen.queryByTestId('stop-number-stop-florence')).toBeNull();
+
+    await act(async () => sortables.__dropAt([florence, rome]));
+    await act(async () => sortables.__activeItemDropped('stop-florence'));
+    expect(screen.getByTestId('stop-number-stop-rome')).toHaveTextContent('1');
   });
 
   test('a single stop shows no drag handle — there is nothing to reorder', async () => {

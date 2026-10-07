@@ -48,7 +48,7 @@ export interface TripSummary {
 
 export interface LiveResult<T> {
   data: T;
-  /** No result has arrived yet — distinct from "empty". */
+  /** Neither a result nor an error has arrived yet — distinct from "empty" and from "failed". */
   loading: boolean;
   error: Error | null;
 }
@@ -187,13 +187,23 @@ export function useTrips(today?: string): LiveResult<TripSummary[]> {
   };
 }
 
+/**
+ * Whether a live read is still waiting for its first answer. Drizzle's `useLiveQuery`
+ * sets `updatedAt` only when a result arrives, so a read that FAILS leaves it unset for
+ * good: `updatedAt === undefined` alone would call a failed read "loading" for ever, and
+ * a screen that checks `loading` first would never show its error. An error is an answer.
+ */
+function isAwaitingFirstResult(read: { updatedAt?: Date; error?: Error }): boolean {
+  return read.updatedAt === undefined && read.error === undefined;
+}
+
 /** One trip, or `null` once the store has answered and it is not there. */
 export function useTrip(tripId: string): LiveResult<TripRow | null> {
   const db = useDatabase();
   const result = useLiveQuery(tripsRepository.byIdQuery(db, tripId), [tripId]);
   return {
     data: result.data[0] ?? null,
-    loading: result.updatedAt === undefined,
+    loading: isAwaitingFirstResult(result),
     error: result.error ?? null,
   };
 }
@@ -204,7 +214,7 @@ export function useTripStops(tripId: string): LiveResult<StopWithPlace[]> {
   const result = useLiveQuery(stopsRepository.forTripQuery(db, tripId), [tripId]);
   return {
     data: result.data,
-    loading: result.updatedAt === undefined,
+    loading: isAwaitingFirstResult(result),
     error: result.error ?? null,
   };
 }

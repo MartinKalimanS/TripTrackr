@@ -161,3 +161,79 @@ describe('<StopList>', () => {
     expect(source).not.toMatch(/from 'heroui-native'|from 'uniwind'/);
   });
 });
+
+// The numbers and the rail are derived from each row's index in `data`, and `data` only
+// changes after the drop is written. While a row is being carried the order on screen is
+// ahead of the order in `data`, so the dots would read 1, 3, 2 and the "last" row's rail
+// would stay on the item that was last when the drag began. The list therefore shows
+// neutral dots from the moment a row lifts (`onDragStart`) until the drop animation has
+// finished (`onActiveItemDropped`), by which time the new order has been written back.
+describe('<StopList> while a stop is being dragged', () => {
+  const sortables = jest.requireMock('react-native-sortables') as {
+    __dragStart: (key: string) => void;
+    __dropAt: (data: unknown[]) => void;
+    __activeItemDropped: (key: string) => void;
+  };
+  const ids = ['s1', 's2', 's3'];
+
+  test('shows neutral dots, without numbers or rail, from the moment a row lifts', async () => {
+    await renderList([rome, florence, venice]);
+    expect(screen.getByTestId('stop-number-s1')).toBeTruthy();
+    expect(screen.getByTestId('stop-rail-bottom-s1')).toBeTruthy();
+
+    await act(async () => sortables.__dragStart('s2'));
+
+    for (const id of ids) {
+      expect(screen.getByTestId(`stop-dot-${id}`)).toBeTruthy();
+      expect(screen.queryByTestId(`stop-number-${id}`)).toBeNull();
+      expect(screen.queryByTestId(`stop-rail-top-${id}`)).toBeNull();
+      expect(screen.queryByTestId(`stop-rail-bottom-${id}`)).toBeNull();
+    }
+  });
+
+  test('keeps every row, name and control while it is carried', async () => {
+    await renderList([rome, florence, venice]);
+
+    await act(async () => sortables.__dragStart('s2'));
+
+    for (const id of ids) {
+      expect(screen.getByTestId(`stop-row-${id}`)).toBeTruthy();
+      expect(screen.getByTestId(`stop-move-down-${id}`)).toBeTruthy();
+    }
+    expect(screen.getByTestId('stop-row-s2').props.accessibilityLabel).toMatch(
+      /^Stop 2: Firenze/,
+    );
+  });
+
+  test('brings the numbers and the rail back when the drop animation has finished, not at the drop', async () => {
+    const { onReorder } = await renderList([rome, florence, venice]);
+
+    await act(async () => sortables.__dragStart('s2'));
+    await act(async () => sortables.__dropAt([florence, rome, venice]));
+
+    // The drop is written back at once ...
+    expect(onReorder).toHaveBeenCalledWith(['s2', 's1', 's3']);
+    // ... but `data` has not followed yet, so the dots are still neutral.
+    expect(screen.queryByTestId('stop-number-s1')).toBeNull();
+
+    await act(async () => sortables.__activeItemDropped('s2'));
+
+    expect(screen.getByTestId('stop-number-s1')).toHaveTextContent('1');
+    expect(screen.getByTestId('stop-number-s3')).toHaveTextContent('3');
+    expect(screen.queryByTestId('stop-rail-bottom-s3')).toBeNull();
+    expect(screen.getByTestId('stop-rail-bottom-s1')).toBeTruthy();
+  });
+
+  test('a second drag after the first behaves the same way', async () => {
+    await renderList([rome, florence]);
+
+    await act(async () => sortables.__dragStart('s1'));
+    await act(async () => sortables.__activeItemDropped('s1'));
+    expect(screen.getByTestId('stop-number-s1')).toBeTruthy();
+
+    await act(async () => sortables.__dragStart('s2'));
+    expect(screen.queryByTestId('stop-number-s1')).toBeNull();
+    await act(async () => sortables.__activeItemDropped('s2'));
+    expect(screen.getByTestId('stop-number-s2')).toHaveTextContent('2');
+  });
+});
