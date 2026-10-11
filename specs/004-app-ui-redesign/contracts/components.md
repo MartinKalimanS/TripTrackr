@@ -262,6 +262,74 @@ built API goes beyond it.
   false), and a nested stack's first screen would otherwise carry the parent's previous route name (`(tabs)`) as
   its label (`NativeStackView.native.js`: `parentHeaderBack`).
 
+**As built (T434, T438 pattern)**
+
+The form sheet pattern is `components/ui/form-sheet.tsx` plus `test/helpers/keyboard.ts`. Add-trip is its first user;
+add-expense (T436), the stop editor (T437) and the note editor (T438) reuse it unchanged.
+
+```tsx
+<FormSheet
+  testID="add-trip-screen"            // root; the body is `<testID>-body`, the footer `<testID>-footer`
+  title="New trip"                    // a heading, the first thing in the body
+  host="form-sheet"                   // default; or "modal" (see below)
+  actions={{ testIDPrefix: 'add-trip', saveLabel: 'Save trip', onCancel, onSave, saveDisabled }}>
+  <Field .../> <CurrencyPicker .../> <InlineError .../>   // the fields, in reading order
+</FormSheet>
+```
+
+- **What it gives a form**: the title; a scrolling body (`KeyboardAwareScrollView`, `keyboardShouldPersistTaps="handled"`,
+  as tall as its fields until the room runs out, then a scroller, so the largest text size never clips a field); a footer
+  OUTSIDE the body that is `FormActions` unchanged (ids `<prefix>-cancel`, `<prefix>-save`, Save the one primary), on an
+  opaque strip so nothing scrolls into view behind it; a handle on Android (iOS draws its own, see `formSheetOptions`).
+  `bottomOffset` is the footer's measured height plus 16 dp, so a focused field is scrolled clear of it. A form puts
+  nothing of its own around it: no `Screen`, no title, no `FormActions`.
+- **`host` says who moves the form for the keyboard**, and the two hosts differ on purpose. `'form-sheet'` (default) is a
+  router sheet (`presentation: 'formSheet'`): the PLATFORM lifts it above the keyboard (UIKit on iOS; react-native-screens
+  4.26's `SheetAnimationCoordinator` on Android shifts the sheet up by the keyboard's height as far as the room above
+  allows, read from its source). A footer that also rode up (`KeyboardStickyView`) would be lifted twice and land on the
+  fields, so none does; instead the form is CAPPED to what the platform can lift: its `maxHeight` is
+  `sheetMaxHeight({ windowHeight, topInset, keyboardHeight })`, the window below the status bar less a 16 dp gap and the
+  keyboard (never below 160), so the body scrolls and the footer stays inside the lifted sheet. `'modal'` is an RN `Modal` (the stop and
+  note editors' `pageSheet`), which nothing moves: the form fills the modal (`flex: 1`) and the footer is a
+  `KeyboardStickyView` with `offset={{ closed: 0, opened: bottomInset }}`, so it sits on the bottom inset the keyboard
+  covers anyway. A modal host pads its footer by the bottom inset; a router sheet adds none (the platform pads a sheet for
+  the home indicator). The insets come from `SafeAreaInsetsContext` and are 0 with no provider, so a bare test render works.
+- **`formSheetOptions`** (`presentation: 'formSheet'`, `sheetAllowedDetents: 'fitToContents'`, `sheetGrabberVisible: true`)
+  is what the ROOT stack hands the `modal` screen (`src/app/_layout.tsx`, inside `Stack.Protected`, the anchor untouched).
+  Presentation belongs to the presented screen, so `modal/_layout.tsx` cannot set it for itself. That layout is a `Slot`
+  now, not a `Stack`: the v57 modals guide says an Android form sheet supports neither native headers nor nested stack
+  navigators, so a sheet has no native header or Back (T427, modal part: nothing to theme; the sheet's colours are the
+  root's `contentStyle` and the form's own `bg-background`). Cancel, the handle and a swipe down are the ways out.
+  Every route of the group (add-trip, add-expense) is therefore `fitToContents`; `fitToContents` needs content sized by
+  what is in it (no `flex: 1`), which is why the router host caps with `maxHeight` instead of filling.
+- **A new form's recipe**: build the fields from `Field`, `ChipGroup` and the pickers; hand `actions` to `FormSheet`; give the
+  route `testID="<name>-screen"` (the id Maestro waits for); keep every pre-existing id and name; write the
+  keyboard-visibility test below. A router sheet is a route under `src/app/modal/` (host default); an RN `Modal` form
+  renders `<FormSheet host="modal" ...>` inside its `Modal`; whether the Modal needs `statusBarTranslucent` and
+  `navigationBarTranslucent` on Android for the sticky footer to land on the keyboard is a device check.
+- **`test/helpers/keyboard.ts`** (Jest has no layout or keyboard, so a test pins every instruction given to the platform):
+  `await showKeyboard(height = 300)` and `await hideKeyboard()` drive `useKeyboardState` through a store the components
+  subscribe to (importing the module installs it; the library's own double never shows a keyboard);
+  `setWindow({ width, height, scale?, fontScale? })` fixes `useWindowDimensions` (`PHONE_360X640` is the smallest phone);
+  `resetKeyboard()` goes in `afterEach`; `expectActionAboveKeyboard(sheetTestID, actionTestID, { topInset? })` is rule 8:
+  keyboard up, the action is in `<id>-footer` and not in `<id>-body`, and the form was told how to stay clear (router host:
+  `maxHeight` equals `sheetMaxHeight` and is at most the room above the keyboard; modal host: the footer is a sticky view,
+  enabled). A form's test is: `setWindow(PHONE_360X640)`, render, `await showKeyboard()`, fill the LAST field, press Save,
+  `expectActionAboveKeyboard(...)`, and the same for an invalid submit. The helper has its own tests (it must fail when
+  the keyboard is down, the action is in the body, or the cap is missing), and a mutation of the cap, the footer, the
+  sticky offset or `keyboardShouldPersistTaps` fails the suites.
+- **The pickers (T435)**: `CurrencyPicker` is ONE sideways `ChipGroup` (`currency-pills` is now the radiogroup that holds
+  the chips; `currency-<CODE>`, `currency-other-toggle` "Other currency") plus a `Field` (`currency-other`, message
+  `currency-other-error`) while "Other" is open; exactly one option is selected, and opening "Other" clears a common code as
+  before. `CategoryPicker` is a `ChipGroup` (one sideways row by default, `scroll={false}` wraps, per C4-11), a `Field` and a
+  secondary `Add` button (`category-new-add`, "Add category"), the error an `InlineError` (`category-error`). Both groups
+  are named ("Home currency", "Category"); every pre-existing id and name is unchanged.
+- **Unverified on a device**: the keyboard behaviour of both hosts (the router host rests on the
+  react-native-screens source and the library's discussions, #1073 and #726, which report that a form sheet lifts itself,
+  that `KeyboardAwareScrollView` has misbehaved inside one, and that a sticky view in an iOS `pageSheet` does not follow a
+  dragged sheet, #867); the Android handle; the sheet's bottom padding at the home indicator; the focus ring at the top and
+  bottom edge of a sideways chip row (the scroller clips it).
+
 ---
 
 ## Review rules for new adapters

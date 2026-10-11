@@ -7,17 +7,23 @@
  * sync time. "Save" writes to the encrypted local store FIRST — no network —
  * and then replaces this sheet with the new trip so the traveller can add
  * stops straight away (Acceptance Scenario 1.3).
+ *
+ * A form sheet since feature 004 (T434; FR-009; research D4-06): the route is presented
+ * by the root as a `formSheet` as tall as its contents (`formSheetOptions`), and the body
+ * is the shared `FormSheet`: the title, a scrolling body of a label-on-top `Field`
+ * (refusals in words) and the home currency as ONE sideways chip row ending in "Other",
+ * and a sticky footer (Cancel, Save) that stays above the keyboard. The ids and names are
+ * unchanged: `add-trip-screen`, `add-trip-title`, `currency-<CODE>`, `currency-other`,
+ * `add-trip-error`, `add-trip-cancel`, `add-trip-save`.
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
 
-import { ThemedText } from '@/components/themed-text';
 import { CurrencyPicker } from '@/components/trip/currency-picker';
-import { FormActions } from '@/components/ui/form-actions';
+import { Field } from '@/components/ui/field';
+import { FormSheet } from '@/components/ui/form-sheet';
 import { InlineError } from '@/components/ui/inline-error';
-import { Screen } from '@/components/ui/screen';
-import { TextField } from '@/components/ui/text-field';
 import { useSessionStore } from '@/features/auth/session-store';
 import {
   TRIP_FIELD_COPY,
@@ -67,7 +73,7 @@ function TitleField({ control, onSubmitEditing }: TitleFieldProps) {
       control={control}
       name="title"
       render={({ field, fieldState }) => (
-        <TextField
+        <Field
           testID="add-trip-title"
           label="Trip name"
           value={field.value}
@@ -105,22 +111,20 @@ export default function AddTripScreen() {
   const { control, save, saveError, cancel } = useAddTripForm();
 
   return (
-    // No top inset: the sheet's own chrome already clears the status bar.
-    <Screen testID="add-trip-screen" edges={['bottom']}>
-      <ThemedText type="subtitle">New trip</ThemedText>
-
+    <FormSheet
+      testID="add-trip-screen"
+      title="New trip"
+      actions={{
+        testIDPrefix: 'add-trip',
+        saveLabel: 'Save trip',
+        onCancel: cancel,
+        onSave: () => void save(),
+      }}>
       <TitleField control={control} onSubmitEditing={() => void save()} />
 
       <HomeCurrencyField control={control} />
 
       <InlineError testID="add-trip-error" message={saveError} />
-
-      <FormActions
-        testIDPrefix="add-trip"
-        saveLabel="Save trip"
-        onCancel={cancel}
-        onSave={() => void save()}
-      />
-    </Screen>
+    </FormSheet>
   );
 }

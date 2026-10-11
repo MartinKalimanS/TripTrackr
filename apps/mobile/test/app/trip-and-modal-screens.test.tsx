@@ -13,11 +13,20 @@ import { Alert, StyleSheet } from 'react-native';
 import NotFoundScreen from '@/app/+not-found';
 import AddTripScreen from '@/app/modal/add-trip';
 import TripScreen from '@/app/trip/[id]/index';
+import { sheetMaxHeight } from '@/components/ui/form-sheet';
 import { SCREEN_GUTTER } from '@/components/ui/screen';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import type { TripRow } from '@/db/schema';
 import { useSessionStore } from '@/features/auth/session-store';
 import { Sentry } from '@/lib/sentry';
+
+import {
+  PHONE_360X640,
+  expectActionAboveKeyboard,
+  resetKeyboard,
+  setWindow,
+  showKeyboard,
+} from '../helpers/keyboard';
 
 // `mock`-prefixed so Jest's hoisted factory may reference them.
 const mockBack = jest.fn();
@@ -775,6 +784,235 @@ describe('<AddTripScreen> — modal/add-trip (T066)', () => {
     await render(<AddTripScreen />);
     await fireEvent.press(screen.getByLabelText('Cancel'));
     expect(mockBack).toHaveBeenCalled();
+  });
+});
+
+describe('<AddTripScreen> as a form sheet (T434; FR-005, FR-009, FR-024, FR-025, FR-029, FR-030)', () => {
+  afterEach(() => resetKeyboard());
+
+  test('is the form-sheet pattern: a titled sheet whose root, body and footer are named from add-trip-screen', async () => {
+    await render(<AddTripScreen />);
+
+    expect(screen.getByTestId('add-trip-screen')).toBeTruthy();
+    const title = within(screen.getByTestId('add-trip-screen-body')).getByText(
+      'New trip',
+    );
+    expect(title.props.accessibilityRole).toBe('header');
+    const footer = within(screen.getByTestId('add-trip-screen-footer'));
+    expect(footer.getByTestId('add-trip-cancel')).toBeTruthy();
+    expect(footer.getByTestId('add-trip-save')).toBeTruthy();
+  });
+
+  test('keeps the reading order: title, trip name, home currency, then Cancel and Save', async () => {
+    await render(<AddTripScreen />);
+
+    const order = screen
+      .getAllByText(/^(New trip|Trip name|Home currency|Cancel|Save trip)$/)
+      .map((node) => String(node.props.children));
+    expect(order).toEqual([
+      'New trip',
+      'Trip name',
+      'Home currency',
+      'Cancel',
+      'Save trip',
+    ]);
+  });
+
+  test('has ONE primary control, Save; Cancel is a text button (FR-005)', async () => {
+    await render(<AddTripScreen />);
+
+    expect(
+      screen
+        .getAllByRole('button')
+        .filter((button) => button.props.variant === 'primary'),
+    ).toEqual([screen.getByTestId('add-trip-save')]);
+    expect(screen.getByTestId('add-trip-cancel').props.variant).toBe('ghost');
+  });
+
+  test('the trip name is a Field: label on top, its own id and name, words under it when refused (FR-025)', async () => {
+    await render(<AddTripScreen />);
+
+    const input = screen.getByTestId('add-trip-title');
+    expect(input.props.accessibilityLabel).toBe('Trip name');
+    expect(screen.getByText('Trip name')).toBeTruthy();
+    expect(input.props.placeholder).toBe('Italy, spring 2026');
+    expect(input.props.autoCapitalize).toBe('words');
+    expect(input.props.maxLength).toBe(200);
+    expect(input.props['aria-invalid']).toBe(false);
+
+    await fireEvent.press(screen.getByTestId('add-trip-save'));
+
+    expect(screen.getByTestId('add-trip-title').props['aria-invalid']).toBe(true);
+    const words = screen.getByTestId('add-trip-title-error');
+    expect(words.props.accessibilityRole).toBe('alert');
+    expect(words).toHaveTextContent('Give your trip a name.');
+  });
+
+  test('offers the home currency as one sideways chip row ending in Other (003 FR-017; FR-009)', async () => {
+    await render(<AddTripScreen />);
+
+    const group = screen.getByTestId('currency-pills');
+    expect(group.props.accessibilityRole).toBe('radiogroup');
+    const radios = within(group).getAllByRole('radio');
+    expect(radios.at(-1)?.props.testID).toBe('currency-other-toggle');
+    expect(radios).toHaveLength(11);
+    expect(group.queryAll((node) => node.props.horizontal === true)).toHaveLength(1);
+  });
+
+  test('"Other" opens a field in the sheet whose refusal reads in words under it', async () => {
+    await render(<AddTripScreen />);
+    await fireEvent.changeText(screen.getByLabelText('Trip name'), 'Italy');
+    await fireEvent.press(screen.getByTestId('currency-other-toggle'));
+    await fireEvent.changeText(screen.getByTestId('currency-other'), 'eu');
+    await fireEvent.press(screen.getByTestId('add-trip-save'));
+
+    expect(screen.getByTestId('currency-other-error')).toHaveTextContent(
+      'Use a 3-letter currency code, like EUR.',
+    );
+    expect(mockActions.createTrip).not.toHaveBeenCalled();
+  });
+
+  test('saves from the keyboard too: Done on the name field submits the form', async () => {
+    mockActions.createTrip.mockReturnValue({ ...trip, id: 'kb-trip' });
+    await render(<AddTripScreen />);
+    const input = screen.getByTestId('add-trip-title');
+    expect(input.props.returnKeyType).toBe('done');
+
+    await fireEvent.changeText(input, 'Lisbon');
+    await fireEvent(input, 'submitEditing');
+
+    expect(mockActions.createTrip).toHaveBeenCalledWith({
+      title: 'Lisbon',
+      home_currency: 'GBP',
+    });
+    expect(mockReplace).toHaveBeenCalledWith('/trip/kb-trip');
+  });
+
+  test('a failed local write shows its words in the body, above the actions, as an alert', async () => {
+    mockActions.createTrip.mockImplementation(() => {
+      throw new Error('disk full');
+    });
+    await render(<AddTripScreen />);
+    await fireEvent.changeText(screen.getByLabelText('Trip name'), 'Italy');
+    await fireEvent.press(screen.getByTestId('add-trip-save'));
+
+    const error = screen.getByTestId('add-trip-error');
+    expect(error.props.accessibilityRole).toBe('alert');
+    const body = within(screen.getByTestId('add-trip-screen-body'));
+    expect(body.getByTestId('add-trip-error')).toBe(error);
+  });
+
+  describe('with the keyboard up (C4-10 rule 8; the keyboard-visibility test of every form)', () => {
+    beforeEach(() => setWindow(PHONE_360X640));
+
+    test('Save is in the footer, outside the scrolling body, and the sheet is capped above the keyboard', async () => {
+      await render(<AddTripScreen />);
+      await showKeyboard();
+
+      expectActionAboveKeyboard('add-trip-screen', 'add-trip-save');
+    });
+
+    test('the last field can be filled and Save submits it, with the keyboard still up', async () => {
+      mockActions.createTrip.mockReturnValue({ ...trip, id: 'new-trip' });
+      await render(<AddTripScreen />);
+      await showKeyboard();
+
+      await fireEvent.changeText(screen.getByLabelText('Trip name'), 'Italy');
+      await fireEvent.press(screen.getByTestId('currency-other-toggle'));
+      await fireEvent.changeText(screen.getByTestId('currency-other'), 'thb');
+      expectActionAboveKeyboard('add-trip-screen', 'add-trip-save');
+      await fireEvent.press(screen.getByTestId('add-trip-save'));
+
+      expect(mockActions.createTrip).toHaveBeenCalledWith({
+        title: 'Italy',
+        home_currency: 'THB',
+      });
+    });
+
+    test('an invalid submit with the keyboard up still says why, and Save stays where it was', async () => {
+      await render(<AddTripScreen />);
+      await showKeyboard();
+
+      await fireEvent.press(screen.getByTestId('add-trip-save'));
+      expect(screen.getByText('Give your trip a name.')).toBeTruthy();
+      expectActionAboveKeyboard('add-trip-screen', 'add-trip-save');
+    });
+
+    test('the body keeps taps with the keyboard up, so a chip is not swallowed by a dismissal', async () => {
+      await render(<AddTripScreen />);
+      await showKeyboard();
+      expect(
+        screen.getByTestId('add-trip-screen-body').props.keyboardShouldPersistTaps,
+      ).toBe('handled');
+    });
+  });
+
+  describe('fits one screen at the default text size on 360 x 640 dp (FR-009; 003 FR-017)', () => {
+    // Jest renders no layout, so this is a desk budget, not a measurement: the heights of
+    // the parts as the tokens and the kit set them, added up for the busiest state, against
+    // the room the sheet is allowed. The on-phone check (tasks.md T434) measures it.
+    const HANDLE = 4 + 12;
+    const BODY_PAD = 24 + 16;
+    const GAP = 16;
+    const TITLE = 28;
+    const LABEL = 20;
+    const INPUT = 48;
+    const LABEL_TO_INPUT = 8;
+    const ERROR_LINE = 20;
+    const CHIP_ROW = 48 + 8;
+    const FOOTER = 12 + 48 + 16;
+    const field = (error: boolean) =>
+      LABEL + LABEL_TO_INPUT + INPUT + (error ? ERROR_LINE : 0);
+
+    const quiet = () =>
+      HANDLE +
+      BODY_PAD +
+      TITLE +
+      GAP +
+      field(false) +
+      GAP +
+      (LABEL + 8 + CHIP_ROW) +
+      FOOTER;
+    const busiest = () =>
+      HANDLE +
+      BODY_PAD +
+      TITLE +
+      GAP +
+      field(true) +
+      GAP +
+      (LABEL + 8 + CHIP_ROW + 8 + field(true)) +
+      GAP +
+      ERROR_LINE +
+      FOOTER;
+
+    test('the form needs less than the room the sheet is allowed, even when every message is showing', () => {
+      const room = sheetMaxHeight({ windowHeight: 640, topInset: 24, keyboardHeight: 0 });
+      expect(quiet()).toBeLessThan(room);
+      expect(busiest()).toBeLessThan(room);
+    });
+
+    test('has nothing to scroll in the quiet state: the sheet is not capped below the form', async () => {
+      setWindow(PHONE_360X640);
+      await render(<AddTripScreen />);
+      const cap = StyleSheet.flatten(screen.getByTestId('add-trip-screen').props.style)
+        .maxHeight as number;
+      expect(cap).toBeGreaterThan(quiet());
+    });
+  });
+
+  test('is composed from the adapter layer only: the form-sheet pattern and Field, no retired primitive', () => {
+    const source = (jest.requireActual('fs') as typeof import('fs')).readFileSync(
+      require.resolve('@/app/modal/add-trip'),
+      'utf8',
+    );
+    expect(source).toMatch(/from '@\/components\/ui\/form-sheet'/);
+    expect(source).toMatch(/from '@\/components\/ui\/field'/);
+    expect(source).not.toMatch(
+      /ThemedText|ThemedView|TextField|\bSurface\b|PressableSurface|PillGroup/,
+    );
+    expect(source).not.toMatch(/components\/ui\/screen|ui\/form-actions/);
+    expect(source).not.toMatch(/from 'heroui-native'|from 'uniwind'/);
+    expect(source).not.toMatch(/use-appearance|Colors\[|#[0-9a-fA-F]{3,8}\b/);
   });
 });
 

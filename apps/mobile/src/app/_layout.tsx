@@ -57,6 +57,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { Uniwind } from 'uniwind';
 
 import { ConflictNotices } from '@/components/ui/conflict-notice';
+import { formSheetOptions } from '@/components/ui/form-sheet';
 import { LocalStoreProvider, useOpenDatabase } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useAppSwitcherProtection } from '@/features/documents/use-screen-capture-guard';
@@ -260,7 +261,7 @@ function RootStack({
       <Stack.Protected guard={status === 'signed-in'}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="trip/[id]" />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="modal" options={formSheetOptions} />
       </Stack.Protected>
 
       {/* Reachable in either state: a bad link is not a reason to sign in. */}
