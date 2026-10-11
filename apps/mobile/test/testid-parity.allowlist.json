@@ -1,1 +1,13 @@
-{ "testIDs": [], "accessibilityLabels": [] }
+{
+  "testIDs": [
+    {
+      "id": "expenses-title",
+      "reason": "The in-page title line ('Spending · <trip>') became the native header's title 'Spending' (FR-007), T441; recorded in the T441 note in tasks.md. No Maestro flow or test reads it."
+    },
+    {
+      "id": "notes-title",
+      "reason": "The in-page title line ('Notes · <trip>') became the native header's title 'Notes' (FR-007), T440; recorded in the T440 note in tasks.md. No Maestro flow or test reads it."
+    }
+  ],
+  "accessibilityLabels": []
+}

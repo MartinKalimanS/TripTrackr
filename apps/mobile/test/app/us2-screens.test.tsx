@@ -457,6 +457,27 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     await waitFor(() => expect(screen.getByTestId('notes-write-error')).toBeTruthy());
   });
 
+  test('Cancel closes the editor and writes nothing', async () => {
+    await render(<NotesScreen />);
+    await fireEvent.press(screen.getByTestId('notes-add'));
+    await fireEvent.changeText(screen.getByTestId('note-editor-body'), 'Never mind');
+
+    await fireEvent.press(screen.getByTestId('note-editor-cancel'));
+
+    expect(screen.queryByTestId('note-editor')).toBeNull();
+    expect(mockNoteActions.createNote).not.toHaveBeenCalled();
+  });
+
+  test('reads the trip from the first of a repeated id, and from none as no trip', async () => {
+    mockParams = { id: ['trip-42', 'trip-43'] };
+    await render(<NotesScreen />);
+    expect(mockUseNotes).toHaveBeenLastCalledWith('trip-42', {});
+
+    mockParams = {};
+    await screen.rerender(<NotesScreen />);
+    expect(mockUseNotes).toHaveBeenLastCalledWith('', {});
+  });
+
   test('a failed write keeps the editor open with the typed note and shows the error', async () => {
     mockNoteActions.createNote.mockImplementationOnce(() => {
       throw new Error('disk full');
@@ -604,6 +625,24 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/modal/add-expense',
       params: { tripId: 'trip-42' },
+    });
+  });
+
+  test('"Add expense" opens the sheet for the first of a repeated id, and for none as no trip', async () => {
+    mockParams = { id: ['trip-42', 'trip-43'] };
+    await render(<ExpensesScreen />);
+    await fireEvent.press(screen.getByTestId('expenses-add'));
+    expect(mockPush).toHaveBeenLastCalledWith({
+      pathname: '/modal/add-expense',
+      params: { tripId: 'trip-42' },
+    });
+
+    mockParams = {};
+    await screen.rerender(<ExpensesScreen />);
+    await fireEvent.press(screen.getByTestId('expenses-add'));
+    expect(mockPush).toHaveBeenLastCalledWith({
+      pathname: '/modal/add-expense',
+      params: { tripId: '' },
     });
   });
 

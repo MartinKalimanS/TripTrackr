@@ -545,6 +545,27 @@ describe('<SpendingSummary> (T087, T441; FR-004, FR-014, FR-025, FR-026)', () =>
     expect(screen.getByTestId('summary-rates')).toHaveTextContent(containing(sentence));
   });
 
+  test('a trip with nothing spent shows the total alone, with no empty sections', async () => {
+    await render(
+      <SpendingSummary
+        summary={{
+          home_currency: 'CHF',
+          total_home: '0.00',
+          by_category: [],
+          by_day: [],
+          rates_applied: [],
+          rates_source: null,
+          pending_conversion: { count: 0, by_currency: [] },
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId('summary-total')).toHaveTextContent(containing('0.00'));
+    expect(screen.queryByText('By category')).toBeNull();
+    expect(screen.queryByText('By day')).toBeNull();
+    expect(screen.queryByTestId('summary-rates')).toBeNull();
+  });
+
   test('has no sentence about a source or a date when it has neither', async () => {
     await render(<SpendingSummary summary={{ ...summary, rates_source: null }} />);
 

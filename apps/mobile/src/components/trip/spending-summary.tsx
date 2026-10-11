@@ -20,7 +20,7 @@
  */
 import type { ExpenseSummary } from '@triptrackr/contracts';
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { View, type ViewProps } from 'react-native';
 
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
@@ -36,7 +36,8 @@ export type SpendingSummaryProps = {
 type RowProps = {
   label: string;
   value: string;
-  detail?: string;
+  /** How many expenses it sums, in words, muted under the label. */
+  detail: string;
   /** The label is a date: tabular figures like an amount. */
   numericLabel?: boolean;
   testID?: string;
@@ -48,11 +49,9 @@ function Row({ label, value, detail, numericLabel = false, testID }: RowProps) {
     <View testID={testID} className="flex-row items-center justify-between gap-3">
       <View className="flex-1">
         {numericLabel ? <Text type="numeric">{label}</Text> : <Text>{label}</Text>}
-        {detail ? (
-          <Text type="callout" tone="muted">
-            {detail}
-          </Text>
-        ) : null}
+        <Text type="callout" tone="muted">
+          {detail}
+        </Text>
       </View>
       <Text type="numeric" className="text-right">
         {value}
@@ -61,21 +60,21 @@ function Row({ label, value, detail, numericLabel = false, testID }: RowProps) {
   );
 }
 
-type SectionProps = {
+type SectionProps = Pick<ViewProps, 'testID'> & {
   title: string;
-  testID?: string;
   /** Announced on appearance, for what the traveller should not miss. */
   alert?: boolean;
   children: ReactNode;
 };
 
-/** A titled group of rows; the title is a heading unless the whole section is an alert. */
-function Section({ title, testID, alert = false, children }: SectionProps) {
+/**
+ * A titled group of rows; the title is a heading unless the whole section is an alert. The
+ * section's `testID` is handed on with the rest of its host props, so each caller writes
+ * its id out in full (the id extractor reads `testID="summary-rates"` where it is written).
+ */
+function Section({ title, alert = false, children, ...host }: SectionProps) {
   return (
-    <View
-      testID={testID}
-      accessibilityRole={alert ? 'alert' : undefined}
-      className="gap-2">
+    <View {...host} accessibilityRole={alert ? 'alert' : undefined} className="gap-2">
       <Text type="headline" accessibilityRole={alert ? undefined : 'header'}>
         {title}
       </Text>
