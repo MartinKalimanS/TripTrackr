@@ -307,6 +307,14 @@ add-expense (T436), the stop editor (T437) and the note editor (T438) reuse it u
   keyboard-visibility test below. A router sheet is a route under `src/app/modal/` (host default); an RN `Modal` form
   renders `<FormSheet host="modal" ...>` inside its `Modal`; whether the Modal needs `statusBarTranslucent` and
   `navigationBarTranslucent` on Android for the sticky footer to land on the keyboard is a device check.
+- **`FormModal`** (`components/ui/form-modal.tsx`, `form-modal.test.tsx`; T437, T438, hoisted by the lead after both editors
+  had grown the same Modal code) is the RN `Modal` of a `host="modal"` form:
+  `<FormModal testID="note-editor" visible onRequestClose={onCancel}>{visible ? <FormSheet host="modal" .../> : null}</FormModal>`.
+  It is `presentationStyle="pageSheet"` with `allowSwipeDismissal` (RN 0.86: a swipe down fires `onRequestClose`, without the
+  prop the iOS sheet cannot be swiped away), `animationType` `none` under reduced motion, no `statusBarTranslucent` or
+  `navigationBarTranslucent` (with edge-to-edge on the Modal reports both bars translucent anyway), a frame of `bg-background`
+  that pads the status bar by the top inset on Android and draws an iOS handle (hidden from assistive technology), and the ids
+  `<testID>-modal`, `-frame` and `-handle`. The caller mounts its form only while `visible`, so a cancelled draft does not linger.
 - **`test/helpers/keyboard.ts`** (Jest has no layout or keyboard, so a test pins every instruction given to the platform):
   `await showKeyboard(height = 300)` and `await hideKeyboard()` drive `useKeyboardState` through a store the components
   subscribe to (importing the module installs it; the library's own double never shows a keyboard);

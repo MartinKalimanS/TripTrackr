@@ -87,6 +87,20 @@ describe('<NoteEditor> presentation - a page sheet over the notes screen (D4-06)
     expect(modal?.props.visible).toBe(true);
   });
 
+  test('is the shared FormModal: a swipe down dismisses it as Cancel and it carries the sheet ids', async () => {
+    const { onCancel } = await renderEditor();
+
+    const modal = screen.getByTestId('note-editor-modal', {
+      includeHiddenElements: true,
+    });
+    expect(modal.props.allowSwipeDismissal).toBe(true);
+    expect(
+      screen.getByTestId('note-editor-frame', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    modal.props.onRequestClose();
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
   test('the system back gesture closes it like Cancel', async () => {
     const { onCancel } = await renderEditor();
 

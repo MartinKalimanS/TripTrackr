@@ -2,7 +2,8 @@
  * Write or edit a note — tasks.md T084, T085, 004 T438 (FR-017, FR-018, FR-019; 004 FR-005,
  * FR-009, FR-025, FR-029, FR-030, FR-037); research D-21, D-24, D4-06.
  *
- * A React Native `Modal` (a page sheet on iOS, as the stop editor) rather than a router
+ * A React Native `Modal` (the shared `FormModal`: a page sheet on iOS, swipe down as Cancel,
+ * the handle and the Android top inset, as the stop editor) rather than a router
  * modal: the notes screen opens it over its list, with the typed note kept on a failed
  * save. Inside it the body is the shared `FormSheet` with `host="modal"` (contract C4-8,
  * `components/ui/form-sheet.tsx`): the title ("New note" / "Edit note"), a scrolling,
@@ -24,10 +25,10 @@
  */
 import { useMemo } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
-import { Modal } from 'react-native';
 
 import { AnchorPicker } from '@/components/trip/anchor-picker';
 import { Field } from '@/components/ui/field';
+import { FormModal } from '@/components/ui/form-modal';
 import { FormSheet } from '@/components/ui/form-sheet';
 import { InlineError } from '@/components/ui/inline-error';
 import {
@@ -212,11 +213,7 @@ export function NoteEditor({
   error,
 }: NoteEditorProps) {
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onCancel}>
+    <FormModal testID="note-editor" visible={visible} onRequestClose={onCancel}>
       {/* Remount per opening so a cancelled draft does not linger. */}
       {visible ? (
         <NoteEditorForm
@@ -227,6 +224,6 @@ export function NoteEditor({
           error={error}
         />
       ) : null}
-    </Modal>
+    </FormModal>
   );
 }

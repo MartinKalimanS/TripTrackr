@@ -15,17 +15,9 @@
  * departure drags the departure along so the pair stays valid. A departure
  * before the arrival is refused in words (FR-011, Acceptance Scenario 1.8).
  *
- * The Modal: `presentationStyle="pageSheet"` (iOS; Android has no such thing and shows a
- * full-screen dialog), `allowSwipeDismissal` so a swipe down on iOS dismisses it as Cancel
- * (RN 0.86: it fires `onRequestClose`, and without the prop the sheet cannot be swiped
- * away), and `onRequestClose` for that swipe and for Android's Back. With reduced motion it
- * does not slide in (the photo view's precedent, feature 002 FR-015). It takes no
- * `statusBarTranslucent` or `navigationBarTranslucent`: with edge-to-edge on (the Expo
- * default since SDK 54) react-native's Modal reports both bars translucent whatever the
- * props say (`ReactModalHostView`: `field || isEdgeToEdgeFeatureFlagOn`), so on Android the
- * content runs under the status bar and the frame pads it by the top inset. iOS needs no
- * padding: a page sheet starts below the status bar. It also draws no handle, so the frame
- * draws one (FR-009; decoration, hidden from assistive technology).
+ * The Modal is the shared `FormModal` (`components/ui/form-modal.tsx`: page sheet, swipe down as
+ * Cancel, no slide under reduced motion, the iOS handle and the Android top inset), with the
+ * ids `stop-editor-modal`, `stop-editor-frame` and `stop-editor-handle`.
  *
  * The body is the shared `FormSheet` on the `modal` host: a title, a scrolling
  * keyboard-aware body (the city picker's list scrolls inside it; taps are kept with the
@@ -45,14 +37,14 @@
  * footer on the keyboard and the top inset on Android, and the largest text size.
  */
 import type { City, Country } from '@triptrackr/contracts';
-import { useContext, useState, type ReactNode } from 'react';
-import { Modal, Platform, View } from 'react-native';
-import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import { View } from 'react-native';
 
 import { CityPicker } from '@/components/trip/city-picker';
 import { DateField } from '@/components/trip/date-field';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { FormModal } from '@/components/ui/form-modal';
 import { FormSheet } from '@/components/ui/form-sheet';
 import { Text } from '@/components/ui/text';
 import {
@@ -60,7 +52,6 @@ import {
   suggestDeparture,
   validateStopDates,
 } from '@/features/trips/stop-dates';
-import { useAppearance } from '@/hooks/use-appearance';
 
 export type StopEditorValues = {
   city_id: number;
@@ -246,55 +237,13 @@ function StopEditorForm({ mode, onCancel, onSubmit }: Omit<StopEditorProps, 'vis
   );
 }
 
-/** Where a page sheet has none of its own: decoration, so assistive technology skips it. */
-function SheetHandle() {
-  return (
-    <View
-      testID="stop-editor-handle"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      className="mt-3 h-1 w-8 self-center rounded-full bg-border"
-    />
-  );
-}
-
-/**
- * The Modal's content frame: the canvas, the handle on iOS, and on Android the room under
- * the status bar that the edge-to-edge Modal draws beneath (see the header). The platform
- * is read at render, and the insets from the context (0 with no provider above it).
- */
-function Frame({ children }: { children: ReactNode }) {
-  const insets = useContext(SafeAreaInsetsContext);
-  const topInset = Platform.OS === 'android' ? (insets?.top ?? 0) : 0;
-
-  return (
-    <View
-      testID="stop-editor-frame"
-      className="flex-1 bg-background"
-      style={{ paddingTop: topInset }}>
-      {Platform.OS === 'ios' ? <SheetHandle /> : null}
-      {children}
-    </View>
-  );
-}
-
 export function StopEditor({ visible, mode, onCancel, onSubmit }: StopEditorProps) {
-  const { prefersLessMotion } = useAppearance();
-
   return (
-    <Modal
-      testID="stop-editor-modal"
-      visible={visible}
-      animationType={prefersLessMotion ? 'none' : 'slide'}
-      presentationStyle="pageSheet"
-      allowSwipeDismissal
-      onRequestClose={onCancel}>
-      <Frame>
-        {/* Remount per opening so a cancelled draft does not linger. */}
-        {visible ? (
-          <StopEditorForm mode={mode} onCancel={onCancel} onSubmit={onSubmit} />
-        ) : null}
-      </Frame>
-    </Modal>
+    <FormModal testID="stop-editor" visible={visible} onRequestClose={onCancel}>
+      {/* Remount per opening so a cancelled draft does not linger. */}
+      {visible ? (
+        <StopEditorForm mode={mode} onCancel={onCancel} onSubmit={onSubmit} />
+      ) : null}
+    </FormModal>
   );
 }
