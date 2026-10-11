@@ -31,15 +31,22 @@
  * live region (Android) and each change is announced explicitly (iOS, which
  * has none); the spinner is omitted under reduced motion; no colour is
  * literal and no text is truncated.
+ *
+ * On the Atlas state views (T449; 004 FR-005, FR-025, FR-030, FR-035): the working states
+ * are a `LoadingState` (one `progressbar` named by its title, the detail its value text,
+ * a centred spinner); offline and session-ended are a neutral `EmptyState` with a glyph
+ * (an ordinary state is not an error); a failed sync is an `ErrorState` (words, alert
+ * icon, danger ink). The retry is the state's only control and a secondary one (FR-005),
+ * announced busy and inert while its cycle runs. The surface keeps its id
+ * (`first-sync-state`) and its polite live region; the words, the announcements and the
+ * grace period are the engine's and are not touched.
  */
 import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { PressableSurface } from '@/components/ui/pressable-surface';
+import type { IconName } from '@/components/ui/icon';
 import { Screen } from '@/components/ui/screen';
-import { Surface } from '@/components/ui/surface';
-import { Colors, Spacing } from '@/constants/theme';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
 import { FIRST_SYNC_COPY } from '@/features/sync/sync-copy';
 import { announceWhereNoLiveRegion, useAnnouncement } from '@/hooks/use-announcement';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -108,46 +115,53 @@ function useManualRetry() {
 
 type FirstSyncScreenProps = { view: FirstSyncView; busy: boolean; onRetry: () => void };
 
-function FirstSyncScreen({ view, busy, onRetry }: FirstSyncScreenProps) {
-  const { theme, prefersLessMotion } = useAppearance();
+const OFFLINE: IconName = { ios: 'wifi.slash', android: 'wifi_off' };
+const SIGNED_OUT: IconName = { ios: 'person.crop.circle', android: 'account_circle' };
+
+/** The surface every state shares: the id a flow waits on and the polite live region. */
+const SURFACE = {
+  testID: 'first-sync-state',
+  accessibilityLiveRegion: 'polite',
+} as const;
+
+/** The state the traveller is in, on the Atlas state view that fits it. */
+function FirstSyncState({ view, busy, onRetry }: FirstSyncScreenProps) {
+  const { prefersLessMotion } = useAppearance();
   const { title, detail, retry } = PRESENTATION[view];
-  const working = view === 'opening' || view === 'syncing';
+  const words = { title, detail: detail ?? undefined, ...SURFACE };
+  const action = retry
+    ? { label: FIRST_SYNC_COPY.retry, onPress: onRetry, busy }
+    : undefined;
+
+  if (view === 'opening' || view === 'syncing') {
+    return <LoadingState {...words} spinner={!prefersLessMotion} />;
+  }
+  if (view === 'failed') {
+    return (
+      <ErrorState {...words} onRetry={retry ? onRetry : undefined} retryBusy={busy} />
+    );
+  }
+  return (
+    <EmptyState
+      {...words}
+      icon={view === 'offline' ? OFFLINE : SIGNED_OUT}
+      action={action}
+    />
+  );
+}
+
+function FirstSyncScreen(props: FirstSyncScreenProps) {
+  const { title, detail } = PRESENTATION[props.view];
 
   // `opening` is silent: it is a frame, not news.
-  useAnnouncement(view === 'opening' ? null : [title, detail].join('. '), view);
+  useAnnouncement(
+    props.view === 'opening' ? null : [title, detail].join('. '),
+    props.view,
+  );
 
   return (
     <Screen testID="first-sync-screen" style={styles.centred}>
-      <Surface
-        testID="first-sync-state"
-        treatment="recessed"
-        depth={1}
-        radius="lg"
-        accessibilityLiveRegion="polite"
-        style={styles.card}>
-        {working && !prefersLessMotion ? (
-          <ActivityIndicator color={Colors[theme].accent} />
-        ) : null}
-        <ThemedText type="smallBold" style={styles.text}>
-          {title}
-        </ThemedText>
-        {detail ? (
-          <ThemedText type="small" themeColor="textMuted" style={styles.text}>
-            {detail}
-          </ThemedText>
-        ) : null}
-        {retry ? (
-          <PressableSurface
-            accessibilityLabel={FIRST_SYNC_COPY.retry}
-            busy={busy}
-            onPress={onRetry}
-            style={styles.retry}>
-            <ThemedText type="smallBold" style={styles.text}>
-              {FIRST_SYNC_COPY.retry}
-            </ThemedText>
-          </PressableSurface>
-        ) : null}
-      </Surface>
+      <FirstSyncState {...props} />
     </Screen>
   );
 }
@@ -190,16 +204,4 @@ export function FirstSyncGate({ children }: PropsWithChildren) {
 
 const styles = StyleSheet.create({
   centred: { justifyContent: 'center' },
-  card: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.two,
-    padding: Spacing.four,
-  },
-  text: { textAlign: 'center' },
-  retry: {
-    marginTop: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-  },
 });

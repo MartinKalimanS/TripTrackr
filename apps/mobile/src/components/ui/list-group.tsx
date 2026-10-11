@@ -35,6 +35,10 @@
  *   never announced unavailable. It is ONE element for assistive technology only when it
  *   is given an `accessibilityLabel` or actions; otherwise its texts and a trailing
  *   control (a switch) stay individually reachable, which a grouped parent would hide.
+ * - `busy` (an operation is in flight, FR-019) announces the row busy and unavailable, ignores
+ *   presses and swaps the trailing node for a small spinner (`<testID>-spinner`, hidden from
+ *   assistive technology: the caller's title, "Signing out...", says it in words). It is not
+ *   dimmed, like a busy `Button`. Only a row with an `onPress` is a control, so only it can be busy.
  * - `tone="destructive"` writes the title in `text-danger` AND leads with an icon
  *   (a caution glyph, unless the caller passes its own `leading`), so the tone is never
  *   colour alone (FR-025); the title is the caller's own label of what the row does.
@@ -42,7 +46,12 @@
  * `testID` lands on the row. The default chevron is `<testID>-cue` and the destructive
  * icon `<testID>-icon`. Colours are semantic classes and `useThemeColor`, never a literal.
  */
-import { ListGroup as KitListGroup, Separator, useThemeColor } from 'heroui-native';
+import {
+  ListGroup as KitListGroup,
+  Separator,
+  Spinner,
+  useThemeColor,
+} from 'heroui-native';
 import { Children, useState, type ReactNode } from 'react';
 import {
   View,
@@ -137,6 +146,8 @@ export interface ListRowProps {
   tone?: ListRowTone;
   /** Unavailable: dimmed, announced unavailable, presses are ignored. */
   disabled?: boolean;
+  /** An operation is in flight: presses are ignored, announced busy, a spinner shows. */
+  busy?: boolean;
   testID?: string;
 }
 
@@ -173,20 +184,43 @@ function Leading({
   return node ? <KitListGroup.ItemPrefix>{node}</KitListGroup.ItemPrefix> : null;
 }
 
-/** The trailing slot: the caller's node, or the chevron of a pressable row. */
+/** The busy indicator: decorative, the row's title already says what is happening. */
+function BusyIndicator({ rowId }: { rowId?: string }) {
+  return (
+    <Spinner
+      size="sm"
+      testID={rowId ? `${rowId}-spinner` : undefined}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    />
+  );
+}
+
+/** The trailing slot: a spinner while busy, the caller's node, or a pressable row's chevron. */
 function Trailing({
   trailing,
   pressable,
+  busy,
   testID,
 }: {
   trailing?: ReactNode;
   pressable: boolean;
+  busy: boolean;
   testID?: string;
 }) {
-  const node =
-    trailing ??
-    (pressable ? <PressCue testID={testID ? `${testID}-cue` : undefined} /> : null);
+  const node = busy ? (
+    <BusyIndicator rowId={testID} />
+  ) : (
+    (trailing ??
+    (pressable ? <PressCue testID={testID ? `${testID}-cue` : undefined} /> : null))
+  );
   return node ? <KitListGroup.ItemSuffix>{node}</KitListGroup.ItemSuffix> : null;
+}
+
+/** What the row announces: nothing for a plain row; `busy` joins `disabled` only while busy. */
+function rowState(pressable: boolean, disabled: boolean, working: boolean) {
+  if (!pressable) return undefined;
+  return working ? { disabled: true, busy: true } : { disabled };
 }
 
 export function ListRow({
@@ -201,6 +235,7 @@ export function ListRow({
   onAccessibilityAction,
   tone = 'default',
   disabled = false,
+  busy = false,
   testID,
 }: ListRowProps) {
   const { fontScale } = useAppearance();
@@ -210,6 +245,7 @@ export function ListRow({
   const grouped =
     pressable || accessibilityLabel !== undefined || accessibilityActions !== undefined;
   const inert = pressable && disabled;
+  const working = pressable && busy;
   const destructive = tone === 'destructive';
 
   return (
@@ -222,9 +258,9 @@ export function ListRow({
       accessibilityHint={accessibilityHint}
       accessibilityActions={accessibilityActions}
       onAccessibilityAction={onAccessibilityAction}
-      accessibilityState={pressable ? { disabled } : undefined}
-      disabled={pressable ? disabled : undefined}
-      onPress={inert ? undefined : onPress}
+      accessibilityState={rowState(pressable, disabled, working)}
+      disabled={pressable ? disabled || working : undefined}
+      onPress={inert || working ? undefined : onPress}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       className={rowClasses(pressable, inert)}
@@ -243,7 +279,12 @@ export function ListRow({
           </Text>
         ) : null}
       </KitListGroup.ItemContent>
-      <Trailing trailing={trailing} pressable={pressable} testID={testID} />
+      <Trailing
+        trailing={trailing}
+        pressable={pressable}
+        busy={working}
+        testID={testID}
+      />
     </KitListGroup.Item>
   );
 }

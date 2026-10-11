@@ -1,24 +1,32 @@
 /**
- * The explicit warning the sign-out guard raises — tasks.md T137
- * (Constitution V; sync-protocol.md §6 scenario 11).
+ * The explicit warning the sign-out guard raises — tasks.md T137, restyled for Atlas by
+ * T448 (Constitution V; sync-protocol.md §6 scenario 11; 004 FR-005, FR-016, FR-025).
  *
  * Shown when signing out would leave changes that have not reached the
  * traveller's account. It says how many, why the push could not finish, and what
  * signing out means on this device (`sign-out-copy.ts`), and then it offers
- * the two real choices: stay signed in, or sign out anyway. "Stay signed in" is
- * first and is the raised control — the safe answer is the easy one.
+ * the two real choices: stay signed in, or sign out anyway. Neither is removed or
+ * renamed: ids, names and the hint are what Maestro row 11 and the screen readers
+ * already know. "Stay signed in" is first and is the one primary control, so the
+ * safe answer is the easy one (FR-005); "Sign out anyway" is the destructive one.
  *
  * It is a designed state like any other (feature 002 FR-027): text carries
- * the meaning, never colour alone (FR-010); it is an alert announced on both
+ * the meaning, never colour alone (FR-025: a caution icon beside the title, an icon
+ * on the destructive choice); the whole panel is an alert announced on both
  * platforms (live region on Android, an explicit announcement on iOS); and
- * nothing in it is truncated, so it reads whole at the largest text size.
+ * nothing in it is truncated, so it reads whole at the largest text size, the
+ * buttons wrapping their labels.
+ *
+ * The alert, its live region and its id are on a plain wrapper, not on the card: a card
+ * with nothing to press announces nothing of its own and takes no live region.
  */
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { PressableSurface } from '@/components/ui/pressable-surface';
-import { Surface } from '@/components/ui/surface';
-import { Spacing } from '@/constants/theme';
+import { ALERT_ICON } from '@/components/ui/alert-icon';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Icon, type IconName } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
 import {
   SIGN_OUT_COPY,
   unsyncedHeadline,
@@ -26,6 +34,12 @@ import {
 } from '@/features/auth/sign-out-copy';
 import type { UnsyncedChangesError } from '@/features/auth/use-sign-out';
 import { useAnnouncement } from '@/hooks/use-announcement';
+
+/** The destructive choice leaves the account: the same door as the Sign out row. */
+export const SIGN_OUT_ICON: IconName = {
+  ios: 'rectangle.portrait.and.arrow.right',
+  android: 'logout',
+};
 
 export type SignOutWarningProps = {
   error: UnsyncedChangesError;
@@ -42,57 +56,49 @@ export function SignOutWarning({ error, onStay, onSignOutAnyway }: SignOutWarnin
   useAnnouncement(`${SIGN_OUT_COPY.title}. ${headline} ${reason}`);
 
   return (
-    <Surface
+    <View
       testID="sign-out-warning"
-      treatment="recessed"
-      depth={1}
-      radius="lg"
       accessibilityRole="alert"
-      accessibilityLiveRegion="assertive"
-      style={styles.panel}>
-      <ThemedText type="smallBold">{SIGN_OUT_COPY.title}</ThemedText>
-      <ThemedText type="small">
-        {headline} {reason}
-      </ThemedText>
-      <ThemedText type="small" themeColor="textMuted">
-        {SIGN_OUT_COPY.consequence}
-      </ThemedText>
-      <View style={styles.actions}>
-        <PressableSurface
-          testID="sign-out-warning-stay"
-          accessibilityLabel={SIGN_OUT_COPY.stayLabel}
-          onPress={onStay}
-          style={styles.action}>
-          <ThemedText type="smallBold">{SIGN_OUT_COPY.stayLabel}</ThemedText>
-        </PressableSurface>
-        <PressableSurface
-          testID="sign-out-warning-anyway"
-          accessibilityLabel={SIGN_OUT_COPY.anywayLabel}
-          accessibilityHint={SIGN_OUT_COPY.anywayHint}
-          treatment="flat"
-          onPress={onSignOutAnyway}
-          style={styles.action}>
-          <ThemedText type="smallBold" themeColor="danger">
+      accessibilityLiveRegion="assertive">
+      <Card className="gap-3">
+        <View className="flex-row items-start gap-2">
+          <Icon
+            name={ALERT_ICON}
+            size={20}
+            tone="pending"
+            testID="sign-out-warning-icon"
+          />
+          <Text type="headline" className="shrink">
+            {SIGN_OUT_COPY.title}
+          </Text>
+        </View>
+        <Text type="callout">
+          {headline} {reason}
+        </Text>
+        <Text type="callout" tone="muted">
+          {SIGN_OUT_COPY.consequence}
+        </Text>
+        <View className="mt-1 gap-2">
+          <Button
+            variant="primary"
+            testID="sign-out-warning-stay"
+            accessibilityLabel={SIGN_OUT_COPY.stayLabel}
+            onPress={onStay}
+            className="self-stretch">
+            {SIGN_OUT_COPY.stayLabel}
+          </Button>
+          <Button
+            variant="destructive"
+            icon={SIGN_OUT_ICON}
+            testID="sign-out-warning-anyway"
+            accessibilityLabel={SIGN_OUT_COPY.anywayLabel}
+            accessibilityHint={SIGN_OUT_COPY.anywayHint}
+            onPress={onSignOutAnyway}
+            className="self-stretch">
             {SIGN_OUT_COPY.anywayLabel}
-          </ThemedText>
-        </PressableSurface>
-      </View>
-    </Surface>
+          </Button>
+        </View>
+      </Card>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  panel: {
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  actions: {
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-  },
-  action: {
-    alignItems: 'flex-start',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-});

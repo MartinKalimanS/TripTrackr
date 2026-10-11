@@ -8,7 +8,7 @@
  * (FR-010/FR-013), a locally written trip carries the pending marker, and the
  * profile can sign out.
  */
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
 import HomeScreen from '@/app/(tabs)/index';
 import ProfileScreen from '@/app/(tabs)/profile';
@@ -452,12 +452,61 @@ describe('<TripsScreen> — the local trip list (T066)', () => {
   });
 });
 
-describe('<ProfileScreen>', () => {
+const hidden = { includeHiddenElements: true };
+const classesOf = (node: { props: { className?: unknown } }) =>
+  String(node.props.className ?? '')
+    .split(/\s+/)
+    .filter(Boolean);
+
+describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
   test('shows who is signed in', async () => {
     await render(<ProfileScreen />);
     expect(screen.getByTestId('profile-display-name')).toHaveTextContent('Ana');
     expect(screen.getByTestId('profile-email')).toHaveTextContent('ana@example.com');
-    expect(screen.getByText('Home currency: EUR')).toBeTruthy();
+  });
+
+  test('puts the traveller beside an avatar of their initials, which AT skips because the name is written beside it', async () => {
+    await render(<ProfileScreen />);
+    const identity = screen.getByTestId('profile-identity');
+    expect(within(identity).getByTestId('profile-display-name')).toBeTruthy();
+    expect(within(identity).getByTestId('profile-email')).toBeTruthy();
+    // The initials of "Ana", in the avatar, hidden from assistive technology (decorative).
+    expect(screen.queryByText('A')).toBeNull();
+    const initials = screen.getByText('A', hidden);
+    let node: typeof initials | null = initials;
+    while (node && node.props.accessibilityElementsHidden !== true) node = node.parent;
+    expect(node).not.toBeNull();
+    expect(node?.props.importantForAccessibility).toBe('no-hide-descendants');
+  });
+
+  test('a long name and email wrap in full rather than being cut off (FR-029)', async () => {
+    await render(<ProfileScreen />);
+    for (const id of ['profile-display-name', 'profile-email']) {
+      expect(screen.getByTestId(id).props.numberOfLines).toBeUndefined();
+    }
+  });
+
+  test('the name is not announced as a heading: the native header is the title (FR-030)', async () => {
+    await render(<ProfileScreen />);
+    expect(screen.getByTestId('profile-display-name').props.accessibilityRole).not.toBe(
+      'header',
+    );
+  });
+
+  test('says the home currency as one phrase, as it always did, in a grouped Account row', async () => {
+    await render(<ProfileScreen />);
+    const account = screen.getByTestId('profile-account-group');
+    expect(within(account).getByLabelText('Home currency: EUR')).toBeTruthy();
+    expect(within(account).getByText('EUR', hidden)).toBeTruthy();
+  });
+
+  test('groups the account and the app under their own headings', async () => {
+    await render(<ProfileScreen />);
+    expect(screen.getByText('Account').props.accessibilityRole).toBe('header');
+    expect(screen.getByText('App').props.accessibilityRole).toBe('header');
+    const app = screen.getByTestId('profile-app-group');
+    expect(within(app).getByText('Version')).toBeTruthy();
+    expect(within(app).getByTestId('profile-version')).toBeTruthy();
   });
 
   test('shows the app version from the embedded config', async () => {
@@ -466,18 +515,92 @@ describe('<ProfileScreen>', () => {
     expect(screen.getByText(/\(45\)/)).toBeTruthy();
   });
 
+  test('is a screen under the native header: the large title collapses over its scroller (props asserted; the collapse is a device check, T408)', async () => {
+    await render(<ProfileScreen />);
+    const root = screen.toJSON() as {
+      props: Record<string, unknown>;
+      children: { type: string; props: Record<string, unknown> }[];
+    };
+    expect(root.props.testID).toBe('profile-screen');
+    expect(root.children[0].type).toBe('RCTScrollView');
+    expect(root.children[0].props.contentInsetAdjustmentBehavior).toBe('automatic');
+    // No title of its own any more: that is the header's (profile/_layout.tsx).
+    expect(screen.queryByText('Profile')).toBeNull();
+  });
+
+  test('sets Sign out and Delete account apart: after the groups, in a block of their own, not in either group', async () => {
+    await render(<ProfileScreen />);
+    const actions = screen.getByTestId('profile-actions');
+    expect(within(actions).getByTestId('profile-sign-out')).toBeTruthy();
+    expect(within(actions).getByTestId('profile-delete-account')).toBeTruthy();
+    for (const group of ['profile-account-group', 'profile-app-group']) {
+      const inside = within(screen.getByTestId(group));
+      expect(inside.queryByTestId('profile-sign-out')).toBeNull();
+      expect(inside.queryByTestId('profile-delete-account')).toBeNull();
+    }
+    // Reading order: identity, account, app, then the set-apart block.
+    const order = screen
+      .getAllByTestId(/^profile-(identity|account-group|app-group|actions)$/)
+      .map((node) => node.props.testID);
+    expect(order).toEqual([
+      'profile-identity',
+      'profile-account-group',
+      'profile-app-group',
+      'profile-actions',
+    ]);
+  });
+
+  test('both are destructive by words, an icon and the danger ink, never colour alone (FR-025)', async () => {
+    await render(<ProfileScreen />);
+    for (const [row, title] of [
+      ['profile-sign-out', 'Sign out'],
+      ['profile-delete-account', 'Delete account'],
+    ] as const) {
+      expect(classesOf(screen.getByText(title))).toContain('text-danger');
+      expect(
+        within(screen.getByTestId(row)).getByTestId(`${row}-icon`, hidden),
+      ).toBeTruthy();
+    }
+    // The icons are decorative: the words are the label.
+    expect(screen.queryByTestId('profile-sign-out-icon')).toBeNull();
+    expect(screen.queryByTestId('profile-delete-account-icon')).toBeNull();
+  });
+
+  test('says in words what signing out does here (the hint says it to a screen reader)', async () => {
+    await render(<ProfileScreen />);
+    expect(
+      screen.getByText('Your trips are kept on this device, encrypted.'),
+    ).toBeTruthy();
+    expect(screen.getByTestId('profile-sign-out').props.accessibilityHint).toBe(
+      'Signs out on this device. Your trips stay on the device, encrypted.',
+    );
+  });
+
+  test('has no primary control: every control is a row, so the one-primary rule holds (FR-005)', async () => {
+    await render(<ProfileScreen />);
+    expect(screen.getAllByRole('button')).toHaveLength(2);
+    expect(
+      screen.getAllByRole('button').filter((node) => node.props.variant === 'primary'),
+    ).toHaveLength(0);
+  });
+
   test('signs out through the mutation (FR-004) and marks the row busy while it runs', async () => {
     await render(<ProfileScreen />);
     await fireEvent.press(screen.getByTestId('profile-sign-out'));
     expect(mockSignOut.mutate).toHaveBeenCalled();
+    expect(screen.getByLabelText('Sign out')).toBe(
+      screen.getByTestId('profile-sign-out'),
+    );
 
     mockSignOut.isPending = true;
     await render(<ProfileScreen />);
-    expect(
-      screen.getAllByTestId('profile-sign-out').at(-1)?.props.accessibilityState,
-    ).toMatchObject({
-      busy: true,
-    });
+    const busy = screen.getAllByTestId('profile-sign-out').at(-1);
+    expect(busy?.props.accessibilityState).toMatchObject({ busy: true });
+    expect(busy?.props.accessibilityLabel).toBe('Sign out');
+    expect(screen.getByText('Signing out…')).toBeTruthy();
+    mockSignOut.mutate.mockReset();
+    await fireEvent.press(busy!);
+    expect(mockSignOut.mutate).not.toHaveBeenCalled();
   });
 
   test('presents the account-deletion entry point the stores require, disabled until wired', async () => {
@@ -487,14 +610,34 @@ describe('<ProfileScreen>', () => {
     // a build without it.
     await render(<ProfileScreen />);
     const row = screen.getByLabelText('Delete account');
+    expect(row).toBe(screen.getByTestId('profile-delete-account'));
     expect(row.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(row.props.accessibilityHint).toBe(
+      'Permanently removes your account and everything you recorded',
+    );
+    expect(screen.getByText('Coming soon')).toBeTruthy();
+    await fireEvent.press(row);
+    expect(mockSignOut.mutate).not.toHaveBeenCalled();
   });
 
   test('renders without a traveller card if the session has no profile (defensive)', async () => {
     useSessionStore.setState({ status: 'signed-in', user: null });
     await render(<ProfileScreen />);
     expect(screen.queryByTestId('profile-display-name')).toBeNull();
+    expect(screen.queryByTestId('profile-identity')).toBeNull();
+    expect(screen.queryByTestId('profile-account-group')).toBeNull();
     expect(screen.getByText('Version')).toBeTruthy();
+    expect(screen.getByTestId('profile-sign-out')).toBeTruthy();
+  });
+
+  test('is built on the Atlas primitives: none of the retired ones, and no kit import (T448)', () => {
+    const source = jest
+      .requireActual('fs')
+      .readFileSync(require.resolve('@/app/(tabs)/profile'), 'utf8') as string;
+    expect(source).not.toMatch(
+      /from '@\/components\/(themed-text|themed-view|ui\/surface|ui\/pressable-surface)'/,
+    );
+    expect(source).not.toMatch(/from 'heroui-native|from 'uniwind/);
   });
 });
 

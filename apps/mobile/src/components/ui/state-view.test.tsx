@@ -211,3 +211,93 @@ describe('<ErrorState> - words, an icon and a way out (FR-025, FR-035)', () => {
     expect(screen.queryByLabelText('Try again')).toBeNull();
   });
 });
+
+describe('what the first-sync, local-store and sign-out gates need (004 T449)', () => {
+  test('a loading state can carry a detail: still ONE region named by its title, the detail its value text', async () => {
+    await render(
+      <LoadingState title="Syncing your trips" detail="This clears itself." />,
+    );
+    expect(screen.getByText('This clears itself.')).toBeTruthy();
+    const region = screen.getByLabelText('Syncing your trips');
+    expect(region.props.accessibilityRole).toBe('progressbar');
+    expect(region.props.accessible).toBe(true);
+    expect(region.props.accessibilityValue).toMatchObject({
+      text: 'This clears itself.',
+    });
+  });
+
+  test('without a detail the region is named by its title alone and has no value text', async () => {
+    await render(<LoadingState title="Loading trips" />);
+    expect(
+      screen.getByLabelText('Loading trips').props.accessibilityValue?.text,
+    ).toBeUndefined();
+  });
+
+  test('the spinner can be left out (reduced motion) and the state is still a named progressbar', async () => {
+    await render(<LoadingState title="Syncing your trips" spinner={false} />);
+    expect(flatten(root()).filter((node) => node.props.size === 'md')).toHaveLength(0);
+    expect(screen.getByLabelText('Syncing your trips').props.accessibilityRole).toBe(
+      'progressbar',
+    );
+    expect(screen.getByText('Syncing your trips')).toBeTruthy();
+  });
+
+  test.each([
+    [
+      'empty',
+      () => <EmptyState title="Offline" testID="gate" accessibilityLiveRegion="polite" />,
+    ],
+    [
+      'loading',
+      () => (
+        <LoadingState title="Syncing" testID="gate" accessibilityLiveRegion="polite" />
+      ),
+    ],
+    [
+      'error',
+      () => <ErrorState title="Failed" testID="gate" accessibilityLiveRegion="polite" />,
+    ],
+  ])(
+    '%s state carries a testID and a live region on its surface',
+    async (_name, view) => {
+      await render(view());
+      expect(screen.getByTestId('gate').props.accessibilityLiveRegion).toBe('polite');
+    },
+  );
+
+  test('states carry no testID and no live region unless asked', async () => {
+    await render(<EmptyState title="Offline" />);
+    expect(root().props.testID).toBeUndefined();
+    expect(root().props.accessibilityLiveRegion).toBeUndefined();
+  });
+
+  test('an empty-state action can be busy: announced busy, presses ignored', async () => {
+    const onPress = jest.fn();
+    await render(
+      <EmptyState title="Offline" action={{ label: 'Try again', onPress, busy: true }} />,
+    );
+    const action = screen.getByLabelText('Try again');
+    expect(action.props.accessibilityState).toMatchObject({ busy: true });
+    await fireEvent.press(action);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  test('an error retry can be busy: announced busy, presses ignored', async () => {
+    const onRetry = jest.fn();
+    await render(<ErrorState title="Failed" onRetry={onRetry} retryBusy />);
+    const retry = screen.getByLabelText('Try again');
+    expect(retry.props.accessibilityState).toMatchObject({ busy: true });
+    await fireEvent.press(retry);
+    expect(onRetry).not.toHaveBeenCalled();
+  });
+
+  test('an action that is not busy announces busy false and presses through', async () => {
+    const onPress = jest.fn();
+    await render(<EmptyState title="Offline" action={{ label: 'Try again', onPress }} />);
+    expect(screen.getByLabelText('Try again').props.accessibilityState).toMatchObject({
+      busy: false,
+    });
+    await fireEvent.press(screen.getByLabelText('Try again'));
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+});

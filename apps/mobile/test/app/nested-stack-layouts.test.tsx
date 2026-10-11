@@ -88,11 +88,38 @@ describe('<TripsLayout> - a large title on iOS, a standard header on Android', (
   });
 });
 
-describe('<ProfileLayout> - no header yet (its restyle is phase 6)', () => {
-  test('hides the header and paints the canvas, so the screen is exactly as it was', async () => {
+describe('<ProfileLayout> - a large title on iOS, a standard header on Android (T448)', () => {
+  test('on iOS: a large title named Profile, accent controls, flat header, the canvas behind', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'ios');
     await render(<ProfileLayout />);
+    os.restore();
+
     const options = screenOptions();
-    expect(options.headerShown).toBe(false);
+    expect(options).toMatchObject({
+      title: 'Profile',
+      headerLargeTitleEnabled: true,
+      headerLargeTitleShadowVisible: false,
+      headerShadowVisible: false,
+    });
+    expect(options.headerTintColor).toEqual(expect.any(String));
+    expect(flat(options.headerTitleStyle).color).toEqual(expect.any(String));
     expect(flat(options.contentStyle).backgroundColor).toEqual(expect.any(String));
+  });
+
+  test('on Android: the same title, no large title, the canvas behind the header', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    await render(<ProfileLayout />);
+    os.restore();
+
+    const options = screenOptions();
+    expect(options.title).toBe('Profile');
+    expect(options.headerLargeTitleEnabled).toBeFalsy();
+    expect(options.headerShadowVisible).toBe(false);
+    expect(flat(options.headerStyle).backgroundColor).toEqual(expect.any(String));
+  });
+
+  test('shows the header (the tab bar has none of its own): the screen no longer lays out a title', async () => {
+    await render(<ProfileLayout />);
+    expect(screenOptions().headerShown).not.toBe(false);
   });
 });

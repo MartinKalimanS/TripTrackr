@@ -1,5 +1,6 @@
 /**
- * Conflict notice — tasks.md T133 (UI half; FR-040; sync-protocol.md §2).
+ * Conflict notice — tasks.md T133 (UI half; FR-040; sync-protocol.md §2); restyled for
+ * Atlas by T449 (004 FR-005, FR-024, FR-025, FR-030, FR-035).
  *
  * When a newer version replaces something the traveller wrote on this device,
  * the local row takes the winning content and the traveller is TOLD — a
@@ -22,6 +23,13 @@
  *     iOS (which has none), each notice once — dismissing one does not read
  *     the next aloud again.
  *
+ * Each notice is a banner: a raised `Card` with a sync glyph beside the heading, the
+ * engine's sentence in plain words, and its controls as buttons that wrap (never
+ * primary: a notice is news, not a task, FR-005). The card announces nothing of its own;
+ * the region around the banners is the polite live region, as it was. It is a banner in
+ * the flow and not a transient toast: a toast leaves by itself, and FR-040 is that the
+ * traveller is told, so a notice stays until it is dismissed or looked at.
+ *
  * Mounted once, in the signed-in shell (`app/_layout.tsx`). Renders nothing
  * while there is nothing to tell, so it costs the layout nothing.
  */
@@ -30,17 +38,22 @@ import { useContext, useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { PressableSurface } from '@/components/ui/pressable-surface';
-import { Surface } from '@/components/ui/surface';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Icon, type IconName } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { MaxContentWidth } from '@/constants/theme';
 import { CONFLICT_COPY, describeMoreNotices } from '@/features/sync/sync-copy';
 import { announceWhereNoLiveRegion } from '@/hooks/use-announcement';
 import { useConflictNotices, useConflictStore } from '@/sync/conflicts';
 import type { ConflictNotice } from '@/sync/types';
+import { AtlasSpacing } from '@/theme';
 
 /** Notices shown in full at once; the rest are counted. */
 export const MAX_VISIBLE_NOTICES = 3;
+
+/** Something changed here because of another device. */
+const UPDATED: IconName = { ios: 'arrow.triangle.2.circlepath', android: 'sync' };
 
 export type ConflictNoticeBannerProps = {
   notice: ConflictNotice;
@@ -58,29 +71,35 @@ export function ConflictNoticeBanner({
   const base = `conflict-notice-${notice.id}`;
 
   return (
-    <Surface testID={base} treatment="raised" depth={1} radius="lg" style={styles.banner}>
-      <ThemedText type="smallBold">{CONFLICT_COPY.heading}</ThemedText>
-      <ThemedText type="small">{notice.summary}</ThemedText>
-      <View style={styles.actions}>
+    <Card testID={base} className="gap-2">
+      <View className="flex-row items-center gap-2">
+        <Icon name={UPDATED} size={20} tone="accent" testID={`${base}-icon`} />
+        <Text type="headline" className="shrink">
+          {CONFLICT_COPY.heading}
+        </Text>
+      </View>
+      <Text type="callout">{notice.summary}</Text>
+      <View className="flex-row flex-wrap gap-2">
         {onOpenTrip ? (
-          <PressableSurface
+          <Button
+            variant="secondary"
+            size="sm"
             testID={`${base}-open`}
             accessibilityLabel={CONFLICT_COPY.openTripLabel}
-            onPress={onOpenTrip}
-            style={styles.action}>
-            <ThemedText type="smallBold">{CONFLICT_COPY.openTrip}</ThemedText>
-          </PressableSurface>
+            onPress={onOpenTrip}>
+            {CONFLICT_COPY.openTrip}
+          </Button>
         ) : null}
-        <PressableSurface
+        <Button
+          variant="text"
+          size="sm"
           testID={`${base}-dismiss`}
           accessibilityLabel={CONFLICT_COPY.dismissLabel}
-          treatment="flat"
-          onPress={onDismiss}
-          style={styles.action}>
-          <ThemedText type="smallBold">{CONFLICT_COPY.dismiss}</ThemedText>
-        </PressableSurface>
+          onPress={onDismiss}>
+          {CONFLICT_COPY.dismiss}
+        </Button>
       </View>
-    </Surface>
+    </Card>
   );
 }
 
@@ -107,17 +126,17 @@ function OverflowRow({
   onDismissAll: () => void;
 }) {
   return (
-    <View style={styles.overflow}>
-      <ThemedText type="small" themeColor="textMuted">
+    <View className="flex-row flex-wrap items-center justify-between gap-2">
+      <Text type="callout" tone="muted">
         {describeMoreNotices(hidden)}
-      </ThemedText>
-      <PressableSurface
+      </Text>
+      <Button
+        variant="text"
+        size="sm"
         accessibilityLabel={CONFLICT_COPY.dismissAllLabel}
-        treatment="flat"
-        onPress={onDismissAll}
-        style={styles.action}>
-        <ThemedText type="smallBold">{CONFLICT_COPY.dismissAll}</ThemedText>
-      </PressableSurface>
+        onPress={onDismissAll}>
+        {CONFLICT_COPY.dismissAll}
+      </Button>
     </View>
   );
 }
@@ -163,7 +182,7 @@ export function ConflictNotices() {
       style={styles.region}
       contentContainerStyle={[
         styles.stack,
-        { paddingTop: Spacing.two + (insets?.top ?? 0) },
+        { paddingTop: AtlasSpacing.two + (insets?.top ?? 0) },
       ]}>
       {visible.map((notice) => (
         <ConflictNoticeBanner
@@ -190,27 +209,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   stack: {
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.two,
-  },
-  banner: {
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  action: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  overflow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
+    gap: AtlasSpacing.two,
+    paddingHorizontal: AtlasSpacing.three,
+    paddingBottom: AtlasSpacing.two,
   },
 });
