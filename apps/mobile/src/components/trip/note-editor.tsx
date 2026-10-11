@@ -1,28 +1,35 @@
 /**
- * Write or edit a note — tasks.md T084, T085 (FR-017, FR-018, FR-019);
- * research D-21, D-24.
+ * Write or edit a note — tasks.md T084, T085, 004 T438 (FR-017, FR-018, FR-019; 004 FR-005,
+ * FR-009, FR-025, FR-029, FR-030, FR-037); research D-21, D-24, D4-06.
  *
- * A React Native `Modal` sheet (as the stop editor), holding a
- * `react-hook-form` whose resolver pipes the form into the wire's
- * `CreateNoteRequest` (note-form.ts). The body sits under a
- * `KeyboardAwareScrollView` from react-native-keyboard-controller, so a long
- * entry stays above the keyboard on both platforms. The anchor pills are the
- * move control of FR-018: choosing another level on an existing note is a
- * move, and the body and creation date travel untouched.
+ * A React Native `Modal` (a page sheet on iOS, as the stop editor) rather than a router
+ * modal: the notes screen opens it over its list, with the typed note kept on a failed
+ * save. Inside it the body is the shared `FormSheet` with `host="modal"` (contract C4-8,
+ * `components/ui/form-sheet.tsx`): the title ("New note" / "Edit note"), a scrolling,
+ * keyboard-aware body of the anchor chooser and two `Field`s, and a sticky footer (Cancel,
+ * Save note) that rides up with the keyboard, because nothing moves an RN `Modal` for it.
+ * Save is the one primary; a refusal is words under its field and a failed save an
+ * `InlineError` after the fields.
+ *
+ * The form is a `react-hook-form` whose resolver pipes it into the wire's
+ * `CreateNoteRequest` (note-form.ts). The anchor chooser is the move control of FR-018:
+ * choosing another level on an existing note is a move, and the body and creation date
+ * travel untouched. The note field is a multiline `Field` of six lines (`numberOfLines`,
+ * which `Field` turns into a minimum height on iOS too) that grows with the text size.
+ *
+ * Ids and names are unchanged: `note-editor` (the sheet), `note-editor-anchor`,
+ * `note-editor-title`, `note-editor-body` (the multiline field, which is why the sheet's
+ * scrolling body is `note-editor-scroll`), `note-editor-error`, `note-editor-cancel`,
+ * `note-editor-save`. `note-editor-footer` and `<field id>-error` are new.
  */
 import { useMemo } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
-import { Modal, StyleSheet, View } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Modal } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { AnchorPicker } from '@/components/trip/anchor-picker';
-import { FormActions } from '@/components/ui/form-actions';
+import { Field } from '@/components/ui/field';
+import { FormSheet } from '@/components/ui/form-sheet';
 import { InlineError } from '@/components/ui/inline-error';
-import { TextField } from '@/components/ui/text-field';
-import { Spacing } from '@/constants/theme';
 import {
   NOTE_FIELD_COPY,
   noteFormResolver,
@@ -112,7 +119,7 @@ function TitleField({ control }: { control: NoteControl }) {
       control={control}
       name="title"
       render={({ field, fieldState }) => (
-        <TextField
+        <Field
           testID="note-editor-title"
           label="Title (optional)"
           value={field.value}
@@ -134,7 +141,7 @@ function BodyField({ control }: { control: NoteControl }) {
       control={control}
       name="body"
       render={({ field, fieldState }) => (
-        <TextField
+        <Field
           testID="note-editor-body"
           label="Note"
           value={field.value}
@@ -142,7 +149,6 @@ function BodyField({ control }: { control: NoteControl }) {
           onBlur={field.onBlur}
           placeholder="Try the raclette in Valais."
           multiline
-          textAlignVertical="top"
           numberOfLines={6}
           autoCapitalize="sentences"
           error={fieldMessage(fieldState.error, NOTE_FIELD_COPY.body)}
@@ -175,11 +181,17 @@ function NoteEditorForm({
   );
 
   return (
-    <View style={styles.form}>
-      <ThemedText type="subtitle">
-        {mode.kind === 'add' ? 'New note' : 'Edit note'}
-      </ThemedText>
-
+    <FormSheet
+      testID="note-editor"
+      bodyTestID="note-editor-scroll"
+      host="modal"
+      title={mode.kind === 'add' ? 'New note' : 'Edit note'}
+      actions={{
+        testIDPrefix: 'note-editor',
+        saveLabel: 'Save note',
+        onCancel,
+        onSave: () => void save(),
+      }}>
       <AnchorField control={control} mode={mode} targets={targets} />
 
       <TitleField control={control} />
@@ -187,14 +199,7 @@ function NoteEditorForm({
       <BodyField control={control} />
 
       <InlineError testID="note-editor-error" message={error ?? null} />
-
-      <FormActions
-        testIDPrefix="note-editor"
-        saveLabel="Save note"
-        onCancel={onCancel}
-        onSave={() => void save()}
-      />
-    </View>
+    </FormSheet>
   );
 }
 
@@ -212,31 +217,16 @@ export function NoteEditor({
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={onCancel}>
-      <ThemedView type="canvas" style={styles.sheet} testID="note-editor">
-        <KeyboardAwareScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          bottomOffset={Spacing.four}>
-          <SafeAreaView edges={['bottom']}>
-            {/* Remount per opening so a cancelled draft does not linger. */}
-            {visible ? (
-              <NoteEditorForm
-                mode={mode}
-                targets={targets}
-                onCancel={onCancel}
-                onSubmit={onSubmit}
-                error={error}
-              />
-            ) : null}
-          </SafeAreaView>
-        </KeyboardAwareScrollView>
-      </ThemedView>
+      {/* Remount per opening so a cancelled draft does not linger. */}
+      {visible ? (
+        <NoteEditorForm
+          mode={mode}
+          targets={targets}
+          onCancel={onCancel}
+          onSubmit={onSubmit}
+          error={error}
+        />
+      ) : null}
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  sheet: { flex: 1 },
-  scroll: { flexGrow: 1, padding: Spacing.four },
-  form: { gap: Spacing.three },
-});

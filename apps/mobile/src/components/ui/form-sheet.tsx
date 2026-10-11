@@ -81,6 +81,11 @@ export type FormSheetProps = {
   title: string;
   /** Names the root; the body is `<testID>-body`, the footer `<testID>-footer`. */
   testID?: string;
+  /**
+   * The scrolling body's id where `<testID>-body` is taken: the note editor's multiline
+   * field has been `note-editor-body` since before the sheet, and a flow types into it.
+   */
+  bodyTestID?: string;
   /** The footer: handed to `FormActions` as it is. */
   actions: FormActionsProps;
   /** Who moves the form for the keyboard (see the header). Default `'form-sheet'`. */
@@ -179,6 +184,7 @@ function Footer({ parent, host, bottomInset, onLayout, actions }: FooterProps) {
 export function FormSheet({
   title,
   testID,
+  bodyTestID,
   actions,
   host = 'form-sheet',
   children,
@@ -205,7 +211,7 @@ export function FormSheet({
     <View testID={testID} className="bg-background" style={root}>
       {!inModal && Platform.OS === 'android' ? <SheetHandle parent={testID} /> : null}
       <KeyboardAwareScrollView
-        testID={testID ? `${testID}-body` : undefined}
+        testID={bodyTestID ?? (testID ? `${testID}-body` : undefined)}
         keyboardShouldPersistTaps="handled"
         bottomOffset={footerHeight + FOOTER_GAP}
         style={inModal ? styles.bodyFill : styles.body}
