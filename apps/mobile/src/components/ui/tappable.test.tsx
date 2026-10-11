@@ -3,8 +3,8 @@
  *
  * `Tappable` is the bare control of Atlas: no fill, no border, only a pressed fill, a
  * focus ring and the guarantees every control makes. Pressable owns its pressed state, so
- * the state-to-style mapping is asserted through the exported pure function, as the
- * retired `PressableSurface` suite did; the rest is asserted on the host node.
+ * the state-to-style mapping is asserted through the exported pure function; the rest is
+ * asserted on the host node.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';

@@ -137,7 +137,7 @@ function kitThemeFor(themeName: PaletteName) {
  * already in (the scheme follows the OS), so repeating it changes nothing.
  *
  * A layout effect, on purpose: React runs it before the commit is painted, so the classes
- * switch in the same frame as the legacy tokens that changed with `themeName`. That it is
+ * switch in the same frame as the colour tokens that changed with `themeName`. That it is
  * a layout effect, and that the call sits above this layout's early return, is asserted on
  * the source in test/app/root-layout.test.tsx; running before paint is React's contract and
  * cannot be observed under Jest. The contrast theme itself is known by the first frame
@@ -176,7 +176,8 @@ function useKitConfig(prefersLessMotion: boolean): KitConfig {
 /**
  * React Navigation paints its own background behind every screen; left at the default it
  * is white, which is the "half-converted" flash Acceptance Scenario 3.2 forbids. Every
- * value below is a token (contract C1).
+ * value below is a token of the active theme (contract C4-1), increased contrast included,
+ * so the navigation theme paints the same canvas the kit's `--background` does.
  */
 function navigationThemeFor(isDark: boolean, tokens: AppearanceContext['tokens']) {
   const base = isDark ? DarkTheme : DefaultTheme;

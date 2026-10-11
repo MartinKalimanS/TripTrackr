@@ -1,9 +1,9 @@
 /**
  * Contract C7 — the token layer's public surface.
  *
- * Token NAMES are stable and `SurfaceTreatment` is a closed union: feature 001's
- * screens will be built against exactly these exports, so an accidental rename
- * or removal is a breaking change and should fail here rather than in a screen.
+ * Token NAMES are stable: the screens are built against exactly these exports, so
+ * an accidental rename or removal is a breaking change and should fail here rather
+ * than in a screen.
  */
 import {
   AtlasRadius,
@@ -23,9 +23,7 @@ import {
   readPrefersLessTransparency,
   readPrefersMoreContrast,
   relativeLuminance,
-  resolveElevationProfile,
-  resolveInk,
-  surfaceStyle,
+  resolvePaletteName,
 } from '@/theme';
 
 describe('token layer public API — contract C7', () => {
@@ -37,9 +35,7 @@ describe('token layer public API — contract C7', () => {
       contrastRatio,
       relativeLuminance,
       meetsFloor,
-      resolveElevationProfile,
-      surfaceStyle,
-      resolveInk,
+      resolvePaletteName,
       readPrefersMoreContrast,
       readPrefersLessTransparency,
       readPrefersLessMotion,
@@ -81,9 +77,7 @@ describe('token layer public API — contract C7', () => {
     // A barrel that only re-exported types would compile and cover nothing.
     expect(contrastRatio('#000000', '#FFFFFF')).toBeCloseTo(21, 4);
     expect(blend('#000000', '#FFFFFF', 1)).toBe('#000000');
-    // 004 D4-12: the neumorphic profiles are retired, every device resolves to flat.
-    expect(
-      resolveElevationProfile({ os: 'ios', apiLevel: null, prefersMoreContrast: false }),
-    ).toBe('flat');
+    // The theme resolver (C4-4): the device scheme plus increased contrast selects the theme.
+    expect(resolvePaletteName('dark', true)).toBe('dark-contrast');
   });
 });

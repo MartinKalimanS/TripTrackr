@@ -21,16 +21,19 @@ import * as ScreenCapture from 'expo-screen-capture';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SQLite from 'expo-sqlite';
 import type { ReactNode } from 'react';
-import { AccessibilityInfo, Platform, Text, View } from 'react-native';
+import { AccessibilityInfo, Platform, StyleSheet, Text, View } from 'react-native';
 import { Uniwind } from 'uniwind';
 
+import { Screen } from '@/components/ui/screen';
 import { Colors } from '@/constants/theme';
 import { useLocalStore } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
 import { __resetAppearanceStoreForTests } from '@/hooks/appearance-store';
 import { SECURE_KEYS, setSession } from '@/lib/secure-store';
 import { Sentry } from '@/lib/sentry';
-import { PaletteNames } from '@/theme/palette';
+import { PaletteNames, resolvePaletteName } from '@/theme/palette';
+
+import { backgroundVariable } from '../helpers/theme-css';
 
 // The first render of the whole router tree pays for transforming every module it touches:
 // 11 to 20 s on a cold cache, which hit the 20 s default under parallel load (004 spike).
@@ -128,12 +131,12 @@ const Home = () => <Text>home-screen</Text>;
  * `renderRouter` wraps RNTL 14's async `render` and attaches `getPathname` to
  * the pending promise, so callers hold the promise AND await it.
  */
-function renderApp(initialUrl?: string) {
+function renderApp(initialUrl?: string, welcome: typeof Welcome = Welcome) {
   return renderRouter(
     {
       _layout: require('@/app/_layout'),
       '(auth)/_layout': require('@/app/(auth)/_layout'),
-      '(auth)/welcome': Welcome,
+      '(auth)/welcome': welcome,
       '(tabs)/_layout': require('@/app/(tabs)/_layout'),
       '(tabs)/index': Home,
       '(tabs)/trips': () => null,
@@ -550,6 +553,115 @@ describe('root layout — the kit follows useAppearance (feature 004, T402, T412
         expect(call).toBeGreaterThan(-1);
         expect(firstReturn).toBeGreaterThan(call);
       });
+    });
+  });
+
+  describe('one canvas in all four themes, increased contrast included (FR-023, T453)', () => {
+    /** The navigation theme's background, read where portalled content reads it. */
+    function NavigationProbe() {
+      const { colors } = useTheme();
+      return <Text testID="navigation-probe">{String(colors.background)}</Text>;
+    }
+
+    const WelcomeCanvas = () => (
+      <Screen testID="welcome-canvas">
+        <Text>welcome-screen</Text>
+      </Screen>
+    );
+
+    const flatStyle = (node: { props: { style?: unknown } }): Record<string, unknown> =>
+      (StyleSheet.flatten(node.props.style as never) ?? {}) as Record<string, unknown>;
+
+    /**
+     * The canvas of the ROOT stack's scene around a node: its outermost `RNSScreenContentWrapper`.
+     * The nested stacks (auth, trip) paint their own scenes through the kit, which Jest stubs.
+     */
+    function rootSceneBehind(testID: string): string | undefined {
+      let scene: string | undefined;
+      for (let node = screen.getByTestId(testID).parent; node; node = node.parent) {
+        if (String(node.type) !== 'RNSScreenContentWrapper') continue;
+        scene = String(flatStyle(node).backgroundColor);
+      }
+      return scene;
+    }
+
+    test.each([
+      ['light', false],
+      ['dark', false],
+      ['light', true],
+      ['dark', true],
+    ] as const)(
+      'a %s device with more contrast=%s: the root, the navigation theme, the scene and Screen paint the kit’s background',
+      async (scheme, moreContrast) => {
+        // What the kit's classes paint in this theme: `--background` of the generated stylesheet.
+        const kitBackground = backgroundVariable(
+          resolvePaletteName(scheme, moreContrast),
+        ).toLowerCase();
+        mockScheme.value = scheme;
+        a11y.darker = moreContrast;
+        HeroUINativeProvider.mockImplementation(
+          ({ children }: { children?: ReactNode }) => (
+            <>
+              <View testID="kit-children">{children}</View>
+              <NavigationProbe />
+            </>
+          ),
+        );
+
+        await renderApp(undefined, WelcomeCanvas);
+        await screen.findByText('welcome-screen');
+
+        const rootStyle = flatStyle(screen.getByTestId('app-root'));
+        expect(String(rootStyle.backgroundColor).toLowerCase()).toBe(kitBackground);
+        expect(screen.getByTestId('navigation-probe').props.children.toLowerCase()).toBe(
+          kitBackground,
+        );
+        expect(rootSceneBehind('welcome-canvas')?.toLowerCase()).toBe(kitBackground);
+
+        const canvas = screen.getByTestId('welcome-canvas');
+        expect(String(flatStyle(canvas).backgroundColor).toLowerCase()).toBe(
+          kitBackground,
+        );
+        expect(String(canvas.props.className)).toContain('bg-background');
+      },
+    );
+
+    test('a live switch of the increased-contrast setting repaints all of them together', async () => {
+      HeroUINativeProvider.mockImplementation(
+        ({ children }: { children?: ReactNode }) => (
+          <>
+            <View testID="kit-children">{children}</View>
+            <NavigationProbe />
+          </>
+        ),
+      );
+      await renderApp(undefined, WelcomeCanvas);
+      await screen.findByText('welcome-screen');
+      const lightCanvas = backgroundVariable('light').toLowerCase();
+      expect(
+        String(
+          flatStyle(screen.getByTestId('welcome-canvas')).backgroundColor,
+        ).toLowerCase(),
+      ).toBe(lightCanvas);
+
+      await setAccessibility({ darker: true });
+
+      const contrastCanvas = backgroundVariable('light-contrast').toLowerCase();
+      expect(contrastCanvas).not.toBe(lightCanvas);
+      await waitFor(() =>
+        expect(
+          String(
+            flatStyle(screen.getByTestId('welcome-canvas')).backgroundColor,
+          ).toLowerCase(),
+        ).toBe(contrastCanvas),
+      );
+      expect(
+        String(flatStyle(screen.getByTestId('app-root')).backgroundColor).toLowerCase(),
+      ).toBe(contrastCanvas);
+      expect(screen.getByTestId('navigation-probe').props.children.toLowerCase()).toBe(
+        contrastCanvas,
+      );
+      expect(rootSceneBehind('welcome-canvas')?.toLowerCase()).toBe(contrastCanvas);
     });
   });
 

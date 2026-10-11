@@ -193,7 +193,7 @@ describe('appearanceChangeEvents — contract C4 "every field updates live"', ()
   });
 
   test('every signal the context exposes has a corresponding subscription', () => {
-    // theme, fontScale and elevationProfile are derived elsewhere; the three
+    // theme and fontScale are derived elsewhere; the three
     // accessibility flags must each be covered or one of them goes stale.
     for (const os of ['ios', 'android'] as const) {
       const events = appearanceChangeEvents(os);

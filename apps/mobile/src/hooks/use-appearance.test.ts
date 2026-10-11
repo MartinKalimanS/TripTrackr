@@ -9,6 +9,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AccessibilityInfo, Platform } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { Palettes } from '@/theme/palette';
 
 import { __resetAppearanceStoreForTests } from './appearance-store';
 import { useAppearance } from './use-appearance';
@@ -84,10 +85,9 @@ describe('useAppearance', () => {
     await waitFor(() => expect(result.current.theme).toBe('light'));
   });
 
-  test('exposes a font scale and the forced flat elevation profile (004 D4-12)', async () => {
+  test('exposes the window font scale', async () => {
     const { result } = await renderHook(() => useAppearance());
     await waitFor(() => expect(result.current.fontScale).toBeGreaterThan(0));
-    expect(result.current.elevationProfile).toBe('flat');
   });
 
   test('subscribes to accessibility change events so it updates live (FR-023)', async () => {
@@ -152,13 +152,67 @@ describe('useAppearance themeName — contract C4-4', () => {
     await waitFor(() => expect(result.current.themeName).toBe('dark-contrast'));
     expect(result.current.theme).toBe('dark');
   });
+});
 
-  test('keeps the two-theme tokens until the screens migrate', async () => {
-    useColorScheme.mockReturnValue('dark');
-    setIosIncreasedContrast(true);
+describe('useAppearance tokens - the palette of themeName, increased contrast included (T453)', () => {
+  test.each([
+    ['light', false, 'light'],
+    ['dark', false, 'dark'],
+    ['light', true, 'light-contrast'],
+    ['dark', true, 'dark-contrast'],
+  ] as const)(
+    'a %s device with more contrast=%s paints the %s palette',
+    async (scheme, more, name) => {
+      useColorScheme.mockReturnValue(scheme);
+      setIosIncreasedContrast(more);
+      const { result } = await renderHook(() => useAppearance());
+      await waitFor(() => expect(result.current.themeName).toBe(name));
+
+      const palette = Palettes[name];
+      expect(result.current.tokens).toEqual(
+        expect.objectContaining({
+          canvas: palette.canvas,
+          surface: palette.surface,
+          textPrimary: palette.ink,
+          textMuted: palette.muted,
+          border: palette.border,
+          accent: palette.accent,
+        }),
+      );
+      expect(result.current.tokens).toBe(Colors[name]);
+    },
+  );
+
+  test('the contrast canvases are not the base canvases, so the switch is not vacuous', () => {
+    expect(Palettes['light-contrast'].canvas).not.toBe(Palettes.light.canvas);
+    expect(Palettes['dark-contrast'].canvas).not.toBe(Palettes.dark.canvas);
+  });
+
+  test('the canvas follows the increased-contrast setting live, in both directions', async () => {
+    const setting = { darker: false };
+    Object.assign(AccessibilityInfo, {
+      isDarkerSystemColorsEnabled: jest.fn(async () => setting.darker),
+    });
     const { result } = await renderHook(() => useAppearance());
-    await waitFor(() => expect(result.current.themeName).toBe('dark-contrast'));
-    expect(result.current.tokens).toBe(Colors.dark);
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.tokens.canvas).toBe(Palettes.light.canvas);
+
+    const handlers = (AccessibilityInfo.addEventListener as jest.Mock).mock.calls.map(
+      ([, handler]) => handler as () => void,
+    );
+    setting.darker = true;
+    await act(async () => {
+      handlers.forEach((handler) => handler());
+    });
+    await waitFor(() => expect(result.current.themeName).toBe('light-contrast'));
+    expect(result.current.tokens.canvas).toBe(Palettes['light-contrast'].canvas);
+
+    setting.darker = false;
+    await act(async () => {
+      handlers.forEach((handler) => handler());
+    });
+    await waitFor(() => expect(result.current.themeName).toBe('light'));
+    expect(result.current.tokens.canvas).toBe(Palettes.light.canvas);
   });
 });
 

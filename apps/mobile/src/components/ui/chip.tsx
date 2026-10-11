@@ -1,8 +1,8 @@
 /**
  * `Chip`, `ChipGroup` and `StatusChip` - the small labelled things of Atlas (feature 004;
  * contract C4-8; FR-019, FR-020, FR-025, FR-026, FR-029, FR-030; 003 FR-017; review rules
- * 2, 3, 5 and 7), over the kit's Chip. They replace the pill buttons (`PillGroup`) and
- * `StatusPill` for migrated screens; the old ones stay until phase 7.
+ * 2, 3, 5 and 7), over the kit's Chip. They are the pill choices and the status label of
+ * every screen.
  *
  *   <Chip label="EUR" accessibilityLabel="Euro" selected onPress={pick} testID="currency-EUR" />
  *   <Chip label="Food" leading={FOOD_ICON} accessibilityLabel="Food" onPress={pick} />
@@ -36,18 +36,19 @@
  * - `leading` is an `IconName` (drawn by `Icon`, in the ink that reads on the chip's
  *   fill) or any node.
  *
- * `ChipGroup` is `PillGroup`'s contract: a `radiogroup` container, each chip a `radio`
+ * `ChipGroup` is a `radiogroup` container, each chip a `radio`
  * announced `{ selected, checked }`, the options' own ids and names, `onSelect(key)` on
  * every press. A CHANGE (not a re-press of the selected one) plays the selection haptic
  * (FR-020; silent under reduced motion, through `useHaptics`). It wraps onto further
  * lines, or with `scroll` it is one sideways row without a scroll bar and with
  * `keyboardShouldPersistTaps="handled"`, so a tap with the keyboard up is not swallowed.
  *
- * `StatusChip` is `StatusPill`'s contract: `testID="status-pill-<status>"`, role `text`,
- * the name "Status: <label>", an icon and the word. It is a label, not a control, so it
- * has no floor. The tint is the status ink on its 15% soft fill, exactly the pairs the
- * contrast gate measures on every neutral fill (C4-3): `status-active`, `status-past`, and
- * for planning the INK variant (`status-planning-ink`), never the mark colour.
+ * `StatusChip` carries `testID="status-pill-<status>"` (the id the e2e flows have always
+ * used), role `text`, the name "Status: <label>", an icon and the word. It is a label, not
+ * a control, so it has no floor. The tint is the status ink on its 15% soft fill, exactly
+ * the pairs the contrast gate measures on every neutral fill (C4-3): `status-active`,
+ * `status-past`, and for planning the INK variant (`status-planning-ink`), never the mark
+ * colour.
  *
  * Colours come from semantic classes and `Icon` tones; there is no literal here.
  */

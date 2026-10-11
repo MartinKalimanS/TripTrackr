@@ -1,57 +1,48 @@
 /**
- * Design tokens — the only source of visual values (feature 002, contract C1).
+ * Design tokens - the colour values that code, not a class, has to hand over (feature 004,
+ * contract C4-1).
  *
- * Every colour, radius, depth, and spacing step used anywhere in `src/`
- * originates here or in `src/theme/`. Screens and components import tokens; they
- * never write a literal, and an ESLint rule (eslint.config.js) rejects one that tries.
- * Colours are authored once, in `src/theme/palette.data.js` (feature 004, contract C4-1).
+ * Every colour used anywhere in `src/` originates in `src/theme/palette.data.js` (the
+ * Atlas palette). Screens and components import tokens or use semantic classes; they never
+ * write a literal, and an ESLint rule (eslint.config.js) rejects one that tries.
  */
 
 import { Platform, StyleSheet } from 'react-native';
 
-import { Palettes, type Palette } from '@/theme/palette';
+import { Palettes, type Palette, type PaletteName } from '@/theme/palette';
 
 /**
- * The legacy colour keys, read from the Atlas palette (feature 004, research D4-12).
+ * The colours a consumer outside the kit's classes reads, taken from one palette: the
+ * navigation theme, the root and tab scenes, the canvas of `Screen` and `ListScreen`, and
+ * `MediaFrame`'s edge. The authoritative values are in `src/theme/palette.ts`; nothing here
+ * is authored, so nothing here can drift from the gate.
  *
- * Step 1 of the migration: every unconverted screen and the old `Surface` and
- * `PressableSurface` primitives keep their keys and are already drawn in Atlas colours
- * and in a real dark mode. The authoritative values are in `src/theme/palette.ts`
- * (contract C4-1); nothing here is authored, so nothing here can drift from the gate.
- *
- *   surfaceSunk   <- surfaceSecondary   textPrimary <- ink       border <- border
- *   textMuted     <- muted              borderStrong <- border   danger <- danger
- *   separator     <- separator (added by the 004 review: the flat card hairline)
- *
- * `shadowLight` and `shadowDark` are both the canvas colour, so a leftover neumorphic
- * shadow is invisible. They, `surfaceSunk`, `borderStrong` and `separator` go with the
- * old primitives in phase 7. Only light and dark exist here; the increased-contrast themes are reached
- * through `useAppearance().themeName` and the generated stylesheet.
+ *   textPrimary <- ink     textMuted <- muted
  */
-function legacyColors(palette: Palette) {
+function tokensOf(palette: Palette) {
   return {
     canvas: palette.canvas,
     surface: palette.surface,
-    surfaceSunk: palette.surfaceSecondary,
-    shadowLight: palette.canvas,
-    shadowDark: palette.canvas,
     textPrimary: palette.ink,
     textMuted: palette.muted,
     border: palette.border,
-    borderStrong: palette.border,
     accent: palette.accent,
     accentInk: palette.accentInk,
     danger: palette.danger,
-    separator: palette.separator,
   };
 }
 
+/**
+ * One entry per theme name, increased contrast included: `useAppearance().tokens` is
+ * `Colors[themeName]`, so the root stack, the navigation theme and the canvases paint the
+ * same colour the kit's `--background` does in every one of the four themes, with no seam.
+ */
 export const Colors = {
-  light: legacyColors(Palettes.light),
-  dark: legacyColors(Palettes.dark),
-} as const;
-
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+  light: tokensOf(Palettes.light),
+  dark: tokensOf(Palettes.dark),
+  'light-contrast': tokensOf(Palettes['light-contrast']),
+  'dark-contrast': tokensOf(Palettes['dark-contrast']),
+} as const satisfies Record<PaletteName, ReturnType<typeof tokensOf>>;
 
 /**
  * System font families. iOS and Android only (research D-14) — the `web`
@@ -88,14 +79,7 @@ export const Spacing = {
 
 export const MaxContentWidth = 800;
 
-/**
- * Geometry tokens (feature 002, data-model §1.3).
- *
- * `Spacing` above is reused unchanged — FR-001's "spacing steps" was already
- * satisfied by existing code, so this adds only what was missing.
- */
-
-/** Uniform corner softness. FR-001. */
+/** Corner radii in points (`MediaFrame`). The Atlas scale for the kit's classes is `AtlasRadius`. */
 export const Radius = {
   sm: 8,
   md: 16,
@@ -103,37 +87,14 @@ export const Radius = {
   pill: 999,
 } as const;
 
-/**
- * Exactly three depth levels, so stacking reads as a deliberate hierarchy
- * rather than accumulating arbitrarily (FR-006).
- *
- * Offsets follow the CSS sign convention: positive Y moves the shadow DOWN.
- * Confirmed against the native implementations rather than the documentation
- * page, which states the opposite — see research R-008.1.
- */
-export const Depth = {
-  1: { offset: 2, blur: 4 },
-  2: { offset: 4, blur: 8 },
-  3: { offset: 6, blur: 12 },
-} as const;
-
-export type DepthLevel = keyof typeof Depth;
-
-/**
- * One light direction across the entire product (FR-005). Raised surfaces are
- * lit from the top-left, so the light shadow goes up-left (negative) and the
- * dark shadow down-right (positive).
- */
-export const LightSource = { x: -1, y: -1 } as const;
-
-/** Compliance border on interactive surfaces. research R-002. */
+/** The thinnest line the platform draws: the tab bar's divider and the edge of a media frame. */
 export const BorderHairline = StyleSheet.hairlineWidth;
 
 /**
  * Brand colour for the launch experience.
  *
- * NOT part of the neumorphic ramp and deliberately exempt from the contrast
- * gate: it is the splash identity, and it MUST stay identical to the
+ * NOT part of the palette and deliberately exempt from the contrast gate: it is
+ * the splash identity, and it MUST stay identical to the
  * `expo-splash-screen` plugin's `backgroundColor` in app.config.ts. If the two
  * drift, the launch flashes one colour and then another.
  */

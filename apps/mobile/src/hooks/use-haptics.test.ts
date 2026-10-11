@@ -31,7 +31,6 @@ function mockAppearance(prefersLessMotion: boolean) {
     prefersLessMotion,
     prefersLessTransparency: false,
     fontScale: 1,
-    elevationProfile: 'flat',
     tokens: Colors.light,
   } as AppearanceContext);
 }

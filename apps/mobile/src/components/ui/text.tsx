@@ -2,9 +2,8 @@
  * `Text` - the one text primitive of Atlas (feature 004; FR-004, FR-023, FR-029;
  * contract C4-8; research D4-07).
  *
- * Screens that have migrated import `Text` from here and never write a font size, a
- * line height or a colour. `ThemedText` stays exactly as it is until phase 7: the
- * unmigrated screens keep using it, so the two coexist and neither wraps the other.
+ * Screens import `Text` from here and never write a font size, a line height or a
+ * colour.
  *
  *   <Text type="largeTitle">Lisbon</Text>                        header, display face
  *   <Text type="body" tone="muted" numberOfLines={2}>...</Text>

@@ -367,7 +367,7 @@ describe('<FormSheet> - the handle (FR-009)', () => {
 describe('<FormSheet> - the source', () => {
   test('is composed from the adapter layer: no retired primitive, no kit, no colour literal', () => {
     const source = readFileSync(require.resolve('./form-sheet'), 'utf8');
-    expect(source).not.toMatch(/PressableSurface|ThemedText|ThemedView|\bSurface\b/);
+    expect(source).not.toMatch(/ThemedText|ThemedView|\bSurface\b/);
     expect(source).not.toMatch(/from 'heroui-native'|from 'uniwind'/);
     expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
     expect(source).not.toMatch(/use-appearance|Colors\[/);

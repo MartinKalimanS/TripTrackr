@@ -10,12 +10,13 @@
  */
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { StyleSheet, Text } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
+import { PaletteNames, type PaletteName } from '@/theme/palette';
+
+import { backgroundVariable } from '../helpers/theme-css';
 
 // The first render of a whole router tree pays for transforming every module it touches.
 jest.setTimeout(60_000);
@@ -39,16 +40,16 @@ const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
 };
 
-function mockAppearance(theme: 'light' | 'dark') {
+function mockAppearance(themeName: PaletteName) {
   useAppearance.mockReturnValue({
-    theme,
-    prefersMoreContrast: false,
+    theme: themeName.startsWith('dark') ? 'dark' : 'light',
+    themeName,
+    prefersMoreContrast: themeName.endsWith('-contrast'),
     prefersLessMotion: false,
     prefersLessTransparency: false,
     ready: true,
     fontScale: 1,
-    elevationProfile: 'flat',
-    tokens: Colors[theme],
+    tokens: Colors[themeName],
   } as AppearanceContext);
 }
 
@@ -74,16 +75,6 @@ function sceneBackground(testID: string): unknown {
     if (backgroundColor !== undefined) return backgroundColor;
   }
   return undefined;
-}
-
-/** `--background` of one theme in the generated stylesheet, which `bg-background` reads. */
-function backgroundVariable(theme: 'light' | 'dark'): string {
-  const css = readFileSync(
-    path.resolve(__dirname, '../../src/theme/generated/theme.css'),
-    'utf8',
-  ).replace(/\r\n/g, '\n');
-  const block = new RegExp(`@variant ${theme} \\{([\\s\\S]*?)\\n {4}\\}`).exec(css);
-  return /--background:\s*([^;]+);/.exec(block?.[1] ?? '')?.[1]?.trim() ?? '';
 }
 
 beforeEach(() => mockAppearance('light'));
@@ -133,7 +124,7 @@ describe('(tabs) layout - the Atlas tab bar in the real navigator', () => {
     await waitFor(() => expect(screen.getByText('bar-height:83')).toBeTruthy());
   });
 
-  test.each(['light', 'dark'] as const)(
+  test.each(PaletteNames)(
     'the %s scenes are painted with the canvas the bar paints: no seam above the divider',
     async (theme) => {
       mockAppearance(theme);
@@ -143,7 +134,7 @@ describe('(tabs) layout - the Atlas tab bar in the real navigator', () => {
       // The scene gets the canvas TOKEN from the layout, the bar gets the `bg-background`
       // CLASS. They name one colour: the stylesheet's `--background` is generated from the
       // palette's `canvas` (and `test/theme/theme-css-sync.test.ts` fails when it is not),
-      // and `Colors[theme]` is the same palette.
+      // and `Colors[theme]` is the same palette, increased contrast included.
       expect(sceneBackground('home-screen')).toBe(Colors[theme].canvas);
       expect(screen.getByTestId('tab-bar').props.className).toContain('bg-background');
       expect(backgroundVariable(theme).toLowerCase()).toBe(

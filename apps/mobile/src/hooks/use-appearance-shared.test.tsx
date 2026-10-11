@@ -11,6 +11,8 @@ import { act, render, renderHook } from '@testing-library/react-native';
 import { Profiler, StrictMode } from 'react';
 import { AccessibilityInfo, Platform } from 'react-native';
 
+import { Colors } from '@/constants/theme';
+
 import { __resetAppearanceStoreForTests } from './appearance-store';
 import { useAppearance, type AppearanceContext } from './use-appearance';
 
@@ -467,7 +469,7 @@ describe('the snapshot is referentially stable (T461)', () => {
     expect(result.current).toBe(first);
   });
 
-  test('a signal that changes produces a new object, with every other field carried over', async () => {
+  test('a signal that changes produces a new object, with every other field carried over, and the tokens that follow the theme', async () => {
     const { result } = await renderHook(() => useAppearance());
     await settle();
     const first = result.current;
@@ -480,6 +482,8 @@ describe('the snapshot is referentially stable (T461)', () => {
       ...first,
       prefersMoreContrast: true,
       themeName: 'light-contrast',
+      // The tokens are the palette of the NEW theme name (T453), not the base theme's.
+      tokens: Colors['light-contrast'],
     });
   });
 });

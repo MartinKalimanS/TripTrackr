@@ -418,7 +418,7 @@ describe('<PhotosScreen> — sources (FR-036)', () => {
   const importsOf = (text: string) =>
     [...text.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1]);
 
-  test.each(FILES)('%s imports none of the retired neumorphic primitives', (file) => {
+  test.each(FILES)('%s imports none of the retired primitives', (file) => {
     const specifiers = importsOf(source(file));
     for (const retired of [
       '@/components/ui/surface',

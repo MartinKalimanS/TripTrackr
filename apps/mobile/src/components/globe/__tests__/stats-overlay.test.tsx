@@ -40,7 +40,6 @@ beforeEach(() => {
     prefersLessTransparency: false,
     ready: true,
     fontScale: 1,
-    elevationProfile: 'flat',
     tokens: Colors.light,
   });
 });

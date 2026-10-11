@@ -54,7 +54,6 @@ beforeEach(() => {
     prefersLessMotion: false,
     prefersLessTransparency: false,
     fontScale: 1,
-    elevationProfile: 'flat',
     tokens: Colors.light,
   } as AppearanceContext);
 });

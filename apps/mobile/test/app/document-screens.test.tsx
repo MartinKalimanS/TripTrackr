@@ -1508,7 +1508,7 @@ describe('document screens — composed from the Atlas adapter layer only (FR-03
     'components/trip/document-list-item.tsx',
   ];
 
-  test.each(sources)('%s uses no neumorphic primitive, kit or colour literal', (file) => {
+  test.each(sources)('%s uses no retired primitive, kit or colour literal', (file) => {
     const source = fs.readFileSync(path.join(root, file), 'utf8');
     const specifiers = [...source.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1]);
     for (const retired of [
