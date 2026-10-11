@@ -22,6 +22,9 @@
  *   copy in the bar would be read twice.
  * - The colours, and no hairline, come from `useHeaderTheme` (tokens, never a literal).
  *
+ * Offline maps (T444) is the first sub-screen to follow: the same `headerLeft` and theme, and
+ * the title "Offline maps" in the bar, because that screen's page no longer draws one.
+ *
  * No `unstable_settings` and no `initialParams` here: the root layout keeps the anchor
  * (`(tabs)`) and the route's params and deep links are exactly what they were.
  */
@@ -42,6 +45,15 @@ export default function TripLayout() {
         <Stack.Screen
           name="index"
           options={{ ...theme, headerShown: true, title: '', headerLeft: renderBack }}
+        />
+        <Stack.Screen
+          name="offline-maps"
+          options={{
+            ...theme,
+            headerShown: true,
+            title: 'Offline maps',
+            headerLeft: renderBack,
+          }}
         />
       </Stack>
     </RequireLocalStore>
