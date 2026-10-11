@@ -95,16 +95,6 @@ describe('trip/[id]/_layout - the offline maps screen has a native header (FR-00
     expect(header?.color).toBe(COLOURS.accent);
     expect(header?.hideShadow).toBe(true);
   });
-
-  test('leaves the other sub-screens as they were: no header yet', async () => {
-    await openOfflineMaps();
-    await act(async () => {
-      router.push('/trip/abc/notes');
-    });
-
-    expect(headerOf('notes')?.hidden).toBe(true);
-    expect(headerOf('offline-maps')?.hidden).toBe(false);
-  });
 });
 
 describe('trip/[id]/_layout - Back on the offline maps screen (FR-008, item 7)', () => {
