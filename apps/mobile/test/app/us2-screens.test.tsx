@@ -1542,7 +1542,7 @@ describe('save and destructive-confirmation haptics (T460; FR-020)', () => {
     haptics.notificationAsync.mockClear();
     expect(mockNoteActions.removeNote).not.toHaveBeenCalled();
 
-    answer.confirm();
+    await act(async () => answer.confirm());
     expect(mockNoteActions.removeNote).toHaveBeenCalledWith('note-1');
     expect(notified()).toEqual(['warning']);
   });
@@ -1555,7 +1555,7 @@ describe('save and destructive-confirmation haptics (T460; FR-020)', () => {
     await fireEvent.press(screen.getByTestId('expense-remove-exp-1'));
     haptics.notificationAsync.mockClear();
 
-    answer.confirm();
+    await act(async () => answer.confirm());
     expect(mockExpenseActions.removeExpense).toHaveBeenCalledWith('exp-1');
     expect(notified()).toEqual(['warning']);
   });

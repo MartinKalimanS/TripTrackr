@@ -1586,7 +1586,7 @@ describe('<DocumentViewScreen> — save and destructive-confirmation haptics (T4
     haptics.notificationAsync.mockClear();
     expect(mockActions.remove).not.toHaveBeenCalled();
 
-    destructive?.();
+    await act(async () => destructive?.());
 
     expect(mockActions.remove).toHaveBeenCalledWith(PASS_ID);
     expect(notified()).toEqual(['warning']);

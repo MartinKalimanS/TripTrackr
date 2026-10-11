@@ -471,7 +471,7 @@ describe('<PhotosScreen> — the photo view', () => {
     jest.mocked(ExpoHaptics).notificationAsync.mockClear();
     expect(mockActions.remove).not.toHaveBeenCalled();
 
-    destructive?.();
+    await act(async () => destructive?.());
 
     expect(mockActions.remove).toHaveBeenCalledWith(uploaded.id);
     expect(jest.mocked(ExpoHaptics).notificationAsync.mock.calls).toEqual([['warning']]);
