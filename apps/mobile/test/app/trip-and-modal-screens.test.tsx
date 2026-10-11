@@ -8,16 +8,19 @@
  * failed local write is reported and shown rather than swallowed.
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { Alert, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Alert, Platform, StyleSheet } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import NotFoundScreen from '@/app/+not-found';
 import AddTripScreen from '@/app/modal/add-trip';
 import TripScreen from '@/app/trip/[id]/index';
+import { StopEditor, type StopEditorMode } from '@/components/trip/stop-editor';
 import { sheetMaxHeight } from '@/components/ui/form-sheet';
 import { SCREEN_GUTTER } from '@/components/ui/screen';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import type { TripRow } from '@/db/schema';
 import { useSessionStore } from '@/features/auth/session-store';
+import { __resetAppearanceStoreForTests } from '@/hooks/appearance-store';
 import { Sentry } from '@/lib/sentry';
 
 import {
@@ -590,6 +593,18 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(screen.getByTestId('stop-editor')).toBeTruthy();
   });
 
+  test('"Add stop" opens the stop editor as a page sheet whose Save is in the sticky footer (T437)', async () => {
+    await render(<TripScreen />);
+    await fireEvent.press(screen.getByTestId('trip-add-stop'));
+
+    expect(screen.getByTestId('stop-editor-modal').props.presentationStyle).toBe(
+      'pageSheet',
+    );
+    expect(
+      within(screen.getByTestId('stop-editor-footer')).getByTestId('stop-editor-save'),
+    ).toBeTruthy();
+  });
+
   test('"Add stop" opens the editor with arrival pre-suggested from the last departure (FR-015), and saves through the repository', async () => {
     mockStops.data = [rome];
     await render(<TripScreen />);
@@ -1013,6 +1028,288 @@ describe('<AddTripScreen> as a form sheet (T434; FR-005, FR-009, FR-024, FR-025,
     expect(source).not.toMatch(/components\/ui\/screen|ui\/form-actions/);
     expect(source).not.toMatch(/from 'heroui-native'|from 'uniwind'/);
     expect(source).not.toMatch(/use-appearance|Colors\[|#[0-9a-fA-F]{3,8}\b/);
+  });
+});
+
+describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, FR-009, FR-024, FR-029, FR-030, FR-037)', () => {
+  const onCancel = jest.fn();
+  const onSubmit = jest.fn();
+  const addMode: StopEditorMode = {
+    kind: 'add',
+    previousStop: { depart_date: '2026-05-12' },
+  };
+  const editMode: StopEditorMode = {
+    kind: 'edit',
+    stop: { city_id: 100, arrive_date: '2026-05-10', depart_date: '2026-05-12' },
+    placeName: 'Roma',
+  };
+  const flat = (testID: string) =>
+    (StyleSheet.flatten(screen.getByTestId(testID).props.style) ?? {}) as Record<
+      string,
+      unknown
+    >;
+
+  beforeEach(() => {
+    onCancel.mockReset();
+    onSubmit.mockReset();
+  });
+  afterEach(() => {
+    resetKeyboard();
+    __resetAppearanceStoreForTests();
+  });
+
+  const renderEditor = (mode: StopEditorMode = addMode) =>
+    render(<StopEditor visible mode={mode} onCancel={onCancel} onSubmit={onSubmit} />);
+
+  const pickDate = async (fieldTestId: string, date: Date) => {
+    await fireEvent.press(screen.getByTestId(fieldTestId));
+    const picker = screen.getByTestId(`${fieldTestId}-picker`);
+    await act(async () => picker.props.onValueChange({}, date));
+  };
+
+  const primaries = () =>
+    screen
+      .getAllByRole('button')
+      .filter((button) => button.props.variant === 'primary')
+      .map((button) => button.props.testID);
+
+  describe('the Modal', () => {
+    test('is a React Native Modal presented as a page sheet, which a swipe down or Back dismisses as Cancel', async () => {
+      await renderEditor();
+
+      const modal = screen.getByTestId('stop-editor-modal');
+      expect(modal.props).toMatchObject({
+        visible: true,
+        presentationStyle: 'pageSheet',
+        animationType: 'slide',
+        allowSwipeDismissal: true,
+      });
+      await act(async () => modal.props.onRequestClose());
+      expect(onCancel).toHaveBeenCalledTimes(1);
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    test('with reduced motion it does not slide in (feature 002 FR-015)', async () => {
+      const reduced = jest
+        .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+        .mockResolvedValue(true);
+      await renderEditor();
+      await act(async () => undefined);
+
+      expect(screen.getByTestId('stop-editor-modal').props.animationType).toBe('none');
+      reduced.mockRestore();
+    });
+
+    test('draws a handle on iOS, where the page sheet has none of its own, hidden from assistive technology', async () => {
+      const os = jest.replaceProperty(Platform, 'OS', 'ios');
+      await renderEditor();
+      os.restore();
+
+      const handle = screen.getByTestId('stop-editor-handle', hidden);
+      expect(handle.props.accessibilityElementsHidden).toBe(true);
+      expect(handle.props.importantForAccessibility).toBe('no-hide-descendants');
+      expect(handle.props.accessible).not.toBe(true);
+    });
+
+    test('draws none on Android: the Modal is a full-screen dialog there, with nothing to drag', async () => {
+      const os = jest.replaceProperty(Platform, 'OS', 'android');
+      await renderEditor();
+      os.restore();
+
+      expect(screen.queryByTestId('stop-editor-handle', hidden)).toBeNull();
+    });
+
+    test('keeps clear of the status bar on Android, where the Modal draws under it, and not on iOS, where the sheet starts below it', async () => {
+      const insets = { top: 24, bottom: 34, left: 0, right: 0 };
+      const withInsets = (
+        <SafeAreaInsetsContext.Provider value={insets}>
+          <StopEditor visible mode={addMode} onCancel={onCancel} onSubmit={onSubmit} />
+        </SafeAreaInsetsContext.Provider>
+      );
+
+      const android = jest.replaceProperty(Platform, 'OS', 'android');
+      const first = await render(withInsets);
+      android.restore();
+      expect(flat('stop-editor-frame').paddingTop).toBe(insets.top);
+      await first.unmount();
+
+      const ios = jest.replaceProperty(Platform, 'OS', 'ios');
+      await render(withInsets);
+      ios.restore();
+      expect(flat('stop-editor-frame').paddingTop).toBe(0);
+      expect(screen.getByTestId('stop-editor-footer').props.offset).toEqual({
+        closed: 0,
+        opened: insets.bottom,
+      });
+    });
+
+    test('renders nothing of the sheet while hidden', async () => {
+      await render(
+        <StopEditor
+          visible={false}
+          mode={addMode}
+          onCancel={onCancel}
+          onSubmit={onSubmit}
+        />,
+      );
+      expect(screen.queryByTestId('stop-editor')).toBeNull();
+    });
+  });
+
+  describe('the sheet', () => {
+    test('is a titled form sheet on the modal host: root, body and footer are named from stop-editor', async () => {
+      await renderEditor();
+
+      const title = screen.getByText('Add stop');
+      expect(title.props.accessibilityRole).toBe('header');
+      const body = screen.getByTestId('stop-editor-body');
+      const footer = screen.getByTestId('stop-editor-footer');
+      expect(within(body).getByText('Add stop')).toBeTruthy();
+      expect(within(footer).getByTestId('stop-editor-cancel')).toBeTruthy();
+      expect(within(footer).getByTestId('stop-editor-save')).toBeTruthy();
+      expect(footer.props.offset).toEqual({ closed: 0, opened: 0 });
+      expect(flat('stop-editor').flex).toBe(1);
+    });
+
+    test('names the actions as before: Save stop when adding, Save dates when editing', async () => {
+      await renderEditor();
+      expect(screen.getByTestId('stop-editor-save').props.accessibilityLabel).toBe(
+        'Save stop',
+      );
+      expect(screen.getByLabelText('Cancel')).toBeTruthy();
+      await screen.unmount();
+
+      await renderEditor(editMode);
+      expect(screen.getByText('Edit dates').props.accessibilityRole).toBe('header');
+      expect(screen.getByTestId('stop-editor-save').props.accessibilityLabel).toBe(
+        'Save dates',
+      );
+    });
+
+    test('shows the picker first, with Save held back, and no dates until a city is chosen', async () => {
+      await renderEditor();
+
+      expect(screen.getByTestId('pick-florence')).toBeTruthy();
+      expect(screen.queryByTestId('stop-editor-arrive')).toBeNull();
+      expect(screen.queryByTestId('stop-editor-place')).toBeNull();
+      expect(
+        screen.getByTestId('stop-editor-save').props.accessibilityState,
+      ).toMatchObject({ disabled: true });
+    });
+
+    test('shows the chosen city as one flat card: the city, the country beneath it, and a secondary "Change city" button', async () => {
+      await renderEditor();
+      await fireEvent.press(screen.getByTestId('pick-florence'));
+
+      expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Firenze');
+      expect(screen.getByText('Italy')).toBeTruthy();
+      const change = screen.getByTestId('stop-editor-change-city');
+      expect(change.props.accessibilityLabel).toBe('Change city');
+      expect(change.props.accessibilityRole).toBe('button');
+      expect(change.props.variant).toBe('secondary');
+      expect(within(change).getByText('Change')).toBeTruthy();
+      expect(screen.queryByTestId('pick-florence')).toBeNull();
+    });
+
+    test('reads title, city, country, Change, Cancel, Save in that order', async () => {
+      await renderEditor();
+      await fireEvent.press(screen.getByTestId('pick-florence'));
+
+      const order = screen
+        .getAllByText(/^(Add stop|Firenze|Italy|Change|Cancel|Save stop)$/)
+        .map((node) => String(node.props.children));
+      expect(order).toEqual([
+        'Add stop',
+        'Firenze',
+        'Italy',
+        'Change',
+        'Cancel',
+        'Save stop',
+      ]);
+    });
+
+    test('editing shows the place as a card with no picker and no way to change the city', async () => {
+      await renderEditor(editMode);
+
+      expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Roma');
+      expect(screen.queryByTestId('stop-editor-change-city')).toBeNull();
+      expect(screen.queryByTestId('pick-florence')).toBeNull();
+      expect(screen.getByTestId('stop-editor-arrive')).toBeTruthy();
+      expect(screen.getByTestId('stop-editor-depart')).toBeTruthy();
+    });
+
+    test('has one primary control in every state: Save (FR-005)', async () => {
+      await renderEditor();
+      expect(primaries()).toEqual(['stop-editor-save']);
+
+      await fireEvent.press(screen.getByTestId('pick-florence'));
+      expect(primaries()).toEqual(['stop-editor-save']);
+
+      await pickDate('stop-editor-depart', new Date(2026, 4, 1));
+      expect(screen.getByText('Departure can’t be before arrival.')).toBeTruthy();
+      expect(primaries()).toEqual(['stop-editor-save']);
+    });
+  });
+
+  describe('with the keyboard up (C4-10 rule 8; the keyboard-visibility test of every form)', () => {
+    beforeEach(() => setWindow(PHONE_360X640));
+
+    test('Save is in the footer, outside the scrolling body, and the footer rides up with the keyboard', async () => {
+      await renderEditor(editMode);
+      await showKeyboard();
+
+      expectActionAboveKeyboard('stop-editor', 'stop-editor-save');
+      expect(screen.getByTestId('stop-editor-body').props.keyboardShouldPersistTaps).toBe(
+        'handled',
+      );
+    });
+
+    test('an invalid pair of dates still says why in words, and Save stays held back above the keyboard', async () => {
+      await renderEditor(editMode);
+      await showKeyboard();
+
+      await pickDate('stop-editor-depart', new Date(2026, 4, 8));
+      expect(screen.getByText('Departure can’t be before arrival.')).toBeTruthy();
+      expectActionAboveKeyboard('stop-editor', 'stop-editor-save');
+      expect(
+        screen.getByTestId('stop-editor-save').props.accessibilityState,
+      ).toMatchObject({ disabled: true });
+      await fireEvent.press(screen.getByTestId('stop-editor-save'));
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    test('a valid pair saves from the footer, and Cancel is there too', async () => {
+      await renderEditor(addMode);
+      await showKeyboard();
+      await fireEvent.press(screen.getByTestId('pick-florence'));
+
+      expectActionAboveKeyboard('stop-editor', 'stop-editor-save');
+      expect(
+        within(screen.getByTestId('stop-editor-footer')).getByTestId(
+          'stop-editor-cancel',
+        ),
+      ).toBeTruthy();
+      await fireEvent.press(screen.getByTestId('stop-editor-save'));
+      expect(onSubmit).toHaveBeenCalledWith({
+        city_id: 101,
+        arrive_date: '2026-05-12',
+        depart_date: '2026-05-13',
+      });
+    });
+  });
+
+  test('is composed from the adapter layer only: the form-sheet pattern, no retired primitive, no kit, no colour literal', () => {
+    const source = (jest.requireActual('fs') as typeof import('fs')).readFileSync(
+      require.resolve('@/components/trip/stop-editor'),
+      'utf8',
+    );
+    expect(source).toMatch(/from '@\/components\/ui\/form-sheet'/);
+    expect(source).toMatch(/host="modal"/);
+    expect(source).not.toMatch(
+      /ThemedText|ThemedView|TextField|\bSurface\b|PressableSurface|PillGroup|SafeAreaView/,
+    );
+    expect(source).not.toMatch(/from 'heroui-native'|from 'uniwind'/);
+    expect(source).not.toMatch(/Colors\[|#[0-9a-fA-F]{3,8}\b|rgba?\(/);
   });
 });
 
