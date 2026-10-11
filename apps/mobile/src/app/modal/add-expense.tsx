@@ -9,7 +9,23 @@
  * today, and the city to the stop whose dates contain that day. "Save"
  * writes to the encrypted local store FIRST — converting from the cached FX
  * snapshot when it can and marking the row pending when it cannot — and then
- * closes the sheet. The whole form sits under a `KeyboardAwareScrollView`.
+ * closes the sheet.
+ *
+ * A form sheet since feature 004 (T436; FR-009; research D4-06): the route is presented
+ * by the root as a `formSheet` as tall as its contents (`formSheetOptions`), and the body
+ * is the shared `FormSheet` (the pattern of add-trip, T434): the title, a scrolling,
+ * keyboard-aware body, and a sticky footer (Cancel, Save) that stays above the keyboard.
+ * The body is an amount `Field` (a decimal STRING, never a number: SC-016; the
+ * placeholder follows the device's decimal separator), the currency and category pickers,
+ * the day (`DateField`), the city as ONE sideways chip row, and an optional note `Field`,
+ * every refusal in words under its field. The ids and names are unchanged:
+ * `add-expense-screen`, `add-expense-amount`, `currency-<CODE>`, `category-<id>`,
+ * `add-expense-date`, `add-expense-city-<id|none>`, `add-expense-note`,
+ * `add-expense-error`, `add-expense-cancel`, `add-expense-save`.
+ *
+ * With no form to show (the trip is being read, could not be read, or is not on this
+ * device) the same root id carries a designed state and a "Close" action
+ * (`add-expense-close`), because a sheet with only a state would have no explicit way out.
  */
 import {
   SYSTEM_EXPENSE_CATEGORIES,
@@ -24,22 +40,19 @@ import {
   type Control,
   type UseFormSetValue,
 } from 'react-hook-form';
-import { StyleSheet, View } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { CategoryPicker } from '@/components/trip/category-picker';
 import { CurrencyPicker } from '@/components/trip/currency-picker';
 import { DateField } from '@/components/trip/date-field';
 import { describePlace } from '@/components/trip/stop-row';
-import { FormActions } from '@/components/ui/form-actions';
+import { Button } from '@/components/ui/button';
+import { ChipGroup, type ChipOption } from '@/components/ui/chip';
+import { Field } from '@/components/ui/field';
+import { FormSheet } from '@/components/ui/form-sheet';
 import { InlineError } from '@/components/ui/inline-error';
-import { PillGroup, type PillOption } from '@/components/ui/pill-group';
-import { EmptyState } from '@/components/ui/state-view';
-import { TextField } from '@/components/ui/text-field';
-import { Spacing } from '@/constants/theme';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
+import { Text } from '@/components/ui/text';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import {
   EXPENSE_FIELD_COPY,
@@ -139,7 +152,9 @@ function useAddExpenseForm({ tripId, homeCurrency, stops, onDone }: FormProps) {
     }
   });
 
-  return { control, setValue, cityId, save, saveError, actions };
+  const createCategory = (name: string) => actions.createCategory({ name }).id;
+
+  return { control, setValue, cityId, save, saveError, createCategory };
 }
 
 function AmountField({ control }: { control: ExpenseControl }) {
@@ -149,7 +164,7 @@ function AmountField({ control }: { control: ExpenseControl }) {
       control={control}
       name="amount"
       render={({ field, fieldState }) => (
-        <TextField
+        <Field
           testID="add-expense-amount"
           label="Amount"
           value={field.value}
@@ -240,7 +255,7 @@ type CityFieldProps = {
 };
 
 /** "No city", then each city the trip visits, once, in the order first visited. */
-function cityOptions(stops: readonly StopWithPlace[]): PillOption[] {
+function cityOptions(stops: readonly StopWithPlace[]): ChipOption[] {
   const visited = stops.filter(
     (stop, index) => stops.findIndex((other) => other.city_id === stop.city_id) === index,
   );
@@ -254,15 +269,17 @@ function cityOptions(stops: readonly StopWithPlace[]): PillOption[] {
     }));
 }
 
+/** One sideways chip row, like the currency and the category: a long trip never grows the form. */
 function CityField({ stops, cityId, onSelect }: CityFieldProps) {
   if (stops.length === 0) return null;
-  const options = cityOptions(stops);
 
   return (
-    <View style={styles.cities}>
-      <ThemedText type="small">City</ThemedText>
-      <PillGroup
-        options={options}
+    <View className="gap-2">
+      <Text type="callout">City</Text>
+      <ChipGroup
+        scroll
+        accessibilityLabel="City"
+        options={cityOptions(stops)}
         selectedKey={cityKey(cityId)}
         onSelect={(key) => onSelect(cityIdOf(key))}
       />
@@ -276,13 +293,14 @@ function NoteField({ control }: { control: ExpenseControl }) {
       control={control}
       name="note"
       render={({ field, fieldState }) => (
-        <TextField
+        <Field
           testID="add-expense-note"
           label="Note (optional)"
           value={field.value}
           onChangeText={field.onChange}
           onBlur={field.onBlur}
           placeholder="Lunch by the lake"
+          returnKeyType="done"
           maxLength={500}
           error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.note)}
         />
@@ -292,21 +310,24 @@ function NoteField({ control }: { control: ExpenseControl }) {
 }
 
 function AddExpenseForm(props: FormProps) {
-  const { control, setValue, cityId, save, saveError, actions } =
+  const { control, setValue, cityId, save, saveError, createCategory } =
     useAddExpenseForm(props);
 
   return (
-    <View style={styles.form}>
-      <ThemedText type="subtitle">New expense</ThemedText>
-
+    <FormSheet
+      testID="add-expense-screen"
+      title="New expense"
+      actions={{
+        testIDPrefix: 'add-expense',
+        saveLabel: 'Save expense',
+        onCancel: props.onDone,
+        onSave: () => void save(),
+      }}>
       <AmountField control={control} />
 
       <CurrencyField control={control} />
 
-      <CategoryField
-        control={control}
-        onCreate={(name) => actions.createCategory({ name }).id}
-      />
+      <CategoryField control={control} onCreate={createCategory} />
 
       <PaidOnField control={control} stops={props.stops} setValue={setValue} />
 
@@ -319,13 +340,57 @@ function AddExpenseForm(props: FormProps) {
       <NoteField control={control} />
 
       <InlineError testID="add-expense-error" message={saveError} />
+    </FormSheet>
+  );
+}
 
-      <FormActions
-        testIDPrefix="add-expense"
-        saveLabel="Save expense"
-        onCancel={props.onDone}
-        onSave={() => void save()}
+type PlaceholderProps = {
+  loading: boolean;
+  failed: boolean;
+};
+
+/**
+ * What stands in for the trip until there is one: unreadable, being read, or not here.
+ * The error comes first: a live read that fails can still report `loading` (its first
+ * result never arrives), and the words must win over the spinner.
+ */
+function PlaceholderState({ loading, failed }: PlaceholderProps) {
+  if (failed) {
+    return (
+      <ErrorState
+        title="Couldn’t read this trip"
+        detail="The local store did not answer."
       />
+    );
+  }
+  if (loading) return <LoadingState title="Loading trip" />;
+  return (
+    <EmptyState
+      title="This trip isn’t on this device"
+      detail="It may have been removed, or it has not synced here yet."
+    />
+  );
+}
+
+/**
+ * The sheet when there is no form: the same root id, so a flow that waits on it finds
+ * either, and a secondary "Close", because a sheet that is only a state has no explicit way
+ * out (FR-009) and no primary action to offer (FR-005).
+ */
+function SheetPlaceholder({
+  onClose,
+  ...state
+}: PlaceholderProps & { onClose: () => void }) {
+  return (
+    <View testID="add-expense-screen" className="gap-4 bg-background p-6">
+      <PlaceholderState {...state} />
+      <Button
+        testID="add-expense-close"
+        variant="secondary"
+        accessibilityLabel="Close"
+        onPress={onClose}>
+        Close
+      </Button>
     </View>
   );
 }
@@ -336,36 +401,23 @@ export default function AddExpenseScreen() {
   const tripId = firstParam(rawTripId) ?? '';
   const trip = useTrip(tripId);
   const stops = useTripStops(tripId);
+  const close = () => router.back();
 
+  if (trip.data) {
+    return (
+      <AddExpenseForm
+        tripId={tripId}
+        homeCurrency={trip.data.home_currency}
+        stops={stops.data}
+        onDone={close}
+      />
+    );
+  }
   return (
-    <ThemedView type="canvas" style={styles.sheet} testID="add-expense-screen">
-      <KeyboardAwareScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-        bottomOffset={Spacing.four}>
-        <SafeAreaView edges={['bottom']}>
-          {trip.data ? (
-            <AddExpenseForm
-              tripId={tripId}
-              homeCurrency={trip.data.home_currency}
-              stops={stops.data}
-              onDone={() => router.back()}
-            />
-          ) : trip.loading ? null : (
-            <EmptyState
-              title="This trip isn’t on this device"
-              detail="It may have been removed, or it has not synced here yet."
-            />
-          )}
-        </SafeAreaView>
-      </KeyboardAwareScrollView>
-    </ThemedView>
+    <SheetPlaceholder
+      loading={trip.loading}
+      failed={trip.error !== null}
+      onClose={close}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  sheet: { flex: 1 },
-  scroll: { flexGrow: 1, padding: Spacing.four },
-  form: { gap: Spacing.three },
-  cities: { gap: Spacing.two },
-});
