@@ -28,7 +28,7 @@
  *   spoken with the title as part of the same name, and `spinner={false}` leaves the
  *   spinner out (a traveller who asked for less motion).
  * - The gates (first sync, local store) add three optional things, all off by default:
- *   a `testID` and a `liveRegion` on the surface of any state, a `busy` flag on an
+ *   a `testID` and an `accessibilityLiveRegion` on the surface of any state, a `busy` flag on an
  *   `EmptyState` action and a `retryBusy` flag on an `ErrorState`, so a retry that is
  *   under way is announced busy and ignores a second press (FR-019).
  * - Skeletons (`TripCardSkeleton`, `RowSkeleton`, `ListSkeleton`) are shaped like the
@@ -54,16 +54,16 @@ const CONTINUOUS = { borderCurve: 'continuous' } as const;
 
 const STATE_BOX = 'bg-surface rounded-2xl p-6 items-center gap-2';
 
-/** How a live region reads a change: after what is being said, or at once. */
-type LiveRegion = 'polite' | 'assertive';
+/**
+ * What a gate may put on the surface of a state, passed straight to it: an id (a flow
+ * waits on it) and a live region (Android reads a change of the words; iOS needs a
+ * separate announcement). Both are off by default.
+ */
+type SurfaceProps = Pick<ViewProps, 'testID' | 'accessibilityLiveRegion'>;
 
-type StateViewProps = {
+type StateViewProps = SurfaceProps & {
   title: string;
   detail?: string;
-  /** The id of the state's surface (a gate that a flow waits on); none by default. */
-  testID?: string;
-  /** Announce a change of the state's words on Android; iOS needs a separate announcement. */
-  liveRegion?: LiveRegion;
 };
 
 export type StateAction = {
@@ -101,14 +101,6 @@ function StateBox({ children, ...rest }: ViewProps) {
   );
 }
 
-/** The surface's own props: an id and a live region, only when the caller asked. */
-function surfaceProps({
-  testID,
-  liveRegion,
-}: Pick<StateViewProps, 'testID' | 'liveRegion'>) {
-  return { testID, accessibilityLiveRegion: liveRegion };
-}
-
 function Detail({ children }: { children?: string }) {
   if (!children) return null;
   return (
@@ -121,7 +113,7 @@ function Detail({ children }: { children?: string }) {
 /** Nothing here yet — and that is a normal, designed state, not a failure. */
 export function EmptyState({ title, detail, icon, action, ...surface }: EmptyStateProps) {
   return (
-    <StateBox {...surfaceProps(surface)}>
+    <StateBox {...surface}>
       {icon ? <Icon name={icon} size={24} tone="muted" /> : null}
       <Text type="headline" className="text-center">
         {title}
@@ -157,7 +149,7 @@ export function LoadingState({
       accessible
       accessibilityLabel={detail ? `${title}. ${detail}` : title}
       accessibilityRole="progressbar"
-      {...surfaceProps(surface)}>
+      {...surface}>
       {spinner ? (
         <Spinner
           size="md"
@@ -185,7 +177,7 @@ export function ErrorState({
   ...surface
 }: ErrorStateProps) {
   return (
-    <StateBox {...surfaceProps(surface)}>
+    <StateBox {...surface}>
       <Icon name={ALERT_ICON} size={24} tone="danger" />
       <Text type="headline" tone="danger" className="text-center">
         {title}

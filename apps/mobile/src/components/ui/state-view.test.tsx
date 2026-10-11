@@ -239,9 +239,20 @@ describe('what the first-sync, local-store and sign-out gates need (004 T449)', 
   });
 
   test.each([
-    ['empty', () => <EmptyState title="Offline" testID="gate" liveRegion="polite" />],
-    ['loading', () => <LoadingState title="Syncing" testID="gate" liveRegion="polite" />],
-    ['error', () => <ErrorState title="Failed" testID="gate" liveRegion="polite" />],
+    [
+      'empty',
+      () => <EmptyState title="Offline" testID="gate" accessibilityLiveRegion="polite" />,
+    ],
+    [
+      'loading',
+      () => (
+        <LoadingState title="Syncing" testID="gate" accessibilityLiveRegion="polite" />
+      ),
+    ],
+    [
+      'error',
+      () => <ErrorState title="Failed" testID="gate" accessibilityLiveRegion="polite" />,
+    ],
   ])(
     '%s state carries a testID and a live region on its surface',
     async (_name, view) => {

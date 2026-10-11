@@ -185,11 +185,11 @@ function Leading({
 }
 
 /** The busy indicator: decorative, the row's title already says what is happening. */
-function BusyIndicator({ testID }: { testID?: string }) {
+function BusyIndicator({ rowId }: { rowId?: string }) {
   return (
     <Spinner
       size="sm"
-      testID={testID ? `${testID}-spinner` : undefined}
+      testID={rowId ? `${rowId}-spinner` : undefined}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     />
@@ -209,7 +209,7 @@ function Trailing({
   testID?: string;
 }) {
   const node = busy ? (
-    <BusyIndicator testID={testID} />
+    <BusyIndicator rowId={testID} />
   ) : (
     (trailing ??
     (pressable ? <PressCue testID={testID ? `${testID}-cue` : undefined} /> : null))
