@@ -2,7 +2,9 @@
  * "Or continue with" Google and Apple — FR-002; spec Edge Cases (Accounts).
  *
  * The section under the email form on Sign in and Create account: a divider,
- * then one round logo button per provider (`ProviderButton`), Google first.
+ * then one outline button per provider (`ProviderButton`), Google first, stacked
+ * in one column at the same width (Atlas, T446; FR-005, FR-017: they are the
+ * secondary controls under the screen's one primary action).
  * The provider routes create an account transparently on first use
  * (Acceptance Scenario 1.2), so both screens offer both.
  *
@@ -10,7 +12,8 @@
  * client id, Apple anywhere without a native sheet — shows disabled, and one
  * plain sentence under the buttons says which are coming soon. Failures (the
  * provider's own sheet, or the API refusing its token) are said in words
- * under the section, like the form's own errors (FR-010).
+ * under the section, like the form's own errors (FR-010): an alert with an
+ * icon (`InlineError`), never colour alone (FR-025).
  *
  * On success nothing is navigated: the session store flips and the root
  * layout swaps the auth group for the tabs.
@@ -18,11 +21,10 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { Colors, Spacing } from '@/constants/theme';
+import { InlineError } from '@/components/ui/inline-error';
+import { Text } from '@/components/ui/text';
 import { describeAuthError } from '@/features/auth/auth-errors';
 import { useAppleSignIn, useGoogleSignIn } from '@/features/auth/use-session';
-import { useAppearance } from '@/hooks/use-appearance';
 
 import { AppleSignInButton, useAppleSignInAvailability } from './apple-sign-in-button';
 import { GoogleSignInButton, isGoogleSignInConfigured } from './google-sign-in-button';
@@ -47,7 +49,6 @@ export type SocialSignInProps = {
 };
 
 export function SocialSignIn({ disabled = false }: SocialSignInProps) {
-  const { theme } = useAppearance();
   const apple = useAppleSignIn();
   const google = useGoogleSignIn();
   const [providerError, setProviderError] = useState<string | null>(null);
@@ -61,9 +62,9 @@ export function SocialSignIn({ disabled = false }: SocialSignInProps) {
   const soon = comingSoonSentence(isGoogleSignInConfigured(), appleAvailable);
 
   return (
-    <View testID="social-sign-in" style={styles.section}>
+    <View testID="social-sign-in" className="mt-3 gap-3">
       <Divider />
-      <View style={styles.row}>
+      <View testID="social-sign-in-buttons" className="gap-3">
         <GoogleSignInButton
           busy={google.isPending}
           disabled={disabled || apple.isPending}
@@ -85,61 +86,28 @@ export function SocialSignIn({ disabled = false }: SocialSignInProps) {
         />
       </View>
       {soon ? (
-        <ThemedText type="small" themeColor="textMuted" style={styles.centred}>
+        <Text type="callout" tone="muted" className="text-center">
           {soon}
-        </ThemedText>
+        </Text>
       ) : null}
-      {error ? (
-        <ThemedText
-          testID="social-sign-in-error"
-          type="small"
-          accessibilityRole="alert"
-          style={[styles.centred, { color: Colors[theme].danger }]}>
-          {error}
-        </ThemedText>
-      ) : null}
+      <InlineError testID="social-sign-in-error" message={error} />
     </View>
   );
 }
 
-/** A hairline either side of the words, in the palette's border ink. */
+/** A hairline either side of the words, in the border ink. */
 function Divider() {
-  const { tokens } = useAppearance();
-  const rule = [styles.rule, { backgroundColor: tokens.border }];
   return (
-    <View style={styles.divider}>
-      <View style={rule} />
-      <ThemedText type="small" themeColor="textMuted">
+    <View className="flex-row items-center gap-2">
+      <View className="flex-1 bg-border" style={styles.rule} />
+      <Text type="callout" tone="muted">
         or continue with
-      </ThemedText>
-      <View style={rule} />
+      </Text>
+      <View className="flex-1 bg-border" style={styles.rule} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: {
-    gap: Spacing.three,
-    marginTop: Spacing.three,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  rule: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-  },
-  // The circles grow with text size (FR-016); at the largest settings they
-  // wrap onto a second line rather than run off a narrow screen.
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: Spacing.four,
-  },
-  centred: {
-    textAlign: 'center',
-  },
+  rule: { height: StyleSheet.hairlineWidth },
 });

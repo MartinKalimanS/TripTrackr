@@ -20,7 +20,7 @@
  * Client ids are public identifiers, read from `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID`
  * — written out in full each time, as https://docs.expo.dev/guides/environment-variables.md
  * requires for build-time inlining. When the current platform's id is absent
- * the round button shows disabled, as coming soon (`ProviderButton`): the
+ * the outline button shows disabled, as coming soon (`ProviderButton`): the
  * hook throws on a missing client id, so the check must happen BEFORE the
  * hook is called (hence two components).
  */

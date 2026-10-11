@@ -1,10 +1,11 @@
 /**
  * Continue with Google / Apple — FR-002; spec Edge Cases (Accounts).
  *
- * Round buttons carrying each provider's logo, in the app's own palette, on
- * the Sign in and Create account screens below the email form. A provider
- * that cannot work on this build or platform yet is shown disabled and the
- * section says it is coming soon; one that can is wired to its flow.
+ * Outlined buttons carrying each provider's logo and name (Atlas, feature 004 T446; what
+ * one button is is pinned in `provider-button.test.tsx`) on the Sign in and Create account
+ * screens below the email form. A provider that cannot work on this build or platform yet
+ * is shown disabled and the section says it is coming soon; one that can is wired to its
+ * flow.
  */
 import {
   fireEvent,
@@ -14,9 +15,8 @@ import {
   within,
 } from '@testing-library/react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 
-import { Colors, Radius } from '@/constants/theme';
 import { ApiRequestError } from '@/lib/api-client';
 
 import { SocialSignIn } from '../social-sign-in';
@@ -86,22 +86,40 @@ beforeEach(() => {
   isAvailable.mockResolvedValue(false);
 });
 
-describe('<SocialSignIn> — the round buttons', () => {
-  test('are round, each carrying its provider’s logo in the app’s ink colour', async () => {
+const classesOf = (node: { props: { className?: unknown } }) =>
+  String(node.props.className ?? '')
+    .split(/\s+/)
+    .filter(Boolean);
+
+describe('<SocialSignIn> — the outline buttons', () => {
+  test('are outlined and full width, each carrying its provider’s logo and name', async () => {
     await render(<SocialSignIn />);
     const google = screen.getByTestId('google-sign-in-unavailable');
     const apple = await screen.findByTestId('apple-sign-in-unavailable');
 
-    for (const [button, logo] of [
-      [google, 'icon-logo-google'],
-      [apple, 'icon-logo-apple'],
+    for (const [button, logo, words] of [
+      [google, 'icon-logo-google', 'Continue with Google'],
+      [apple, 'icon-logo-apple', 'Continue with Apple'],
     ] as const) {
-      const style = StyleSheet.flatten(button.props.style);
-      expect(style.borderRadius).toBe(Radius.pill);
-      expect(style.width).toBe(style.height);
-      const icon = within(button).getByTestId(logo);
-      expect(StyleSheet.flatten(icon.props.style).color).toBe(Colors.light.textPrimary);
+      expect(classesOf(button)).toEqual(
+        expect.arrayContaining(['border', 'border-border', 'self-stretch']),
+      );
+      expect(
+        within(button).getByTestId(logo, { includeHiddenElements: true }),
+      ).toBeTruthy();
+      expect(within(button).getByText(words)).toBeTruthy();
     }
+  });
+
+  test('are one pair of the same size and prominence, stacked in one column', async () => {
+    await render(<SocialSignIn />);
+    const google = screen.getByTestId('google-sign-in-unavailable');
+    const apple = await screen.findByTestId('apple-sign-in-unavailable');
+
+    expect(classesOf(google)).toEqual(classesOf(apple));
+    const row = screen.getByTestId('social-sign-in-buttons');
+    expect(classesOf(row)).toEqual(expect.arrayContaining(['gap-3']));
+    expect(classesOf(row)).not.toContain('flex-row');
   });
 
   test('sit under an "or continue with" divider, Google first', async () => {
@@ -113,6 +131,17 @@ describe('<SocialSignIn> — the round buttons', () => {
       .getAllByRole('button')
       .map((button) => button.props.testID as string);
     expect(ids).toEqual(['google-sign-in-unavailable', 'apple-sign-in-unavailable']);
+  });
+
+  test('none is a primary control: the screen’s own action is the only one (FR-005)', async () => {
+    configureGoogle();
+    isAvailable.mockResolvedValue(true);
+    await render(<SocialSignIn />);
+    await screen.findByTestId('apple-sign-in');
+
+    for (const button of screen.getAllByRole('button')) {
+      expect(button.props.variant).toBeUndefined();
+    }
   });
 });
 
@@ -251,9 +280,15 @@ describe('<SocialSignIn> — providers that work', () => {
       message: 'Bad token.',
     });
     await render(<SocialSignIn />);
-    expect(screen.getByTestId('social-sign-in-error')).toHaveTextContent(
-      /could not be verified/,
-    );
+    const error = screen.getByTestId('social-sign-in-error');
+    expect(error).toHaveTextContent(/could not be verified/);
+    // Words with an alert role and an icon, never colour alone (FR-025).
+    expect(error.props.accessibilityRole).toBe('alert');
+  });
+
+  test('no error element while nothing has failed', async () => {
+    await render(<SocialSignIn />);
+    expect(screen.queryByTestId('social-sign-in-error')).toBeNull();
   });
 
   test('a provider sign-in in flight shows on its own button', async () => {
