@@ -72,15 +72,21 @@ const subscribe = (listener: () => void) => {
 };
 const read = () => snapshot;
 
-// Swaps the double's constant `useKeyboardState` for one that follows this store. It
-// runs when this module is imported, so a component rendered before the first
-// `showKeyboard` is already subscribed to it.
-jest.mocked(KeyboardController.useKeyboardState).mockImplementation(((
-  selector?: (state: Snapshot) => unknown,
-) => {
-  const state = useSyncExternalStore(subscribe, read);
-  return selector ? selector(state) : state;
-}) as never);
+/**
+ * Swaps the double's constant `useKeyboardState` for one that follows this store. It runs
+ * when this module is imported, so a component rendered before the first `showKeyboard` is
+ * already subscribed to it, and again in `resetKeyboard`, so a suite that resets every mock
+ * between tests does not leave the next one with a hook that answers nothing.
+ */
+function install() {
+  jest.mocked(KeyboardController.useKeyboardState).mockImplementation(((
+    selector?: (state: Snapshot) => unknown,
+  ) => {
+    const state = useSyncExternalStore(subscribe, read);
+    return selector ? selector(state) : state;
+  }) as never);
+}
+install();
 
 async function publish(next: Snapshot) {
   snapshot = next;
@@ -115,6 +121,7 @@ export function resetKeyboard() {
   windowSpy = null;
   snapshot = HIDDEN;
   listeners.clear();
+  install();
   jest.mocked(KeyboardController.KeyboardController.isVisible).mockReturnValue(false);
 }
 

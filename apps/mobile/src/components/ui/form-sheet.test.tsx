@@ -69,11 +69,6 @@ function footerContent() {
   return content;
 }
 
-test('the footer is opaque, so nothing scrolls into view behind it', async () => {
-  await renderSheet();
-  expect(String(footerContent().props.className)).toContain('bg-background');
-});
-
 describe('formSheetOptions - how the router presents a form (contract C4-11)', () => {
   test('is a form sheet that is as tall as its contents, with the platform grabber', () => {
     expect(formSheetOptions).toEqual({
@@ -165,6 +160,11 @@ describe('<FormSheet> - the parts and their order', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
     await fireEvent.press(save);
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  test('the footer is opaque, so nothing scrolls into view behind it', async () => {
+    await renderSheet();
+    expect(String(footerContent().props.className)).toContain('bg-background');
   });
 
   test('has one primary control: Save (FR-005)', async () => {
