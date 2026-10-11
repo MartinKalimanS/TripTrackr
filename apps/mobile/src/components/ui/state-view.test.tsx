@@ -213,20 +213,24 @@ describe('<ErrorState> - words, an icon and a way out (FR-025, FR-035)', () => {
 });
 
 describe('what the first-sync, local-store and sign-out gates need (004 T449)', () => {
-  test('a loading state can carry a detail, spoken with the title as ONE named region', async () => {
+  test('a loading state can carry a detail: still ONE region named by its title, the detail its value text', async () => {
     await render(
       <LoadingState title="Syncing your trips" detail="This clears itself." />,
     );
     expect(screen.getByText('This clears itself.')).toBeTruthy();
-    const region = screen.getByLabelText('Syncing your trips. This clears itself.');
+    const region = screen.getByLabelText('Syncing your trips');
     expect(region.props.accessibilityRole).toBe('progressbar');
     expect(region.props.accessible).toBe(true);
-    expect(screen.queryByLabelText('Syncing your trips')).toBeNull();
+    expect(region.props.accessibilityValue).toMatchObject({
+      text: 'This clears itself.',
+    });
   });
 
-  test('without a detail the region is still named by its title alone', async () => {
+  test('without a detail the region is named by its title alone and has no value text', async () => {
     await render(<LoadingState title="Loading trips" />);
-    expect(screen.getByLabelText('Loading trips')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Loading trips').props.accessibilityValue?.text,
+    ).toBeUndefined();
   });
 
   test('the spinner can be left out (reduced motion) and the state is still a named progressbar', async () => {

@@ -568,7 +568,9 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
 
   test('says in words what signing out does here (the hint says it to a screen reader)', async () => {
     await render(<ProfileScreen />);
-    expect(screen.getByText('Your trips are kept on this device, encrypted.')).toBeTruthy();
+    expect(
+      screen.getByText('Your trips are kept on this device, encrypted.'),
+    ).toBeTruthy();
     expect(screen.getByTestId('profile-sign-out').props.accessibilityHint).toBe(
       'Signs out on this device. Your trips stay on the device, encrypted.',
     );

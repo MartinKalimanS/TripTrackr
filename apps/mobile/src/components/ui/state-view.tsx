@@ -24,8 +24,8 @@
  *   (FR-030), so screens, tests and Maestro flows still find them.
  * - `LoadingState` is ONE announced region: the container is `accessible`, a
  *   `progressbar` named by its title, and the kit `Spinner` (itself a progressbar) is
- *   hidden from assistive technology so it is not read twice. An optional `detail` is
- *   spoken with the title as part of the same name, and `spinner={false}` leaves the
+ *   hidden from assistive technology so it is not read twice. An optional `detail` is the
+ *   region's value text (the name stays the title), and `spinner={false}` leaves the
  *   spinner out (a traveller who asked for less motion).
  * - The gates (first sync, local store) add three optional things, all off by default:
  *   a `testID` and an `accessibilityLiveRegion` on the surface of any state, a `busy` flag on an
@@ -136,7 +136,8 @@ export function EmptyState({ title, detail, icon, action, ...surface }: EmptySta
 
 /**
  * Work in progress. Announced, so it is not a silent pause for a screen reader: ONE
- * region named by the title and, when there is one, the detail after it.
+ * region named by the title (the name a flow or a test looks for is unchanged), with the
+ * detail, when there is one, as its value text, which a screen reader reads after the name.
  */
 export function LoadingState({
   title = 'Loading',
@@ -147,7 +148,8 @@ export function LoadingState({
   return (
     <StateBox
       accessible
-      accessibilityLabel={detail ? `${title}. ${detail}` : title}
+      accessibilityLabel={title}
+      accessibilityValue={detail ? { text: detail } : undefined}
       accessibilityRole="progressbar"
       {...surface}>
       {spinner ? (

@@ -438,3 +438,103 @@ describe('the gate — accessibility (feature 002 C13, FR-016, FR-017)', () => {
     expect(hostTypes(screen.toJSON())).not.toContain('ActivityIndicator');
   });
 });
+
+describe('the gate — on the Atlas state views (T449; FR-005, FR-025, FR-030, FR-035)', () => {
+  const classesOf = (node: { props: { className?: unknown } }) =>
+    String(node.props.className ?? '')
+      .split(/\s+/)
+      .filter(Boolean);
+
+  test('syncing is ONE named progressbar with the words as its value, keeping the id and the live region', async () => {
+    await renderGate();
+    await advance(FIRST_SYNC_GRACE_MS);
+
+    const card = screen.getByTestId('first-sync-state');
+    expect(card.props.accessibilityRole).toBe('progressbar');
+    expect(card.props.accessibilityLabel).toBe('Syncing your trips');
+    expect(card.props.accessibilityValue).toMatchObject({
+      text: expect.stringMatching(/Bringing your trips from your account/),
+    });
+    expect(card.props.accessibilityLiveRegion).toBe('polite');
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  test('opening is the same region with no detail, as quiet as it was', async () => {
+    await renderGate();
+
+    const card = screen.getByTestId('first-sync-state');
+    expect(card.props.accessibilityRole).toBe('progressbar');
+    expect(card.props.accessibilityLabel).toBe('Opening your trips');
+    expect(card.props.accessibilityValue?.text).toBeUndefined();
+  });
+
+  test('offline is a neutral state with a glyph, not a progressbar and not dressed as a fault', async () => {
+    await setStatus({ failure: 'offline' });
+    await renderGate();
+
+    const card = screen.getByTestId('first-sync-state');
+    expect(card.props.accessibilityRole).toBeUndefined();
+    expect(card.props.accessibilityLiveRegion).toBe('polite');
+    expect(classesOf(screen.getByText('You’re offline'))).not.toContain('text-danger');
+    expect(hostTypes(screen.toJSON())).not.toContain('ActivityIndicator');
+  });
+
+  test('a failed first sync is an error state: words and the danger ink', async () => {
+    await setStatus({ failure: 'server' });
+    await renderGate();
+
+    expect(classesOf(screen.getByText('Your trips haven’t loaded yet'))).toContain(
+      'text-danger',
+    );
+    expect(screen.getByTestId('first-sync-state').props.accessibilityLiveRegion).toBe(
+      'polite',
+    );
+  });
+
+  test('the retry is a secondary button, never a primary: the state has no primary control (FR-005)', async () => {
+    for (const failure of ['offline', 'server'] as const) {
+      await setStatus({ failure });
+      await renderGate();
+      const retry = screen.getAllByLabelText('Try again').at(-1)!;
+      expect(retry.props.variant).toBe('secondary');
+      expect(
+        screen.getAllByRole('button').filter((node) => node.props.variant === 'primary'),
+      ).toHaveLength(0);
+    }
+  });
+
+  test('session-ended offers no control at all: there is nothing to retry', async () => {
+    await setStatus({ failure: 'unauthorized' });
+    await renderGate();
+
+    expect(screen.getByText('Please sign in again')).toBeTruthy();
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(
+      screen.getByTestId('first-sync-state').props.accessibilityRole,
+    ).toBeUndefined();
+  });
+
+  test('reduced motion takes the spinner out and the state stays a named progressbar', async () => {
+    appearance({ prefersLessMotion: true });
+    await renderGate();
+    await advance(FIRST_SYNC_GRACE_MS);
+
+    expect(hostTypes(screen.toJSON())).not.toContain('ActivityIndicator');
+    expect(screen.getByTestId('first-sync-state').props.accessibilityRole).toBe(
+      'progressbar',
+    );
+  });
+
+  test('is built on the Atlas primitives: none of the retired ones, and no kit import', () => {
+    const source = jest
+      .requireActual('fs')
+      .readFileSync(
+        require.resolve('@/components/sync/first-sync-gate'),
+        'utf8',
+      ) as string;
+    expect(source).not.toMatch(
+      /from '@\/components\/(themed-text|themed-view|ui\/surface|ui\/pressable-surface)'/,
+    );
+    expect(source).not.toMatch(/from 'heroui-native|from 'uniwind/);
+  });
+});
