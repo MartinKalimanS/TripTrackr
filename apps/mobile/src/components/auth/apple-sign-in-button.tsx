@@ -11,11 +11,14 @@
  * The capability itself is `ios.usesAppleSignIn: true` + the config plugin in
  * app.config.ts.
  *
- * The button is the app's round logo button (`ProviderButton`) rather than
- * the native `AppleAuthenticationButton`, which cannot be round or take the
- * app's palette. `signInAsync` starts the same sheet either way. Apple's
- * rules for custom buttons still apply before release
- * (docs/release/store-readiness.md).
+ * The button is the app's outline provider button (`ProviderButton`, T446) rather
+ * than the native `AppleAuthenticationButton`, which offers only Apple's own looks
+ * (black, white, white outline) and so cannot be drawn like the Google button
+ * beside it, which the same-prominence rule asks for (App Store Review Guideline
+ * 4.8). `signInAsync` starts the same sheet either way; how the sheet is requested
+ * is untouched by the restyle. Apple's rules for custom buttons (its own logo
+ * artwork, in black or white) still apply before release
+ * (docs/release/store-readiness.md, "Branded sign-in buttons").
  *
  * Where there is no native sheet — Android, or an iOS device that says it is
  * unavailable — the button shows disabled, as coming soon. While iOS is still

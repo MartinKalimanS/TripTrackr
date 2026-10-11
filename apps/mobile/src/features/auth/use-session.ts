@@ -40,9 +40,20 @@ async function authenticate(path: string, body: unknown): Promise<UserProfile> {
   return establishSession(tokens);
 }
 
+/**
+ * A mutation keeps its variables, here the password, for as long as it is cached, and by
+ * default it stays cached for five minutes after its last observer, which is the screen
+ * the session gate unmounts the moment sign-in succeeds. `gcTime: 0` drops the mutation,
+ * and the password in it, as soon as nothing observes it (T447; the retry of a refused
+ * attempt drops the previous attempt the same way). Pinned by
+ * `test/features/use-session-retention.test.tsx`.
+ */
+const DROP_WITH_ITS_SCREEN = { gcTime: 0 } as const;
+
 /** FR-001 — `POST /auth/register`. The input is validated by the form with `RegisterRequest`. */
 export function useRegister() {
   return useMutation({
+    ...DROP_WITH_ITS_SCREEN,
     mutationFn: (input: RegisterRequest) =>
       authenticate('/auth/register', RegisterRequest.parse(input)),
   });
@@ -51,6 +62,7 @@ export function useRegister() {
 /** FR-001 — `POST /auth/login`. */
 export function useLogin() {
   return useMutation({
+    ...DROP_WITH_ITS_SCREEN,
     mutationFn: (input: LoginRequest) =>
       authenticate('/auth/login', LoginRequest.parse(input)),
   });
