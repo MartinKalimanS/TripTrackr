@@ -10,7 +10,8 @@
  * The overview has a NATIVE header (feature 004, tasks.md T427; FR-007, FR-008;
  * research D4-06; https://docs.expo.dev/router/advanced/stack.md, "Available header
  * options"); every other screen of the stack keeps `headerShown: false` and draws its
- * own bar until its migration (phase 5). What the overview's header carries:
+ * own bar until its migration (phase 5), except the two named below. What the overview's
+ * header carries:
  *
  * - `headerLeft` is the `HeaderBackButton` adapter, so the control is named "Back" on
  *   both platforms whatever the previous screen is called (the native label would be that
@@ -22,6 +23,14 @@
  *   copy in the bar would be read twice.
  * - The colours, and no hairline, come from `useHeaderTheme` (tokens, never a literal).
  *
+ * Notes and Spending (004 T440, T441; FR-007, FR-008) have the same header with a TITLE
+ * ("Notes", "Spending") in the foreground ink and the display face (`useHeaderTitleStyle`:
+ * a title that sets no colour takes the accent tint), and the same Back control; their
+ * screens no longer draw a bar of their own. The title is static: the trip's name is not
+ * repeated in it (the traveller has just left the screen that is that trip). Photos,
+ * documents, document capture and viewer, and offline maps keep `headerShown: false` and
+ * their own bars until their migration.
+ *
  * No `unstable_settings` and no `initialParams` here: the root layout keeps the anchor
  * (`(tabs)`) and the route's params and deep links are exactly what they were.
  */
@@ -30,11 +39,13 @@ import { Stack } from 'expo-router';
 import { RequireLocalStore } from '@/components/require-local-store';
 import { HeaderBackButton } from '@/components/ui/header-back-button';
 import { useHeaderTheme } from '@/components/ui/header-theme';
+import { useHeaderTitleStyle } from '@/components/ui/header-title-style';
 
 const renderBack = () => <HeaderBackButton />;
 
 export default function TripLayout() {
   const theme = useHeaderTheme();
+  const title = useHeaderTitleStyle();
 
   return (
     <RequireLocalStore>
@@ -42,6 +53,26 @@ export default function TripLayout() {
         <Stack.Screen
           name="index"
           options={{ ...theme, headerShown: true, title: '', headerLeft: renderBack }}
+        />
+        <Stack.Screen
+          name="notes"
+          options={{
+            ...theme,
+            ...title,
+            headerShown: true,
+            title: 'Notes',
+            headerLeft: renderBack,
+          }}
+        />
+        <Stack.Screen
+          name="expenses"
+          options={{
+            ...theme,
+            ...title,
+            headerShown: true,
+            title: 'Spending',
+            headerLeft: renderBack,
+          }}
         />
       </Stack>
     </RequireLocalStore>
