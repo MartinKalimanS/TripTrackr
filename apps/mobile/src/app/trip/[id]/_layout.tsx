@@ -22,6 +22,13 @@
  *   copy in the bar would be read twice.
  * - The colours, and no hairline, come from `useHeaderTheme` (tokens, never a literal).
  *
+ * The document list and the document viewer (T443) turn the header on too, with the same
+ * `useHeaderTheme` and the same Back, and a title of their own ("Documents", "Document")
+ * in the display face (`headerTitleStyle` of `useStackHeaderOptions`, the stack's one
+ * source of it; its large title is deliberately not used: these are not top-level lists).
+ * `document-capture` stays headerless: it is a camera surface with its own opaque bar
+ * (see that screen's header comment).
+ *
  * No `unstable_settings` and no `initialParams` here: the root layout keeps the anchor
  * (`(tabs)`) and the route's params and deep links are exactly what they were.
  */
@@ -30,11 +37,21 @@ import { Stack } from 'expo-router';
 import { RequireLocalStore } from '@/components/require-local-store';
 import { HeaderBackButton } from '@/components/ui/header-back-button';
 import { useHeaderTheme } from '@/components/ui/header-theme';
+import { useStackHeaderOptions } from '@/components/ui/stack-header';
 
 const renderBack = () => <HeaderBackButton />;
 
 export default function TripLayout() {
   const theme = useHeaderTheme();
+  // Only its title face is used; the title text is each screen's own, set below.
+  const { headerTitleStyle } = useStackHeaderOptions('');
+  const titled = (title: string) => ({
+    ...theme,
+    headerShown: true,
+    title,
+    headerTitleStyle,
+    headerLeft: renderBack,
+  });
 
   return (
     <RequireLocalStore>
@@ -43,6 +60,8 @@ export default function TripLayout() {
           name="index"
           options={{ ...theme, headerShown: true, title: '', headerLeft: renderBack }}
         />
+        <Stack.Screen name="documents" options={titled('Documents')} />
+        <Stack.Screen name="document-view" options={titled('Document')} />
       </Stack>
     </RequireLocalStore>
   );
