@@ -43,7 +43,10 @@
  *   floor if larger, scaled by the font scale, so large text grows the field instead of
  *   clipping it, and it never goes below the floor when the text is made smaller. Font
  *   scaling is never capped. A multiline field starts at the top and has the kit
- *   TextArea's vertical padding; a caller's `textAlignVertical` wins.
+ *   TextArea's vertical padding; a caller's `textAlignVertical` wins. A multiline field
+ *   that sets `numberOfLines` is at least that many lines of body text tall (scaled the
+ *   same way): the prop is Android-only in React Native, and without a floor an iOS text
+ *   area would open one line high.
  * - The field fill is `surface-secondary`: a soft chip must never sit on it (review
  *   rule 7), so none is drawn inside or over a field.
  *
@@ -54,6 +57,7 @@ import type { TextInputProps } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
+import { TextRoles } from '@/theme';
 
 import { assertAccessibleName } from './adapter-guards';
 
@@ -76,14 +80,20 @@ const REQUIRED_HINT = 'Required';
 const ANDROID_BORDER = 'android:border-field-border';
 /** The kit TextArea's vertical padding; the Input has none of its own. */
 const MULTILINE_PADDING = 'py-2';
+/** `py-2` above and below the text, in dp: what a multiline field adds to its lines. */
+const MULTILINE_PADDING_DP = 16;
 
 /**
  * The input's minimum height: the larger of the kit's and the platform floor, scaled by
- * the font scale and never below the unscaled value. Exported so the arithmetic is
- * asserted directly.
+ * the font scale and never below the unscaled value. A multiline field that asks for
+ * `lines` is at least that many lines of body text (and its padding) tall, so it opens as
+ * a text area on iOS too, where `numberOfLines` is not honoured. Exported so the
+ * arithmetic is asserted directly.
  */
-export function fieldMinHeight(fontScale: number): number {
-  return Math.max(KIT_MIN_HEIGHT, MinTouchTarget) * Math.max(1, fontScale);
+export function fieldMinHeight(fontScale: number, lines?: number): number {
+  const floor = Math.max(KIT_MIN_HEIGHT, MinTouchTarget);
+  const wanted = lines ? lines * TextRoles.body.lineHeight + MULTILINE_PADDING_DP : 0;
+  return Math.max(floor, wanted) * Math.max(1, fontScale);
 }
 
 function inputClasses(invalid: boolean, multiline: boolean | undefined): string {
@@ -103,6 +113,7 @@ export function Field({
   accessibilityHint,
   editable,
   multiline,
+  numberOfLines,
   testID,
   ...rest
 }: FieldProps) {
@@ -126,9 +137,10 @@ export function Field({
         value={value}
         onChangeText={onChangeText}
         multiline={multiline}
+        numberOfLines={numberOfLines}
         textAlignVertical={multiline ? 'top' : undefined}
         className={inputClasses(invalid, multiline) || undefined}
-        style={{ minHeight: fieldMinHeight(fontScale) }}
+        style={{ minHeight: fieldMinHeight(fontScale, multiline ? numberOfLines : 0) }}
         {...rest}
       />
       <FieldError

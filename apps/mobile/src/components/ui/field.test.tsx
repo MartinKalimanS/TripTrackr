@@ -13,6 +13,7 @@ import { StyleSheet } from 'react-native';
 
 import { Colors, MinTouchTarget } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
+import { TextRoles } from '@/theme';
 
 import { Field, fieldMinHeight } from './field';
 
@@ -255,6 +256,35 @@ describe('<Field> largest text - FR-029', () => {
     mockAppearance({ fontScale: 2 });
     await renderField();
     expect(styleOf().minHeight).toBe(fieldMinHeight(2));
+  });
+
+  test('a multiline field is as tall as the lines it asks for, text and padding', () => {
+    // numberOfLines is Android-only in React Native 0.86: iOS would start at one line.
+    const lines = (count: number) => count * TextRoles.body.lineHeight + 16;
+    expect(fieldMinHeight(1, 6)).toBe(lines(6));
+    expect(fieldMinHeight(2, 6)).toBe(lines(6) * 2);
+    expect(fieldMinHeight(0.8, 6)).toBe(lines(6));
+  });
+
+  test('asking for one line never makes a field shorter than the floor', () => {
+    expect(fieldMinHeight(1, 1)).toBe(fieldMinHeight(1));
+  });
+
+  test('a multiline input asks for its lines, read live from the appearance', async () => {
+    mockAppearance({ fontScale: 2 });
+    await renderField({ multiline: true, numberOfLines: 6 });
+    expect(styleOf().minHeight).toBe(fieldMinHeight(2, 6));
+    expect(styleOf().minHeight).toBeGreaterThan(fieldMinHeight(2));
+  });
+
+  test('numberOfLines only sizes a multiline field: a single-line one keeps the floor', async () => {
+    await renderField({ numberOfLines: 6 });
+    expect(styleOf().minHeight).toBe(fieldMinHeight(1));
+  });
+
+  test('a multiline field that names no lines keeps the floor', async () => {
+    await renderField({ multiline: true });
+    expect(styleOf().minHeight).toBe(fieldMinHeight(1));
   });
 
   test('never caps font scaling on the input or the label', async () => {

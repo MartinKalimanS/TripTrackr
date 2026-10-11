@@ -134,6 +134,26 @@ describe('<FormSheet> - the parts and their order', () => {
     expect(within(footer).getByTestId('demo-cancel')).toBeTruthy();
   });
 
+  test('bodyTestID names the scrolling body when a field already owns `<testID>-body`', async () => {
+    await renderSheet(
+      { bodyTestID: 'demo-sheet-scroll' },
+      <NativeText testID="demo-sheet-body">a field</NativeText>,
+    );
+
+    const scroll = screen.getByTestId('demo-sheet-scroll');
+    expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
+    expect(screen.getAllByTestId('demo-sheet-body')).toHaveLength(1);
+    expect(within(scroll).getByTestId('demo-sheet-body')).toBeTruthy();
+    expect(
+      within(screen.getByTestId('demo-sheet-footer')).getByTestId('demo-save'),
+    ).toBeTruthy();
+  });
+
+  test('bodyTestID names the body even where the sheet itself has no id', async () => {
+    await renderSheet({ testID: undefined, bodyTestID: 'demo-scroll' });
+    expect(screen.getByTestId('demo-scroll')).toBeTruthy();
+  });
+
   test('without a testID the body and the footer have none either', async () => {
     await renderSheet({ testID: undefined });
     expect(screen.queryByTestId('demo-sheet-body')).toBeNull();

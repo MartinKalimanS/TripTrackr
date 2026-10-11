@@ -107,6 +107,42 @@ describe('expectActionAboveKeyboard', () => {
     expectActionAboveKeyboard('demo-sheet', 'demo-save');
   });
 
+  test('reads the body from `bodyTestID` when the sheet names it apart', async () => {
+    setWindow(PHONE_360X640);
+    await render(
+      <FormSheet
+        host="modal"
+        testID="demo-sheet"
+        bodyTestID="demo-scroll"
+        title="Demo"
+        actions={actions}>
+        <Text testID="demo-sheet-body">a field named like the default body</Text>
+      </FormSheet>,
+    );
+    await showKeyboard();
+
+    expectActionAboveKeyboard('demo-sheet', 'demo-save', { bodyTestID: 'demo-scroll' });
+  });
+
+  test('looks for the action in the named body, and refuses one found there', async () => {
+    setWindow(PHONE_360X640);
+    await render(
+      <FormSheet
+        host="modal"
+        testID="demo-sheet"
+        bodyTestID="demo-scroll"
+        title="Demo"
+        actions={actions}>
+        <Text testID="demo-save">an action that scrolls with the fields</Text>
+      </FormSheet>,
+    );
+    await showKeyboard();
+
+    expect(() =>
+      expectActionAboveKeyboard('demo-sheet', 'demo-save', { bodyTestID: 'demo-scroll' }),
+    ).toThrow();
+  });
+
   test('refuses to pass with the keyboard down: there is nothing to be above', async () => {
     await renderSheet();
     expect(() => expectActionAboveKeyboard('demo-sheet', 'demo-save')).toThrow();

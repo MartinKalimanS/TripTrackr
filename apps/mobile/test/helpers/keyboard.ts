@@ -26,7 +26,8 @@
  *   body (so it can neither scroll away nor sit below the fold), and the form itself has
  *   been told how to stay clear: a router form sheet is capped to the room above the
  *   keyboard (the platform lifts the sheet by the keyboard's height), an RN `Modal` form's
- *   footer is a sticky view that rides up with the keyboard.
+ *   footer is a sticky view that rides up with the keyboard. A sheet that named its body
+ *   apart (`bodyTestID`, because a field owns `<id>-body`) passes the same id here.
  * - `resetKeyboard()` puts everything back; call it in `afterEach`.
  */
 import { act, screen, within } from '@testing-library/react-native';
@@ -132,6 +133,8 @@ type ClearanceOptions = {
   topInset?: number;
   /** The keyboard's height, when the test showed one. */
   keyboardHeight?: number;
+  /** The id the sheet gave its scrolling body, when it is not `<sheetTestID>-body`. */
+  bodyTestID?: string;
 };
 
 /**
@@ -148,11 +151,12 @@ export function expectActionAboveKeyboard(
     topInset = 0,
     keyboardHeight = snapshot.height,
     windowHeight: given = windowHeight,
+    bodyTestID = `${sheetTestID}-body`,
   } = options;
 
   expect(snapshot.isVisible).toBe(true);
 
-  const body = screen.getByTestId(`${sheetTestID}-body`);
+  const body = screen.getByTestId(bodyTestID);
   const footer = screen.getByTestId(`${sheetTestID}-footer`);
   expect(within(body).queryByTestId(actionTestID)).toBeNull();
   expect(within(footer).getByTestId(actionTestID)).toBeTruthy();
