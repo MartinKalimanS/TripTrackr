@@ -1007,6 +1007,15 @@ language.
       `npm run test -w packages/contracts`, `npm run test:unit -w apps/api` as a regression canary,
       `npm run format:check`; update `AGENTS.md` and this file's checkboxes; code review before merge
       (SC-004, SC-012)
+      _Desk part done, box left open (the clean install and the CI runners are not run here):_ on the integrated tip of
+      `feat/004-app-ui-redesign`, `npm run lint` and `npm run typecheck` are clean in every workspace; `npm run test:cov -w apps/mobile`
+      passes (195 suites, 4335 tests, 98.69 / 95.13 / 99.09 / 99.51 against the 80% floor); `npm run test -w packages/contracts` (148 tests)
+      and `npm run test:unit -w apps/api` (46 suites, 540 tests) pass as the regression canary; `npm ci --dry-run` resolves; `format:check`
+      reports nothing outside the git worktrees used for the parallel work. `AGENTS.md` now describes the Atlas look, the navigation chrome,
+      the form sheets and the retired neumorphism. An independent read-only code review of the shared adapters and layouts (no
+      blocker; the one real finding, the duplicated icon-and-label capsule in `StatusChip`, `SyncBadge` and `ToneChip`, is a follow-up) and a
+      security review of the auth, documents, profile and gate changes (nothing at medium or above) were done before the merge. _Still to do:_
+      `npm ci` on a clean Windows install and the CI run, and the on-device work of T433, T457 to T459, T461 and T462.
 
 ---
 
