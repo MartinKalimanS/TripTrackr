@@ -4,9 +4,12 @@
  * Haptics are a courtesy: they are off when the traveller asked for reduced motion, and
  * they never break the press that asked for them on a device without a haptic engine.
  */
-import { renderHook } from '@testing-library/react-native';
+import { fireEvent, render, renderHook, screen } from '@testing-library/react-native';
 import * as ExpoHaptics from 'expo-haptics';
+import { createElement } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { ChipGroup } from '@/components/ui/chip';
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
@@ -137,5 +140,65 @@ describe('useHaptics - FR-020', () => {
     const handler = attach.mock.calls[0][0] as (error: unknown) => unknown;
     expect(() => handler(new Error('unavailable'))).not.toThrow();
     expect(handler(new Error('unavailable'))).toBeUndefined();
+  });
+});
+
+/**
+ * T460 - FR-020, SC-008. The suites of `Button` and `ChipGroup` replace `useHaptics`
+ * wholesale, so they prove WHICH haptic a control asks for; this proves the chain behind
+ * it, with the real hook: a control asks, `useAppearance().prefersLessMotion` decides,
+ * `expo-haptics` is reached or is not.
+ */
+describe('useHaptics through the controls - FR-020', () => {
+  const OPTIONS = [
+    { key: 'eur', label: 'EUR', testID: 'eur', accessibilityLabel: 'Euro' },
+    { key: 'usd', label: 'USD', testID: 'usd', accessibilityLabel: 'US dollar' },
+  ];
+  const pressButton = async (variant: 'primary' | 'secondary' | 'destructive') => {
+    await render(
+      createElement(
+        Button,
+        { variant, accessibilityLabel: 'Go', onPress: jest.fn() },
+        'Go',
+      ),
+    );
+    await fireEvent.press(screen.getByLabelText('Go'));
+  };
+  const pickUsd = async () => {
+    await render(
+      createElement(ChipGroup, {
+        options: OPTIONS,
+        selectedKey: 'eur',
+        onSelect: jest.fn(),
+      }),
+    );
+    await fireEvent.press(screen.getByTestId('usd'));
+  };
+
+  test('a primary Button asks for a selection haptic, a destructive one for a warning', async () => {
+    await pressButton('primary');
+    expect(haptics.selectionAsync).toHaveBeenCalledTimes(1);
+    await pressButton('destructive');
+    expect(haptics.notificationAsync).toHaveBeenCalledWith('warning');
+  });
+
+  test('a secondary Button plays nothing', async () => {
+    await pressButton('secondary');
+    expect(haptics.selectionAsync).not.toHaveBeenCalled();
+    expect(haptics.notificationAsync).not.toHaveBeenCalled();
+  });
+
+  test('a changed ChipGroup choice plays the selection haptic', async () => {
+    await pickUsd();
+    expect(haptics.selectionAsync).toHaveBeenCalledTimes(1);
+  });
+
+  test('with reduced motion on, no control reaches the haptic engine', async () => {
+    mockAppearance(true);
+    await pressButton('primary');
+    await pressButton('destructive');
+    await pickUsd();
+    expect(haptics.selectionAsync).not.toHaveBeenCalled();
+    expect(haptics.notificationAsync).not.toHaveBeenCalled();
   });
 });

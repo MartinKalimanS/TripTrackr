@@ -15,6 +15,7 @@ import { Colors, MinTouchTarget } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 import { AtlasRadius } from '@/theme';
 
+import { touchDown } from '../../../test/helpers/touch';
 import { Card, Panel, cardClasses } from './card';
 
 jest.mock('@/hooks/use-appearance');
@@ -315,6 +316,31 @@ describe('<Card onPress> is ONE control - FR-024, FR-026', () => {
     expect(surface.props.onPress).toBeUndefined();
     expect(classesOf('trip-card-surface')).toContain('bg-surface');
     expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
+
+  // T460 - FR-019, SC-005: the card shows its held look as the finger lands, before release.
+  test('swaps the surface to the pressed fill as the finger lands, and not before', async () => {
+    jest.useFakeTimers();
+    try {
+      await renderPressable();
+      expect(classesOf('trip-card-surface')).toContain('bg-surface');
+      expect(classesOf('trip-card-surface')).not.toContain('bg-surface-tertiary');
+
+      await touchDown(screen.getByTestId('trip-card'));
+
+      expect(classesOf('trip-card-surface')).toContain('bg-surface-tertiary');
+      expect(classesOf('trip-card-surface')).not.toContain('bg-surface');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('a busy or disabled card shows no pressed fill when touched', async () => {
+    for (const state of ['busy', 'disabled']) {
+      await renderPressable({ testID: state, [state]: true });
+      await touchDown(screen.getByTestId(state));
+      expect(classesOf(`${state}-surface`)).not.toContain('bg-surface-tertiary');
+    }
   });
 
   test('disabled and busy are announced and ignore presses (Tappable semantics)', async () => {
