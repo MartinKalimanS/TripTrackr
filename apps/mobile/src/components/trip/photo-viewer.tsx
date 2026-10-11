@@ -189,7 +189,7 @@ function DeleteButton({ onConfirmed }: DeleteButtonProps) {
 }
 
 function ViewerContent({ photo, stops, actions, onClose }: PhotoViewerProps) {
-  const { writeError, attempt } = useWriteAttempt(PHOTO_COPY.writeFailed);
+  const { writeError, attempt, attemptRemoval } = useWriteAttempt(PHOTO_COPY.writeFailed);
 
   return (
     <>
@@ -220,7 +220,7 @@ function ViewerContent({ photo, stops, actions, onClose }: PhotoViewerProps) {
 
       <DeleteButton
         onConfirmed={() => {
-          if (attempt(() => actions.remove(photo.id))) onClose();
+          if (attemptRemoval(() => actions.remove(photo.id))) onClose();
         }}
       />
     </>

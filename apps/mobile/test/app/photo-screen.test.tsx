@@ -23,6 +23,7 @@
  * sources) is `photo-screen-atlas.test.tsx`.
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
+import * as ExpoHaptics from 'expo-haptics';
 import { AccessibilityInfo, Alert, Linking } from 'react-native';
 
 import PhotosScreen from '@/app/trip/[id]/photos';
@@ -456,6 +457,24 @@ describe('<PhotosScreen> — the photo view', () => {
     expect(Alert.alert).toHaveBeenCalled();
     expect(mockActions.remove).toHaveBeenCalledWith(uploaded.id);
     expect(screen.queryByTestId('photo-viewer')).toBeNull();
+  });
+
+  // T460 - FR-020: the destructive Button plays the warning as it is pressed; confirming the
+  // deletion in the native question is a second, separate moment and plays it too.
+  test('confirming the deletion plays the warning haptic, and the question alone does not', async () => {
+    let destructive: (() => void) | undefined;
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      destructive = buttons?.find((button) => button.style === 'destructive')?.onPress;
+    });
+    const viewer = await openPhoto(uploaded);
+    await fireEvent.press(within(viewer).getByLabelText('Delete this photo'));
+    jest.mocked(ExpoHaptics).notificationAsync.mockClear();
+    expect(mockActions.remove).not.toHaveBeenCalled();
+
+    destructive?.();
+
+    expect(mockActions.remove).toHaveBeenCalledWith(uploaded.id);
+    expect(jest.mocked(ExpoHaptics).notificationAsync.mock.calls).toEqual([['warning']]);
   });
 
   test('a photo with no file here says where it is instead of drawing nothing', async () => {

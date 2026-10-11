@@ -75,7 +75,7 @@ type TripSpending = ReturnType<typeof useTripSpending>;
 
 function useExpenseRemoval() {
   const actions = useExpenseActions();
-  const { writeError, attempt } = useWriteAttempt(EXPENSE_FORM_COPY.saveFailed);
+  const { writeError, attemptRemoval } = useWriteAttempt(EXPENSE_FORM_COPY.saveFailed);
 
   const confirmRemove = (expense: ExpenseRecord) => {
     Alert.alert('Delete this expense?', 'It is removed from this trip.', [
@@ -83,7 +83,7 @@ function useExpenseRemoval() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => attempt(() => actions.removeExpense(expense.id)),
+        onPress: () => attemptRemoval(() => actions.removeExpense(expense.id)),
       },
     ]);
   };

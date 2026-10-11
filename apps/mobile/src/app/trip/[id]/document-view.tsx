@@ -88,10 +88,10 @@ function useDocumentWrites(document: DocumentRow, onDeleted: () => void) {
     clearConfirmError: confirmation.clearWriteError,
     /** True once the fields are stored, so the form can close. */
     confirm: (fields: DocumentParsedFields) =>
-      confirmation.attempt(() => actions.confirmFields(document.id, fields)),
+      confirmation.attemptSave(() => actions.confirmFields(document.id, fields)),
     remove: () =>
       confirmDelete(() => {
-        if (removal.attempt(() => actions.remove(document.id))) onDeleted();
+        if (removal.attemptRemoval(() => actions.remove(document.id))) onDeleted();
       }),
   };
 }

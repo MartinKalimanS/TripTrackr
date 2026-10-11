@@ -7,7 +7,9 @@
  * a held press, with no timer advanced; `touchUp` releases it. Not a test file.
  */
 import { fireEvent } from '@testing-library/react-native';
-import type { ReactTestInstance } from 'react-test-renderer';
+
+/** What `fireEvent` accepts: a host node found with a query. */
+type Host = Parameters<typeof fireEvent>[0];
 
 /** The synthetic event `Pressability` reads (it calls `persist`, and the touch fields). */
 function touchEvent() {
@@ -29,11 +31,11 @@ function touchEvent() {
 }
 
 /** Puts a finger on `host`: the responder is granted and the press starts. */
-export async function touchDown(host: ReactTestInstance): Promise<void> {
+export async function touchDown(host: Host): Promise<void> {
   await fireEvent(host, 'responderGrant', touchEvent());
 }
 
 /** Lifts the finger: the press ends (and `onPress` fires, as a tap does). */
-export async function touchUp(host: ReactTestInstance): Promise<void> {
+export async function touchUp(host: Host): Promise<void> {
   await fireEvent(host, 'responderRelease', touchEvent());
 }

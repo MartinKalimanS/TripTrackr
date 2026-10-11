@@ -16,6 +16,7 @@
  * trip-layout.test.tsx and offline-maps-header.test.tsx): this screen draws neither.
  */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import * as ExpoHaptics from 'expo-haptics';
 import { readFileSync } from 'node:fs';
 import { Alert } from 'react-native';
 
@@ -424,6 +425,52 @@ describe('<OfflineMapsScreen> — the actions (FR-005, FR-037)', () => {
     );
     expect(status(100)).toHaveTextContent('Not saved on this device');
     expect(screen.getByLabelText('Download Roma for offline use')).toBeTruthy();
+  });
+
+  // T460 - FR-020: the destructive Button plays the warning as it is pressed; giving the
+  // answer in the native question is a second, separate moment and plays it too.
+  test.each([
+    ['Remove Roma’s offline map', 'ready'],
+    ['Stop downloading Roma', 'downloading'],
+  ] as const)(
+    'confirming "%s" plays the warning haptic, and the question alone does not',
+    async (label, state) => {
+      if (state === 'ready') {
+        await seedReady(100, 12_400_000);
+        await renderScreen();
+      } else {
+        await renderScreen();
+        await fireEvent.press(screen.getByLabelText('Download Roma for offline use'));
+        await waitFor(() => expect(offlineManager.createPack).toHaveBeenCalled());
+        await emitProgress('city-100', { percentage: 20 });
+      }
+      let destructive: (() => void) | undefined;
+      jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+        destructive = buttons?.find((button) => button.style === 'destructive')?.onPress;
+      });
+      await fireEvent.press(screen.getByLabelText(label));
+      jest.mocked(ExpoHaptics).notificationAsync.mockClear();
+      expect(offlineManager.deletePack).not.toHaveBeenCalled();
+
+      await act(async () => destructive?.());
+
+      expect(offlineManager.deletePack).toHaveBeenCalledWith('city-100');
+      expect(jest.mocked(ExpoHaptics).notificationAsync.mock.calls).toEqual([
+        ['warning'],
+      ]);
+    },
+  );
+
+  test('cancelling the confirmation plays no further haptic', async () => {
+    await seedReady(100, 12_400_000);
+    await renderScreen();
+    answerAlertWith('cancel');
+
+    await fireEvent.press(screen.getByLabelText('Remove Roma’s offline map'));
+    jest.mocked(ExpoHaptics).notificationAsync.mockClear();
+
+    expect(offlineManager.deletePack).not.toHaveBeenCalled();
+    expect(jest.mocked(ExpoHaptics).notificationAsync).not.toHaveBeenCalled();
   });
 
   test('cancelling the confirmation keeps the map', async () => {

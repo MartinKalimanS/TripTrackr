@@ -156,11 +156,12 @@ describe('useHaptics through the controls - FR-020', () => {
   ];
   const pressButton = async (variant: 'primary' | 'secondary' | 'destructive') => {
     await render(
-      createElement(
-        Button,
-        { variant, accessibilityLabel: 'Go', onPress: jest.fn() },
-        'Go',
-      ),
+      createElement(Button, {
+        variant,
+        accessibilityLabel: 'Go',
+        onPress: jest.fn(),
+        children: 'Go',
+      }),
     );
     await fireEvent.press(screen.getByLabelText('Go'));
   };

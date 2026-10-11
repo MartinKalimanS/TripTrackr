@@ -46,6 +46,7 @@ import {
 import { storageCaption } from '@/features/trips/offline-storage';
 import { useOfflinePacks } from '@/features/trips/use-offline-pack';
 import { useTrip, useTripStops, type LiveResult } from '@/features/trips/use-trips';
+import { useHaptics } from '@/hooks/use-haptics';
 import { useMapboxReady } from '@/hooks/use-mapbox-ready';
 
 /** Placeholder cards while something loads: two say "a list" without filling the screen. */
@@ -118,6 +119,7 @@ function StorageCaption({ states }: { states: readonly OfflinePackState[] }) {
 /** Mounted only once Mapbox is configured, so the tile store starts with its token. */
 function CityPackList({ cities }: { cities: TripCities }) {
   const packs = useOfflinePacks(cities.placed);
+  const haptics = useHaptics();
 
   if (packs.error) {
     return (
@@ -135,6 +137,11 @@ function CityPackList({ cities }: { cities: TripCities }) {
   }
 
   const stateOf = (city: OfflineCity) => packs.stateOf(city.cityId);
+  /** Both confirmations end the same way: the warning haptic, then the pack goes. */
+  const discard = (city: OfflineCity) => {
+    haptics.warning();
+    void packs.remove(city);
+  };
   return (
     <View className="gap-3">
       {cities.placed.map((city) => (
@@ -143,8 +150,8 @@ function CityPackList({ cities }: { cities: TripCities }) {
           city={city}
           state={stateOf(city)}
           onDownload={() => void packs.download(city)}
-          onStop={() => confirmStop(city, () => void packs.remove(city))}
-          onRemove={() => confirmRemove(city, () => void packs.remove(city))}
+          onStop={() => confirmStop(city, () => discard(city))}
+          onRemove={() => confirmRemove(city, () => discard(city))}
         />
       ))}
       <StorageCaption states={cities.placed.map(stateOf)} />

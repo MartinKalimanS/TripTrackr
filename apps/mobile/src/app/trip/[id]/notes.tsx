@@ -72,7 +72,7 @@ function confirmDelete(onDelete: () => void) {
 function useNoteWrites(tripId: string) {
   const actions = useNoteActions();
   const [editor, setEditor] = useState<Editor>(null);
-  const { writeError, clearWriteError, attempt } = useWriteAttempt(
+  const { writeError, clearWriteError, attemptSave, attemptRemoval } = useWriteAttempt(
     NOTE_FORM_COPY.saveFailed,
   );
 
@@ -86,7 +86,7 @@ function useNoteWrites(tripId: string) {
   const submitEditor = (values: NoteEditorValues) => {
     if (!editor) return;
     const { noteId } = editor;
-    const saved = attempt(() => {
+    const saved = attemptSave(() => {
       if (noteId) {
         actions.updateNote(noteId, values);
       } else {
@@ -106,7 +106,7 @@ function useNoteWrites(tripId: string) {
     closeEditor: () => setEditor(null),
     submitEditor,
     confirmRemove: (note: NoteWithPlace) =>
-      confirmDelete(() => attempt(() => actions.removeNote(note.id))),
+      confirmDelete(() => attemptRemoval(() => actions.removeNote(note.id))),
   };
 }
 

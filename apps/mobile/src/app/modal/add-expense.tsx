@@ -66,6 +66,7 @@ import {
 } from '@/features/expenses/use-expenses';
 import { todayIso } from '@/features/trips/stop-dates';
 import { useTrip, useTripStops } from '@/features/trips/use-trips';
+import { useHaptics } from '@/hooks/use-haptics';
 import { fieldMessage } from '@/lib/form-copy';
 import { deviceLocale } from '@/lib/locale';
 import { Sentry } from '@/lib/sentry';
@@ -118,6 +119,7 @@ function initialValues(
 
 function useAddExpenseForm({ tripId, homeCurrency, stops, onDone }: FormProps) {
   const actions = useExpenseActions();
+  const haptics = useHaptics();
   const [saveError, setSaveError] = useState<string | null>(null);
   const today = useMemo(() => todayIso(), []);
 
@@ -145,6 +147,7 @@ function useAddExpenseForm({ tripId, homeCurrency, stops, onDone }: FormProps) {
         spent_at: values.spent_at,
         note: values.note,
       });
+      haptics.success();
       onDone();
     } catch (error) {
       Sentry.captureException(error);
