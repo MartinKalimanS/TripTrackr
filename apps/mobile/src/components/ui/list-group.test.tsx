@@ -450,3 +450,51 @@ describe('<ListRow tone="destructive"> is not colour alone - FR-025', () => {
     expect(screen.queryByTestId('symbol', hidden)).toBeNull();
   });
 });
+
+describe('<ListRow busy> - an operation is in flight (FR-019, FR-030; 004 T448)', () => {
+  test('announces busy and unavailable, ignores presses and says so with a spinner', async () => {
+    const onPress = jest.fn();
+    await render(<ListRow title="Signing out…" testID="row" onPress={onPress} busy />);
+    const row = screen.getByTestId('row');
+    await fireEvent.press(row);
+    expect(onPress).not.toHaveBeenCalled();
+    expect(row.props.accessibilityState).toMatchObject({ busy: true, disabled: true });
+    // The spinner replaces the chevron, and is hidden from assistive technology.
+    expect(screen.queryByTestId('row-cue', hidden)).toBeNull();
+    const spinner = screen.getByTestId('row-spinner', hidden);
+    expect(spinner.props.accessibilityElementsHidden).toBe(true);
+    expect(spinner.props.importantForAccessibility).toBe('no-hide-descendants');
+  });
+
+  test('keeps the caller trailing node out of the way of the spinner, not the other way round', async () => {
+    await render(
+      <ListRow
+        title="Sign out"
+        testID="row"
+        onPress={jest.fn()}
+        busy
+        trailing={<NativeText testID="trailing">x</NativeText>}
+      />,
+    );
+    expect(screen.getByTestId('row-spinner', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('trailing', hidden)).toBeNull();
+  });
+
+  test('is dimmed like an unavailable row only when it is also disabled, never merely for being busy', async () => {
+    await render(<ListRow title="Sign out" testID="row" onPress={jest.fn()} busy />);
+    expect(classesOf('row')).not.toContain('opacity-disabled');
+  });
+
+  test('a row that is not busy announces no busy state and keeps its chevron', async () => {
+    await render(<ListRow title="Sign out" testID="row" onPress={jest.fn()} />);
+    expect(screen.getByTestId('row').props.accessibilityState?.busy).toBeUndefined();
+    expect(screen.getByTestId('row-cue', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('row-spinner', hidden)).toBeNull();
+  });
+
+  test('busy on a row with no press is not a control: nothing is announced busy', async () => {
+    await render(<ListRow title="Version" testID="row" busy />);
+    expect(screen.getByTestId('row').props.accessibilityState?.busy).toBeUndefined();
+    expect(screen.queryByTestId('row-spinner', hidden)).toBeNull();
+  });
+});

@@ -24,7 +24,13 @@
  *   (FR-030), so screens, tests and Maestro flows still find them.
  * - `LoadingState` is ONE announced region: the container is `accessible`, a
  *   `progressbar` named by its title, and the kit `Spinner` (itself a progressbar) is
- *   hidden from assistive technology so it is not read twice.
+ *   hidden from assistive technology so it is not read twice. An optional `detail` is
+ *   spoken with the title as part of the same name, and `spinner={false}` leaves the
+ *   spinner out (a traveller who asked for less motion).
+ * - The gates (first sync, local store) add three optional things, all off by default:
+ *   a `testID` and a `liveRegion` on the surface of any state, a `busy` flag on an
+ *   `EmptyState` action and a `retryBusy` flag on an `ErrorState`, so a retry that is
+ *   under way is announced busy and ignores a second press (FR-019).
  * - Skeletons (`TripCardSkeleton`, `RowSkeleton`, `ListSkeleton`) are shaped like the
  *   content they stand in for, from the kit's `SkeletonGroup`. Each is also ONE
  *   announced `progressbar` named `label` (default "Loading"), and every shape inside
@@ -48,15 +54,24 @@ const CONTINUOUS = { borderCurve: 'continuous' } as const;
 
 const STATE_BOX = 'bg-surface rounded-2xl p-6 items-center gap-2';
 
+/** How a live region reads a change: after what is being said, or at once. */
+type LiveRegion = 'polite' | 'assertive';
+
 type StateViewProps = {
   title: string;
   detail?: string;
+  /** The id of the state's surface (a gate that a flow waits on); none by default. */
+  testID?: string;
+  /** Announce a change of the state's words on Android; iOS needs a separate announcement. */
+  liveRegion?: LiveRegion;
 };
 
 export type StateAction = {
   label: string;
   onPress: () => void;
   testID?: string;
+  /** The action is under way: announced busy, presses are ignored. */
+  busy?: boolean;
 };
 
 export type EmptyStateProps = StateViewProps & {
@@ -68,6 +83,13 @@ export type EmptyStateProps = StateViewProps & {
 
 export type ErrorStateProps = StateViewProps & {
   onRetry?: () => void;
+  /** The retry is under way: announced busy, presses are ignored. */
+  retryBusy?: boolean;
+};
+
+export type LoadingStateProps = Partial<StateViewProps> & {
+  /** Draw the spinner. Default true; a traveller who asked for less motion gets none. */
+  spinner?: boolean;
 };
 
 /** The flat surface every state sits on; accessibility props pass straight through. */
@@ -77,6 +99,14 @@ function StateBox({ children, ...rest }: ViewProps) {
       {children}
     </View>
   );
+}
+
+/** The surface's own props: an id and a live region, only when the caller asked. */
+function surfaceProps({
+  testID,
+  liveRegion,
+}: Pick<StateViewProps, 'testID' | 'liveRegion'>) {
+  return { testID, accessibilityLiveRegion: liveRegion };
 }
 
 function Detail({ children }: { children?: string }) {
@@ -89,9 +119,9 @@ function Detail({ children }: { children?: string }) {
 }
 
 /** Nothing here yet — and that is a normal, designed state, not a failure. */
-export function EmptyState({ title, detail, icon, action }: EmptyStateProps) {
+export function EmptyState({ title, detail, icon, action, ...surface }: EmptyStateProps) {
   return (
-    <StateBox>
+    <StateBox {...surfaceProps(surface)}>
       {icon ? <Icon name={icon} size={24} tone="muted" /> : null}
       <Text type="headline" className="text-center">
         {title}
@@ -102,6 +132,7 @@ export function EmptyState({ title, detail, icon, action }: EmptyStateProps) {
           variant="secondary"
           accessibilityLabel={action.label}
           testID={action.testID}
+          busy={action.busy}
           onPress={() => action.onPress()}
           className="mt-2">
           {action.label}
@@ -111,18 +142,33 @@ export function EmptyState({ title, detail, icon, action }: EmptyStateProps) {
   );
 }
 
-/** Work in progress. Announced, so it is not a silent pause for a screen reader. */
-export function LoadingState({ title = 'Loading' }: Partial<StateViewProps>) {
+/**
+ * Work in progress. Announced, so it is not a silent pause for a screen reader: ONE
+ * region named by the title and, when there is one, the detail after it.
+ */
+export function LoadingState({
+  title = 'Loading',
+  detail,
+  spinner = true,
+  ...surface
+}: LoadingStateProps) {
   return (
-    <StateBox accessible accessibilityLabel={title} accessibilityRole="progressbar">
-      <Spinner
-        size="md"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      />
+    <StateBox
+      accessible
+      accessibilityLabel={detail ? `${title}. ${detail}` : title}
+      accessibilityRole="progressbar"
+      {...surfaceProps(surface)}>
+      {spinner ? (
+        <Spinner
+          size="md"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      ) : null}
       <Text type="callout" tone="muted" className="text-center">
         {title}
       </Text>
+      <Detail>{detail}</Detail>
     </StateBox>
   );
 }
@@ -131,9 +177,15 @@ export function LoadingState({ title = 'Loading' }: Partial<StateViewProps>) {
  * Something failed. The words and the icon are the signal, not the colour (FR-025), and
  * a retry is offered rather than leaving the traveller at a dead end.
  */
-export function ErrorState({ title, detail, onRetry }: ErrorStateProps) {
+export function ErrorState({
+  title,
+  detail,
+  onRetry,
+  retryBusy,
+  ...surface
+}: ErrorStateProps) {
   return (
-    <StateBox>
+    <StateBox {...surfaceProps(surface)}>
       <Icon name={ALERT_ICON} size={24} tone="danger" />
       <Text type="headline" tone="danger" className="text-center">
         {title}
@@ -143,6 +195,7 @@ export function ErrorState({ title, detail, onRetry }: ErrorStateProps) {
         <Button
           variant="secondary"
           accessibilityLabel="Try again"
+          busy={retryBusy}
           onPress={() => onRetry()}
           className="mt-2">
           Try again
