@@ -7,7 +7,7 @@
  * are presented — plainly, dismissibly, announced, reachable at fontScale 1.8,
  * never drawn over media (FR-024) — and that "view trip" goes where it says.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { AccessibilityInfo, Platform } from 'react-native';
 
 import { ConflictNoticeBanner, ConflictNotices } from '@/components/ui/conflict-notice';
@@ -332,5 +332,87 @@ describe('<ConflictNoticeBanner> — one notice on its own', () => {
 
     await fireEvent.press(screen.getByTestId('conflict-notice-solo-open'));
     expect(onOpenTrip).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('<ConflictNotices> — on the Atlas primitives (T449; FR-005, FR-024, FR-025, FR-030, FR-035)', () => {
+  const hidden = { includeHiddenElements: true };
+
+  test('each notice is one raised card with a leading icon, which assistive technology skips', async () => {
+    await raise(notice('a'));
+    await render(<ConflictNotices />);
+
+    const card = screen.getByTestId('conflict-notice-a');
+    const icon = within(card).getByTestId('conflict-notice-a-icon', hidden);
+    expect(icon.props.accessibilityElementsHidden).toBe(true);
+    // The card announces nothing of its own: the region does (polite live region).
+    expect(card.props.accessibilityRole).toBeUndefined();
+    expect(card.props.accessibilityLiveRegion).toBeUndefined();
+  });
+
+  test('says the heading, then the sentence, then the controls, in that reading order', async () => {
+    await raise(notice('a'));
+    await render(<ConflictNotices />);
+
+    const card = screen.getByTestId('conflict-notice-a');
+    const texts = within(card)
+      .getAllByText(/./)
+      .map((node) => String(node.props.children));
+    expect(texts).toEqual([
+      'Updated from another device',
+      notice('a').summary,
+      'View trip',
+      'Dismiss',
+    ]);
+  });
+
+  test('has no primary control however many notices there are: one primary per screen state (FR-005)', async () => {
+    await raise(...['a', 'b', 'c', 'd', 'e'].map((id) => notice(id)));
+    await render(<ConflictNotices />);
+
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.length).toBeGreaterThan(0);
+    expect(buttons.filter((node) => node.props.variant === 'primary')).toHaveLength(0);
+  });
+
+  test('"View trip" is a secondary button and "Dismiss" a text button, each with the name it always had', async () => {
+    await raise(notice('a'));
+    await render(<ConflictNotices />);
+
+    const open = screen.getByTestId('conflict-notice-a-open');
+    const dismiss = screen.getByTestId('conflict-notice-a-dismiss');
+    expect(open.props.variant).toBe('secondary');
+    expect(open.props.accessibilityLabel).toBe('View the trip this change was made in');
+    expect(dismiss.props.variant).toBe('ghost');
+    expect(dismiss.props.accessibilityLabel).toBe('Dismiss this notice');
+  });
+
+  test('"Dismiss all" is a text button named as before, beside the count', async () => {
+    await raise(...['a', 'b', 'c', 'd'].map((id) => notice(id)));
+    await render(<ConflictNotices />);
+
+    const all = screen.getByLabelText('Dismiss all notices');
+    expect(all.props.variant).toBe('ghost');
+    expect(all.props.accessibilityRole).toBe('button');
+    expect(screen.getByText('and 1 more')).toBeTruthy();
+  });
+
+  test('the controls wrap beside each other instead of being cut off at the largest text size', async () => {
+    appearance({ fontScale: 1.8 });
+    await raise(notice('a'));
+    await render(<ConflictNotices />);
+
+    const open = screen.getByTestId('conflict-notice-a-open');
+    const row = open.parent;
+    expect(String(row?.props.className)).toContain('flex-wrap');
+  });
+
+  test('is built on the Atlas primitives: none of the retired ones, and no kit import', () => {
+    const source = jest
+      .requireActual('fs')
+      .readFileSync(require.resolve('@/components/ui/conflict-notice'), 'utf8') as string;
+    expect(source).not.toMatch(
+      /from '@\/components\/(themed-text|themed-view|ui\/surface|ui\/pressable-surface)'/,
+    );
   });
 });
