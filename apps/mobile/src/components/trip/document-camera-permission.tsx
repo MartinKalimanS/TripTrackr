@@ -1,18 +1,22 @@
 /**
- * The camera is not allowed (yet) — tasks.md T118 (FR-031; feature 002 FR-010).
+ * The camera is not allowed (yet) — tasks.md T118 (FR-031; feature 002 FR-010); restyled for
+ * Atlas by 004 T443 (contract C4-10; FR-005, FR-025, FR-029, FR-035).
  *
  * Two designed states, both in words and neither a dead end. Not yet allowed
  * (`canAskAgain`): why the camera is wanted, and a button that asks. Refused
  * for good: what that means, and a button to Settings, where it can be turned
  * back on. The library stays offered beside this panel in both, so a document
  * can always be added without the camera.
+ *
+ * One card on the canvas: a heading, the reason, and ONE way forward — the screen's one
+ * primary while the camera cannot start (the library is a secondary beneath it). Nothing
+ * here is colour alone.
  */
-import { Linking, StyleSheet } from 'react-native';
+import { Linking, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { PressableSurface } from '@/components/ui/pressable-surface';
-import { Surface } from '@/components/ui/surface';
-import { Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Text } from '@/components/ui/text';
 import { DOCUMENT_CAPTURE_COPY } from '@/features/documents/document-copy';
 import { Sentry } from '@/lib/sentry';
 
@@ -31,44 +35,36 @@ export function DocumentCameraPermission({
   onAllow,
 }: DocumentCameraPermissionProps) {
   return (
-    <Surface treatment="recessed" depth={1} radius="lg" style={styles.panel}>
-      <ThemedText type="smallBold">
-        {canAskAgain ? 'Allow the camera' : 'The camera is turned off'}
-      </ThemedText>
-      <ThemedText testID="document-camera-permission" type="small" themeColor="textMuted">
-        {canAskAgain
-          ? DOCUMENT_CAPTURE_COPY.cameraAsk
-          : DOCUMENT_CAPTURE_COPY.cameraDenied}
-      </ThemedText>
-      {canAskAgain ? (
-        <PressableSurface
-          testID="document-camera-allow"
-          accessibilityLabel="Allow camera"
-          depth={2}
-          onPress={onAllow}
-          style={styles.action}>
-          <ThemedText type="smallBold">Allow camera</ThemedText>
-        </PressableSurface>
-      ) : (
-        <PressableSurface
-          testID="document-camera-settings"
-          accessibilityLabel="Open Settings"
-          depth={2}
-          onPress={openSettings}
-          style={styles.action}>
-          <ThemedText type="smallBold">Open Settings</ThemedText>
-        </PressableSurface>
-      )}
-    </Surface>
+    <Card variant="flat">
+      <View className="items-start gap-2">
+        <Text type="headline">
+          {canAskAgain ? 'Allow the camera' : 'The camera is turned off'}
+        </Text>
+        <Text testID="document-camera-permission" type="callout" tone="muted">
+          {canAskAgain
+            ? DOCUMENT_CAPTURE_COPY.cameraAsk
+            : DOCUMENT_CAPTURE_COPY.cameraDenied}
+        </Text>
+        {canAskAgain ? (
+          <Button
+            testID="document-camera-allow"
+            variant="primary"
+            accessibilityLabel="Allow camera"
+            onPress={onAllow}
+            className="mt-2">
+            Allow camera
+          </Button>
+        ) : (
+          <Button
+            testID="document-camera-settings"
+            variant="primary"
+            accessibilityLabel="Open Settings"
+            onPress={openSettings}
+            className="mt-2">
+            Open Settings
+          </Button>
+        )}
+      </View>
+    </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  panel: { padding: Spacing.four, gap: Spacing.two },
-  action: {
-    alignSelf: 'flex-start',
-    marginTop: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-  },
-});

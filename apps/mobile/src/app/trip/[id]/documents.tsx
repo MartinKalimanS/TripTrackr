@@ -1,6 +1,7 @@
 /**
  * A trip's travel documents — tasks.md T118, T119 (FR-031, FR-032, FR-034,
- * FR-035, FR-041; Constitution I, II); research D-23, D-32, D-33.
+ * FR-035, FR-041; Constitution I, II); research D-23, D-32, D-33; restyled for Atlas by
+ * 004 T443 (contract C4-10; FR-005, FR-007, FR-008, FR-015, FR-021, FR-035).
  *
  * Everything here is read from the encrypted local store; the list is a live
  * query, so a capture shows up the moment SQLite commits it, and it is a
@@ -11,17 +12,25 @@
  * whatever the trip still owes the API (`syncTrip` never rejects and never
  * shows a dialog; the badge on the row is where a pending upload is told).
  *
+ * Under a native header (`_layout.tsx`: "Documents" and Back), so the screen is
+ * `underHeader` and has no bar of its own. Its states are designed: skeleton rows
+ * while the store answers (never the empty state), an empty state that names the
+ * next action, and an error that offers "Try again". A live query has nothing to
+ * re-run in place, so the retry reads it afresh by mounting the reader again
+ * (`key`); the capture guard lives one level above, so a retry never leaves the
+ * screen unprotected.
+ *
  * The list blocks screen capture (FR-034) and, like every document screen,
  * has no control that could share, export, copy or publish a document
  * (FR-032). `useFocusEffect` is expo-router's v57 hook.
  */
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { DocumentListItem } from '@/components/trip/document-list-item';
 import { DocumentsHeader } from '@/components/trip/documents-header';
 import { ListScreen } from '@/components/ui/list-screen';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
+import { EmptyState, ErrorState, ListSkeleton } from '@/components/ui/state-view';
 import type { DocumentRow } from '@/db/schema';
 import { useDocumentActions, useDocuments } from '@/features/documents/use-documents';
 import { useScreenCaptureGuard } from '@/features/documents/use-screen-capture-guard';
@@ -43,26 +52,37 @@ function useRetryUploads(tripId: string): void {
   );
 }
 
-function DocumentsEmpty({ documents }: { documents: LiveResult<DocumentRow[]> }) {
+type DocumentsEmptyProps = {
+  documents: LiveResult<DocumentRow[]>;
+  onRetry: () => void;
+};
+
+/**
+ * What stands in for the rows. The error comes first, then the skeleton: a screen never
+ * shows its empty state while its first read is still resolving (C4-10 rule 2).
+ */
+function DocumentsEmpty({ documents, onRetry }: DocumentsEmptyProps) {
   if (documents.error) {
     return (
       <ErrorState
         title="Couldn’t read the documents"
         detail="The local store did not answer."
+        onRetry={onRetry}
       />
     );
   }
-  if (documents.loading) return <LoadingState title="Loading documents" />;
+  if (documents.loading) {
+    return <ListSkeleton variant="row" rows={3} label="Loading documents" />;
+  }
   return (
     <EmptyState
       title="No documents yet"
-      detail="Scan a boarding pass or photograph a booking. It’s kept on this device, encrypted, until it uploads."
+      detail="Use “Add document” to scan a boarding pass or photograph a booking. It’s kept on this device, encrypted, until it uploads."
     />
   );
 }
 
-export default function DocumentsScreen() {
-  useScreenCaptureGuard();
+function DocumentsList({ onRetry }: { onRetry: () => void }) {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string | string[] }>();
   const tripId = firstParam(id) ?? '';
@@ -74,7 +94,6 @@ export default function DocumentsScreen() {
   const header = (
     <DocumentsHeader
       tripTitle={trip.data?.title ?? null}
-      onBack={() => router.back()}
       onAdd={() => router.push(`/trip/${tripId}/document-capture`)}
     />
   );
@@ -82,7 +101,9 @@ export default function DocumentsScreen() {
   return (
     <ListScreen
       testID="documents-screen"
-      data={documents.data}
+      underHeader
+      // A failed read leaves no rows: stale ones would pass for the traveller's documents.
+      data={documents.error ? [] : documents.data}
       keyExtractor={(document) => document.id}
       renderItem={({ item }) => (
         <DocumentListItem
@@ -93,7 +114,14 @@ export default function DocumentsScreen() {
         />
       )}
       header={header}
-      empty={<DocumentsEmpty documents={documents} />}
+      empty={<DocumentsEmpty documents={documents} onRetry={onRetry} />}
     />
   );
+}
+
+export default function DocumentsScreen() {
+  useScreenCaptureGuard();
+  const [attempt, setAttempt] = useState(0);
+
+  return <DocumentsList key={attempt} onRetry={() => setAttempt((count) => count + 1)} />;
 }

@@ -11,9 +11,11 @@
  * Every state is designed and none is blank: opening, not on this device (a
  * document another device captured), unreadable (damaged, or sealed under a key
  * this device no longer has), and the picture itself, framed rather than
- * covered (feature 002 FR-024) and sized to its own proportions so a tall
- * mobile pass is as legible as a landscape booking. Blocks screen capture
- * (FR-034).
+ * covered (004 FR-033: a hairline `MediaFrame`, no tint, shadow or control across
+ * it) and sized to its own proportions so a tall mobile pass is as legible as a
+ * landscape booking. Blocks screen capture (FR-034). The unreadable state offers no
+ * retry on purpose: the file is damaged or sealed under another key, and opening it
+ * again would fail the same way (004 T443).
  *
  * Visibility posture: owner-only. There is no control here to share, export,
  * copy or save the picture, and none may be added (FR-032).

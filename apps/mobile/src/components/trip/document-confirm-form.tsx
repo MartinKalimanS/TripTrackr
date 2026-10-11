@@ -1,6 +1,7 @@
 /**
  * Check a boarding pass's details — tasks.md T118 (FR-035; Constitution IV);
- * research D-21, D-33.
+ * research D-21, D-33; restyled for Atlas by 004 T443 (contract C4-10 rules 3 and 8;
+ * FR-005, FR-009, FR-024, FR-025, FR-029, FR-030, FR-037).
  *
  * The three fields the barcode yielded — flight number, flight date, passenger
  * name — are offered pre-filled for the traveller to check against the pass;
@@ -15,6 +16,19 @@
  * and nothing is stored. The screen owns the write, so a failed one is shown
  * here (`error`) with what was typed still in place.
  *
+ * The inputs are `Field`s (label on top, the error as words beneath, `testID` on the
+ * input) and the closing row is two `Button`s laid out as `FormActions` lays its own
+ * (a wrapping row, both growing): "Not now" (a text button, the dismissal) and "Confirm
+ * details", the screen's one primary while the form is open. `FormActions` itself is not
+ * used because it names its buttons "Cancel" and `<prefix>-cancel`, and this form's
+ * pre-004 names and ids ("Not now", `document-confirm-not-now`, with its hint) are part of
+ * the testID and accessible-name baseline (FR-037), whose extractor reads literals only.
+ * The form sits in the document screen's keyboard-aware scroll view (`Screen
+ * keyboardAware`), which pads the page by the keyboard's height, so the primary action can
+ * always be scrolled above the keyboard; the last field's return key says "Done" so the
+ * keyboard can be put away to reach it. The shared sticky action row (T438) can replace
+ * the closing row later without touching the fields.
+ *
  * The form sits beside the document's image and holds a passenger's name, so
  * it blocks screen capture like every document surface (FR-034).
  *
@@ -23,14 +37,14 @@
  */
 import type { DocumentParsedFields } from '@triptrackr/contracts';
 import { Controller, useForm, type Control } from 'react-hook-form';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
 import { DateField } from '@/components/trip/date-field';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Field } from '@/components/ui/field';
 import { InlineError } from '@/components/ui/inline-error';
-import { PressableSurface } from '@/components/ui/pressable-surface';
-import { TextField } from '@/components/ui/text-field';
-import { Spacing } from '@/constants/theme';
+import { Text } from '@/components/ui/text';
 import {
   DOCUMENT_FIELD_COPY,
   documentFieldsResolver,
@@ -60,7 +74,7 @@ function FlightNumberField({ control }: { control: FieldsControl }) {
       control={control}
       name="flight_number"
       render={({ field, fieldState }) => (
-        <TextField
+        <Field
           testID="document-confirm-flight-number"
           label="Flight number"
           value={field.value}
@@ -100,7 +114,7 @@ function PassengerNameField({ control }: { control: FieldsControl }) {
       control={control}
       name="passenger_name"
       render={({ field, fieldState }) => (
-        <TextField
+        <Field
           testID="document-confirm-passenger-name"
           label="Passenger name"
           value={field.value}
@@ -109,10 +123,38 @@ function PassengerNameField({ control }: { control: FieldsControl }) {
           placeholder="SURNAME/GIVEN NAME"
           autoCapitalize="characters"
           autoCorrect={false}
+          returnKeyType="done"
           error={fieldMessage(fieldState.error, DOCUMENT_FIELD_COPY.passenger_name)}
         />
       )}
     />
+  );
+}
+
+type ConfirmActionsProps = { onNotNow: () => void; onConfirm: () => void };
+
+/** "Not now" then "Confirm details", the one primary; they share a line and wrap together. */
+function ConfirmActions({ onNotNow, onConfirm }: ConfirmActionsProps) {
+  return (
+    <View className="mt-2 flex-row flex-wrap gap-3">
+      <Button
+        testID="document-confirm-not-now"
+        variant="text"
+        accessibilityLabel="Not now"
+        accessibilityHint="Keeps the details as a suggestion you still need to check"
+        onPress={onNotNow}
+        className="grow max-w-full">
+        Not now
+      </Button>
+      <Button
+        testID="document-confirm-save"
+        variant="primary"
+        accessibilityLabel="Confirm details"
+        onPress={onConfirm}
+        className="grow max-w-full">
+        Confirm details
+      </Button>
+    </View>
   );
 }
 
@@ -135,53 +177,23 @@ export function DocumentConfirmForm({
   const confirm = handleSubmit(onConfirm);
 
   return (
-    <View testID="document-confirm-form" style={styles.form}>
-      <ThemedText type="smallBold">Flight details</ThemedText>
-      <ThemedText testID="document-confirm-intro" type="small" themeColor="textMuted">
-        {intro}
-      </ThemedText>
+    <Card testID="document-confirm-form">
+      <View className="gap-4">
+        <View className="gap-1">
+          <Text type="headline">Flight details</Text>
+          <Text testID="document-confirm-intro" type="callout" tone="muted">
+            {intro}
+          </Text>
+        </View>
 
-      <FlightNumberField control={control} />
-      <FlightDateField control={control} />
-      <PassengerNameField control={control} />
+        <FlightNumberField control={control} />
+        <FlightDateField control={control} />
+        <PassengerNameField control={control} />
 
-      <InlineError testID="document-confirm-error" message={error} />
+        <InlineError testID="document-confirm-error" message={error} />
 
-      <View style={styles.actions}>
-        <PressableSurface
-          testID="document-confirm-not-now"
-          accessibilityLabel="Not now"
-          accessibilityHint="Keeps the details as a suggestion you still need to check"
-          treatment="flat"
-          onPress={onNotNow}
-          style={styles.action}>
-          <ThemedText type="smallBold" style={styles.centred}>
-            Not now
-          </ThemedText>
-        </PressableSurface>
-        <PressableSurface
-          testID="document-confirm-save"
-          accessibilityLabel="Confirm details"
-          depth={2}
-          onPress={() => void confirm()}
-          style={styles.action}>
-          <ThemedText type="smallBold" style={styles.centred}>
-            Confirm details
-          </ThemedText>
-        </PressableSurface>
+        <ConfirmActions onNotNow={onNotNow} onConfirm={() => void confirm()} />
       </View>
-    </View>
+    </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  form: { gap: Spacing.three },
-  actions: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.two },
-  action: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-  },
-  centred: { textAlign: 'center' },
-});

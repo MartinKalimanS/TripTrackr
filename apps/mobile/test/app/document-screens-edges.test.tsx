@@ -7,7 +7,7 @@
  */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { launchImageLibraryAsync } from 'expo-image-picker';
-import { Linking, StyleSheet } from 'react-native';
+import { Linking, StyleSheet, type ViewStyle } from 'react-native';
 
 import DocumentCaptureScreen from '@/app/trip/[id]/document-capture';
 import DocumentViewScreen from '@/app/trip/[id]/document-view';
@@ -171,13 +171,20 @@ describe('<DocumentCaptureScreen> — edges', () => {
 });
 
 describe('<DocumentViewScreen> — edges', () => {
-  test('a document id that arrives twice is the first, and Back leaves', async () => {
+  test('a document id that arrives twice is the first; the way back is the header’s, not the page’s', async () => {
     mockParams = { id: 'trip-42', documentId: ['doc-1', 'doc-2'] };
     await render(<DocumentViewScreen />);
 
     expect(screen.getByText('This document isn’t on this device')).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText('Back'));
-    expect(mockBack).toHaveBeenCalled();
+    expect(screen.queryByLabelText('Back')).toBeNull();
+  });
+
+  test('a document the store has not got is the empty state with no primary and no delete', async () => {
+    await render(<DocumentViewScreen />);
+
+    expect(screen.getByText('This document isn’t on this device')).toBeTruthy();
+    expect(screen.queryByTestId('document-delete')).toBeNull();
+    expect(screen.queryByLabelText('Try again')).toBeNull();
   });
 });
 
@@ -187,8 +194,7 @@ describe('<DocumentsScreen> — edges', () => {
 
     expect(screen.getByTestId('documents-title')).toHaveTextContent(/^Documents$/);
     expect(mockSyncTrip).toHaveBeenCalledWith('trip-42');
-    await fireEvent.press(screen.getByLabelText('Back'));
-    expect(mockBack).toHaveBeenCalled();
+    expect(screen.queryByLabelText('Back')).toBeNull();
   });
 
   test('uploads are not attempted while the app is away', async () => {
@@ -260,10 +266,74 @@ describe('<DocumentImage> — proportions', () => {
 
 describe('<DocumentsHeader> — edges', () => {
   test('the privacy promise stands with or without a trip name', async () => {
-    await render(
-      <DocumentsHeader tripTitle={null} onBack={jest.fn()} onAdd={jest.fn()} />,
-    );
+    await render(<DocumentsHeader tripTitle={null} onAdd={jest.fn()} />);
 
     expect(screen.getByTestId('documents-privacy')).toHaveTextContent(/Only you/);
+    expect(screen.getByTestId('documents-title')).toHaveTextContent(/^Documents$/);
+
+    await screen.rerender(<DocumentsHeader tripTitle="Rome" onAdd={jest.fn()} />);
+    expect(screen.getByTestId('documents-title')).toHaveTextContent('Documents · Rome');
+    expect(screen.getByTestId('documents-privacy')).toHaveTextContent(/Only you/);
+  });
+
+  test('"Add document" is the header’s one control, and presses through', async () => {
+    const onAdd = jest.fn();
+    await render(<DocumentsHeader tripTitle={null} onAdd={onAdd} />);
+
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    await fireEvent.press(screen.getByTestId('documents-add'));
+    expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('<DocumentCameraPermission> — states', () => {
+  test('each state names itself, says why in words, and has ONE way forward', async () => {
+    await render(<DocumentCameraPermission canAskAgain onAllow={jest.fn()} />);
+    expect(screen.getByText('Allow the camera')).toBeTruthy();
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(screen.queryByTestId('document-camera-settings')).toBeNull();
+
+    await screen.rerender(
+      <DocumentCameraPermission canAskAgain={false} onAllow={jest.fn()} />,
+    );
+    expect(screen.getByText('The camera is turned off')).toBeTruthy();
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(screen.queryByTestId('document-camera-allow')).toBeNull();
+  });
+});
+
+describe('<DocumentImage> — states and frame', () => {
+  test('opening, absent and unreadable are designed states with no picture and no way to take one out', async () => {
+    mockImage = { status: 'opening' };
+    await render(<DocumentImage documentId="d" path="p" description="A pass" />);
+    expect(screen.getByLabelText('Opening the document')).toBeTruthy();
+
+    mockImage = { status: 'absent' };
+    await screen.rerender(<DocumentImage documentId="d" path="p" description="A pass" />);
+    expect(screen.getByText('The image isn’t on this device')).toBeTruthy();
+
+    mockImage = { status: 'unreadable' };
+    await screen.rerender(<DocumentImage documentId="d" path="p" description="A pass" />);
+    expect(screen.getByText('Couldn’t open this document')).toBeTruthy();
+    expect(screen.queryByTestId('document-image')).toBeNull();
+    expect(screen.queryAllByRole('button')).toEqual([]);
+  });
+
+  test('the picture sits in a full-width hairline frame, contained, never cropped', async () => {
+    await render(<DocumentImage documentId="d" path="p" description="A pass" />);
+
+    const image = screen.getByTestId('document-image');
+    expect(image.props.resizeMode).toBe('contain');
+    // The first ancestor that draws a border is the frame.
+    let frame: ViewStyle | undefined;
+    for (let up = image.parent; up && !frame?.borderWidth; up = up.parent) {
+      frame = StyleSheet.flatten(up.props.style) as ViewStyle | undefined;
+    }
+    expect(frame?.width).toBe('100%');
+    expect(frame?.borderWidth).toBeGreaterThan(0);
+    expect(frame?.overflow).toBe('hidden');
+    for (const key of ['backgroundColor', 'boxShadow', 'shadowColor', 'opacity']) {
+      expect(frame).not.toHaveProperty(key);
+    }
   });
 });
