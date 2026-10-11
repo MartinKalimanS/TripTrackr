@@ -22,6 +22,14 @@
  *   copy in the bar would be read twice.
  * - The colours, and no hairline, come from `useHeaderTheme` (tokens, never a literal).
  *
+ * `photos` has the same header (T442) with the title "Photos" (a screen that is not the
+ * trip's hero has its title in the bar, FR-007; the trip's name is the first line of the
+ * page), the same `HeaderBackButton` and the same theme. It is the first screen of this
+ * stack to show a native title, so it takes `headerTitleStyle` from `useStackHeaderOptions`
+ * (the foreground ink in the display face; without it `headerTintColor` would paint the
+ * title in the accent, which FR-003 keeps for actions, the selected and the active). A
+ * standard title, not a large one: the large title is for the top-level lists.
+ *
  * No `unstable_settings` and no `initialParams` here: the root layout keeps the anchor
  * (`(tabs)`) and the route's params and deep links are exactly what they were.
  */
@@ -30,11 +38,15 @@ import { Stack } from 'expo-router';
 import { RequireLocalStore } from '@/components/require-local-store';
 import { HeaderBackButton } from '@/components/ui/header-back-button';
 import { useHeaderTheme } from '@/components/ui/header-theme';
+import { useStackHeaderOptions } from '@/components/ui/stack-header';
 
 const renderBack = () => <HeaderBackButton />;
 
 export default function TripLayout() {
   const theme = useHeaderTheme();
+  // The title is the ink and the display face, not the accent that tints the controls
+  // (FR-003, FR-004): the same `headerTitleStyle` every titled Atlas header has.
+  const { headerTitleStyle: titleStyle } = useStackHeaderOptions('Photos');
 
   return (
     <RequireLocalStore>
@@ -42,6 +54,16 @@ export default function TripLayout() {
         <Stack.Screen
           name="index"
           options={{ ...theme, headerShown: true, title: '', headerLeft: renderBack }}
+        />
+        <Stack.Screen
+          name="photos"
+          options={{
+            ...theme,
+            headerShown: true,
+            title: 'Photos',
+            headerTitleStyle: titleStyle,
+            headerLeft: renderBack,
+          }}
         />
       </Stack>
     </RequireLocalStore>

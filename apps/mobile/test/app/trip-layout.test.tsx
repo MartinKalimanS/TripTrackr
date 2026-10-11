@@ -129,7 +129,7 @@ async function openTrip(root: object, url: string) {
 }
 
 describe('trip/[id]/_layout - the header is on for the overview only (FR-007)', () => {
-  test('the overview has a native header; no other trip screen does yet', async () => {
+  test('the overview has a native header; so has each migrated screen, no other does yet', async () => {
     await openTrip(anchored, '/trip/abc');
     for (const name of SUB_SCREENS) {
       await act(async () => router.push(`/trip/abc/${name}`));
@@ -139,7 +139,7 @@ describe('trip/[id]/_layout - the header is on for the overview only (FR-007)', 
     expect(Object.keys(headers).sort()).toEqual(['index', ...SUB_SCREENS].sort());
     expect(headers.index?.hidden).toBe(false);
     for (const name of SUB_SCREENS) {
-      expect(headers[name]?.hidden).toBe(true);
+      expect(headers[name]?.hidden).toBe(name !== 'photos');
     }
   });
 
