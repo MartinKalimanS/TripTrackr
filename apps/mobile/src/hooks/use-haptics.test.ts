@@ -6,7 +6,7 @@
  */
 import { fireEvent, render, renderHook, screen } from '@testing-library/react-native';
 import * as ExpoHaptics from 'expo-haptics';
-import { createElement } from 'react';
+import { createElement, type ComponentType } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { ChipGroup } from '@/components/ui/chip';
@@ -156,12 +156,12 @@ describe('useHaptics through the controls - FR-020', () => {
   ];
   const pressButton = async (variant: 'primary' | 'secondary' | 'destructive') => {
     await render(
-      createElement(Button, {
-        variant,
-        accessibilityLabel: 'Go',
-        onPress: jest.fn(),
-        children: 'Go',
-      }),
+      createElement(
+        // The label is an element child, as in JSX; the loose type only lets `createElement` say so.
+        Button as ComponentType<Record<string, unknown>>,
+        { variant, accessibilityLabel: 'Go', onPress: jest.fn() },
+        'Go',
+      ),
     );
     await fireEvent.press(screen.getByLabelText('Go'));
   };

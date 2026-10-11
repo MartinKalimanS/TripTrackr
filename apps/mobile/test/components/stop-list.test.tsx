@@ -13,6 +13,7 @@ import { StyleSheet } from 'react-native';
 import { DRAG_ACTIVATION_DELAY_MS, StopList } from '@/components/trip/stop-list';
 import { MinTouchTarget } from '@/constants/theme';
 import type { StopWithPlace } from '@/db/repositories/stops';
+import { Motion } from '@/theme';
 
 function stop(id: string, city: string, order: number): StopWithPlace {
   return {
@@ -151,6 +152,66 @@ describe('<StopList>', () => {
 
   test('a drag starts after a short hold, so a scroll does not lift a row', () => {
     expect(DRAG_ACTIVATION_DELAY_MS).toBe(150);
+  });
+
+  // T460 - FR-019, FR-022: the first visual response of a control is within 100 ms. The row
+  // lifts only after the 150 ms hold, so the grip itself answers the finger at once; and the
+  // lift and the drop settle within an in-place transition (200 ms), not the library's 300.
+  describe('the grip answers the touch (T460; FR-019, FR-022)', () => {
+    const FILL = 'bg-separator-secondary';
+    const classesOf = (id: string) =>
+      String(screen.getByTestId(`stop-grip-${id}`).props.className ?? '');
+    const sortables = jest.requireMock('react-native-sortables') as {
+      __dragStart: (key: string) => void;
+      __activeItemDropped: (key: string) => void;
+      __gridSettings: () => Record<string, unknown>;
+    };
+
+    test('shows a held fill as the finger lands, and drops it on lift or cancel', async () => {
+      await renderList([rome, florence]);
+      expect(classesOf('s1')).not.toContain(FILL);
+
+      await fireEvent(screen.getByTestId('stop-grip-s1'), 'touchStart');
+      expect(classesOf('s1')).toContain(FILL);
+      expect(classesOf('s2')).not.toContain(FILL);
+
+      await fireEvent(screen.getByTestId('stop-grip-s1'), 'touchEnd');
+      expect(classesOf('s1')).not.toContain(FILL);
+
+      await fireEvent(screen.getByTestId('stop-grip-s1'), 'touchStart');
+      await fireEvent(screen.getByTestId('stop-grip-s1'), 'touchCancel');
+      expect(classesOf('s1')).not.toContain(FILL);
+    });
+
+    test('leaves no fill behind once the row it lifted has been dropped', async () => {
+      await renderList([rome, florence]);
+      await fireEvent(screen.getByTestId('stop-grip-s1'), 'touchStart');
+
+      await act(async () => sortables.__dragStart('s1'));
+      expect(classesOf('s1')).not.toContain(FILL);
+
+      await act(async () => sortables.__activeItemDropped('s1'));
+      expect(classesOf('s1')).not.toContain(FILL);
+    });
+
+    test('keeps its name, hint, target and drag handle: the cue adds nothing to announce', async () => {
+      await renderList([rome, florence]);
+      const grip = screen.getByTestId('stop-grip-s1');
+      expect(grip.props.accessibilityLabel).toBe('Drag to reorder');
+      expect(StyleSheet.flatten(grip.props.style).minWidth).toBeGreaterThanOrEqual(
+        MinTouchTarget,
+      );
+      expect(sortables.__gridSettings().customHandle).toBe(true);
+    });
+
+    test('lifts and settles a row within the in-place transition budget', async () => {
+      await renderList([rome, florence]);
+      expect(sortables.__gridSettings()).toMatchObject({
+        activationAnimationDuration: Motion.transitionMs,
+        dropAnimationDuration: Motion.transitionMs,
+      });
+      expect(Motion.transitionMs).toBeLessThanOrEqual(200);
+    });
   });
 
   test('is built from the adapter layer only', () => {
