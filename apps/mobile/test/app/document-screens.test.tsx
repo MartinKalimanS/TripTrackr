@@ -16,11 +16,18 @@
  * screen offers any way to share, export, copy or publish a document.
  */
 import { parseBoardingPass, type DocumentParsedFields } from '@triptrackr/contracts';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import { scanFromURLAsync } from 'expo-camera';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { usePreventScreenCapture } from 'expo-screen-capture';
-import { Alert, Linking, Share } from 'react-native';
+import { Alert, Linking, Share, StyleSheet } from 'react-native';
 
 import DocumentCaptureScreen from '@/app/trip/[id]/document-capture';
 import DocumentViewScreen from '@/app/trip/[id]/document-view';
@@ -124,12 +131,25 @@ const mockActions = {
   syncTrip: jest.fn(async () => undefined),
 };
 
-jest.mock('@/features/documents/use-documents', () => ({
-  useDocuments: () => mockDocuments,
-  useDocument: () => mockDocument,
-  useDocumentImage: () => mockImage,
-  useDocumentActions: () => mockActions,
-}));
+// A live query is read (subscribed) when its reader mounts. A retry that remounts the
+// reader is the only way to re-run one, so each reader reports its own mount.
+const mockReaderMounted = jest.fn();
+
+jest.mock('@/features/documents/use-documents', () => {
+  const React = require('react') as typeof import('react');
+  const useReading = (result: unknown, name: string) => {
+    React.useEffect(() => {
+      mockReaderMounted(name);
+    }, [name]);
+    return result;
+  };
+  return {
+    useDocuments: () => useReading(mockDocuments, 'documents'),
+    useDocument: () => useReading(mockDocument, 'document'),
+    useDocumentImage: () => mockImage,
+    useDocumentActions: () => mockActions,
+  };
+});
 
 const scan = scanFromURLAsync as jest.Mock;
 const pick = launchImageLibraryAsync as jest.Mock;
@@ -138,6 +158,7 @@ const pick = launchImageLibraryAsync as jest.Mock;
 const IATA_EXAMPLE = 'M1DESMARAIS/LUC       EABC123 YULFRAAC 0834 326J001A0025 100';
 const PASS_ID = '0b4d3c2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a';
 const BOOKING_ID = '9f8e7d6c-5b4a-4392-8170-6f5e4d3c2b1a';
+const OTHER_ID = '3c2b1a0f-9e8d-4c7b-a6f5-0e1d2c3b4a59';
 const FIELDS: DocumentParsedFields = {
   flight_number: 'AC834',
   flight_date: '2026-11-22',
@@ -206,23 +227,55 @@ beforeEach(() => {
   mockActions.store.mockReset().mockResolvedValue(doc());
   mockActions.confirmFields.mockReset();
   mockActions.remove.mockReset();
+  mockActions.syncTrip.mockClear();
+  mockReaderMounted.mockReset();
+  mockBack.mockReset();
+  mockPush.mockReset();
+  mockReplace.mockReset();
   scan.mockReset().mockResolvedValue([]);
   pick.mockReset();
 });
+
+/** Every button on screen drawn as the primary: FR-005 allows one per screen state. */
+function primaries(): string[] {
+  return screen
+    .queryAllByRole('button')
+    .filter((button) => button.props.variant === 'primary')
+    .map((button) => String(button.props.accessibilityLabel));
+}
+
+/** Decorative glyphs are hidden from assistive technology, and so from a default query. */
+const hidden = { includeHiddenElements: true };
+
+const classesOf = (node: { props: { className?: unknown } }) =>
+  String(node.props.className ?? '')
+    .split(/\s+/)
+    .filter(Boolean);
 
 // ---------------------------------------------------------------------------
 // The list
 // ---------------------------------------------------------------------------
 
 describe('<DocumentsScreen> — trip/[id]/documents (T118)', () => {
-  test('the empty state is designed, and says documents are private and encrypted', async () => {
+  test('the empty state is designed, names the next action, and says documents are private and encrypted', async () => {
     await render(<DocumentsScreen />);
 
     expect(screen.getByTestId('documents-title')).toHaveTextContent(
       /Documents · Montréal, autumn 2026/,
     );
     expect(screen.getByText('No documents yet')).toBeTruthy();
+    expect(screen.getByText(/Use “Add document” to scan a boarding pass/)).toBeTruthy();
     expect(screen.getByTestId('documents-privacy')).toHaveTextContent(/Only you/);
+  });
+
+  test('draws no Back and no title bar of its own: the navigation header carries them (FR-007, FR-008)', async () => {
+    await render(<DocumentsScreen />);
+
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    // The words the page keeps are the trip it belongs to, as an id the flows wait on.
+    expect(screen.getByTestId('documents-title').props.accessibilityRole).not.toBe(
+      'header',
+    );
   });
 
   test('"Add document" opens the capture screen for this trip', async () => {
@@ -230,6 +283,46 @@ describe('<DocumentsScreen> — trip/[id]/documents (T118)', () => {
 
     await fireEvent.press(screen.getByTestId('documents-add'));
     expect(mockPush).toHaveBeenCalledWith('/trip/trip-42/document-capture');
+  });
+
+  test('"Add document" is the one primary control, named as before, in every state (FR-005)', async () => {
+    mockDocuments.data = [doc()];
+    await render(<DocumentsScreen />);
+
+    const add = screen.getByTestId('documents-add');
+    expect(add.props.accessibilityRole).toBe('button');
+    expect(add.props.accessibilityLabel).toBe('Add document');
+    expect(primaries()).toEqual(['Add document']);
+
+    mockDocuments.data = [];
+    mockDocuments.loading = true;
+    await screen.rerender(<DocumentsScreen />);
+    expect(primaries()).toEqual(['Add document']);
+
+    mockDocuments.loading = false;
+    mockDocuments.error = new Error('store closed');
+    await screen.rerender(<DocumentsScreen />);
+    expect(primaries()).toEqual(['Add document']);
+  });
+
+  test('the privacy promise stands in every state, as words in a notice card', async () => {
+    await render(<DocumentsScreen />);
+    expect(screen.getByTestId('documents-privacy')).toHaveTextContent(/encrypted/);
+    expect(screen.getByTestId('documents-privacy').props.accessibilityRole).toBe('text');
+
+    mockDocuments.data = [doc()];
+    await screen.rerender(<DocumentsScreen />);
+    expect(screen.getByTestId('documents-privacy')).toBeTruthy();
+
+    mockDocuments.data = [];
+    mockDocuments.loading = true;
+    await screen.rerender(<DocumentsScreen />);
+    expect(screen.getByTestId('documents-privacy')).toBeTruthy();
+
+    mockDocuments.loading = false;
+    mockDocuments.error = new Error('store closed');
+    await screen.rerender(<DocumentsScreen />);
+    expect(screen.getByTestId('documents-privacy')).toBeTruthy();
   });
 
   test('rows say what each document is, its flight when known, and whether it is confirmed', async () => {
@@ -299,20 +392,115 @@ describe('<DocumentsScreen> — trip/[id]/documents (T118)', () => {
     );
   });
 
+  test('a row is ONE control, named as it was read before, with its hint and a chevron (FR-024, FR-030)', async () => {
+    mockDocuments.data = [
+      doc(),
+      doc({ id: BOOKING_ID, type: 'booking', parsed_json: null }),
+    ];
+    await render(<DocumentsScreen />);
+
+    const pass = screen.getByTestId(`document-row-${PASS_ID}`);
+    expect(pass.props.accessibilityRole).toBe('button');
+    expect(pass.props.accessibilityLabel).toBe(
+      `Boarding pass. AC834 · ${formatIsoDate('2026-11-22')}. ${FIELDS_STATUS_TEXT.unconfirmed}. Not yet synced`,
+    );
+    expect(pass.props.accessibilityHint).toBe('Opens the document');
+    expect(screen.getByTestId(`document-row-${PASS_ID}-cue`, hidden)).toBeTruthy();
+
+    const booking = screen.getByTestId(`document-row-${BOOKING_ID}`);
+    expect(booking.props.accessibilityLabel).toBe('Booking. Not yet synced');
+    // The rows are not the screen's primary: the one primary stays "Add document".
+    expect(primaries()).toEqual(['Add document']);
+  });
+
+  test('each row leads with an icon for its kind (US4 scenario 3)', async () => {
+    mockDocuments.data = [
+      doc(),
+      doc({ id: BOOKING_ID, type: 'booking', parsed_json: null }),
+      doc({ id: OTHER_ID, type: 'other', parsed_json: null }),
+    ];
+    await render(<DocumentsScreen />);
+
+    for (const id of [PASS_ID, BOOKING_ID, OTHER_ID]) {
+      expect(screen.getByTestId(`document-row-${id}-icon`, hidden)).toBeTruthy();
+    }
+    expect(screen.getByTestId(`document-row-${OTHER_ID}`)).toHaveTextContent(
+      /Other document/,
+    );
+  });
+
+  test('a document that is only on this device has a dashed edge AND its words; a saved one has neither (FR-034)', async () => {
+    mockDocuments.data = [
+      doc(),
+      doc({ id: BOOKING_ID, type: 'booking', parsed_json: null, upload_state: 'failed' }),
+      doc({
+        id: OTHER_ID,
+        type: 'other',
+        parsed_json: null,
+        upload_state: 'uploaded',
+        is_dirty: false,
+      }),
+    ];
+    await render(<DocumentsScreen />);
+
+    for (const id of [PASS_ID, BOOKING_ID]) {
+      expect(classesOf(screen.getByTestId(`document-row-${id}-surface`))).toEqual(
+        expect.arrayContaining(['border-dashed', 'border-pending']),
+      );
+    }
+    expect(screen.getByTestId(`document-row-${PASS_ID}`)).toHaveTextContent(
+      /Not yet synced/,
+    );
+    expect(
+      classesOf(screen.getByTestId(`document-row-${OTHER_ID}-surface`)),
+    ).not.toContain('border-dashed');
+  });
+
   test('gaining focus retries what the trip still owes the API', async () => {
     await render(<DocumentsScreen />);
     expect(mockActions.syncTrip).toHaveBeenCalledWith('trip-42');
   });
 
-  test('loading and error states are designed, not blank', async () => {
+  test('while loading, rows are skeletons announced as ONE busy region, never the empty state (FR-021)', async () => {
     mockDocuments.loading = true;
     await render(<DocumentsScreen />);
-    expect(screen.getByText('Loading documents')).toBeTruthy();
 
-    mockDocuments.loading = false;
+    const region = screen.getByLabelText('Loading documents');
+    expect(region.props.accessibilityRole).toBe('progressbar');
+    expect(screen.getAllByLabelText('Loading documents')).toHaveLength(1);
+    expect(screen.queryByText('No documents yet')).toBeNull();
+    expect(screen.getByTestId('documents-screen')).toBeTruthy();
+  });
+
+  test('an error says what happened in words and offers to try again, which reads the list afresh (C4-10)', async () => {
     mockDocuments.error = new Error('store closed');
-    await screen.rerender(<DocumentsScreen />);
+    mockDocuments.data = [doc()];
+    await render(<DocumentsScreen />);
+
     expect(screen.getByText('Couldn’t read the documents')).toBeTruthy();
+    expect(screen.queryByTestId(`document-row-${PASS_ID}`)).toBeNull();
+    expect(mockReaderMounted).toHaveBeenCalledTimes(1);
+    expect(mockActions.syncTrip).toHaveBeenCalledTimes(1);
+
+    mockDocuments.error = null;
+    await fireEvent.press(screen.getByLabelText('Try again'));
+
+    // The reader was mounted again (a live query is re-run by subscribing again).
+    expect(mockReaderMounted).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Couldn’t read the documents')).toBeNull();
+    expect(screen.getByTestId(`document-row-${PASS_ID}`)).toBeTruthy();
+  });
+
+  test('the capture guard is held by the screen itself, so a retry never leaves a gap in it', async () => {
+    mockDocuments.error = new Error('store closed');
+    await render(<DocumentsScreen />);
+    const guard = usePreventScreenCapture as jest.Mock;
+    const keysBefore = new Set(guard.mock.calls.map((call) => call[0]));
+
+    mockDocuments.error = null;
+    await fireEvent.press(screen.getByLabelText('Try again'));
+
+    expect(new Set(guard.mock.calls.map((call) => call[0]))).toEqual(keysBefore);
   });
 
   test('blocks screen capture, and offers no sharing of any kind', async () => {
@@ -580,6 +768,163 @@ describe('<DocumentCaptureScreen> — scan or pick (T118, research D-33)', () =>
       expect.stringMatching(/^document-/),
     );
     expect(buttonLabels().filter((label) => SHARING.test(label))).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Capture, on Atlas (FR-005, FR-015, FR-033, FR-037)
+// ---------------------------------------------------------------------------
+
+describe('<DocumentCaptureScreen> — Atlas (T443)', () => {
+  test('keeps its own bar, with the Back it always had and the title the flows know', async () => {
+    await render(<DocumentCaptureScreen />);
+
+    const back = screen.getByLabelText('Back');
+    expect(back.props.accessibilityRole).toBe('button');
+    expect(screen.getByTestId('document-capture-title')).toHaveTextContent(
+      'Add a document',
+    );
+    await fireEvent.press(back);
+    expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  test('the three kinds are one radio group with the ids and names they had', async () => {
+    await render(<DocumentCaptureScreen />);
+
+    const pass = screen.getByTestId('document-type-boarding_pass');
+    expect(pass.props.accessibilityRole).toBe('radio');
+    expect(pass.props.accessibilityLabel).toBe('Boarding pass');
+    expect(pass.props.accessibilityState).toMatchObject({
+      selected: true,
+      checked: true,
+    });
+    expect(screen.getByTestId('document-type-booking').props.accessibilityLabel).toBe(
+      'Booking',
+    );
+    expect(screen.getByTestId('document-type-other').props.accessibilityLabel).toBe(
+      'Other document',
+    );
+
+    await fireEvent.press(screen.getByTestId('document-type-booking'));
+    expect(
+      screen.getByTestId('document-type-booking').props.accessibilityState,
+    ).toMatchObject({ selected: true });
+    expect(screen.getByTestId('document-capture-hint')).toHaveTextContent(
+      'Fill the frame with the booking, then take the photo.',
+    );
+  });
+
+  test('the shutter is the one primary while the camera is live; the library is secondary (FR-005)', async () => {
+    await render(<DocumentCaptureScreen />);
+    await cameraReady();
+
+    expect(primaries()).toEqual(['Take photo']);
+    expect(screen.getByTestId('document-capture-shutter').props.size).toBe('lg');
+    expect(screen.getByTestId('document-capture-library').props.variant).toBe(
+      'secondary',
+    );
+  });
+
+  test('the controls sit OUTSIDE the full-width camera frame: nothing is drawn across the picture (FR-033)', async () => {
+    await render(<DocumentCaptureScreen />);
+    await cameraReady();
+
+    const frame = screen.getByLabelText('Camera preview');
+    expect(within(frame).getByTestId('camera-view')).toBeTruthy();
+    expect(within(frame).queryByTestId('document-capture-shutter')).toBeNull();
+    expect(within(frame).queryByTestId('document-capture-library')).toBeNull();
+
+    // The frame is a hairline and nothing else: no fill, tint, shadow or translucency.
+    const style = StyleSheet.flatten(frame.props.style);
+    expect(style.borderWidth).toBeGreaterThan(0);
+    for (const key of ['backgroundColor', 'boxShadow', 'shadowColor', 'opacity']) {
+      expect(style).not.toHaveProperty(key);
+    }
+    expect(style.width).toBe('100%');
+  });
+
+  test('the shutter is inert and named while the camera starts, then ready', async () => {
+    await render(<DocumentCaptureScreen />);
+
+    const shutter = screen.getByTestId('document-capture-shutter');
+    expect(shutter.props.accessibilityLabel).toBe('Take photo');
+    expect(shutter.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(screen.getByText('Starting the camera…')).toBeTruthy();
+
+    await cameraReady();
+    expect(
+      screen.getByTestId('document-capture-shutter').props.accessibilityState,
+    ).toMatchObject({ disabled: false });
+    expect(screen.queryByText('Starting the camera…')).toBeNull();
+  });
+
+  test('a capture in flight is said as a polite live region and the shutter and library are busy', async () => {
+    let finish: (value: DocumentRow) => void = () => undefined;
+    mockActions.store.mockReturnValueOnce(
+      new Promise<DocumentRow>((done) => (finish = done)),
+    );
+    await render(<DocumentCaptureScreen />);
+    await cameraReady();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('document-capture-shutter'));
+    });
+
+    const saving = await screen.findByText('Saving to this device…');
+    expect(saving.props.accessibilityLiveRegion).toBe('polite');
+    for (const id of ['document-capture-shutter', 'document-capture-library']) {
+      expect(screen.getByTestId(id).props.accessibilityState).toMatchObject({
+        busy: true,
+      });
+    }
+    await act(async () => finish(doc()));
+  });
+
+  test('checking the permission has no primary; the library is already there', async () => {
+    mockPermission = null;
+    await render(<DocumentCaptureScreen />);
+
+    const checking = screen.getByLabelText('Checking camera access');
+    expect(checking.props.accessibilityRole).toBe('progressbar');
+    expect(primaries()).toEqual([]);
+    expect(screen.getByTestId('document-capture-library')).toBeTruthy();
+  });
+
+  test('not yet allowed: "Allow camera" is the one primary, the library a secondary', async () => {
+    mockPermission = { granted: false, canAskAgain: true, status: 'undetermined' };
+    await render(<DocumentCaptureScreen />);
+
+    const allow = screen.getByTestId('document-camera-allow');
+    expect(allow.props.accessibilityLabel).toBe('Allow camera');
+    expect(allow.props.accessibilityRole).toBe('button');
+    expect(primaries()).toEqual(['Allow camera']);
+    expect(screen.getByTestId('document-camera-permission')).toBeTruthy();
+    expect(screen.queryByTestId('document-capture-shutter')).toBeNull();
+  });
+
+  test('refused for good: "Open Settings" is the one primary', async () => {
+    mockPermission = { granted: false, canAskAgain: false, status: 'denied' };
+    await render(<DocumentCaptureScreen />);
+
+    expect(screen.getByTestId('document-camera-settings').props.accessibilityLabel).toBe(
+      'Open Settings',
+    );
+    expect(primaries()).toEqual(['Open Settings']);
+    expect(screen.getByText('The camera is turned off')).toBeTruthy();
+  });
+
+  test('every refusal is an alert in words beside the camera, never colour alone', async () => {
+    mockActions.store.mockRejectedValueOnce(new Error('vault'));
+    await render(<DocumentCaptureScreen />);
+    await cameraReady();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('document-capture-shutter'));
+    });
+
+    const error = await screen.findByTestId('document-capture-error');
+    expect(error.props.accessibilityRole).toBe('alert');
+    expect(error).toHaveTextContent(DOCUMENT_CAPTURE_COPY.saveFailed);
   });
 });
 
@@ -863,6 +1208,256 @@ describe('<DocumentViewScreen> — the document and its fields (T118, T119)', ()
     await screen.rerender(<DocumentViewScreen />);
     expect(screen.getByText('Couldn’t read the document')).toBeTruthy();
   });
+
+  test('a store that will not answer offers to try again, which reads the document afresh (C4-10)', async () => {
+    mockDocument.error = new Error('store closed');
+    await render(<DocumentViewScreen />);
+    expect(mockReaderMounted).toHaveBeenCalledTimes(1);
+
+    mockDocument.error = null;
+    await fireEvent.press(screen.getByLabelText('Try again'));
+
+    expect(mockReaderMounted).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Couldn’t read the document')).toBeNull();
+    expect(screen.getByTestId('document-view-title')).toHaveTextContent('Boarding pass');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The document, on Atlas (FR-005, FR-015, FR-033, FR-037)
+// ---------------------------------------------------------------------------
+
+describe('<DocumentViewScreen> — Atlas (T443)', () => {
+  beforeEach(() => {
+    mockParams = { id: 'trip-42', documentId: PASS_ID };
+  });
+
+  test('draws no Back of its own: the navigation header carries it, and the kind is the page heading', async () => {
+    await render(<DocumentViewScreen />);
+
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    const title = screen.getByTestId('document-view-title');
+    expect(title).toHaveTextContent('Boarding pass');
+    expect(title.props.accessibilityRole).toBe('header');
+  });
+
+  test('the picture is framed by a hairline and carries nothing across it (FR-033)', async () => {
+    await render(<DocumentViewScreen />);
+
+    const image = screen.getByTestId('document-image');
+    expect(image.props.accessibilityRole).toBe('image');
+    expect(image.props.accessibilityLabel).toBe('Picture of your boarding pass');
+    // The first ancestor that draws a border is the frame.
+    let frame = image.parent;
+    while (frame && !StyleSheet.flatten(frame.props.style)?.borderWidth) {
+      frame = frame.parent;
+    }
+    const style = StyleSheet.flatten(frame?.props.style);
+    expect(style.borderWidth).toBeGreaterThan(0);
+    for (const key of ['backgroundColor', 'boxShadow', 'shadowColor', 'opacity']) {
+      expect(style).not.toHaveProperty(key);
+    }
+    // Nothing but the picture is in its frame: no control is drawn across it.
+    expect(within(frame!).queryAllByRole('button')).toEqual([]);
+  });
+
+  test('viewing a pass: there is no primary; checking is secondary and Delete is destructive (FR-005)', async () => {
+    await render(<DocumentViewScreen />);
+
+    expect(primaries()).toEqual([]);
+    expect(screen.getByTestId('document-review').props.variant).toBe('secondary');
+    expect(screen.getByTestId('document-review').props.accessibilityLabel).toBe(
+      'Check details',
+    );
+    const remove = screen.getByTestId('document-delete');
+    expect(remove.props.accessibilityLabel).toBe('Delete document');
+    expect(remove.props.accessibilityRole).toBe('button');
+    expect(remove.props.variant).toBe('danger-soft');
+  });
+
+  test('the review button is worded for what it will do', async () => {
+    mockDocument.data = doc({ parsed_json: null });
+    await render(<DocumentViewScreen />);
+    expect(screen.getByTestId('document-review').props.accessibilityLabel).toBe(
+      'Enter flight details',
+    );
+
+    mockDocument.data = doc({ parsed_confirmed_at: '2026-11-20T10:01:00.000Z' });
+    await screen.rerender(<DocumentViewScreen />);
+    expect(screen.getByTestId('document-review').props.accessibilityLabel).toBe(
+      'Correct details',
+    );
+  });
+
+  test('the fields read as label and value pairs inside one card; a booking has no fields card', async () => {
+    await render(<DocumentViewScreen />);
+
+    const card = screen.getByTestId('document-details');
+    for (const [label, id] of [
+      ['Flight', 'document-field-flight-number'],
+      ['Date', 'document-field-flight-date'],
+      ['Passenger', 'document-field-passenger-name'],
+    ] as const) {
+      expect(within(card).getByText(label)).toBeTruthy();
+      expect(within(card).getByTestId(id)).toBeTruthy();
+    }
+
+    mockDocument.data = doc({ id: BOOKING_ID, type: 'booking', parsed_json: null });
+    await screen.rerender(<DocumentViewScreen />);
+    expect(screen.queryByTestId('document-details')).toBeNull();
+  });
+
+  test('the upload state is a badge AND words until the bytes have landed (FR-034, Constitution II)', async () => {
+    await render(<DocumentViewScreen />);
+    expect(screen.getByLabelText('Sync pending')).toBeTruthy();
+    expect(screen.getByTestId('document-upload-status')).toHaveTextContent(
+      UPLOAD_STATUS_TEXT.pending,
+    );
+
+    mockDocument.data = doc({ upload_state: 'failed' });
+    await screen.rerender(<DocumentViewScreen />);
+    expect(screen.getByLabelText('Sync failed')).toBeTruthy();
+    expect(screen.getByTestId('document-upload-status')).toHaveTextContent(
+      UPLOAD_STATUS_TEXT.failed,
+    );
+
+    mockDocument.data = doc({ upload_state: 'uploaded', is_dirty: false });
+    await screen.rerender(<DocumentViewScreen />);
+    expect(screen.queryByLabelText('Sync pending')).toBeNull();
+    expect(screen.getByTestId('document-upload-status')).toHaveTextContent(
+      UPLOAD_STATUS_TEXT.saved,
+    );
+  });
+
+  test('a delete that failed is an alert in words above the control that caused it', async () => {
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find((button) => button.style === 'destructive')?.onPress?.();
+    });
+    mockActions.remove.mockImplementationOnce(() => {
+      throw new Error('locked');
+    });
+    await render(<DocumentViewScreen />);
+
+    await fireEvent.press(screen.getByTestId('document-delete'));
+
+    expect(screen.getByTestId('document-view-error').props.accessibilityRole).toBe(
+      'alert',
+    );
+    expect(screen.getByTestId('document-view-error')).toHaveTextContent(
+      'That document could not be deleted. Please try again.',
+    );
+  });
+});
+
+describe('<DocumentConfirmForm> — Atlas (T443)', () => {
+  beforeEach(() => {
+    mockParams = { id: 'trip-42', documentId: PASS_ID, review: '1' };
+  });
+
+  test('is the screen’s one primary: "Confirm details"; "Not now" is a text button (FR-005)', async () => {
+    await render(<DocumentViewScreen />);
+
+    expect(primaries()).toEqual(['Confirm details']);
+    const notNow = screen.getByTestId('document-confirm-not-now');
+    expect(notNow.props.variant).toBe('ghost');
+    expect(notNow.props.accessibilityLabel).toBe('Not now');
+    expect(notNow.props.accessibilityHint).toBe(
+      'Keeps the details as a suggestion you still need to check',
+    );
+    expect(screen.getByTestId('document-confirm-save').props.accessibilityLabel).toBe(
+      'Confirm details',
+    );
+  });
+
+  test('reads Flight details, why, the three fields, then the actions, with Not now first', async () => {
+    await render(<DocumentViewScreen />);
+
+    const form = screen.getByTestId('document-confirm-form');
+    expect(within(form).getByText('Flight details')).toBeTruthy();
+    const order = [
+      'document-confirm-intro',
+      'document-confirm-flight-number',
+      'document-confirm-flight-date',
+      'document-confirm-passenger-name',
+      'document-confirm-not-now',
+      'document-confirm-save',
+    ].map((id) => within(form).getByTestId(id));
+    const ids = form.queryAll(() => true).map((node) => node.props.testID);
+    const positions = order.map((node) => ids.indexOf(node.props.testID));
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((left, right) => left - right));
+  });
+
+  test('the text fields are labelled inputs that take the pass’s capitals and no autocorrect', async () => {
+    await render(<DocumentViewScreen />);
+
+    const flight = screen.getByTestId('document-confirm-flight-number');
+    expect(flight.props.accessibilityLabel).toBe('Flight number');
+    expect(flight.props.autoCapitalize).toBe('characters');
+    expect(flight.props.autoCorrect).toBe(false);
+    expect(flight.props.placeholder).toBe('AC834');
+
+    const passenger = screen.getByTestId('document-confirm-passenger-name');
+    expect(passenger.props.accessibilityLabel).toBe('Passenger name');
+    expect(passenger.props.autoCapitalize).toBe('characters');
+    expect(passenger.props.autoCorrect).toBe(false);
+    expect(passenger.props.placeholder).toBe('SURNAME/GIVEN NAME');
+  });
+
+  test('the last field says Done, so the keyboard can be put away to reach Confirm details', async () => {
+    await render(<DocumentViewScreen />);
+
+    expect(
+      screen.getByTestId('document-confirm-passenger-name').props.returnKeyType,
+    ).toBe('done');
+  });
+
+  test('a refused flight number is words beside its field, an alert, and the field is marked invalid', async () => {
+    await render(<DocumentViewScreen />);
+    await fireEvent.changeText(
+      screen.getByTestId('document-confirm-flight-number'),
+      'AC-834',
+    );
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('document-confirm-save'));
+    });
+
+    const message = await screen.findByTestId('document-confirm-flight-number-error');
+    expect(message.props.accessibilityRole).toBe('alert');
+    expect(message).toHaveTextContent(DOCUMENT_FORM_COPY.flightNumberInvalid);
+    expect(
+      screen.getByTestId('document-confirm-flight-number').props['aria-invalid'],
+    ).toBe(true);
+    expect(mockActions.confirmFields).not.toHaveBeenCalled();
+  });
+
+  test('a failed write is an alert under the fields, above the actions', async () => {
+    mockActions.confirmFields.mockImplementationOnce(() => {
+      throw new Error('disk I/O error');
+    });
+    await render(<DocumentViewScreen />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('document-confirm-save'));
+    });
+
+    const error = await screen.findByTestId('document-confirm-error');
+    expect(error.props.accessibilityRole).toBe('alert');
+  });
+
+  test('is a form on the keyboard-aware, scrolling screen, so Confirm details can be scrolled above the keyboard', async () => {
+    await render(<DocumentViewScreen />);
+
+    // `Screen keyboardAware` is the library's KeyboardAwareScrollView, which pads the page
+    // by the keyboard's height so the last control can always be scrolled into view, and
+    // which lets a tap on a button through while a field has the keyboard up.
+    const scrollers = screen
+      .getByTestId('document-view-screen')
+      .queryAll((node) => node.props.keyboardShouldPersistTaps === 'handled', {
+        includeSelf: true,
+      });
+    expect(scrollers.length).toBeGreaterThan(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -894,4 +1489,47 @@ describe('document screens — no route to sharing exists (FR-032, Constitution 
       expect(source).not.toMatch(/is_public|isPublic/);
     },
   );
+});
+
+describe('document screens — composed from the Atlas adapter layer only (FR-036, C4-10 rule 1)', () => {
+  const fs = jest.requireActual('fs') as typeof import('fs');
+  const path = jest.requireActual('path') as typeof import('path');
+  const root = path.join(__dirname, '..', '..', 'src');
+  const sources = [
+    'app/trip/[id]/documents.tsx',
+    'app/trip/[id]/document-capture.tsx',
+    'app/trip/[id]/document-view.tsx',
+    'components/trip/documents-header.tsx',
+    'components/trip/document-camera-permission.tsx',
+    'components/trip/document-camera.tsx',
+    'components/trip/document-confirm-form.tsx',
+    'components/trip/document-details.tsx',
+    'components/trip/document-image.tsx',
+    'components/trip/document-list-item.tsx',
+  ];
+
+  test.each(sources)('%s uses no neumorphic primitive, kit or colour literal', (file) => {
+    const source = fs.readFileSync(path.join(root, file), 'utf8');
+    const specifiers = [...source.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1]);
+    for (const retired of [
+      '@/components/ui/surface',
+      '@/components/ui/pressable-surface',
+      '@/components/ui/text-field',
+      '@/components/ui/pill-group',
+      '@/components/themed-text',
+      '@/components/themed-view',
+    ]) {
+      expect(specifiers).not.toContain(retired);
+    }
+    expect(specifiers.some((from) => /^(heroui-native|uniwind)/.test(from))).toBe(false);
+    expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|\[#/);
+    expect(source).not.toMatch(/use-appearance|Colors\[/);
+  });
+
+  test('no document source logs: document names, fields and pictures are never written out', () => {
+    const logged = /console\.(log|info|warn|error|debug)|\bdebugger\b/;
+    for (const file of sources) {
+      expect(fs.readFileSync(path.join(root, file), 'utf8')).not.toMatch(logged);
+    }
+  });
 });

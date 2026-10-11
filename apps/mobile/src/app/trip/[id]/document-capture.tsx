@@ -1,6 +1,7 @@
 /**
  * Add a document to a trip — tasks.md T118 (FR-031, FR-033, FR-034, FR-035);
- * research D-32, D-33.
+ * research D-32, D-33; restyled for Atlas by 004 T443 (contract C4-10; FR-005, FR-015,
+ * FR-033, FR-037).
  *
  * Three ways in: the camera scans a boarding pass's barcode live (the first
  * one takes the picture), the shutter photographs any document, and the
@@ -14,6 +15,16 @@
  * (FR-034). `useCameraPermissions` is expo-camera's v57 hook; a `null` answer
  * is "still asking the system", a designed state of its own.
  *
+ * A camera surface keeps its own bar instead of the navigation header
+ * (`trip/[id]/_layout.tsx` leaves `document-capture` headerless, on purpose): the preview
+ * wants the whole width and as much of the height as the page can give, a second title
+ * would repeat `document-capture-title`, and the bar below carries the Back it always had
+ * (named "Back", `Button` text variant, which, unlike a header's, grows with the text size
+ * and always shows its word). The camera preview is the full width of the screen in a
+ * hairline frame, and every control is OUTSIDE it and opaque: nothing is drawn across the
+ * picture (FR-033). One primary per state (FR-005): the shutter while the camera is live,
+ * "Allow camera" or "Open Settings" when it is not; the library is secondary throughout.
+ *
  * Visibility posture: owner-only. Nothing on this screen shares, exports or
  * publishes a document, and none can (FR-032).
  */
@@ -21,17 +32,17 @@ import type { DocumentType } from '@triptrackr/contracts';
 import { useCameraPermissions, type PermissionResponse } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
 import { DocumentCamera } from '@/components/trip/document-camera';
 import { DocumentCameraPermission } from '@/components/trip/document-camera-permission';
+import { Button } from '@/components/ui/button';
+import { ChipGroup, type ChipOption } from '@/components/ui/chip';
+import type { IconName } from '@/components/ui/icon';
 import { InlineError } from '@/components/ui/inline-error';
-import { PillGroup, type PillOption } from '@/components/ui/pill-group';
-import { PressableSurface } from '@/components/ui/pressable-surface';
 import { Screen } from '@/components/ui/screen';
 import { LoadingState } from '@/components/ui/state-view';
-import { Spacing } from '@/constants/theme';
+import { Text } from '@/components/ui/text';
 import {
   DOCUMENT_CAPTURE_COPY,
   DOCUMENT_TYPE_LABELS,
@@ -47,7 +58,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-const TYPE_OPTIONS: readonly PillOption[] = (
+const TYPE_OPTIONS: readonly ChipOption[] = (
   ['boarding_pass', 'booking', 'other'] as const
 ).map((type) => ({
   key: type,
@@ -62,6 +73,9 @@ const HINTS: Readonly<Record<DocumentType, string>> = {
   booking: 'Fill the frame with the booking, then take the photo.',
   other: 'Fill the frame with the document, then take the photo.',
 };
+
+const BACK: IconName = { ios: 'chevron.backward', android: 'chevron_left' };
+const LIBRARY: IconName = { ios: 'photo.on.rectangle', android: 'photo_library' };
 
 type CameraAreaProps = {
   permission: PermissionResponse | null;
@@ -91,46 +105,10 @@ function CameraArea({ permission, onAllow, type, capture }: CameraAreaProps) {
   );
 }
 
-export default function DocumentCaptureScreen() {
-  useScreenCaptureGuard();
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string | string[] }>();
-  const tripId = firstParam(id) ?? '';
-  const [type, setType] = useState<DocumentType>('boarding_pass');
-  const capture = useDocumentCapture(tripId, type);
-  const [permission, requestPermission] = useCameraPermissions();
-  const { problem } = capture;
-
+/** What went wrong with this capture, in words: the scanner's and the store's apart. */
+function CaptureProblems({ problem }: { problem: DocumentCapture['problem'] }) {
   return (
-    <Screen testID="document-capture-screen">
-      <PressableSurface
-        accessibilityLabel="Back"
-        treatment="flat"
-        onPress={() => router.back()}
-        style={styles.back}>
-        <ThemedText type="smallBold">Back</ThemedText>
-      </PressableSurface>
-
-      <ThemedText type="subtitle" testID="document-capture-title">
-        Add a document
-      </ThemedText>
-
-      <PillGroup
-        options={TYPE_OPTIONS}
-        selectedKey={type}
-        onSelect={(key) => setType(key as DocumentType)}
-      />
-      <ThemedText type="small" themeColor="textMuted" testID="document-capture-hint">
-        {HINTS[type]}
-      </ThemedText>
-
-      <CameraArea
-        permission={permission}
-        onAllow={() => void requestPermission()}
-        type={type}
-        capture={capture}
-      />
-
+    <>
       <InlineError
         testID="document-scanner-error"
         message={problem === 'capture' ? CAPTURE_PROBLEM_TEXT.capture : null}
@@ -143,37 +121,74 @@ export default function DocumentCaptureScreen() {
             : null
         }
       />
-      {capture.busy ? (
-        <ThemedText type="small" accessibilityLiveRegion="polite">
-          Saving to this device…
-        </ThemedText>
-      ) : null}
-
-      <PressableSurface
-        testID="document-capture-library"
-        accessibilityLabel="Choose from library"
-        treatment="flat"
-        busy={capture.busy}
-        onPress={capture.onLibrary}
-        style={styles.library}>
-        <ThemedText type="smallBold" style={styles.centred}>
-          Choose from library
-        </ThemedText>
-      </PressableSurface>
-    </Screen>
+    </>
   );
 }
 
-const styles = StyleSheet.create({
-  back: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  library: {
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-  },
-  centred: { textAlign: 'center' },
-});
+/** The screen's own bar: the way back, then the title, wrapping under large text. */
+function CaptureBar({ onBack }: { onBack: () => void }) {
+  return (
+    <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
+      <Button
+        variant="text"
+        size="sm"
+        icon={BACK}
+        accessibilityLabel="Back"
+        onPress={onBack}>
+        Back
+      </Button>
+      <Text type="title" testID="document-capture-title">
+        Add a document
+      </Text>
+    </View>
+  );
+}
+
+export default function DocumentCaptureScreen() {
+  useScreenCaptureGuard();
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string | string[] }>();
+  const tripId = firstParam(id) ?? '';
+  const [type, setType] = useState<DocumentType>('boarding_pass');
+  const capture = useDocumentCapture(tripId, type);
+  const [permission, requestPermission] = useCameraPermissions();
+
+  return (
+    <Screen testID="document-capture-screen">
+      <CaptureBar onBack={() => router.back()} />
+
+      <ChipGroup
+        options={TYPE_OPTIONS}
+        selectedKey={type}
+        onSelect={(key) => setType(key as DocumentType)}
+      />
+      <Text type="callout" tone="muted" testID="document-capture-hint">
+        {HINTS[type]}
+      </Text>
+
+      <CameraArea
+        permission={permission}
+        onAllow={() => void requestPermission()}
+        type={type}
+        capture={capture}
+      />
+
+      <CaptureProblems problem={capture.problem} />
+      {capture.busy ? (
+        <Text type="callout" accessibilityLiveRegion="polite">
+          Saving to this device…
+        </Text>
+      ) : null}
+
+      <Button
+        testID="document-capture-library"
+        variant="secondary"
+        icon={LIBRARY}
+        accessibilityLabel="Choose from library"
+        busy={capture.busy}
+        onPress={capture.onLibrary}>
+        Choose from library
+      </Button>
+    </Screen>
+  );
+}

@@ -234,3 +234,82 @@ describe('trip/[id]/_layout - the header leaves the route alone (FR-030)', () =>
     expect(screen.getByText('notes')).toBeTruthy();
   });
 });
+
+describe('trip/[id]/_layout - the document screens (004 T443; FR-007, FR-008, FR-033)', () => {
+  const DOC_COLOURS: Record<string, string> = {
+    ...COLOURS,
+    foreground: 'rgb(77, 88, 99)',
+  };
+
+  beforeEach(() => {
+    // The title face reads a THEME list (`useThemeColor([...])`); answer it by name too.
+    jest
+      .spyOn(HeroUI, 'useThemeColor')
+      .mockImplementation(((token: string | string[]) =>
+        Array.isArray(token)
+          ? token.map((name) => DOC_COLOURS[name] ?? '#808080')
+          : (DOC_COLOURS[token] ?? '#808080')) as never);
+  });
+
+  async function openDocuments() {
+    const { app } = await openTrip(anchored, '/trip/abc');
+    await act(async () => router.push('/trip/abc/documents'));
+    return { app };
+  }
+
+  test('the list and the viewer have a native header titled for them; the camera keeps its own bar', async () => {
+    await openTrip(anchored, '/trip/abc');
+    await act(async () => router.push('/trip/abc/documents'));
+    await act(async () => router.push('/trip/abc/document-view?documentId=d1'));
+    await act(async () => router.push('/trip/abc/document-capture'));
+
+    const headers = tripHeaders();
+    expect(headers.documents?.hidden).toBe(false);
+    expect(headers.documents?.title).toBe('Documents');
+    expect(headers['document-view']?.hidden).toBe(false);
+    expect(headers['document-view']?.title).toBe('Document');
+    // A camera surface: its own bar, with the Back and the title the flows know.
+    expect(headers['document-capture']?.hidden).toBe(true);
+  });
+
+  test('carry the tokens: canvas for the bar and the scene, accent tint, ink title in the display face, no hairline', async () => {
+    await openDocuments();
+
+    const header = tripHeaders().documents;
+    expect(header?.hideShadow).toBe(true);
+    expect(header?.backgroundColor).toBe(COLOURS.background);
+    expect(header?.color).toBe(COLOURS.accent);
+    expect(header?.titleColor).toBe(DOC_COLOURS.foreground);
+    expect(contentBackground('documents')).toBe(COLOURS.background);
+  });
+
+  test('Back on the list is the one control named "Back" on top, and goes to the overview', async () => {
+    const { app } = await openDocuments();
+    expect(app.getPathname()).toBe('/trip/abc/documents');
+
+    const backs = screen.getAllByLabelText('Back');
+    expect(backs.at(-1)?.props.accessibilityRole).toBe('button');
+    await fireEvent.press(backs.at(-1) as TestInstance);
+
+    expect(app.getPathname()).toBe('/trip/abc');
+    expect(screen.getByTestId('trip-index')).toBeTruthy();
+  });
+
+  test('Back on the viewer goes to the list, whatever it is called', async () => {
+    const { app } = await openDocuments();
+    await act(async () => router.push('/trip/abc/document-view?documentId=d1'));
+    expect(app.getPathname()).toBe('/trip/abc/document-view');
+
+    await fireEvent.press(screen.getAllByLabelText('Back').at(-1) as TestInstance);
+
+    expect(app.getPathname()).toBe('/trip/abc/documents');
+  });
+
+  test('a document opened by a link keeps its params and its header', async () => {
+    const { app } = await openTrip(anchored, '/trip/abc/document-view?documentId=d9');
+
+    expect(app.getPathname()).toBe('/trip/abc/document-view');
+    expect(app.getSearchParams()).toEqual({ id: 'abc', documentId: 'd9' });
+    expect(tripHeaders()['document-view']?.hidden).toBe(false);
+  });
+});

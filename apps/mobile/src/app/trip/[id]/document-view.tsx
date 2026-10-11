@@ -1,6 +1,7 @@
 /**
  * One travel document — tasks.md T118, T119 (FR-031, FR-034, FR-035, FR-041;
- * Acceptance Scenarios 5.3, 5.4, 5.5); research D-32, D-33.
+ * Acceptance Scenarios 5.3, 5.4, 5.5); research D-32, D-33; restyled for Atlas by 004 T443
+ * (contract C4-10; FR-005, FR-007, FR-008, FR-015, FR-033, FR-035, FR-037).
  *
  * The decrypted picture (in memory, never on disk), a boarding pass's flight
  * number, day and passenger name with whether the traveller has confirmed
@@ -11,6 +12,16 @@
  * as an unconfirmed proposal (Constitution IV). Confirming stores them locally
  * first and never waits on the network (Constitution II).
  *
+ * Under a native header (`_layout.tsx`: "Document" and Back), so the screen is
+ * `underHeader` with no bar of its own; its heading is the kind of document, in the
+ * words it always had (`document-view-title`). While it is only being looked at the
+ * screen has no primary control (checking the details is secondary, Delete is
+ * destructive); with the form open, "Confirm details" is the one primary (FR-005). The
+ * picture is framed by a hairline and nothing is drawn across it (FR-033). A document
+ * the store cannot read offers "Try again", which reads it afresh by mounting the reader
+ * again (`key`): the capture guard lives in the screen above, so a retry never leaves the
+ * document unprotected.
+ *
  * This screen blocks screen capture while a document is on it (FR-034), and
  * offers no way to share, export, copy or publish the document — there is no
  * such control anywhere in the product (FR-032, Acceptance 5.5).
@@ -19,17 +30,17 @@
 import type { DocumentParsedFields } from '@triptrackr/contracts';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet } from 'react-native';
+import { Alert } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
 import { DocumentConfirmForm } from '@/components/trip/document-confirm-form';
 import { DocumentFields, DocumentUploadStatus } from '@/components/trip/document-details';
 import { DocumentImage } from '@/components/trip/document-image';
+import { Button } from '@/components/ui/button';
+import type { IconName } from '@/components/ui/icon';
 import { InlineError } from '@/components/ui/inline-error';
-import { PressableSurface } from '@/components/ui/pressable-surface';
 import { Screen } from '@/components/ui/screen';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
-import { Spacing } from '@/constants/theme';
+import { Text } from '@/components/ui/text';
 import type { DocumentRow } from '@/db/schema';
 import {
   DOCUMENT_TYPE_LABELS,
@@ -46,6 +57,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 }
 
 const DELETE_FAILED = 'That document could not be deleted. Please try again.';
+const TRASH: IconName = { ios: 'trash', android: 'delete' };
 
 function confirmDelete(onDelete: () => void) {
   Alert.alert(
@@ -84,6 +96,30 @@ function useDocumentWrites(document: DocumentRow, onDeleted: () => void) {
   };
 }
 
+/** The one destructive control, with a failed delete said in words just above it. */
+function DeleteDocument({
+  error,
+  onDelete,
+}: {
+  error: string | null;
+  onDelete: () => void;
+}) {
+  return (
+    <>
+      <InlineError testID="document-view-error" message={error} />
+      <Button
+        testID="document-delete"
+        variant="destructive"
+        icon={TRASH}
+        accessibilityLabel="Delete document"
+        onPress={onDelete}
+        className="self-start">
+        Delete document
+      </Button>
+    </>
+  );
+}
+
 function OpenDocument({ document, openForReview, onDeleted }: OpenDocumentProps) {
   const writes = useDocumentWrites(document, onDeleted);
   const status = fieldsStatus(document);
@@ -92,9 +128,9 @@ function OpenDocument({ document, openForReview, onDeleted }: OpenDocumentProps)
 
   return (
     <>
-      <ThemedText type="subtitle" testID="document-view-title">
+      <Text type="title" testID="document-view-title">
         {label}
-      </ThemedText>
+      </Text>
 
       <DocumentImage
         documentId={document.id}
@@ -122,17 +158,7 @@ function OpenDocument({ document, openForReview, onDeleted }: OpenDocumentProps)
 
       <DocumentUploadStatus document={document} />
 
-      <InlineError testID="document-view-error" message={writes.deleteError} />
-      <PressableSurface
-        testID="document-delete"
-        accessibilityLabel="Delete document"
-        treatment="flat"
-        onPress={writes.remove}
-        style={styles.delete}>
-        <ThemedText type="smallBold" themeColor="danger">
-          Delete document
-        </ThemedText>
-      </PressableSurface>
+      <DeleteDocument error={writes.deleteError} onDelete={writes.remove} />
     </>
   );
 }
@@ -141,10 +167,16 @@ type DocumentBodyProps = {
   documentId: string;
   openForReview: boolean;
   onDeleted: () => void;
+  onRetry: () => void;
 };
 
 /** The document, or the designed reason there is none to show. */
-function DocumentBody({ documentId, openForReview, onDeleted }: DocumentBodyProps) {
+function DocumentBody({
+  documentId,
+  openForReview,
+  onDeleted,
+  onRetry,
+}: DocumentBodyProps) {
   const document = useDocument(documentId);
 
   if (document.error) {
@@ -152,6 +184,7 @@ function DocumentBody({ documentId, openForReview, onDeleted }: DocumentBodyProp
       <ErrorState
         title="Couldn’t read the document"
         detail="The local store did not answer."
+        onRetry={onRetry}
       />
     );
   }
@@ -176,6 +209,7 @@ function DocumentBody({ documentId, openForReview, onDeleted }: DocumentBodyProp
 export default function DocumentViewScreen() {
   useScreenCaptureGuard();
   const router = useRouter();
+  const [attempt, setAttempt] = useState(0);
   const { documentId, review } = useLocalSearchParams<{
     id: string | string[];
     documentId: string | string[];
@@ -183,33 +217,14 @@ export default function DocumentViewScreen() {
   }>();
 
   return (
-    <Screen testID="document-view-screen" keyboardAware>
-      <PressableSurface
-        accessibilityLabel="Back"
-        treatment="flat"
-        onPress={() => router.back()}
-        style={styles.back}>
-        <ThemedText type="smallBold">Back</ThemedText>
-      </PressableSurface>
-
+    <Screen testID="document-view-screen" keyboardAware underHeader>
       <DocumentBody
+        key={attempt}
         documentId={firstParam(documentId) ?? ''}
         openForReview={firstParam(review) === '1'}
         onDeleted={() => router.back()}
+        onRetry={() => setAttempt((count) => count + 1)}
       />
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  back: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  delete: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-});

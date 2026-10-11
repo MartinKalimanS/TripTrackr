@@ -1,64 +1,67 @@
 /**
- * The documents list header — back, title, the privacy promise, "Add document".
+ * The documents list header — the trip it belongs to, the privacy promise, "Add document"
+ * (tasks.md T118; 004 T443, contract C4-10, FR-005, FR-007, FR-008, FR-030, FR-037).
  *
- * The privacy line is always there, not only when the list is empty: documents
- * are the one thing in the product with no visibility setting at all
- * (FR-032), and a traveller keeping a passport-adjacent scan should be able to
- * see that at a glance.
+ * The screen's title and its way back are the navigation header's (`trip/[id]/_layout.tsx`:
+ * "Documents" and a control named "Back"), so this block draws neither. What it keeps is
+ * `documents-title`, which the Maestro flows wait on, with the words it always had
+ * ("Documents · <trip>", or "Documents" while the trip is unknown): a muted line that says
+ * which trip these are, not a second title, so it is not a heading.
+ *
+ * The privacy line is always there, not only when the list is empty: documents are the one
+ * thing in the product with no visibility setting at all (FR-032), and a traveller keeping
+ * a passport-adjacent scan should be able to see that at a glance. It is a notice card with
+ * a lock; the words are the same text node, `documents-privacy`, with the same role.
+ *
+ * "Add document" is the screen's one primary control (FR-005): the list below it is rows,
+ * each a card of its own, and nothing else here competes with it.
  */
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { PressableSurface } from '@/components/ui/pressable-surface';
-import { Spacing } from '@/constants/theme';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Icon, type IconName } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
 
 export type DocumentsHeaderProps = {
   tripTitle: string | null;
-  onBack: () => void;
   onAdd: () => void;
 };
 
-export function DocumentsHeader({ tripTitle, onBack, onAdd }: DocumentsHeaderProps) {
+const LOCK: IconName = { ios: 'lock', android: 'lock' };
+const ADD: IconName = { ios: 'plus', android: 'add' };
+
+export function DocumentsHeader({ tripTitle, onAdd }: DocumentsHeaderProps) {
   return (
-    <View style={styles.header}>
-      <PressableSurface
-        accessibilityLabel="Back"
-        treatment="flat"
-        onPress={onBack}
-        style={styles.button}>
-        <ThemedText type="smallBold">Back</ThemedText>
-      </PressableSurface>
-
-      <ThemedText type="subtitle" testID="documents-title">
+    <View className="gap-3">
+      <Text type="callout" tone="muted" testID="documents-title">
         {tripTitle ? `Documents · ${tripTitle}` : 'Documents'}
-      </ThemedText>
+      </Text>
 
-      <ThemedText
-        testID="documents-privacy"
-        type="small"
-        themeColor="textMuted"
-        accessibilityRole="text">
-        Only you can see your documents. They’re encrypted, and there’s no way to send
-        them to anyone.
-      </ThemedText>
+      <Card>
+        <View className="flex-row items-start gap-3">
+          <Icon name={LOCK} size={20} tone="muted" />
+          <Text
+            testID="documents-privacy"
+            type="callout"
+            tone="muted"
+            accessibilityRole="text"
+            className="flex-1">
+            Only you can see your documents. They’re encrypted, and there’s no way to send
+            them to anyone.
+          </Text>
+        </View>
+      </Card>
 
-      <PressableSurface
+      <Button
         testID="documents-add"
+        variant="primary"
+        icon={ADD}
         accessibilityLabel="Add document"
-        depth={2}
         onPress={onAdd}
-        style={styles.button}>
-        <ThemedText type="smallBold">Add document</ThemedText>
-      </PressableSurface>
+        className="self-start">
+        Add document
+      </Button>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: { gap: Spacing.three },
-  button: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-});
