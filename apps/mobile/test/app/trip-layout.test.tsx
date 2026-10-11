@@ -31,6 +31,7 @@ jest.mock('@/components/require-local-store', () => ({
 const COLOURS: Record<string, string> = {
   background: 'rgb(11, 22, 33)',
   accent: 'rgb(44, 55, 66)',
+  foreground: 'rgb(77, 88, 99)',
 };
 
 beforeEach(() => {
@@ -69,6 +70,8 @@ const SUB_SCREENS = [
  * asserted in its own suite (offline-maps-header, photos-header, the document block below).
  */
 const MIGRATED_HEADERS = new Set<string>([
+  'notes',
+  'expenses',
   'offline-maps',
   'photos',
   'documents',
@@ -139,7 +142,7 @@ async function openTrip(root: object, url: string) {
   return { app };
 }
 
-describe('trip/[id]/_layout - the header is on for the overview only (FR-007)', () => {
+describe('trip/[id]/_layout - the header is on for the overview and the migrated screens (FR-007)', () => {
   test('the overview has a native header; so has each migrated screen, no other does yet', async () => {
     await openTrip(anchored, '/trip/abc');
     for (const name of SUB_SCREENS) {
@@ -311,5 +314,69 @@ describe('trip/[id]/_layout - the document screens (004 T443; FR-007, FR-008, FR
     expect(app.getPathname()).toBe('/trip/abc/document-view');
     expect(app.getSearchParams()).toEqual({ id: 'abc', documentId: 'd9' });
     expect(tripHeaders()['document-view']?.hidden).toBe(false);
+  });
+});
+
+describe('trip/[id]/_layout - notes and spending: a native header with a title and Back (T440, T441; FR-007, FR-008)', () => {
+  const TITLES = { notes: 'Notes', expenses: 'Spending' } as const;
+
+  test.each(Object.entries(TITLES))(
+    '%s is titled "%s" in the header (the title the screen used to draw as a line of its own)',
+    async (name, title) => {
+      await openTrip(anchored, `/trip/abc/${name}`);
+      expect(tripHeaders()[name]?.title).toBe(title);
+    },
+  );
+
+  test.each(Object.keys(TITLES))(
+    '%s paints its bar and scene with the canvas, tints the controls with the accent and draws no hairline',
+    async (name) => {
+      await openTrip(anchored, `/trip/abc/${name}`);
+      const header = tripHeaders()[name];
+      expect(header?.backgroundColor).toBe(COLOURS.background);
+      expect(header?.color).toBe(COLOURS.accent);
+      expect(header?.hideShadow).toBe(true);
+      expect(contentBackground(name)).toBe(COLOURS.background);
+    },
+  );
+
+  test.each(Object.keys(TITLES))(
+    '%s sets its title in the foreground ink, not in the accent that tints the header (FR-003)',
+    async (name) => {
+      await openTrip(anchored, `/trip/abc/${name}`);
+      expect(tripHeaders()[name]?.titleColor).toBe(COLOURS.foreground);
+      expect(tripHeaders()[name]?.titleColor).not.toBe(COLOURS.accent);
+    },
+  );
+
+  test.each(Object.keys(TITLES))(
+    '%s replaces the native back button with the one control named "Back"',
+    async (name) => {
+      await openTrip(anchored, `/trip/abc/${name}`);
+      expect(screen.getAllByLabelText('Back')).toHaveLength(1);
+      expect(tripHeaders()[name]?.backButtonInCustomView).toBe(false);
+      expect(tripHeaders()[name]?.hideBackButton).toBe(false);
+    },
+  );
+
+  test('Back from notes pops to the trip overview, the screen the traveller came from', async () => {
+    const { app } = await openTrip(anchored, '/trip/abc');
+    await act(async () => router.push('/trip/abc/notes'));
+    expect(app.getPathname()).toBe('/trip/abc/notes');
+
+    const back = screen.getAllByLabelText('Back');
+    await fireEvent.press(back[back.length - 1]);
+
+    expect(app.getPathname()).toBe('/trip/abc');
+    expect(screen.getByTestId('trip-index')).toBeTruthy();
+  });
+
+  test('Back from spending, opened by a deep link with nothing beneath it, goes home instead of vanishing', async () => {
+    const { app } = await openTrip(unanchored, '/trip/abc/expenses');
+    expect(app.getPathname()).toBe('/trip/abc/expenses');
+
+    await fireEvent.press(screen.getByLabelText('Back'));
+
+    expect(app.getPathname()).toBe('/');
   });
 });

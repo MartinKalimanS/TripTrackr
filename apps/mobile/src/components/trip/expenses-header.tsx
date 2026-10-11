@@ -1,68 +1,82 @@
-/** The expenses list header: back, title, actions, the toggled summary, write error. */
+/**
+ * The expenses list header: "Add expense", the summary toggle, the toggled summary and the
+ * write error — 004 T441 (FR-005, FR-007, FR-008, FR-014, FR-030).
+ *
+ * The title and Back are the native header's (`app/trip/[id]/_layout.tsx`), so this draws
+ * neither; the old `expenses-title` line ("Spending · <trip>") went with them. What stays
+ * keeps its reading order (the action, the toggle, the summary, the error) and its ids and
+ * names. "Add expense" is the screen's one primary control (FR-005); the summary toggle is
+ * a quiet text-weight control, a word and a chevron in the accent, announced as before:
+ * named for what it will do ("Hide summary" / "Show summary") and `expanded` or not (the
+ * `Button` adapter announces no `expanded` state, so it is a `Tappable`). When the list is
+ * empty the empty state offers "Add expense" again as a secondary under another id
+ * (`expenses-empty-add`), as the Trips screen does.
+ */
 import type { ExpenseSummary } from '@triptrackr/contracts';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
 import { SpendingSummary } from '@/components/trip/spending-summary';
+import { Button } from '@/components/ui/button';
+import { Icon, type IconName } from '@/components/ui/icon';
 import { InlineError } from '@/components/ui/inline-error';
-import { PressableSurface } from '@/components/ui/pressable-surface';
-import { Spacing } from '@/constants/theme';
+import { Tappable } from '@/components/ui/tappable';
+import { Text } from '@/components/ui/text';
 
 export type ExpensesHeaderProps = {
-  tripTitle: string | null;
   summary: ExpenseSummary;
   summaryLoading: boolean;
   ratesAsOf: string | null;
   showSummary: boolean;
   writeError: string | null;
-  onBack: () => void;
   onAdd: () => void;
   onToggleSummary: () => void;
 };
 
+const ADD: IconName = { ios: 'plus', android: 'add' };
+const COLLAPSE: IconName = { ios: 'chevron.up', android: 'keyboard_arrow_up' };
+const EXPAND: IconName = { ios: 'chevron.down', android: 'keyboard_arrow_down' };
+
+function SummaryToggle({
+  showSummary,
+  onToggle,
+}: {
+  showSummary: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Tappable
+      testID="expenses-toggle-summary"
+      accessibilityLabel={showSummary ? 'Hide summary' : 'Show summary'}
+      accessibilityState={{ expanded: showSummary }}
+      className="flex-row items-center gap-1 px-3"
+      onPress={onToggle}>
+      <Text tone="accent">Summary</Text>
+      <Icon name={showSummary ? COLLAPSE : EXPAND} size={16} tone="accent" />
+    </Tappable>
+  );
+}
+
 export function ExpensesHeader({
-  tripTitle,
   summary,
   summaryLoading,
   ratesAsOf,
   showSummary,
   writeError,
-  onBack,
   onAdd,
   onToggleSummary,
 }: ExpensesHeaderProps) {
   return (
-    <View style={styles.header}>
-      <PressableSurface
-        accessibilityLabel="Back"
-        treatment="flat"
-        onPress={onBack}
-        style={styles.back}>
-        <ThemedText type="smallBold">Back</ThemedText>
-      </PressableSurface>
-
-      <ThemedText type="subtitle" testID="expenses-title">
-        {tripTitle ? `Spending · ${tripTitle}` : 'Spending'}
-      </ThemedText>
-
-      <View style={styles.actions}>
-        <PressableSurface
+    <View className="gap-3">
+      <View className="flex-row flex-wrap items-center gap-2">
+        <Button
           testID="expenses-add"
+          variant="primary"
+          icon={ADD}
           accessibilityLabel="Add expense"
-          depth={2}
-          onPress={onAdd}
-          style={styles.action}>
-          <ThemedText type="smallBold">Add expense</ThemedText>
-        </PressableSurface>
-        <PressableSurface
-          testID="expenses-toggle-summary"
-          accessibilityLabel={showSummary ? 'Hide summary' : 'Show summary'}
-          accessibilityState={{ expanded: showSummary }}
-          treatment={showSummary ? 'recessed' : 'raised'}
-          onPress={onToggleSummary}
-          style={styles.action}>
-          <ThemedText type="smallBold">Summary</ThemedText>
-        </PressableSurface>
+          onPress={onAdd}>
+          Add expense
+        </Button>
+        <SummaryToggle showSummary={showSummary} onToggle={onToggleSummary} />
       </View>
 
       {showSummary && !summaryLoading ? (
@@ -73,14 +87,3 @@ export function ExpensesHeader({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: { gap: Spacing.three },
-  back: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  action: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
-});
