@@ -258,7 +258,7 @@ increased contrast.
       navigation on Android and the home indicator on iOS; the focus ring (2 dp, offset 2) is not
       clipped at the bar's edges; and the largest text size on both platforms grows the bar without
       clipping or truncating the label (and by how much).
-- [ ] T427 [US1] Failing tests in `test/app/tab-screens.test.tsx` and `test/app/trip-and-modal-screens.test.tsx`
+- [x] T427 [US1] Failing tests in `test/app/tab-screens.test.tsx` and `test/app/trip-and-modal-screens.test.tsx`
       for headers and Back; then nested stacks: move `app/(tabs)/trips.tsx` to `app/(tabs)/trips/_layout.tsx`
       and `index.tsx`, `profile.tsx` likewise (use the Prettier character-class workaround), themed header
       options for `trip/[id]/_layout.tsx` and `modal/_layout.tsx`, `HeaderBackButton` where T408 needs it
@@ -329,6 +329,15 @@ increased contrast.
       (`#FAF8F3`, `#05090E`). `header-theme.test.tsx` pins light and dark only; whether the contrast
       themes show a seam under the bar is for the device to say, and the fix (a contrast-aware
       `tokens`, or dropping the token style from `Screen`) is phase 7's.
+      _Modal part done, so the box is ticked (device checks stay open):_ a form sheet has no native header, so there is
+      nothing to theme in `modal/_layout.tsx`. Presentation is an option of the PRESENTED screen, so the root stack's `modal`
+      screen takes `formSheetOptions` (`src/app/_layout.tsx`, two lines; the anchor and `Stack.Protected` are untouched) and
+      `modal/_layout.tsx` is a `Slot` inside `RequireLocalStore`, not a `Stack`: the v57 modals guide says an Android form sheet
+      supports neither native headers nor nested stack navigators. Each sheet draws its own title and Cancel through
+      `FormSheet`; there is no Back in a sheet (Cancel, the handle and a swipe down dismiss it). A deep link to a sheet still
+      has the tabs beneath it. Tests: `test/app/modal-layout.test.tsx` (real router, 8). The sub-screens of a trip follow the
+      overview's header through the `titled()` helper in `trip/[id]/_layout.tsx` (T440 to T444); `profile` has its large title
+      (T448).
 - [x] T428 [P] [US1] Failing tests in `components/globe/__tests__/stats-overlay.test.tsx` and
       `empty-state.test.tsx`; then restyle `stats-overlay.tsx` and `empty-state.tsx` as opaque hairline cards
       with display-face tabular figures; `GlobeView`, arcs, camera and `GlobeColors` untouched (FR-018,
@@ -538,13 +547,39 @@ keyboard.
 
 **Independent Test**: open each form, focus the last field with the keyboard up, submit valid and invalid.
 
-- [ ] T434 [P] [US3] Failing tests in `test/app/trip-and-modal-screens.test.tsx` then `app/modal/_layout.tsx`
+- [x] T434 [P] [US3] Failing tests in `test/app/trip-and-modal-screens.test.tsx` then `app/modal/_layout.tsx`
       (`formSheet`, `sheetAllowedDetents`, anchor kept) and `app/modal/add-trip.tsx` using `Field`,
       `FormActions`, sideways currency row; fits one screen at the default size on 360 x 640 dp (FR-009;
       D4-06, 003 FR-017)
-- [ ] T435 [P] [US3] `components/trip/currency-picker.tsx` and `components/trip/category-picker.tsx` onto
+      _As built:_ `components/ui/form-sheet.tsx` is the form-sheet pattern (`FormSheet`, `formSheetOptions`,
+      `sheetMaxHeight`) and `test/helpers/keyboard.ts` is its Jest helper. `FormSheet` takes `title`, `testID`, `actions`
+      (the `FormActions` props) and `host`. It gives a heading, a `KeyboardAwareScrollView` body with
+      `keyboardShouldPersistTaps="handled"`, an opaque footer OUTSIDE the body (`FormActions` unchanged) and an Android
+      handle. `host="form-sheet"` (default) is a router sheet that the platform lifts above the keyboard itself
+      (react-native-screens 4.26 on Android, UIKit on iOS), so the form is capped to `sheetMaxHeight` rather than given a
+      sticky footer that would be lifted twice; `host="modal"` is an RN `Modal`, whose footer is a `KeyboardStickyView` with
+      `offset.opened` set to the bottom inset. `add-trip.tsx` is rebuilt on it, with every id kept. The pattern is documented in
+      `contracts/components.md` ("As built (T434, T438 pattern)"). Tests: `form-sheet.test.tsx` (27), `test/helpers/keyboard.test.tsx`
+      (9), the add-trip block of `trip-and-modal-screens.test.tsx` including the keyboard-visibility test and a 360 x 640
+      budget (arithmetic from the token heights, not a measurement). Ratchet testIDs 36 to 37 (`FormSheet` forwards its root
+      id). Consequence: every route of the `modal` group is `fitToContents`, add-expense included, which is why T436 had to land
+      with it. Device checks: both platforms lift the router sheet fully above the keyboard with Save visible and no double lift
+      (the library source and its issues, not a run, are the evidence); no flicker of the keyboard-aware body in an iOS sheet
+      (library issue 726); the Android handle is a usable drag target; exactly one bottom inset under Save; the sheet's top gap
+      with edge-to-edge window heights; add-trip fits one screen at 360 x 640 and Save is reachable at the largest text size.
+- [x] T435 [P] [US3] `components/trip/currency-picker.tsx` and `components/trip/category-picker.tsx` onto
       `ChipGroup` with preserved ids `currency-<CODE>`, `currency-other` (tests in
       `src/features/trips/__tests__/trip-form.test.tsx` and `test/components/`) (FR-025, FR-037)
+      _As built:_ `currency-picker.tsx` and `category-picker.tsx` are on `ChipGroup`, `Field`, `InlineError` and `Button`.
+      `CurrencyPicker` is one sideways `ChipGroup` (`scroll`) of the ten common codes and "Other", plus a `Field` while "Other" is
+      open; exactly one option is selected and opening "Other" clears a common code as before. `CategoryPicker` is a `ChipGroup`
+      (one sideways row by default, `scroll={false}` wraps), a "New category" `Field` and a secondary "Add category" `Button`
+      (held while blank); its error is an `InlineError` with the one new id `category-error`. Every pre-existing id and name is
+      unchanged; `currency-pills` is now the radiogroup that holds the chips and both groups gained a name ("Home currency",
+      "Category") and a check glyph on the selected chip. Tests: `test/components/pickers.test.tsx` (20) and
+      `trip-form.test.tsx`. Device checks: the largest text size, the focus ring at the row's edges, VoiceOver and TalkBack
+      reading each radio, and `currency-CHF` (the fifth chip) in `02-notes-and-expenses` at 360 dp (add a
+      `scrollUntilVisible` before that tap if it sits off the row's edge).
 - [ ] T436 [US3] `app/modal/add-expense.tsx` and `components/trip/date-field.tsx`,
       `anchor-picker.tsx` onto the adapters; failing tests first in `test/app/us2-screens.test.tsx` (FR-009)
 - [ ] T437 [US3] `components/trip/stop-editor.tsx` (`Modal`, `pageSheet` on iOS) and
@@ -566,22 +601,115 @@ language.
 
 **Independent Test**: each area with data, with none, while loading and with a forced error.
 
-- [ ] T440 [P] [US4] Notes: failing tests in `test/app/us2-screens.test.tsx`; `app/trip/[id]/notes.tsx`,
+- [x] T440 [P] [US4] Notes: failing tests in `test/app/us2-screens.test.tsx`; `app/trip/[id]/notes.tsx`,
       `components/trip/note-card.tsx`, `notes-header.tsx` (FR-015, FR-035)
-- [ ] T441 [P] [US4] Spending: failing tests in `test/components/us2-components.test.tsx` for the summary
+      _As built:_ the screen has no bar of its own. `trip/[id]/_layout.tsx` turns the native header on for `notes` with the static
+      title "Notes" and `HeaderBackButton` as `headerLeft`, as the overview. The title's ink and face come from the new adapter
+      hook `useHeaderTitleStyle()` (`components/ui/header-title-style.ts`): a native title with no colour of its own takes
+      `headerTintColor`, the accent, which FR-003 reserves for primary actions and selection, so the hook gives it the
+      foreground ink and the display face (SemiBold), pinned in its test to what `stackHeaderOptions` gives top-level headers.
+      The trip name is not in the title any more and `notes-title` is retired and allowlisted in
+      `test/testid-parity.allowlist.json` (FR-007; no flow or test reads it). Screen: `ListScreen underHeader`; states per C4-10
+      (`ListSkeleton card` named "Loading notes", `ErrorState` checked before loading with no retry because a live query has
+      nothing to re-run, the same gap as Trips, and an empty state whose text names "New note" and which offers it as
+      `notes-empty-add`). `notes-header.tsx` keeps the filter chips (one sideways `ChipGroup`, `notes-filter-<key>`), "New note"
+      (`notes-add`, the one primary) and `notes-write-error` in the old reading order. `note-card.tsx`: an outer accessible
+      `View` (`note-card-<id>`, same label, Edit and Delete actions) around a raised `Card` (`note-surface-<id>`; `pending`
+      gives the dashed edge and `SyncBadge` stays the words and icon) with the anchor caption, headline title, a 160-character
+      preview and Edit (`text`) and Delete (`destructive`) buttons with their old ids and names. Tests:
+      `us2-screens.test.tsx`, `us2-components.test.tsx` (NoteCard), `trip-layout.test.tsx`,
+      `test/ui-kit/notes-spending-real-render.test.tsx`, `header-title-style.test.tsx`. Device checks: Back and Back twice,
+      iOS swipe-back with the custom `headerLeft` and the sideways filter chips, the title face and ink in four themes, the
+      filter row at the largest text size, `Edit <title>` on iOS where the card is an accessible group, the soft red Delete.
+- [x] T441 [P] [US4] Spending: failing tests in `test/components/us2-components.test.tsx` for the summary
       card (total, category summary, rate date in words, tabular numerals) and rows (icon, right-aligned
       amount); `app/trip/[id]/expenses.tsx`, `components/trip/spending-summary.tsx`, `expense-row.tsx`,
       `expenses-header.tsx` (FR-014)
-- [ ] T442 [P] [US4] Photos: failing tests in `test/app/photo-screen.test.tsx`; `app/trip/[id]/photos.tsx`,
+      _As built:_ the native header for `expenses` is titled "Spending" and `expenses-title` is retired and allowlisted like
+      `notes-title`. `SpendingSummary` is one raised `Card` (`spending-summary`): the home-currency total is the only
+      `largeTitle` numeral (display face, tabular) under a muted "Total in CHF" caption; sections By category, By day, Rates
+      applied and Awaiting a rate are headings (the pending one an `alert`); amounts and dates are `numeric` text; the rate date is
+      in words ("Rates by <source>, as of <date>."). Rows are grouped by day (`features/expenses/group-by-day.ts`; one FlashList
+      item is one day, a `ListGroup` headed by the date, `expense-day-<date>`). A row (`expense-row.tsx`) is a plain `View` in
+      the group because `ListRow` has no slot for the marker and Delete: category icon (`components/trip/category-icon.ts`,
+      `expense-icon-<id>`), the category headline with the note under it, the right-aligned tabular paid amount
+      (`expense-paid-<id>`) over the home figure or "Awaiting a rate" (`expense-home-<id>`), the `SyncBadge` while pending and
+      Delete (`expense-remove-<id>`, destructive), with the same spoken label as before. `expenses-header.tsx` keeps "Add
+      expense" (`expenses-add`, the one primary) and the summary toggle, a `Tappable` named "Hide summary" or "Show summary" with
+      its `expanded` state (the `Button` adapter has none). States as Notes (`ListSkeleton row` "Loading expenses", `ErrorState`
+      with no retry, an empty state offering `expenses-empty-add`). Tests: `us2-components` (summary, row), `us2-screens`,
+      `category-icon.test.ts`, `group-by-day.test.ts` and the real-kit render. Device checks: a grouped row, the card and the
+      total at the largest text size on a 360 dp phone, FlashList measuring day groups and 1,000 rows (SC-006), the toggle
+      announced as expanded or collapsed.
+- [x] T442 [P] [US4] Photos: failing tests in `test/app/photo-screen.test.tsx`; `app/trip/[id]/photos.tsx`,
       `components/trip/photo-tile.tsx`, `photo-viewer.tsx`, `photos-header.tsx`, `photo-status.tsx`; no
       tint or shadow across thumbnails, boundary where tones match (FR-015, FR-033)
-- [ ] T443 [P] [US4] Documents: failing tests in `test/app/document-screens.test.tsx` and
+      _As built:_ no pre-004 id, name, role or state changed (parity holds; the unresolved-id ratchet did not move). Header:
+      `trip/[id]/_layout.tsx` has a native header for `photos` ("Photos", `HeaderBackButton`, `useHeaderTheme`, the title style of
+      `useHeaderTitleStyle`). `photos-title` cannot live in a native title, so it is the first line of the page and now holds only
+      the trip's name (a `headline`, left out when the trip is not on the device); Maestro waits on that id. Screen
+      (`photos.tsx`): `ListScreen underHeader` (`photos-screen`, new `photos-list`); loading is a `GridSkeleton` (new
+      `ui/grid-skeleton.tsx`: square tiles in the grid's own column count under `LoadingRegion`, one `progressbar` "Loading
+      photos"); error is `ErrorState` with "Try again", which remounts the gallery and so really re-reads the live query; empty
+      names the next step; a failed or first read never shows rows left over. Header block (`photos-header.tsx`): `photos-add`
+      is the only primary and `photos-take` a secondary, both announced busy during a capture; capture errors are
+      `InlineError` (`photos-capture-error`), the info message a polite `Text` (`photos-capture-message`), a Settings failure
+      `photos-settings-error`. Tile (`photo-tile.tsx`): one `Tappable` (`photo-open-<id>`, same name and hint, new
+      `feedback="ring"`, additive) around a `MediaFrame` (hairline, no fill or shadow, nothing inside but the image) and the
+      caption; press and focus draw a ring OUTSIDE the tile, never a fill, tint or chevron over a photograph (FR-033).
+      `photo-status.tsx` keeps "Waiting to upload" and "Upload failed" and adds an icon (`photo-status-icon`) and a dashed or solid
+      edge. Viewer: Close secondary, Delete destructive, filing a `ChipGroup`, no primary; `private-note.tsx` is shared by the
+      header and the viewer. Tests: `photo-screen` (+ `-atlas`, `-harness`), `photos-header`, `ui-kit/photo-screen-real-render`,
+      `grid-skeleton`, `tappable` additions. Device checks: title face and Back parity, the ring following the 16 dp corner within
+      100 ms, skeleton tile layout, badge and retry wrapping at the largest text size, the hairline around a near-white photo in
+      four themes, flows 05 and offline 01 and 06 on two devices.
+- [x] T443 [P] [US4] Documents: failing tests in `test/app/document-screens.test.tsx` and
       `document-screens-edges.test.tsx`; `app/trip/[id]/documents.tsx`, `document-view.tsx`,
       `document-capture.tsx`, `components/trip/document-list-item.tsx`, `document-details.tsx`,
       `document-confirm-form.tsx`, `document-camera*.tsx`, `document-image.tsx`, `documents-header.tsx`;
       capture keeps full-bleed camera with opaque controls (FR-015, FR-033)
-- [ ] T444 [P] [US4] Offline maps: failing tests in `test/app/offline-maps.test.tsx`;
+      _As built:_ `trip/[id]/_layout.tsx` has a native header for `documents` ("Documents") and `document-view` ("Document").
+      `document-capture` stays headerless: it is a camera surface with its own opaque bar (`Button` text "Back" with a chevron,
+      `document-capture-title`) and its preview is a full-width 3:4 hairline `MediaFrame` with every control opaque and OUTSIDE
+      it (it never was full-bleed; nothing is drawn across the picture, FR-033). Ids, names, hints, roles and order of every
+      pre-004 control are kept (parity holds, ratchet unchanged, no Maestro edit). List: `ListScreen underHeader`; the header
+      block is `documents-title` (a muted context line with its old words, not a second title), the privacy promise as a flat
+      notice `Card` (`documents-privacy`) and "Add document" (`documents-add`), the one primary. A row is ONE `Card` button
+      (`document-row-<id>`, the same spoken sentence, hint "Opens the document", chevron) with a kind icon, `SyncBadge` and a
+      dashed edge while a badge shows. States: `ListSkeleton` "Loading documents", an empty state that points at "Add document",
+      and `ErrorState` with "Try again", which re-reads by remounting the live-query reader (`key`); the capture guard sits in the
+      OUTER screen, so a retry never leaves a gap in protection. Viewer: `Screen keyboardAware underHeader`, the kind as a heading,
+      the picture in a hairline `MediaFrame`, the fields in one `Card`, a secondary review button, Delete `destructive`, and
+      "Confirm details" the one primary while the form is open. `DocumentConfirmForm` uses `Field`, `DateField` (still on the old
+      look until T436 lands) and two `Button`s laid out as `FormActions` lays its own: `FormActions` was NOT used because it names
+      Cancel `<prefix>-cancel` and the baseline names "Not now" and `document-confirm-not-now`, which the extractor only reads as
+      literals (an additive-props version failed the parity check and was reverted). Capture: the kinds are a `ChipGroup`, the
+      shutter is the one primary while the camera is live, the permission card has one primary, "Saving to this device..." is a
+      polite live region. Security and privacy self-review: the vault, upload, cache, capture guard, app-switcher protection and
+      logging are untouched; no sharing control; no new logging. Tests: `document-screens` (+ `-edges`) 61 to 108,
+      `trip-layout` 12 to 17, `ui-kit/document-screens-real-render` (7). Follow-up: the confirm form sits in a keyboard-aware
+      `Screen`, not on the shared sticky adapter. Device checks: Back twice on the list and the viewer, flow 05 reachability without
+      a scroll (pages are about 32 dp taller; add `scrollUntilVisible` if not), the hairline in four themes (`MediaFrame` still reads
+      `Colors[theme]`), keyboard and the Done key, kind icons, screenshot blocking and the Android recents blanking after a retry.
+- [x] T444 [P] [US4] Offline maps: failing tests in `test/app/offline-maps.test.tsx`;
       `app/trip/[id]/offline-maps.tsx` with download-state chips and storage caption (FR-015)
+      _As built:_ `trip/[id]/_layout.tsx` has a native header for `offline-maps` ("Offline maps"). The page draws no title or Back;
+      it opens with the trip's name (`offline-maps-title`, which read "Offline maps - trip" before; absent until the trip is read)
+      and the "what this is for" paragraph. One raised `Card` per city (`components/trip/offline-city-card.tsx`,
+      `offline-city-<id>`): name as `headline`, country as muted `caption`, a status chip, then actions. The chip is the new
+      `ToneChip` adapter (`components/ui/tone-chip.tsx`: icon and words in a capsule; `muted` and `default` outlined, `success` and
+      `danger` soft 15% fills; one announced `text` element named by its spoken form). `offline-status-<id>` is that chip with the
+      old text and spoken label ("Ready offline, 12.4 megabytes"); a failure stays an `InlineError` alert because a sentence is too
+      long for a chip. Actions are compact `Button`s in `offline-actions-<id>` (wraps at large text): Download and Try again
+      `secondary`, Stop and Remove `destructive`, ids, names and words unchanged; nothing is primary (FR-005). The storage caption
+      (`offline-storage`, `features/trips/offline-storage.ts`) sums finished packs only ("Maps for this trip's cities use 20.5 MB
+      on this device."). States: placeholder cards in one named `progressbar` region while stops, Mapbox or saved maps load;
+      empty states that name the next step; Try again only on the saved-maps read (the stops live query and the Mapbox token have
+      nothing to re-run: a recorded gap against C4-10 rule 2). Pack logic, confirmations and `use-offline-pack.ts` are untouched.
+      Tests: `offline-maps`, `offline-maps-header` (real router), `ui-kit/offline-maps-real-render`, `tone-chip`,
+      `test/features/offline-storage.test.ts`. Ratchet: labels 38 to 39. Device checks: `04-zoom` (taps `offline-download-.*` and
+      waits for `offline-status-.*` with text `Ready offline.*`; the id now sits on the chip's accessible view), Back twice, the
+      chips in four themes, large text, glyphs on both platforms.
 - [ ] T445 [US4] Update `e2e/02-notes-and-expenses.yaml` and `05-photos-and-documents.yaml` where text
       changed; run on both platforms (FR-037)
 
@@ -589,20 +717,81 @@ language.
 
 ## Phase 6: User Story 6 - First impression and profile (P3)
 
-- [ ] T446 [US6] Welcome, Login, Register: failing tests in `test/app/auth-screens.test.tsx`;
+- [x] T446 [US6] Welcome, Login, Register: failing tests in `test/app/auth-screens.test.tsx`;
       `app/(auth)/welcome.tsx`, `login.tsx`, `register.tsx`, `_layout.tsx` (native header with Back on Login
       and Register), `components/auth/provider-button.tsx`, `social-sign-in.tsx`, `google-sign-in-button.tsx`,
       `apple-sign-in-button.tsx` (FR-005, FR-017)
-- [ ] T447 [US6] **Light security review** of the auth screens: `secureTextEntry`, `textContentType`,
+      _As built:_ `(auth)/_layout.tsx` keeps the `welcome` anchor and hides the header on welcome; Sign in and Create account get a
+      native header (display-face title, token colours, no hairline) whose `headerLeft` is `HeaderBackButton`, so the control is
+      named "Back" and `tapOn: 'Back'` should keep resolving. Screens: `Screen testID underHeader keyboardAware` for login and
+      register; a fields `View`, then a `*-actions` `View` (`mt-auto`: the actions sit at the bottom of a tall screen and right
+      after the fields on a short one) holding the `InlineError` (`login-error`, `register-error`), the one primary `Button`
+      (`size="lg"`, `busy` while pending) and `SocialSignIn`. Welcome is a hero plus `welcome-actions` (Create account primary, Sign
+      in secondary). Every id, name and the reading order are kept; added ids: `welcome-hero`, `welcome-actions`, `login-actions`,
+      `register-actions`, `social-sign-in-buttons`, `provider-button-spacer`, `brand-glyph`. `ProviderButton` is a full-width outline
+      `Tappable` with `BrandGlyph` (the only Ionicons importer, `components/ui/brand-glyph.tsx`) and "Continue with <Provider>";
+      unavailable is disabled with "..., coming soon" in the name; busy shows "Signing in..." with the name unchanged. The custom
+      Apple outline button stays (the native one offers only Apple's own looks and cannot sit as the same-prominence pair with
+      Google's). Tests: `auth-screens`, `auth-layout`, `provider-button`, `social-sign-in`, `brand-glyph`,
+      `ui-kit/auth-screens-real-render`. Device checks: Back parity and the iOS swipe-back from both forms, the register layout on
+      the smallest phone (`register-submit` after `hideKeyboard`, which `01-account-and-trip` and the offline helpers assume; the
+      stacked provider buttons add about 50 dp: add `scrollUntilVisible` if it is off screen), the keyboard under the native header,
+      four themes, large text. Still open before release: the provider artwork and the stale wording of the "Branded sign-in
+      buttons" row in `docs/release/store-readiness.md`.
+- [x] T447 [US6] **Light security review** of the auth screens: `secureTextEntry`, `textContentType`,
       `autoComplete`, `autoCapitalize`, error mapping through `describeAuthError`, no field value logged or
       sent to Sentry; record the result here (AGENTS.md security gate)
-- [ ] T448 [US6] Profile: failing tests in `test/app/tab-screens.test.tsx`;
+      _Review result (no finding above low; two fixes made):_ `secureTextEntry` is on `login-password`, `register-password` and
+      `register-confirm-password` only, with no reveal toggle. `textContentType`/`autoComplete` are `emailAddress`/`email`,
+      `password`/`current-password` (login), `newPassword`/`new-password` (register), `name`/`name`. The three password fields had no
+      explicit `autoCapitalize="none"` and `autoCorrect={false}`: now set (low; the OS already disables both for secure entry).
+      Memory: TanStack Query kept the login and register mutation variables, the password, for five minutes after unmount;
+      `gcTime: 0` on `useLogin` and `useRegister` (`features/auth/use-session.ts`, mutation options only; the session store and
+      API are untouched) fixes it, pinned by `test/features/use-session-retention.test.tsx` with a default `QueryClient`. Screens
+      render only `describeAuthError(error)`; unmapped API codes show the server message, which the API keeps free of input values.
+      The auth sources contain no `console`, `Sentry` or storage call (a static test) and runtime spies see no email, password or
+      token during submit, refusal and provider flows. No password or email in route params or URLs. Paste and autofill are intact
+      (no `contextMenuHidden`, `editable={false}`, `onPaste`, `maxLength`). Regression tests: `test/app/auth-security.test.tsx` and
+      the real-kit render. An independent read-only security review of the merged tree found nothing at medium or above. Not security,
+      pre-existing and left alone: `returnKeyType="next"` on the name, email and register password fields moves no focus (no refs).
+- [x] T448 [US6] Profile: failing tests in `test/app/tab-screens.test.tsx`;
       `app/(tabs)/profile/index.tsx` with `Avatar`, grouped rows, Sign out and Delete account set apart;
       `components/auth/sign-out-warning.tsx` restyled keeping the two choices (FR-016)
-- [ ] T449 [P] [US6] `app/+not-found.tsx`, `components/ui/conflict-notice.tsx`,
+      _As built:_ `profile/_layout.tsx` is `<Stack screenOptions={useStackHeaderOptions('Profile')} />` (the Trips pattern: iOS large
+      title, Android standard header). `profile/index.tsx` is a `Screen underHeader edges={[]}` with no title of its own: an identity
+      `Card` (`profile-identity`) with a decorative `Avatar` and the name and email; an "Account" `ListGroup` with the home currency
+      (the row's label keeps "Home currency: EUR" as one phrase); an "App" `ListGroup` with the version (`profile-version` on the
+      trailing text); and a set-apart block (`profile-actions`): a Sign out group, then the warning or `profile-sign-out-error`
+      (`InlineError`), then a Delete account group. Both action rows use `tone="destructive"` (danger ink plus an icon); Sign out
+      has a logout icon and a visible description, Delete account stays disabled with "Coming soon". No control on the profile is
+      primary. `SignOutWarning` keeps the wrapper `View` (`sign-out-warning`, role `alert`, assertive live region) around a `Card`;
+      `sign-out-warning-stay` is the one primary and `sign-out-warning-anyway` the destructive one with the same hint; copy,
+      announcement and behaviour are unchanged. Additive adapter changes: `ListRow` gained `busy` (announced busy and disabled,
+      presses ignored, spinner in place of the chevron); `state-view.tsx` gained optional gate props, all off by default. Security
+      self-review and an independent read: sign out still pushes first, the unsynced-changes guard and both choices are intact,
+      `force: true` is reachable only from the warning, a busy row ignores a second press, no logging or new network call.
+      Tests: `tab-screens`, `sync-runtime-profile`, `nested-stack-layouts`, `list-group`, `ui-kit/profile-gates-real-render`.
+      Device checks: the large title collapse (iOS), Maestro `11-a-sign-out-unsynced` reaching the warning and both choices
+      without a scroll on a small phone, largest text, the busy spinner, Delete account legibility in four themes.
+- [x] T449 [P] [US6] `app/+not-found.tsx`, `components/ui/conflict-notice.tsx`,
       `components/sync/first-sync-gate.tsx`, `components/require-local-store.tsx` onto toast or alert and
       centred spinner states; tests in `test/components/sync-runtime-*.test.tsx` and
       `test/app/root-layout.test.tsx` (FR-035)
+      _As built:_ `+not-found.tsx` is an `EmptyState` with an icon and `<Link asChild><Button>` "Back to your globe" as the one
+      primary (the router passes `role="link"`, so it is still announced as a link; `test/app/not-found.test.tsx` presses through
+      a real router). `conflict-notice.tsx` shows each notice as a raised `Card` (`conflict-notice-<id>`) with a sync glyph, the
+      engine's sentence, a secondary "View trip" (`-open`) and a text "Dismiss" (`-dismiss`); the polite scroll region
+      (`conflict-notices`, 40% cap), the iOS announcement and every label are unchanged. It is a banner, not the kit's Toast,
+      because FR-040 means the traveller must be told and a toast leaves by itself, so no toast adapter was added.
+      `first-sync-gate.tsx`: opening and syncing are a `LoadingState` (one progressbar named by its title, the detail as value
+      text, no spinner under reduced motion), offline and session-ended a neutral `EmptyState`, failed an `ErrorState` whose retry is
+      secondary and announced busy; `first-sync-state` keeps its id and polite live region. `require-local-store.tsx` needed no
+      change (already on `LoadingState`/`ErrorState`, ids `local-store-opening` and `local-store-error`). `state-view.tsx` gained
+      optional gate props (`detail` and `spinner` on `LoadingState`, `testID` and `accessibilityLiveRegion` on any state, `busy` on an
+      `EmptyState` action, `retryBusy` on `ErrorState`). Tests: `not-found`, `sync-runtime-conflict-notice` (+7),
+      `sync-runtime-first-sync` (+8), `ui-kit/profile-gates-real-render`. Device checks: Maestro `07-b` and `10-b` waits ('Syncing
+      your trips', 'You.re offline') on both platforms, screen-reader reading of the progressbar and the notices, largest text,
+      `Link asChild` navigating through the `Button` adapter.
 - [ ] T450 [US6] Update `e2e/00-smoke.yaml` and `01-account-and-trip.yaml` where text changed; run the full
       Maestro suite on both platforms (FR-037)
 
