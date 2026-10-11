@@ -888,14 +888,31 @@ language.
 
 ## Phase 7: Retire neumorphism (polish and cross-cutting)
 
-- [ ] T451 Failing check first: `apps/mobile/test/no-neumorphism.test.ts` that searches `src/` for
+- [x] T451 Failing check first: `apps/mobile/test/no-neumorphism.test.ts` that searches `src/` for
       `surfaceStyle`, `PressableSurface`, `elevationProfile`, `treatment=`, `depth=` and the word
       "neumorphic" and fails on any hit; it is the executable form of SC-001 and fails until T452 to T455 are
       done
-- [ ] T452 Delete `src/theme/surfaces.ts`, `elevation-profile.ts`, `hooks/use-surface.ts`,
+      _As built:_ `test/no-neumorphism.test.ts` reads every text file under `src/` (ts, tsx, js, jsx, css, json, md; co-located tests
+      included, `test/` and `specs/` excluded on purpose) and fails with `file:line label text` per hit. The patterns are the quickstart
+      section 9 ones, case-insensitive, plus `depth=`: `neumorph`, `surfaceStyle`, `PressableSurface`, `elevationProfile`,
+      `treatment=`, `depth=`. It also asserts the tree has more than 100 files and that each pattern matches a sample, so a path typo
+      cannot make "no hits" vacuous. The first run was red with 114 hits in 37 files; it is green after T452 to T455.
+- [x] T452 Delete `src/theme/surfaces.ts`, `elevation-profile.ts`, `hooks/use-surface.ts`,
       `components/ui/surface.tsx`, `pressable-surface.tsx`, `text-field.tsx`, `pill-group.tsx` and their
       tests (FR-038)
-- [ ] T453 Remove the `treatment`, `depth`, `radius`, `pending` neumorphic props from
+      _As built:_ deleted `theme/surfaces.ts`, `theme/elevation-profile.ts`, `theme/ink.ts`, `hooks/use-surface.ts`,
+      `components/ui/{surface,pressable-surface,text-field,pill-group}.tsx`, `components/themed-view.tsx`,
+      `components/themed-text.tsx` (no user was left), `components/trip/status-pill.tsx` (only a test imported it; `StatusChip`
+      replaced it) and the tests of `surface`, `pressable-surface`, `text-field` and `themed-view`, plus
+      `test/theme/{elevation-profile,surfaces-flat-border,adaptations}.test.ts`. `surface-nesting.tsx` stays. Every behaviour the new
+      code keeps is pinned by its replacement's suite (busy, disabled, touch target and focus ring in `tappable` and `button`; error and
+      announcement in `field`; "Status: ..." and the two-child shape in `chip`; the 7:1 contrast in `palette-gate`). Dropped with them:
+      the FR-025 "controls over media" test in `media-frame.test.tsx` (no control overlays media now). The parity check named
+      `text-field-surface` (the retired `TextField`'s internal id; no screen, test or flow used it), now in
+      `test/testid-parity.allowlist.json` with a T452 reason; the ids `notes-title` and `expenses-title` (T440, T441) are there too. The
+      unresolved-id ratchet moved with the deletions (the retired primitives forwarded dynamic ids and labels) and with `FormSheet`,
+      `FormModal` and the new adapters; its current value is in `test/fixtures/testid-unresolved-count.json`.
+- [x] T453 Remove the `treatment`, `depth`, `radius`, `pending` neumorphic props from
       `components/themed-view.tsx`; remove `Depth`, `LightSource`, `BorderHairline` uses that only served
       shadows, and the `shadowLight`, `shadowDark`, `surfaceSunk` keys from `constants/theme.ts`; delete
       `elevationProfile` and `prefersLessTransparency`-only branches that no longer apply from
@@ -904,13 +921,40 @@ language.
       two-theme `Colors` to the `Palette` for `themeName` (including `light-contrast` and
       `dark-contrast`). Until then unmigrated screens read `Colors[theme]` and ignore the increased-contrast
       palettes; only the kit-based screens follow `themeName`.
-- [ ] T454 Rewrite `eslint.config.js` comments that cite 002 contract C1 to cite C4-1; update
+      _As built:_ `ThemedView` is deleted: `Screen` and `ListScreen` render a `View` with the `bg-background` class and the canvas token
+      style, as before. `Colors` (`constants/theme.ts`) is keyed by all four theme names (canvas, surface, textPrimary, textMuted, border,
+      accent, accentInk, danger), read from `Palettes[name]`, and `useAppearance().tokens` is `Colors[themeName]`, so the root view, the
+      root stack scene, the navigation theme, the tab scenes, `Screen`, `ListScreen` and `MediaFrame` paint the CONTRAST canvas the kit's
+      `--background` uses: the gap recorded under T427 and T431 is closed in Jest. Removed: `elevationProfile` from the context; `Depth`,
+      `DepthLevel`, `LightSource`; the keys `shadowLight`, `shadowDark`, `surfaceSunk`, `borderStrong` and `separator`. Kept:
+      `BorderHairline` (tab bar divider, `MediaFrame`), `Radius`, `prefersLessTransparency` (nothing branches on it; the flag stays).
+      `ThemeName` moved to `theme/palette.ts`. Tests: tokens per theme name and the live contrast switch (`use-appearance.test.ts`,
+      `use-appearance-shared.test.tsx`); `--background` equals the canvas token in four themes (`header-theme.test.tsx`); tab scenes in four
+      themes; the root view, navigation theme, root scene and a real `Screen` in four themes and on a live switch (`root-layout.test.tsx`,
+      reading the outermost scene wrapper because the kit paints nested stacks and Jest stubs it); the `MediaFrame` edge in four themes. A
+      mutation back to `Colors[theme]` fails six of them. _Device only, still open:_ no seam under the native header, the trip scene or the
+      tab bar in all four themes with a live system dark-mode or increased-contrast switch with a trip open, and the splash-to-first-frame
+      canvas in the two contrast themes.
+- [x] T454 Rewrite `eslint.config.js` comments that cite 002 contract C1 to cite C4-1; update
       `apps/mobile/README.md` (dev-client rebuild for the new native modules, theme build, fonts)
-- [ ] T455 Rename leftovers (`NeumorphicTabBar` references, test names, comments), remove the 002-only
+      _As built:_ `eslint.config.js` cites C4-1 and FR-036 (it cited 002 C1, and its message pointed at the deleted `use-surface`), with one
+      shared raw-colour message. `apps/mobile/README.md` gained the dev-client rebuild (`react-native-svg`, `expo-blur`, `expo-haptics`
+      and the `expo-font` plugin), the Atlas look, `theme:build` and `theme:check`, the fonts, the Windows Jest, ESLint and Prettier
+      commands and a refreshed layout map.
+- [x] T455 Rename leftovers (`NeumorphicTabBar` references, test names, comments), remove the 002-only
       theme tests that assert deleted behaviour (`test/theme/elevation-profile.test.ts`,
       `adaptations.test.ts` parts), keep `contrast-gate.test.ts` and `globe-contrast-gate.test.ts`
-- [ ] T456 Run `npm run lint && npm run typecheck && npm run test:cov -w apps/mobile && npm run format:check`
+      _As built:_ no `NeumorphicTabBar` reference remained. Test names that said "neumorphic" now say "retired"; stale "until phase 7" and
+      "unmigrated" comments are reworded in `chip`, `field`, `screen`, `sync-badge`, `text`, `shape` and `tappable`.
+      `contrast-gate.test.ts` is kept and runs over the four themes; `globe-contrast-gate.test.ts` is untouched. Removed with their
+      subject: `elevation-profile`, `surfaces-flat-border` and `adaptations` tests; trimmed: the `StatusPill` block of
+      `trip-components.test.tsx` (covered by `chip.test.tsx`), the `surfaceStyle` block of `edge-cases.test.ts`; `theme-switch.test.ts` is
+      rewritten for four themes.
+- [x] T456 Run `npm run lint && npm run typecheck && npm run test:cov -w apps/mobile && npm run format:check`
       and the quickstart section 9 search; `T451` must now pass (SC-001, SC-004)
+      _As built (at the end of phase 7):_ `tsc --noEmit` and `eslint . --max-warnings=0` clean; Jest with coverage 195 suites, 4335 tests (after the merge with the feedback pass),
+      98.69 / 95.13 / 99.09 / 99.51 (statements, branches, functions, lines); `prettier --check` clean on the changed files; the testid
+      baseline check and `theme:check` pass; the quickstart section 9 search prints nothing and `no-neumorphism.test.ts` is green.
 
 ---
 
@@ -923,10 +967,30 @@ language.
       Trips, Trip, add-trip sheet, Profile and sign-in (FR-030, SC-009)
 - [ ] T459 [US5] Outdoor and 5-second tests: shown stills, 95% identify what is tappable; 9 of 10 find each
       primary action in direct sunlight; record results (SC-009)
-- [ ] T460 [US7] Feedback pass: pressed state within 100 ms on every control kind, busy, disabled,
+- [x] T460 [US7] Feedback pass: pressed state within 100 ms on every control kind, busy, disabled,
       selection, save and destructive-confirmation haptics, none under reduced motion; failing tests in
       `components/ui/tappable.test.tsx` and `hooks/use-haptics.test.ts` extended where gaps show (FR-019,
       FR-020, FR-022, SC-005)
+      _As built (desk part; the device checks below are pending):_ every control is a `Tappable`, `Button`, `Chip`, `ListRow` or `Card`, and
+      all answer at touch-down: `Tappable` and `Card` are asserted through the responder (`test/helpers/touch.ts`: grant, no timer, no
+      release), the others by their `active:` classes; the `Chip`, `ListRow` and `Card` pressed fills are now measured (a 1.08:1 step and
+      labels at their floor in four themes, `test/ui-kit/pressed-fills-chip-row-card.test.ts`; they must never sit on an overlay, because
+      in the dark themes `surface-tertiary` IS the overlay). Gaps closed: (1) the kit's press scale on `Button` ran 300 ms, over FR-022's
+      200 ms and the 100 ms press token: it is now `Motion.pressMs` both ways (the highlight stays off); (2) no save played a haptic:
+      `useWriteAttempt.attemptSave` plays `success` once the local write has gone through (never on a failure) and add-trip and add-expense
+      play it after the create; wired for the trip, expense, note, stop and document-fields saves; (3) a confirmed deletion played nothing:
+      `attemptRemoval` (and `useHaptics().warning()` in offline maps) plays `warning` when the native confirmation is answered (note,
+      expense, stop, document, photo, offline map Remove and Stop); the destructive `Button` still warns on the press that opens the
+      question, so a deletion buzzes twice (a decision for the device pass); (4) the stop grip showed nothing for the 150 ms hold: it now
+      paints the held fill from the touch events, and the lift and the drop settle in `Motion.transitionMs` instead of 300 ms. Reduced
+      motion: every haptic goes through `useHaptics` (the only `expo-haptics` import), asserted through the real hook for `Button`,
+      `ChipGroup`, add-trip and the sign-out warning. Left as is: no success haptic on photo or document capture (a record is not saved until
+      uploaded, AGENTS.md); Sortable's item enter and exit and reorder transitions stay at the library's 300 ms; save buttons have no busy
+      state (synchronous local writes), so a fast double tap before the sheet dismisses might create a duplicate trip (not tested).
+      _Device checks:_ real touch-to-paint latency (and iOS `ScrollView` delaying content touches); that Uniwind's `active:` classes reach
+      the kit's animated `Pressable` for `Button`, `Chip` and `ListRow` (research D4-02 item 4: if not, `Button`'s only pressed cue is the
+      100 ms scale); that touch events fire on the grip beside the gesture-handler drag; haptic strength, and whether selection plus
+      success on one save is too busy.
 - [ ] T461 Performance and size: repeat T415's measurements; fix any regression (virtualisation, memoised
       rows, image recycling); report the bundle and font delta (SC-006, SC-011). `Tappable` and `Button` read the
       font scale from `useWindowDimensions` and do not call `useAppearance` themselves. Follow-up, before the
