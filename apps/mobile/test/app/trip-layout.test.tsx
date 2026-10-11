@@ -129,7 +129,7 @@ async function openTrip(root: object, url: string) {
 }
 
 describe('trip/[id]/_layout - the header is on for the overview only (FR-007)', () => {
-  test('the overview has a native header; no other trip screen does yet', async () => {
+  test('the overview has a native header; a sub-screen has one only once migrated (004 phase 5)', async () => {
     await openTrip(anchored, '/trip/abc');
     for (const name of SUB_SCREENS) {
       await act(async () => router.push(`/trip/abc/${name}`));
@@ -138,7 +138,11 @@ describe('trip/[id]/_layout - the header is on for the overview only (FR-007)', 
     const headers = tripHeaders();
     expect(Object.keys(headers).sort()).toEqual(['index', ...SUB_SCREENS].sort());
     expect(headers.index?.hidden).toBe(false);
-    for (const name of SUB_SCREENS) {
+    // Offline maps (004 T444) is migrated: its header is asserted in offline-maps-header.test.tsx.
+    expect(headers['offline-maps']?.hidden).toBe(false);
+    for (const name of SUB_SCREENS.filter(
+      (screenName) => screenName !== 'offline-maps',
+    )) {
       expect(headers[name]?.hidden).toBe(true);
     }
   });

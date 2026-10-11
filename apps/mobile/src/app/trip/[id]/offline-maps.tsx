@@ -1,47 +1,55 @@
 /**
- * A trip's offline maps — tasks.md T105 (FR-044; User Story 4, Acceptance
- * Scenarios 3 and 4); research D-06, D-30.
+ * A trip's offline maps — tasks.md T105, 004 T444 (FR-044; User Story 4, Acceptance
+ * Scenarios 3 and 4; 004 FR-005, FR-007, FR-015, FR-021, FR-035, FR-037); research D-06,
+ * D-30, D4-06.
  *
- * One row per city of the trip — a city visited twice appears once — with
- * what its saved map is doing, in words rather than colour alone (feature 002
- * FR-010), and the actions that state allows: Download, Stop, Remove, Try
- * again. The packs are `useOfflinePacks` (features/trips/use-offline-pack.ts);
- * a city this device has no position for is explained, never guessed at.
+ * One card per city of the trip — a city visited twice appears once — with what its saved
+ * map is doing, in words and an icon rather than colour alone (feature 002 FR-010, 004
+ * FR-025), and the actions that state allows: Download, Stop, Remove, Try again
+ * (`CityPackCard`). The packs are `useOfflinePacks` (features/trips/use-offline-pack.ts);
+ * a city this device has no position for is explained, never guessed at. Under the list,
+ * a caption says what this trip's saved maps take on the device (`storageCaption`).
  *
- * Nothing is asked of Mapbox until it is configured (`useMapboxReady`): the
- * native tile store takes the access token when it is first created.
+ * Under a native header (`_layout.tsx`): the title "Offline maps" and the Back control are
+ * the navigator's, so the screen is `underHeader` and draws neither. The page opens with
+ * the trip's name (`offline-maps-title`, which named the trip and the screen together
+ * before) and what the screen is for. Every state is designed (C4-10 rule 2): placeholder
+ * cards while the stops, Mapbox or the device's packs load; a message that names the next
+ * step when there is nothing to list; an error, with Try again where something can be
+ * re-run (the saved-maps read). The trip's stops are a live query and the Mapbox token a
+ * build setting, so their errors offer none, as the Trips screen's does not.
  *
- * Visibility posture: device-only. The trip's stops are read from the
- * encrypted local store; the maps saved are public tiles for public cities,
- * kept in the device's Mapbox tile store. Nothing about the trip leaves the
- * phone, and no other traveller can see what was saved.
+ * Nothing is asked of Mapbox until it is configured (`useMapboxReady`): the native tile
+ * store takes the access token when it is first created.
+ *
+ * Visibility posture: device-only. The trip's stops are read from the encrypted local
+ * store; the maps saved are public tiles for public cities, kept in the device's Mapbox
+ * tile store. Nothing about the trip leaves the phone, and no other traveller can see what
+ * was saved.
  */
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useMemo, type ReactElement } from 'react';
+import { Alert, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { CityPackCard } from '@/components/trip/offline-city-card';
 import { describePlace } from '@/components/trip/stop-row';
-import { InlineError } from '@/components/ui/inline-error';
-import {
-  PressableSurface,
-  type RestingTreatment,
-} from '@/components/ui/pressable-surface';
 import { Screen } from '@/components/ui/screen';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
-import { Surface } from '@/components/ui/surface';
-import { Spacing } from '@/constants/theme';
+import { EmptyState, ErrorState, ListSkeleton } from '@/components/ui/state-view';
+import { Text } from '@/components/ui/text';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import {
-  packStatusText,
   tripCities,
   type OfflineCity,
   type OfflinePackState,
   type TripCities,
 } from '@/features/trips/offline-packs';
+import { storageCaption } from '@/features/trips/offline-storage';
 import { useOfflinePacks } from '@/features/trips/use-offline-pack';
 import { useTrip, useTripStops, type LiveResult } from '@/features/trips/use-trips';
 import { useMapboxReady } from '@/hooks/use-mapbox-ready';
+
+/** Placeholder cards while something loads: two say "a list" without filling the screen. */
+const PLACEHOLDER_CARDS = 2;
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -76,153 +84,34 @@ function confirmStop(city: OfflineCity, onStop: () => void) {
   );
 }
 
-type HeaderProps = { tripTitle: string | null; onBack: () => void };
-
-function OfflineMapsHeader({ tripTitle, onBack }: HeaderProps) {
+/** The trip's name, once it is read, and what the screen is for. */
+function OfflineMapsIntro({ tripTitle }: { tripTitle: string | null }) {
   return (
-    <View style={styles.header}>
-      <PressableSurface
-        accessibilityLabel="Back"
-        treatment="flat"
-        onPress={onBack}
-        style={styles.back}>
-        <ThemedText type="smallBold">Back</ThemedText>
-      </PressableSurface>
-      <ThemedText type="subtitle" testID="offline-maps-title">
-        {tripTitle ? `Offline maps · ${tripTitle}` : 'Offline maps'}
-      </ThemedText>
-      <ThemedText type="small" themeColor="textMuted">
+    <View className="gap-1">
+      {tripTitle ? (
+        <Text type="headline" testID="offline-maps-title">
+          {tripTitle}
+        </Text>
+      ) : null}
+      <Text type="callout" tone="muted">
         Save a city’s map so it opens without a connection. Saved maps stay on this
         device, shared by every trip that visits the city.
-      </ThemedText>
+      </Text>
     </View>
   );
 }
 
-type PackActionProps = {
-  testID: string;
-  label: string;
-  text: string;
-  onPress: () => void;
-  treatment?: RestingTreatment;
-  danger?: boolean;
-};
-
-function PackAction({
-  testID,
-  label,
-  text,
-  onPress,
-  treatment = 'flat',
-  danger = false,
-}: PackActionProps) {
+/** What this trip's saved maps take on the device: a quiet caption under the cards. */
+function StorageCaption({ states }: { states: readonly OfflinePackState[] }) {
+  const { text, spoken } = storageCaption(states);
   return (
-    <PressableSurface
-      testID={testID}
-      accessibilityLabel={label}
-      treatment={treatment}
-      radius="sm"
-      onPress={onPress}
-      style={styles.action}>
-      <ThemedText type="smallBold" themeColor={danger ? 'danger' : undefined}>
-        {text}
-      </ThemedText>
-    </PressableSurface>
-  );
-}
-
-type CityPackRowProps = {
-  city: OfflineCity;
-  state: OfflinePackState;
-  onDownload: () => void;
-  onStop: () => void;
-  onRemove: () => void;
-};
-
-/**
- * What a traveller can do with a city's map in its current state: download
- * it (or try again), stop a download, or remove what is saved.
- */
-function PackActions({ city, state, onDownload, onStop, onRemove }: CityPackRowProps) {
-  const { cityId, cityName } = city;
-  const retry = state.kind === 'error';
-  const canRemove = state.kind === 'ready' || (state.kind === 'error' && state.partial);
-  return (
-    <View style={styles.actions}>
-      {state.kind === 'none' || retry ? (
-        <PackAction
-          testID={`offline-download-${cityId}`}
-          label={
-            retry
-              ? `Try downloading ${cityName} again`
-              : `Download ${cityName} for offline use`
-          }
-          text={retry ? 'Try again' : 'Download'}
-          onPress={onDownload}
-          treatment="raised"
-        />
-      ) : null}
-      {state.kind === 'downloading' ? (
-        <PackAction
-          testID={`offline-stop-${cityId}`}
-          label={`Stop downloading ${cityName}`}
-          text="Stop"
-          onPress={onStop}
-          danger
-        />
-      ) : null}
-      {canRemove ? (
-        <PackAction
-          testID={`offline-remove-${cityId}`}
-          label={`Remove ${cityName}’s offline map`}
-          text="Remove"
-          onPress={onRemove}
-          danger
-        />
-      ) : null}
-    </View>
-  );
-}
-
-function PackStatus({ cityId, state }: { cityId: number; state: OfflinePackState }) {
-  const testID = `offline-status-${cityId}`;
-  if (state.kind === 'error') {
-    return <InlineError testID={testID} message={state.message} />;
-  }
-  const { text, spoken } = packStatusText(state);
-  return (
-    <ThemedText
-      type="small"
-      themeColor={state.kind === 'none' ? 'textMuted' : undefined}
-      testID={testID}
+    <Text
+      type="caption"
+      tone="muted"
+      testID="offline-storage"
       accessibilityLabel={spoken}>
       {text}
-    </ThemedText>
-  );
-}
-
-function CityPackRow(props: CityPackRowProps) {
-  const { city, state } = props;
-  return (
-    <Surface
-      treatment="raised"
-      depth={1}
-      radius="lg"
-      testID={`offline-city-${city.cityId}`}
-      style={styles.row}>
-      <View style={styles.place}>
-        <ThemedText type="default" style={styles.cityName}>
-          {city.cityName}
-        </ThemedText>
-        {city.countryName ? (
-          <ThemedText type="small" themeColor="textMuted">
-            {city.countryName}
-          </ThemedText>
-        ) : null}
-        <PackStatus cityId={city.cityId} state={state} />
-      </View>
-      <PackActions {...props} />
-    </Surface>
+    </Text>
   );
 }
 
@@ -239,24 +128,30 @@ function CityPackList({ cities }: { cities: TripCities }) {
       />
     );
   }
-  if (packs.loading) return <LoadingState title="Checking saved maps" />;
+  if (packs.loading) {
+    return (
+      <ListSkeleton variant="card" rows={PLACEHOLDER_CARDS} label="Checking saved maps" />
+    );
+  }
 
+  const stateOf = (city: OfflineCity) => packs.stateOf(city.cityId);
   return (
-    <View style={styles.list}>
+    <View className="gap-3">
       {cities.placed.map((city) => (
-        <CityPackRow
+        <CityPackCard
           key={city.cityId}
           city={city}
-          state={packs.stateOf(city.cityId)}
+          state={stateOf(city)}
           onDownload={() => void packs.download(city)}
           onStop={() => confirmStop(city, () => void packs.remove(city))}
           onRemove={() => confirmRemove(city, () => void packs.remove(city))}
         />
       ))}
+      <StorageCaption states={cities.placed.map(stateOf)} />
       {cities.unplaced.length > 0 ? (
-        <ThemedText type="small" themeColor="textMuted" testID="offline-unplaced">
+        <Text type="caption" tone="muted" testID="offline-unplaced">
           {unplacedSentence(cities.unplaced)}
-        </ThemedText>
+        </Text>
       ) : null}
     </View>
   );
@@ -264,9 +159,12 @@ function CityPackList({ cities }: { cities: TripCities }) {
 
 type BodyProps = { stops: LiveResult<StopWithPlace[]>; cities: TripCities };
 
-function OfflineMapsBody({ stops, cities }: BodyProps) {
-  const mapbox = useMapboxReady();
-
+/**
+ * What stands in for the list while the trip's cities are unread, unreadable, absent or
+ * unplaceable; null once there are cities to list.
+ */
+function tripCitiesNotice({ stops, cities }: BodyProps): ReactElement | null {
+  // The error first: a live read that fails can still report `loading`.
   if (stops.error) {
     return (
       <ErrorState
@@ -275,7 +173,15 @@ function OfflineMapsBody({ stops, cities }: BodyProps) {
       />
     );
   }
-  if (stops.loading) return <LoadingState title="Loading the trip’s cities" />;
+  if (stops.loading) {
+    return (
+      <ListSkeleton
+        variant="card"
+        rows={PLACEHOLDER_CARDS}
+        label="Loading the trip’s cities"
+      />
+    );
+  }
   if (stops.data.length === 0) {
     return (
       <EmptyState
@@ -292,6 +198,11 @@ function OfflineMapsBody({ stops, cities }: BodyProps) {
       />
     );
   }
+  return null;
+}
+
+/** What stands in for the list until Mapbox is configured; null once it is. */
+function mapboxNotice(mapbox: ReturnType<typeof useMapboxReady>): ReactElement | null {
   if (mapbox === 'unavailable') {
     return (
       <ErrorState
@@ -300,12 +211,24 @@ function OfflineMapsBody({ stops, cities }: BodyProps) {
       />
     );
   }
-  if (mapbox === 'starting') return <LoadingState title="Getting maps ready" />;
-  return <CityPackList cities={cities} />;
+  if (mapbox === 'starting') {
+    return (
+      <ListSkeleton variant="card" rows={PLACEHOLDER_CARDS} label="Getting maps ready" />
+    );
+  }
+  return null;
+}
+
+/** The list of cities, or the designed state that stands in for it. */
+function OfflineMapsBody(props: BodyProps) {
+  const mapbox = useMapboxReady();
+  return (
+    tripCitiesNotice(props) ??
+    mapboxNotice(mapbox) ?? <CityPackList cities={props.cities} />
+  );
 }
 
 export default function OfflineMapsScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string | string[] }>();
   const tripId = firstParam(id) ?? '';
 
@@ -314,47 +237,9 @@ export default function OfflineMapsScreen() {
   const cities = useMemo(() => tripCities(stops.data), [stops.data]);
 
   return (
-    <Screen testID="offline-maps-screen">
-      <OfflineMapsHeader
-        tripTitle={trip.data?.title ?? null}
-        onBack={() => router.back()}
-      />
+    <Screen testID="offline-maps-screen" underHeader>
+      <OfflineMapsIntro tripTitle={trip.data?.title ?? null} />
       <OfflineMapsBody stops={stops} cities={cities} />
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    gap: Spacing.three,
-    marginBottom: Spacing.two,
-  },
-  back: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  list: {
-    gap: Spacing.three,
-  },
-  row: {
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  place: {
-    gap: Spacing.half,
-    alignItems: 'flex-start',
-  },
-  cityName: {
-    fontWeight: 600,
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  action: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-  },
-});
