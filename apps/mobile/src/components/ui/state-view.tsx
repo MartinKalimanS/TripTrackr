@@ -179,7 +179,7 @@ type RegionProps = SkeletonRegionProps & {
  * The single announced region: focusable as one `progressbar`, with every shape inside
  * hidden from assistive technology (both platforms' flags).
  */
-function LoadingRegion({ label = 'Loading', testID, gap, children }: RegionProps) {
+export function LoadingRegion({ label = 'Loading', testID, gap, children }: RegionProps) {
   return (
     <View
       accessible
