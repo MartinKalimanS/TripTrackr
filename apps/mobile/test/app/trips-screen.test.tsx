@@ -9,8 +9,8 @@
  *
  * What is pinned: every state is designed (loading is never shown as empty), "Plan a trip"
  * is one control per platform with one id, the list is the scroller and leaves room for the
- * button, the card is the only thing in a row, and nothing here is built on the retired
- * neumorphic primitives.
+ * button, the card is the only thing in a row, and nothing here is built on a retired
+ * primitive.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { readFileSync } from 'node:fs';
@@ -330,7 +330,7 @@ describe('<TripsScreen> - sources (FR-036)', () => {
   const importsOf = (text: string) =>
     [...text.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1]);
 
-  test.each(FILES)('%s imports none of the neumorphic primitives', (file) => {
+  test.each(FILES)('%s imports none of the retired primitives', (file) => {
     const specifiers = importsOf(source(file));
     expect(specifiers).not.toContain('@/components/ui/surface');
     expect(specifiers).not.toContain('@/components/ui/pressable-surface');

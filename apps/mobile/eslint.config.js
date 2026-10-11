@@ -25,6 +25,9 @@ const COLOUR_TOKEN = String.raw`(?:#[0-9a-fA-F]{3,8}\b|(?<![A-Za-z0-9-])(?:rgba?
  */
 const ARBITRARY_COLOUR_CLASS = String.raw`(?:[\w:-]+-\[|(?:^|[\s:])\[[\w-]+:)[^\]]*${COLOUR_TOKEN}[^\]]*\]`;
 
+const RAW_COLOUR_MESSAGE =
+  'Raw colour literal. A colour comes from the token layer: import the token from @/constants/theme or use a semantic class such as bg-background (specs/004-app-ui-redesign/contracts/design-tokens.md, C4-1).';
+
 const ARBITRARY_COLOUR_MESSAGE =
   'Arbitrary-value colour class. A colour comes from the token layer, never from a utility such as bg-[#fff] or text-[rgb(1,2,3)]: add it to the palette and use its semantic class (specs/004-app-ui-redesign/contracts/design-tokens.md, C4-1).';
 
@@ -54,10 +57,10 @@ module.exports = defineConfig([
     ],
   },
   {
-    // Contract C1 (specs/002-neumorphic-ui/contracts/design-tokens.md): the token
+    // Contract C4-1 (specs/004-app-ui-redesign/contracts/design-tokens.md): the token
     // layer is the only source of visual values. A colour written inline in a
-    // screen or component is the one-off value FR-028 forbids — it escapes the
-    // contrast gate in test/theme/contrast-gate.test.ts, which can only measure
+    // screen or component is the one-off value FR-036 forbids — it escapes the
+    // contrast gate in test/theme/palette-gate.test.ts, which can only measure
     // pairs it knows about.
     files: ['src/app/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}'],
     // Tests are exempt: they legitimately use arbitrary colours as fixtures
@@ -72,13 +75,11 @@ module.exports = defineConfig([
         {
           selector:
             'Literal[value=/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/]',
-          message:
-            'Raw colour literal. Import the token from @/constants/theme or use a treatment from @/hooks/use-surface (contract C1).',
+          message: RAW_COLOUR_MESSAGE,
         },
         {
           selector: 'Literal[value=/^(?:rgba?|hsla?)\\(/]',
-          message:
-            'Raw colour literal. Import the token from @/constants/theme or use a treatment from @/hooks/use-surface (contract C1).',
+          message: RAW_COLOUR_MESSAGE,
         },
         // Feature 004, contract C4-1: the same colours written as a Tailwind or
         // Uniwind arbitrary value (`bg-[#fff]`, `text-[rgb(1,2,3)]`), in a plain

@@ -11,8 +11,8 @@
  * (FR-016, contract C13).
  *
  * The canvas is painted twice over, as `Screen` does: the semantic `bg-background`
- * class (feature 004) AND the `ThemedView` canvas token style, which agree because
- * `Colors` is re-pointed at the Atlas palette.
+ * class AND the canvas token style of `useAppearance().tokens`, which agree in all four
+ * themes because the tokens are the palette of `themeName`.
  *
  * `underHeader` (feature 004, research D4-06, contract C4-8; opt-in, default off) is
  * for a list below a NATIVE stack header, exactly as on `Screen`: the default edges
@@ -28,8 +28,8 @@ import { useContext, type ReactElement } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaInsetsContext, type Edge } from 'react-native-safe-area-context';
 
-import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAppearance } from '@/hooks/use-appearance';
 
 export type ListScreenProps<Item> = {
   testID?: string;
@@ -81,6 +81,7 @@ export function ListScreen<Item>({
   // Read after `underHeader`: a default may use only what is destructured before it.
   edges = underHeader ? UNDER_HEADER_EDGES : DEFAULT_EDGES,
 }: ListScreenProps<Item>) {
+  const { tokens } = useAppearance();
   // The provider is expo-router's, at the root of every screen; outside one
   // (a component test) there is no inset to honour, not an error to raise.
   const insets = useContext(SafeAreaInsetsContext) ?? {
@@ -93,10 +94,9 @@ export function ListScreen<Item>({
   const paddingBottom = Spacing.four + (edges.includes('bottom') ? insets.bottom : 0);
 
   return (
-    <ThemedView
-      type="canvas"
+    <View
       className="bg-background"
-      style={styles.canvas}
+      style={[styles.canvas, { backgroundColor: tokens.canvas }]}
       testID={testID}>
       <View style={styles.column}>
         <FlashList
@@ -114,7 +114,7 @@ export function ListScreen<Item>({
           keyboardShouldPersistTaps="handled"
         />
       </View>
-    </ThemedView>
+    </View>
   );
 }
 

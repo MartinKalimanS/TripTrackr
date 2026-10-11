@@ -1,8 +1,7 @@
 /**
  * `Field` - the labelled text input of Atlas (feature 004; contract C4-8; FR-024, FR-025,
  * FR-029, FR-030; review rules 2, 3 and 7), over the kit's TextField, Label, Input,
- * FieldError and Description. It has the prop surface of the retired `TextField`
- * (`text-field.tsx`, which the unmigrated screens keep using until phase 7):
+ * FieldError and Description:
  *
  *   <Field label="Email" value={email} onChangeText={setEmail} error={errors.email}
  *     testID="login-email" keyboardType="email-address" autoComplete="email" />

@@ -62,7 +62,6 @@ function appearance(overrides: Partial<AppearanceContext> = {}) {
     prefersLessTransparency: false,
     ready: true,
     fontScale: 1,
-    elevationProfile: 'full',
     tokens: Colors.light,
     ...overrides,
   } as AppearanceContext);

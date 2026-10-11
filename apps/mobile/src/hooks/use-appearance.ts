@@ -23,12 +23,7 @@ import {
   subscribeToAppearance,
 } from '@/hooks/appearance-store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import {
-  resolveElevationProfile,
-  type ElevationProfile,
-} from '@/theme/elevation-profile';
-import { resolvePaletteName, type PaletteName } from '@/theme/palette';
-import type { ThemeName } from '@/theme/surfaces';
+import { resolvePaletteName, type PaletteName, type ThemeName } from '@/theme/palette';
 
 export interface AppearanceContext {
   /** The device scheme. */
@@ -44,10 +39,13 @@ export interface AppearanceContext {
   /** Structurally false on Android — the platform has no such setting. */
   prefersLessTransparency: boolean;
   fontScale: number;
-  /** Forced to `flat` until the neumorphic primitives are deleted (004 D4-12). */
-  elevationProfile: ElevationProfile;
-  /** The two-theme legacy `Colors` until the screens migrate (phase 7). */
-  tokens: (typeof Colors)['light'] | (typeof Colors)['dark'];
+  /**
+   * The colours that code hands over instead of a class, for `themeName`: the palette of
+   * the theme the kit is painting, increased contrast included, so the root stack, the
+   * navigation theme and every canvas agree with the kit's `--background` in all four
+   * themes.
+   */
+  tokens: (typeof Colors)[PaletteName];
   /**
    * True once the FIRST read of the accessibility flags has settled, whether it answered
    * or failed. Until then `themeName` and `prefersLessMotion` are the defaults, not what
@@ -74,19 +72,17 @@ export function useAppearance(): AppearanceContext {
     getAppearanceServerSnapshot,
   );
 
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    const themeName = resolvePaletteName(theme, accessibility.prefersMoreContrast);
+    return {
       theme,
-      themeName: resolvePaletteName(theme, accessibility.prefersMoreContrast),
+      themeName,
       prefersMoreContrast: accessibility.prefersMoreContrast,
       prefersLessMotion: accessibility.prefersLessMotion,
       prefersLessTransparency: accessibility.prefersLessTransparency,
       fontScale,
-      // Forced flat (004 D4-12): no device input reaches it, so none is passed.
-      elevationProfile: resolveElevationProfile(),
-      tokens: Colors[theme],
+      tokens: Colors[themeName],
       ready: accessibility.ready,
-    }),
-    [theme, accessibility, fontScale],
-  );
+    };
+  }, [theme, accessibility, fontScale]);
 }

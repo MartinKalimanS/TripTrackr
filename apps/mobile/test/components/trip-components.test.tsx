@@ -1,6 +1,6 @@
 /**
- * The small trip components: `<DateField>`, `<StatusPill>`, `<TripCard>`,
- * `<StopRow>`, and `<RequireLocalStore>`.
+ * The small trip components: `<DateField>`, `<TripCard>`, `<StopRow>`, and
+ * `<RequireLocalStore>`. (The status chip has its own suite, `ui/chip.test.tsx`.)
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -8,7 +8,6 @@ import { Platform, StyleSheet, Text } from 'react-native';
 
 import { RequireLocalStore } from '@/components/require-local-store';
 import { DateField } from '@/components/trip/date-field';
-import { StatusPill } from '@/components/trip/status-pill';
 import { StopRow, describePlace } from '@/components/trip/stop-row';
 import { TripCard, describeStopCount } from '@/components/trip/trip-card';
 import { MinTouchTarget } from '@/constants/theme';
@@ -110,22 +109,6 @@ describe('<DateField>', () => {
     );
     expect(screen.getByText('Departure can’t be before arrival.')).toBeTruthy();
   });
-});
-
-describe('<StatusPill>', () => {
-  test.each([
-    ['planning', 'Planning'],
-    ['active', 'Active'],
-    ['past', 'Past'],
-  ] as const)(
-    '%s renders text and an icon, labelled for a screen reader',
-    async (status, label) => {
-      await render(<StatusPill status={status} />);
-      expect(screen.getByLabelText(`Status: ${label}`)).toBeTruthy();
-      expect(screen.getByText(label)).toBeTruthy();
-      expect(screen.getByTestId(`status-pill-${status}`).children.length).toBe(2);
-    },
-  );
 });
 
 describe('<TripCard>', () => {

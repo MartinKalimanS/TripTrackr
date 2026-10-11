@@ -1,15 +1,15 @@
 /**
  * `Tappable` - the bare control of Atlas (feature 004; contract C4-7; FR-019, FR-024,
- * FR-026, FR-029; data-model section 6). It replaces `PressableSurface` `bare` for every
- * migrated screen: the tab bar, the header's back button, a row's own press target, a
- * glyph that is its own control. A control with a fill and a label is a `Button`.
+ * FR-026, FR-029; data-model section 6). It is the bare pressable of every screen: the
+ * tab bar, the header's back button, a row's own press target, a glyph that is its own
+ * control. A control with a fill and a label is a `Button`.
  *
  *   <Tappable accessibilityLabel="Open trip" onPress={open} busy={saving} hitSlop={8}>
  *     ...children...
  *   </Tappable>
  *
- * It is built on React Native's `Pressable` and keeps the non-visual contract of the
- * retired `PressableSurface`:
+ * It is built on React Native's `Pressable` and carries the non-visual contract every
+ * control of the app shares:
  * - `accessibilityLabel` is required (a type error, and an error in development when it
  *   is empty); the role is `button`; `accessibilityState` carries `disabled` and `busy`
  *   next to anything the caller adds (`selected`, ...). `testID` and every other

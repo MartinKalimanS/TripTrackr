@@ -4,8 +4,8 @@
  * The palette is the one place a colour is authored. These tests pin its shape (every
  * key in all four themes), the invariants the spec states for it (tinted neutrals,
  * status colours shared with the globe, increased contrast raising rather than
- * replacing the hue) and the legacy `Colors` re-pointing, so that an unmigrated screen
- * is already rendered in Atlas colours (research D4-12).
+ * replacing the hue) and the `Colors` tokens, which read the palette of each of the four
+ * themes (T453, research D4-12).
  */
 import { Colors, GlobeColors } from '@/constants/theme';
 import { contrastRatio } from '@/theme/contrast';
@@ -191,53 +191,35 @@ describe('resolvePaletteName — contract C4-4', () => {
   });
 });
 
-describe('Colors is re-pointed at the palette (research D4-12)', () => {
-  test('keeps every legacy key so unmigrated screens keep compiling', () => {
-    const legacy = [
+describe('Colors reads the palette of every theme (T453, research D4-12)', () => {
+  test('has exactly the keys a consumer outside the kit reads', () => {
+    const keys = [
       'canvas',
       'surface',
-      'surfaceSunk',
-      'shadowLight',
-      'shadowDark',
       'textPrimary',
       'textMuted',
       'border',
-      'borderStrong',
       'accent',
       'accentInk',
       'danger',
-      // Added by the 004 review: the flat interim card hairline (surfaces.ts).
-      'separator',
     ];
-    for (const theme of BASE_THEMES) {
-      expect(Object.keys(Colors[theme]).sort()).toEqual([...legacy].sort());
+    expect(Object.keys(Colors).sort()).toEqual([...PaletteNames].sort());
+    for (const theme of PaletteNames) {
+      expect(Object.keys(Colors[theme]).sort()).toEqual([...keys].sort());
     }
   });
 
-  test.each(BASE_THEMES)('%s legacy keys read the Atlas palette', (theme) => {
+  test.each(PaletteNames)('%s keys read the Atlas palette', (theme) => {
     const palette = Palettes[theme];
     expect(Colors[theme]).toEqual({
       canvas: palette.canvas,
       surface: palette.surface,
-      surfaceSunk: palette.surfaceSecondary,
-      shadowLight: palette.canvas,
-      shadowDark: palette.canvas,
       textPrimary: palette.ink,
       textMuted: palette.muted,
       border: palette.border,
-      borderStrong: palette.border,
       accent: palette.accent,
       accentInk: palette.accentInk,
       danger: palette.danger,
-      separator: palette.separator,
     });
   });
-
-  test.each(BASE_THEMES)(
-    '%s leftover shadows are invisible: both tones are the canvas colour',
-    (theme) => {
-      expect(Colors[theme].shadowLight).toBe(Colors[theme].canvas);
-      expect(Colors[theme].shadowDark).toBe(Colors[theme].canvas);
-    },
-  );
 });

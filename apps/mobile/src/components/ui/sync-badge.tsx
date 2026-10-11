@@ -11,8 +11,7 @@
  * synchronisation - that boundary is the whole reason it is safe for a
  * presentation layer to show it.
  *
- * It is used by the unmigrated screens as well as the migrated ones, so what it
- * announces and the ids it carries are unchanged: the badge is a text node named
+ * What it announces and the ids it carries are stable (e2e flows and tests read them): the badge is a text node named
  * "Sync pending", "Sync in progress" or "Sync failed" (what assistive technology and the
  * tests read), its icon is `sync-badge-icon`, and the visible words ("Not yet synced",
  * "Syncing", "Sync failed") are what the Maestro flows look for.

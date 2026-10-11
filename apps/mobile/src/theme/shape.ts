@@ -1,9 +1,9 @@
 /**
  * Atlas shape and spacing — contract C4-6, data-model section 3.
  *
- * These are NEW names on purpose. The existing `Radius` (8, 16, 24, pill) and `Spacing`
- * in `constants/theme.ts` stay until phase 7 (research D4-12), so no unmigrated screen
- * moves by a pixel; migrated screens read `AtlasRadius` and `AtlasSpacing`.
+ * These are separate names on purpose. `Radius` (8, 16, 24, pill) and `Spacing` in
+ * `constants/theme.ts` keep their values for the code that reads them (`MediaFrame`, the
+ * screen scaffolds); the Atlas components read `AtlasRadius` and `AtlasSpacing`.
  *
  * Pure data and pure helpers.
  */

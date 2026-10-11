@@ -1,5 +1,5 @@
 /**
- * T006 — contract C2 (specs/002-neumorphic-ui/contracts/design-tokens.md).
+ * T006 — contract C2 of feature 002 (its design-tokens contract).
  *
  * These functions are the reason SC-002 can be a standing build gate rather
  * than a release-time audit, so they are tested against the WCAG definition

@@ -267,7 +267,7 @@ describe('<TripCard> - sources (FR-036)', () => {
   const importsOf = (text: string) =>
     [...text.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1]);
 
-  test.each(FILES)('%s imports none of the neumorphic primitives', (file) => {
+  test.each(FILES)('%s imports none of the retired primitives', (file) => {
     const specifiers = importsOf(source(file));
     expect(specifiers).not.toContain('@/components/ui/surface');
     expect(specifiers).not.toContain('@/components/ui/pressable-surface');

@@ -79,7 +79,6 @@ function mockAppearance(overrides: Partial<AppearanceContext> = {}) {
     prefersLessTransparency: false,
     ready: true,
     fontScale: 1,
-    elevationProfile: 'full',
     tokens: Colors[theme],
     ...overrides,
   } as AppearanceContext);

@@ -2,50 +2,34 @@
  * T028–T030 — contract C3. THE gate that makes SC-002 standing rather than
  * one-off.
  *
- * Two properties matter more than any individual assertion:
+ * It is EXHAUSTIVE over the tokens: a token added without being classified fails the
+ * build rather than slipping through unmeasured.
  *
- *   1. It is EXHAUSTIVE over the token ramp. A token added without being
- *      classified fails the build rather than slipping through unmeasured.
- *   2. The shadow exemption is an explicit named allowlist, never a skipped
- *      assertion. Decorative tokens are exempt from WCAG 1.4.11 because they
- *      identify nothing — that is a documented decision (research R-002), not
- *      an assertion someone quietly commented out.
- *
- * Feature 004 (T411): `Colors` is now re-pointed at the Atlas palette, so this gate keeps
- * measuring the LEGACY keys that unmigrated screens read, until phase 7 deletes them. The
- * gate for the palette itself, in four themes, is `palette-gate.test.ts`.
+ * Feature 004 (T453): `Colors` is the set of colours that code, not a class, hands over
+ * (the root and tab scenes, the navigation theme, the canvas of `Screen`, `MediaFrame`'s
+ * edge), read from the Atlas palette of each of the FOUR themes, increased contrast
+ * included. This gate measures those. The gate for the palette itself, with every pairing
+ * of every class, is `palette-gate.test.ts`; the decorative hairline (`separator`) is
+ * exempt there, by name.
  */
 import { Colors } from '@/constants/theme';
 import { ContrastFloor, contrastRatio } from '@/theme/contrast';
-
-type ThemeName = 'light' | 'dark';
-const THEMES: ThemeName[] = ['light', 'dark'];
+import { PaletteNames } from '@/theme/palette';
 
 /** Backgrounds other tokens are measured against. Not measured against themselves. */
-const SURFACE_TOKENS = ['canvas', 'surface', 'surfaceSunk'] as const;
-
-/**
- * EXEMPT — decorative only (research R-002).
- *
- * These sit at 1.16–1.52:1 against their canvas and can never reach 3:1. They
- * carry no state and identify no control, so WCAG 1.4.11 does not apply. This
- * is why interactive elements carry a border instead. `separator` is the Atlas
- * hairline that keeps a flat static card apart from the canvas until phase 7
- * (004 D4-12); it is below 3:1 by design.
- */
-const DECORATIVE_EXEMPT = ['shadowLight', 'shadowDark', 'separator'] as const;
+const SURFACE_TOKENS = ['canvas', 'surface'] as const;
 
 /** Tokens used as text on a surface — FR-008, 4.5:1. */
 const TEXT_TOKENS = ['textPrimary', 'textMuted', 'accent', 'danger'] as const;
 
 /** Tokens identifying a control or boundary — FR-009, 3:1. */
-const NON_TEXT_TOKENS = ['border', 'borderStrong'] as const;
+const NON_TEXT_TOKENS = ['border'] as const;
 
 /** Measured against the accent fill they sit on rather than against the canvas. */
 const ON_ACCENT_TOKENS = ['accentInk'] as const;
 
 describe('contrast gate — contract C3', () => {
-  describe.each(THEMES)('%s theme', (theme) => {
+  describe.each(PaletteNames)('%s theme', (theme) => {
     const palette = Colors[theme];
 
     test.each(TEXT_TOKENS)(
@@ -91,22 +75,10 @@ describe('contrast gate — contract C3', () => {
       }
     });
 
-    test.each(DECORATIVE_EXEMPT)(
-      '%s is exempt, and is confirmed to be decorative rather than quietly failing',
-      (token) => {
-        // Asserting the exemption is CORRECT, not merely convenient: if a shadow
-        // tone ever cleared 3:1 it would be doing identification work, and the
-        // border decision would need revisiting rather than silently persisting.
-        expect(contrastRatio(palette[token], palette.canvas)).toBeLessThan(
-          ContrastFloor.nonText,
-        );
-      },
-    );
-
-    test('increased contrast raises text to the 7:1 floor (FR-013)', () => {
-      // Under increased contrast the primary ink must clear AAA. Muted text is
-      // deliberately excluded: FR-013 is satisfied by promoting muted text to
-      // primary at render time, not by darkening a token past its design intent.
+    test('the primary ink clears the 7:1 floor on the canvas (FR-013)', () => {
+      // AAA for the primary ink in every theme. Muted text is held to 7:1 in the
+      // increased-contrast themes by `palette-gate.test.ts`, where each palette carries
+      // its own muted tone, rather than by darkening a base-theme token past its intent.
       expect(contrastRatio(palette.textPrimary, palette.canvas)).toBeGreaterThanOrEqual(
         ContrastFloor.increasedContrast,
       );
@@ -116,21 +88,23 @@ describe('contrast gate — contract C3', () => {
   describe('exhaustiveness — a new token cannot slip through unmeasured', () => {
     const CLASSIFIED = new Set<string>([
       ...SURFACE_TOKENS,
-      ...DECORATIVE_EXEMPT,
       ...TEXT_TOKENS,
       ...NON_TEXT_TOKENS,
       ...ON_ACCENT_TOKENS,
     ]);
 
-    test.each(THEMES)('every %s token is classified', (theme) => {
+    test.each(PaletteNames)('every %s token is classified', (theme) => {
       const unclassified = Object.keys(Colors[theme]).filter(
         (token) => !CLASSIFIED.has(token),
       );
       expect(unclassified).toEqual([]);
     });
 
-    test('both themes expose exactly the same token names', () => {
-      expect(Object.keys(Colors.light).sort()).toEqual(Object.keys(Colors.dark).sort());
+    test('all four themes expose exactly the same token names', () => {
+      const reference = Object.keys(Colors.light).sort();
+      for (const theme of PaletteNames) {
+        expect(Object.keys(Colors[theme]).sort()).toEqual(reference);
+      }
     });
   });
 });

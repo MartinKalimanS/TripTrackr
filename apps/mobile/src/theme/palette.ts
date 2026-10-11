@@ -5,11 +5,14 @@
  * under plain Node; see that file for why). This module gives them their types and the
  * one resolver that maps the device appearance onto a theme name.
  *
- * `PaletteName` is deliberately not called `ThemeName`: `surfaces.ts` already exports a
- * `ThemeName` with two values (`light | dark`) that the neumorphic primitives use until
- * phase 7 (D4-12), and a second type with the same name and four values would be a trap.
+ * Two names are in play and they are different: `ThemeName` is the DEVICE scheme (two
+ * values), `PaletteName` is the theme the app paints (four: the scheme plus increased
+ * contrast).
  */
 import data from './palette.data';
+
+/** The device colour scheme. */
+export type ThemeName = 'light' | 'dark';
 
 export type PaletteName = 'light' | 'dark' | 'light-contrast' | 'dark-contrast';
 
@@ -102,7 +105,7 @@ export const Palettes: Readonly<Record<PaletteName, Readonly<Palette>>> = data;
  * theme. The root layout hands this to `Uniwind.setTheme`; nothing else sets the theme.
  */
 export function resolvePaletteName(
-  scheme: 'light' | 'dark',
+  scheme: ThemeName,
   prefersMoreContrast: boolean,
 ): PaletteName {
   return prefersMoreContrast ? `${scheme}-contrast` : scheme;

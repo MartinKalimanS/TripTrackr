@@ -14,11 +14,12 @@
  *
  * The canvas is painted here too, so no screen can fall back to a platform
  * default background (Acceptance Scenario 3.2). It is painted twice over, on
- * purpose: the semantic `bg-background` class (feature 004, so the Atlas themes
- * drive it) AND the `ThemedView` canvas token style the unmigrated screens have
- * always had. Both resolve to the same colour, because `Colors` is re-pointed at
- * the Atlas palette (research D4-12), so neither can be seen to disagree and
- * nothing regresses while the screens migrate.
+ * purpose: the semantic `bg-background` class (so the Atlas themes drive it) AND
+ * the canvas token style of `useAppearance().tokens`. Both resolve to the same
+ * colour in all four themes, increased contrast included, because the tokens are
+ * the palette of `themeName` and `--background` is generated from the same
+ * palette (pinned by `test/app/root-layout.test.tsx`), so neither can be seen to
+ * disagree with the other, with the header over it, or with the navigator beneath.
  *
  * `underHeader` (feature 004, research D4-06, contract C4-8; opt-in, default
  * off) is for a screen below a NATIVE stack header, which already covers the
@@ -38,12 +39,12 @@
  * as before in both modes.
  */
 import type { PropsWithChildren } from 'react';
-import { ScrollView, StyleSheet, type ViewStyle } from 'react-native';
+import { ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
-import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAppearance } from '@/hooks/use-appearance';
 
 export type ScreenProps = PropsWithChildren<{
   testID?: string;
@@ -65,8 +66,8 @@ export type ScreenProps = PropsWithChildren<{
   /**
    * The screen sits under a native stack header (research D4-06): no top
    * safe-area padding by default, and the scroll view insets its content below
-   * the header, so iOS large titles collapse on scroll. Off by default: every
-   * unmigrated screen keeps its own top padding.
+   * the header, so iOS large titles collapse on scroll. Off by default: a
+   * screen without a native header keeps its own top padding.
    */
   underHeader?: boolean;
 }>;
@@ -90,6 +91,7 @@ export function Screen({
   keyboardAware = false,
   underHeader = false,
 }: ScreenProps) {
+  const { tokens } = useAppearance();
   const content = (
     <SafeAreaView
       edges={edges ?? (underHeader ? UNDER_HEADER_EDGES : DEFAULT_EDGES)}
@@ -100,10 +102,9 @@ export function Screen({
   const inset = underHeader ? ('automatic' as const) : undefined;
 
   return (
-    <ThemedView
-      type="canvas"
+    <View
       className="bg-background"
-      style={styles.canvas}
+      style={[styles.canvas, { backgroundColor: tokens.canvas }]}
       testID={testID}>
       {keyboardAware ? (
         <KeyboardAwareScrollView
@@ -123,7 +124,7 @@ export function Screen({
           {content}
         </ScrollView>
       )}
-    </ThemedView>
+    </View>
   );
 }
 

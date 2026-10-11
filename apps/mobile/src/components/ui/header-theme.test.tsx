@@ -9,10 +9,11 @@
  */
 import { renderHook } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 
 import { Colors } from '@/constants/theme';
+import { PaletteNames, Palettes } from '@/theme/palette';
+
+import { backgroundVariable } from '../../../test/helpers/theme-css';
 
 import { useHeaderTheme } from './header-theme';
 
@@ -67,33 +68,22 @@ describe('useHeaderTheme - C4-9', () => {
   });
 });
 
-/** `--background` of one theme in the generated stylesheet, which `useThemeColor('background')` reads. */
-function backgroundVariable(theme: 'light' | 'dark'): string {
-  const css = readFileSync(
-    path.resolve(__dirname, '../../theme/generated/theme.css'),
-    'utf8',
-  ).replace(/\r\n/g, '\n');
-  const block = new RegExp(`@variant ${theme} \\{([\\s\\S]*?)\\n {4}\\}`).exec(css);
-  return /--background:\s*([^;]+);/.exec(block?.[1] ?? '')?.[1]?.trim() ?? '';
-}
-
 // Two sources paint the canvas around a trip screen. The root stack and the navigation
-// theme paint `useAppearance().tokens.canvas`, which is `Colors[theme]`; the header and
-// the scene of the trip stack paint the kit's `--background` through this hook. They name
-// ONE colour, so there is no seam between the bar, the scene and what shows behind them,
-// and this fails the moment the palette, `Colors` or the generated stylesheet drifts
-// apart for the light and dark themes. (`test/theme/theme-css-sync.test.ts` pins the
-// stylesheet to the palette; this pins the legacy two-theme `Colors` to the stylesheet.)
-//
-// The increased-contrast themes are NOT asserted: `Colors` has only light and dark, so
-// under increased contrast the root paints the base canvas while `--background` is the
-// contrast canvas. That gap is recorded as a device check in tasks.md (T431).
+// theme paint `useAppearance().tokens.canvas`; the header and the scene of the trip stack
+// paint the kit's `--background` through this hook. They name ONE colour in each of the
+// four themes, increased contrast included, so there is no seam between the bar, the scene
+// and what shows behind them; this fails the moment the palette, the tokens or the
+// generated stylesheet drift apart. (`test/theme/theme-css-sync.test.ts` pins the
+// stylesheet to the palette; this pins the tokens to the stylesheet.)
 describe('useHeaderTheme - one canvas for the bar and the root stack (FR-023)', () => {
-  test.each(['light', 'dark'] as const)(
+  test.each(PaletteNames)(
     'the %s stylesheet `--background` is the `canvas` the root stack paints',
     (theme) => {
       expect(backgroundVariable(theme).toLowerCase()).toBe(
         Colors[theme].canvas.toLowerCase(),
+      );
+      expect(backgroundVariable(theme).toLowerCase()).toBe(
+        Palettes[theme].canvas.toLowerCase(),
       );
     },
   );
