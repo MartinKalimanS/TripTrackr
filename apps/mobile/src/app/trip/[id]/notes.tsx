@@ -1,16 +1,24 @@
 /**
- * A trip's notes — tasks.md T084, T085 (FR-017, FR-018, FR-019; Constitution II);
- * research D-21, D-23, D-24.
+ * A trip's notes — tasks.md T084, T085, 004 T440 (FR-017, FR-018, FR-019; 004 FR-007,
+ * FR-008, FR-015, FR-021, FR-035; Constitution II); research D-21, D-23, D-24.
  *
  * Everything here is read from and written to the encrypted local store; the
  * list is a live query so a write shows up the moment SQLite commits it. The
  * list is a `FlashList` through `ListScreen` (D-23) because a trip's notes
- * are unbounded. The filter pills narrow to one level — the whole trip, a
+ * are unbounded. The filter chips narrow to one level — the whole trip, a
  * country, a city — and the editor's anchor pills are the move control of
  * FR-018: pick another level on an existing note and it is refiled there
  * with its body and creation date intact.
+ *
+ * The screen is below a NATIVE header (`_layout.tsx`: the title "Notes" and the Back
+ * control), so it is `underHeader` and has no bar of its own. Its states are designed
+ * (C4-10 rule 2): placeholders shaped like note cards while the first read is pending,
+ * an error in words, and an empty state that names the next action and offers it. The
+ * error is checked before `loading`: a live read that fails can still report `loading`
+ * (its first-result timestamp never arrives) and the words must win over the placeholder.
+ * There is no retry: a live query has nothing to re-run (the same recorded gap as Trips).
  */
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -21,13 +29,14 @@ import {
   type NoteEditorValues,
 } from '@/components/trip/note-editor';
 import { NotesHeader } from '@/components/trip/notes-header';
+import type { IconName } from '@/components/ui/icon';
 import { ListScreen } from '@/components/ui/list-screen';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
+import { EmptyState, ErrorState, ListSkeleton } from '@/components/ui/state-view';
 import type { NoteWithPlace, NotesFilter } from '@/db/repositories/notes';
 import { NOTE_FORM_COPY } from '@/features/notes/note-form';
 import { anchorTargets, type AnchorTarget } from '@/features/notes/use-move-note';
 import { useNoteActions, useNotes } from '@/features/notes/use-notes';
-import { useTrip, useTripStops, type LiveResult } from '@/features/trips/use-trips';
+import { useTripStops, type LiveResult } from '@/features/trips/use-trips';
 import { useWriteAttempt } from '@/hooks/use-write-attempt';
 
 function firstParam(value: string | string[] | undefined): string | undefined {
@@ -106,20 +115,29 @@ type NoteWrites = ReturnType<typeof useNoteWrites>;
 type NotesEmptyProps = {
   notes: LiveResult<NoteWithPlace[]>;
   activeTarget: AnchorTarget | null;
+  onAdd: () => void;
 };
 
-function NotesEmpty({ notes, activeTarget }: NotesEmptyProps) {
-  return notes.error ? (
-    <ErrorState
-      title="Couldn’t read the notes"
-      detail="The local store did not answer."
-    />
-  ) : notes.loading ? (
-    <LoadingState title="Loading notes" />
-  ) : (
+const NOTE_ICON: IconName = { ios: 'note.text', android: 'sticky_note_2' };
+
+/** What stands in for the rows: unreadable, reading, or nothing here yet. */
+function NotesEmpty({ notes, activeTarget, onAdd }: NotesEmptyProps) {
+  if (notes.error) {
+    return (
+      <ErrorState
+        title="Couldn’t read the notes"
+        detail="The local store did not answer."
+      />
+    );
+  }
+  if (notes.loading)
+    return <ListSkeleton variant="card" rows={3} label="Loading notes" />;
+  return (
     <EmptyState
+      icon={NOTE_ICON}
       title={activeTarget ? `No notes for ${activeTarget.label} yet` : 'No notes yet'}
-      detail="Write the first one — it stays on this device until it syncs."
+      detail="Tap New note to write the first one — it stays on this device until it syncs."
+      action={{ label: 'New note', onPress: onAdd, testID: 'notes-empty-add' }}
     />
   );
 }
@@ -141,13 +159,12 @@ function NoteEditorSheet({ writes, targets }: NoteEditorSheetProps) {
 }
 
 export default function NotesScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string | string[] }>();
   const tripId = firstParam(id) ?? '';
 
-  const trip = useTrip(tripId);
   const filter = useNotesFilter(tripId);
   const writes = useNoteWrites(tripId);
+  const addNote = () => writes.openAdd(filter.activeTarget?.key);
 
   const renderItem = ({ item }: { item: NoteWithPlace }) => (
     <NoteCard
@@ -159,13 +176,11 @@ export default function NotesScreen() {
 
   const header = (
     <NotesHeader
-      tripTitle={trip.data?.title ?? null}
       targets={filter.targets}
       filterKey={filter.filterKey}
       writeError={writes.writeError}
-      onBack={() => router.back()}
       onFilter={filter.setFilterKey}
-      onAdd={() => writes.openAdd(filter.activeTarget?.key)}
+      onAdd={addNote}
     />
   );
 
@@ -173,11 +188,18 @@ export default function NotesScreen() {
     <>
       <ListScreen
         testID="notes-screen"
+        underHeader
         data={filter.notes.data}
         keyExtractor={(note) => note.id}
         renderItem={renderItem}
         header={header}
-        empty={<NotesEmpty notes={filter.notes} activeTarget={filter.activeTarget} />}
+        empty={
+          <NotesEmpty
+            notes={filter.notes}
+            activeTarget={filter.activeTarget}
+            onAdd={addNote}
+          />
+        }
       />
       <NoteEditorSheet writes={writes} targets={filter.targets} />
     </>

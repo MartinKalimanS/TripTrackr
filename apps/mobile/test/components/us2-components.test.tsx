@@ -9,7 +9,7 @@ import { Text } from 'react-native';
 
 import { AnchorPicker } from '@/components/trip/anchor-picker';
 import { CategoryPicker } from '@/components/trip/category-picker';
-import { describeAnchor } from '@/components/trip/note-card';
+import { NoteCard, describeAnchor } from '@/components/trip/note-card';
 import { NoteEditor } from '@/components/trip/note-editor';
 import { SpendingSummary } from '@/components/trip/spending-summary';
 import { ListScreen } from '@/components/ui/list-screen';
@@ -173,6 +173,139 @@ describe('describeAnchor', () => {
     expect(describeAnchor({ ...base, country_name: null })).toBe('Country #1');
     expect(describeAnchor({ ...base, country_id: null, country_name: null })).toBe(
       'Trip',
+    );
+  });
+});
+
+describe('<NoteCard> - a note in the list (T440; FR-006, FR-013, FR-030, FR-034)', () => {
+  const saved: NoteWithPlace = {
+    id: 'n1',
+    trip_id: 't',
+    country_id: 1,
+    city_id: 100,
+    title: 'Cheese',
+    body: 'Try the raclette.',
+    is_public: false,
+    created_at: 'x',
+    updated_at: 'x',
+    deleted_at: null,
+    is_dirty: false,
+    synced_at: 'x',
+    country_name: 'Italy',
+    city_name: 'Roma',
+  };
+  const classesOf = (node: { props: { className?: unknown } }) =>
+    String(node.props.className ?? '')
+      .split(/\s+/)
+      .filter(Boolean);
+
+  async function renderCard(
+    note: Partial<NoteWithPlace> = {},
+    handlers: { onEdit?: () => void; onRemove?: () => void } = {},
+  ) {
+    return render(
+      <NoteCard
+        note={{ ...saved, ...note }}
+        onEdit={handlers.onEdit ?? jest.fn()}
+        onRemove={handlers.onRemove ?? jest.fn()}
+      />,
+    );
+  }
+
+  test('is ONE element for assistive technology, named as before, with the same two actions', async () => {
+    const onEdit = jest.fn();
+    const onRemove = jest.fn();
+    await renderCard({}, { onEdit, onRemove });
+
+    const card = screen.getByTestId('note-card-n1');
+    expect(card.props.accessible).toBe(true);
+    expect(card.props.accessibilityLabel).toBe(
+      'Cheese, filed under Roma, Italy. Try the raclette.',
+    );
+    expect(card.props.accessibilityActions).toEqual([
+      { name: 'edit', label: 'Edit note' },
+      { name: 'delete', label: 'Delete note' },
+    ]);
+
+    await fireEvent(card, 'accessibilityAction', { nativeEvent: { actionName: 'edit' } });
+    await fireEvent(card, 'accessibilityAction', {
+      nativeEvent: { actionName: 'delete' },
+    });
+    await fireEvent(card, 'accessibilityAction', {
+      nativeEvent: { actionName: 'magnify' },
+    });
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  test('a note with no title is announced as "Note"', async () => {
+    await renderCard({ title: null });
+    expect(screen.getByTestId('note-card-n1').props.accessibilityLabel).toBe(
+      'Note, filed under Roma, Italy. Try the raclette.',
+    );
+  });
+
+  test('is a raised card: tone and spacing, no edge of its own while the note is saved (FR-002, FR-006)', async () => {
+    await renderCard();
+
+    const classes = classesOf(screen.getByTestId('note-surface-n1'));
+    expect(classes).toContain('bg-surface');
+    expect(classes).not.toContain('shadow-none');
+    expect(classes).not.toContain('border-dashed');
+    expect(screen.queryByText('Not yet synced')).toBeNull();
+  });
+
+  test('a note only on this device has the dashed edge AND the marker in words (FR-034, FR-025)', async () => {
+    await renderCard({ is_dirty: true });
+
+    expect(classesOf(screen.getByTestId('note-surface-n1'))).toEqual(
+      expect.arrayContaining(['border-dashed', 'border-pending']),
+    );
+    expect(screen.getByText('Not yet synced')).toBeTruthy();
+    expect(screen.getByLabelText('Sync pending')).toBeTruthy();
+  });
+
+  test('says where it is filed in words (muted), then shows the title and the body', async () => {
+    await renderCard();
+
+    expect(screen.getByTestId('note-anchor-n1')).toHaveTextContent('Roma, Italy');
+    expect(classesOf(screen.getByTestId('note-anchor-n1'))).toContain('text-muted');
+    expect(screen.getByText('Cheese')).toBeTruthy();
+    expect(screen.getByTestId('note-body-n1')).toHaveTextContent('Try the raclette.');
+  });
+
+  test('previews at most 160 characters of a long body, and says it is cut', async () => {
+    await renderCard({ body: 'x'.repeat(200) });
+
+    expect(screen.getByTestId('note-body-n1')).toHaveTextContent(`${'x'.repeat(160)}…`);
+  });
+
+  test('Edit and Delete keep their ids, names, words and handlers; Delete is the destructive one (FR-005, FR-037)', async () => {
+    const onEdit = jest.fn();
+    const onRemove = jest.fn();
+    await renderCard({}, { onEdit, onRemove });
+
+    const edit = screen.getByTestId('note-edit-n1');
+    const remove = screen.getByTestId('note-remove-n1');
+    expect(edit.props.accessibilityLabel).toBe('Edit Cheese');
+    expect(remove.props.accessibilityLabel).toBe('Delete Cheese');
+    expect(edit).toHaveTextContent('Edit');
+    expect(remove).toHaveTextContent('Delete');
+    expect(edit.props.variant).toBe('ghost');
+    expect(remove.props.variant).toBe('danger-soft');
+
+    await fireEvent.press(edit);
+    await fireEvent.press(remove);
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  test('controls of an untitled note are named after "note"', async () => {
+    await renderCard({ title: null });
+
+    expect(screen.getByTestId('note-edit-n1').props.accessibilityLabel).toBe('Edit note');
+    expect(screen.getByTestId('note-remove-n1').props.accessibilityLabel).toBe(
+      'Delete note',
     );
   });
 });

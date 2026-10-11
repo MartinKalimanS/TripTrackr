@@ -23,6 +23,29 @@ import type { NoteWithPlace } from '@/db/repositories/notes';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import type { ExpenseRow, TripRow } from '@/db/schema';
 
+/** A host node as `toJSON` renders it. */
+interface Json {
+  type: string;
+  props: Record<string, unknown>;
+  children: (Json | string)[] | null;
+}
+
+/** Every host node on screen that satisfies `test`, outermost first. */
+function hostsWhere(
+  test: (node: Json) => boolean,
+  node: Json | Json[] | null = screen.toJSON() as Json | Json[] | null,
+): Json[] {
+  if (node === null) return [];
+  if (Array.isArray(node)) return node.flatMap((child) => hostsWhere(test, child));
+  const below = (node.children ?? []).flatMap((child) =>
+    typeof child === 'string' ? [] : hostsWhere(test, child),
+  );
+  return test(node) ? [node, ...below] : below;
+}
+
+/** Every scroll view on screen: the list's own, and any sideways row (a chip group). */
+const scrollers = () => hostsWhere((node) => node.type === 'RCTScrollView');
+
 const mockBack = jest.fn();
 const mockPush = jest.fn();
 let mockParams: Record<string, string | string[]> = { id: 'trip-42', tripId: 'trip-42' };
@@ -226,14 +249,86 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
   test('shows the designed empty state and the anchor filters from the trip’s stops', async () => {
     await render(<NotesScreen />);
 
-    expect(screen.getByTestId('notes-title')).toHaveTextContent(
-      /Notes · Italy, spring 2026/,
-    );
     expect(screen.getByText('No notes yet')).toBeTruthy();
     expect(screen.getByTestId('notes-filter-all')).toBeTruthy();
     expect(screen.getByTestId('notes-filter-country:1')).toBeTruthy();
     expect(screen.getByTestId('notes-filter-city:100')).toBeTruthy();
     expect(screen.getByTestId('notes-filter-city:101')).toBeTruthy();
+  });
+
+  test('has no bar of its own: the title and Back are the native header’s (FR-007, FR-008)', async () => {
+    mockNotes.data = [note({})];
+    await render(<NotesScreen />);
+
+    // The old bar drew "Back", the title `notes-title` ("Notes · <trip>") and the controls.
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.queryByTestId('notes-title')).toBeNull();
+    expect(screen.queryByText(/^Notes/)).toBeNull();
+    // What is not title or back stays: the filters and the action, in their old order.
+    const order = screen
+      .getAllByTestId(/^notes-(filter-all|add)$/)
+      .map((node) => node.props.testID);
+    expect(order).toEqual(['notes-filter-all', 'notes-add']);
+  });
+
+  test('the empty state names its next action and offers it (FR-015, C4-10 rule 2)', async () => {
+    await render(<NotesScreen />);
+
+    expect(screen.getByText(/^Tap New note to write the first one/)).toBeTruthy();
+    const action = screen.getByTestId('notes-empty-add');
+    expect(action.props.accessibilityLabel).toBe('New note');
+    expect(action.props.variant).toBe('secondary');
+
+    await fireEvent.press(action);
+    expect(screen.getByTestId('note-editor')).toBeTruthy();
+  });
+
+  test('the empty state of a filter says which one, and "New note" files into it', async () => {
+    await render(<NotesScreen />);
+    await fireEvent.press(screen.getByTestId('notes-filter-city:101'));
+
+    expect(screen.getByText('No notes for Firenze, Italy yet')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('notes-empty-add'));
+    expect(screen.getByTestId('anchor-city:101').props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+  });
+
+  test('"New note" is the one primary control of the screen, in the empty state and with notes', async () => {
+    const primaries = () =>
+      screen
+        .getAllByRole('button')
+        .filter((node) => node.props.variant === 'primary')
+        .map((node) => node.props.testID);
+
+    await render(<NotesScreen />);
+    expect(primaries()).toEqual(['notes-add']);
+
+    mockNotes.data = [note({}), note({ id: 'note-2' })];
+    await screen.rerender(<NotesScreen />);
+    expect(primaries()).toEqual(['notes-add']);
+  });
+
+  test('the filters are one sideways radio group, each stop a chip named "Show …"', async () => {
+    await render(<NotesScreen />);
+
+    // The group is not itself a focus stop (its radios stay reachable one by one).
+    expect(
+      hostsWhere((node) => node.props.accessibilityRole === 'radiogroup'),
+    ).toHaveLength(1);
+    expect(screen.getAllByRole('radio')).toHaveLength(4);
+    const city = screen.getByTestId('notes-filter-city:100');
+    expect(city.props.accessibilityRole).toBe('radio');
+    expect(city.props.accessibilityLabel).toBe('Show Roma, Italy');
+    expect(scrollers().some((scroller) => scroller.props.horizontal === true)).toBe(true);
+  });
+
+  test('the notes are a list below the native header, with the content inset it needs (the collapse is a device check, T408)', async () => {
+    mockNotes.data = [note({})];
+    await render(<NotesScreen />);
+
+    const list = scrollers().find((scroller) => scroller.props.horizontal !== true);
+    expect(list?.props.contentInsetAdjustmentBehavior).toBe('automatic');
   });
 
   test('a filter narrows the live query to that anchor', async () => {
@@ -385,16 +480,75 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     expect(mockNoteActions.createNote).toHaveBeenCalledTimes(2);
   });
 
-  test('the loading state is designed, not blank', async () => {
+  test('the loading state is placeholders shaped like notes, ONE named region, never the empty state (FR-021)', async () => {
     mockNotes.loading = true;
     await render(<NotesScreen />);
-    expect(screen.getByText('Loading notes')).toBeTruthy();
+
+    const region = screen.getByLabelText('Loading notes');
+    expect(region.props.accessibilityRole).toBe('progressbar');
+    expect(screen.queryByText('No notes yet')).toBeNull();
+    expect(screen.queryByTestId('notes-empty-add')).toBeNull();
   });
 
-  test('the error state is designed, not blank', async () => {
+  test('the error state is designed, in words and an icon, not blank', async () => {
     mockNotes.error = new Error('boom');
     await render(<NotesScreen />);
+
     expect(screen.getByText('Couldn’t read the notes')).toBeTruthy();
+    expect(screen.getByText('The local store did not answer.')).toBeTruthy();
+    expect(screen.queryByText('No notes yet')).toBeNull();
+  });
+
+  test('a read that failed is an error even while its first result never arrives', async () => {
+    // A live read that fails reports `loading` for good: the words must win over the spinner.
+    mockNotes.error = new Error('boom');
+    mockNotes.loading = true;
+    await render(<NotesScreen />);
+
+    expect(screen.getByText('Couldn’t read the notes')).toBeTruthy();
+    expect(screen.queryByLabelText('Loading notes')).toBeNull();
+  });
+
+  test('a failed delete is shown, never swallowed', async () => {
+    mockNotes.data = [note({})];
+    mockNoteActions.removeNote.mockImplementationOnce(() => {
+      throw new Error('locked');
+    });
+    jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
+      buttons?.find((b) => b.style === 'destructive')?.onPress?.();
+    });
+    await render(<NotesScreen />);
+
+    await fireEvent.press(screen.getByTestId('note-remove-note-1'));
+    expect(screen.getByTestId('notes-write-error')).toBeTruthy();
+  });
+
+  test('deleting asks first, and Cancel removes nothing', async () => {
+    mockNotes.data = [note({})];
+    jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await render(<NotesScreen />);
+
+    await fireEvent.press(screen.getByTestId('note-remove-note-1'));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Delete this note?',
+      'It is removed from this trip.',
+      expect.any(Array),
+    );
+    expect(mockNoteActions.removeNote).not.toHaveBeenCalled();
+  });
+
+  test('is composed from the adapter layer only: no retired primitive, no kit, no colour literal', () => {
+    const { readFileSync } = jest.requireActual('fs') as typeof import('fs');
+    for (const module of [
+      '@/app/trip/[id]/notes',
+      '@/components/trip/notes-header',
+      '@/components/trip/note-card',
+    ]) {
+      const source = readFileSync(require.resolve(module), 'utf8');
+      expect(source).not.toMatch(/\bSurface\b|PressableSurface|ThemedText|ThemedView/);
+      expect(source).not.toMatch(/PillGroup|TextField|@\/constants\/theme/);
+      expect(source).not.toMatch(/heroui-native|uniwind|#[0-9a-fA-F]{3,8}\b|rgba?\(/);
+    }
   });
 });
 
