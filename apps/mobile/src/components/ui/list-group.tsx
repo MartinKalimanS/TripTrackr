@@ -154,10 +154,13 @@ export interface ListRowProps {
 const CAUTION: IconName = { ios: 'exclamationmark.triangle', android: 'warning' };
 
 /** A pressed row swaps its fill at once; the class is literal so Tailwind finds it. */
-const PRESSED_CLASS = 'active:bg-surface-tertiary';
+export const ROW_PRESSED_CLASS = 'active:bg-surface-tertiary';
 
 function rowClasses(pressable: boolean, disabled: boolean): string | undefined {
-  const classes = [pressable ? PRESSED_CLASS : '', disabled ? 'opacity-disabled' : ''];
+  const classes = [
+    pressable ? ROW_PRESSED_CLASS : '',
+    disabled ? 'opacity-disabled' : '',
+  ];
   return classes.filter(Boolean).join(' ') || undefined;
 }
 
