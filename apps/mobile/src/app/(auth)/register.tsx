@@ -1,23 +1,39 @@
 /**
- * Register — email, password, display name (T064, T065; FR-001).
+ * Register — email, password, display name (T064, T065; FR-001; restyled for Atlas by
+ * T446; FR-005, FR-017; contract C4-11 "Welcome, Login, Register").
  *
  * The rules are `RegisterRequest`'s: a twelve-character password floor and no
  * composition rule (contracts/api/auth.ts explains why). The confirmation
  * check is purely local and is said in words, not shown as a red border
- * alone (FR-010). API refusals — an email that already has an account, a
+ * alone (FR-010, FR-025). API refusals — an email that already has an account, a
  * rate limit — become plain sentences through `describeAuthError`. Google and
- * Apple (FR-002) are offered under the form (`SocialSignIn`).
+ * Apple (FR-002) are offered under the action (`SocialSignIn`).
+ *
+ * The title ("Create account") and "Back" are the NATIVE header's (`(auth)/_layout.tsx`),
+ * so the screen draws neither. The four fields sit at the top; the one primary action,
+ * "Create account", and the secondary provider buttons sit in the lower part (`mt-auto`
+ * takes the spare room). The form is a keyboard-aware scroller (`Screen keyboardAware`):
+ * the focused field is scrolled above the keyboard, taps on the action are kept, and the
+ * confirmation field's return key submits, so the action is never out of reach with the
+ * keyboard up.
+ *
+ * What a credential field is told (T447, pinned by `test/app/auth-security.test.tsx`):
+ * `secureTextEntry` on both password fields with no reveal toggle, `newPassword` and
+ * `new-password` so a password manager offers to generate and save one, no capitalisation
+ * or correction on the email or the passwords, and nothing that blocks paste. Nothing a
+ * field holds is logged, reported or put in a route.
+ *
+ * Visibility posture: the screen holds only what the traveller types, in this component's
+ * state, until the screen is gone; the mutation drops it with the screen (`gcTime: 0`).
  */
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { SocialSignIn } from '@/components/auth/social-sign-in';
-import { ThemedText } from '@/components/themed-text';
-import { PressableSurface } from '@/components/ui/pressable-surface';
+import { Button } from '@/components/ui/button';
+import { Field } from '@/components/ui/field';
+import { InlineError } from '@/components/ui/inline-error';
 import { Screen } from '@/components/ui/screen';
-import { TextField } from '@/components/ui/text-field';
-import { Colors, Spacing } from '@/constants/theme';
 import { describeAuthError } from '@/features/auth/auth-errors';
 import {
   hasErrors,
@@ -26,13 +42,10 @@ import {
   type RegisterFields,
 } from '@/features/auth/form-validation';
 import { useRegister } from '@/features/auth/use-session';
-import { useAppearance } from '@/hooks/use-appearance';
 
 const MISMATCH = 'Passwords do not match';
 
 export default function RegisterScreen() {
-  const router = useRouter();
-  const { theme } = useAppearance();
   const register = useRegister();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -56,110 +69,77 @@ export default function RegisterScreen() {
   };
 
   return (
-    <Screen testID="register-screen">
-      <View style={styles.header}>
-        <PressableSurface
-          accessibilityLabel="Back"
-          treatment="flat"
-          onPress={() => router.back()}
-          style={styles.back}>
-          <ThemedText type="smallBold">Back</ThemedText>
-        </PressableSurface>
-        <ThemedText type="subtitle">Create account</ThemedText>
+    <Screen testID="register-screen" underHeader keyboardAware>
+      <View className="gap-4">
+        <Field
+          testID="register-display-name"
+          label="Name"
+          value={displayName}
+          onChangeText={setDisplayName}
+          autoCapitalize="words"
+          textContentType="name"
+          autoComplete="name"
+          returnKeyType="next"
+          error={liveErrors.display_name}
+        />
+        <Field
+          testID="register-email"
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          autoComplete="email"
+          returnKeyType="next"
+          error={liveErrors.email}
+        />
+        <Field
+          testID="register-password"
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          textContentType="newPassword"
+          autoComplete="new-password"
+          returnKeyType="next"
+          error={liveErrors.password}
+        />
+        <Field
+          testID="register-confirm-password"
+          label="Confirm password"
+          value={confirmation}
+          onChangeText={setConfirmation}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          textContentType="newPassword"
+          autoComplete="new-password"
+          returnKeyType="go"
+          onSubmitEditing={submit}
+          error={mismatch ? MISMATCH : undefined}
+        />
       </View>
 
-      <TextField
-        testID="register-display-name"
-        label="Name"
-        value={displayName}
-        onChangeText={setDisplayName}
-        autoCapitalize="words"
-        textContentType="name"
-        autoComplete="name"
-        returnKeyType="next"
-        error={liveErrors.display_name}
-      />
-      <TextField
-        testID="register-email"
-        label="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        textContentType="emailAddress"
-        autoComplete="email"
-        returnKeyType="next"
-        error={liveErrors.email}
-      />
-      <TextField
-        testID="register-password"
-        label="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        textContentType="newPassword"
-        autoComplete="new-password"
-        returnKeyType="next"
-        error={liveErrors.password}
-      />
-      <TextField
-        testID="register-confirm-password"
-        label="Confirm password"
-        value={confirmation}
-        onChangeText={setConfirmation}
-        secureTextEntry
-        textContentType="newPassword"
-        autoComplete="new-password"
-        returnKeyType="go"
-        onSubmitEditing={submit}
-        error={mismatch ? MISMATCH : undefined}
-      />
-
-      {register.error ? (
-        <ThemedText
+      <View testID="register-actions" className="mt-auto gap-3">
+        <InlineError
           testID="register-error"
-          type="small"
-          accessibilityRole="alert"
-          style={{ color: Colors[theme].danger }}>
-          {describeAuthError(register.error)}
-        </ThemedText>
-      ) : null}
-
-      <PressableSurface
-        testID="register-submit"
-        accessibilityLabel="Create account"
-        depth={2}
-        busy={register.isPending}
-        onPress={submit}
-        style={styles.submit}>
-        <ThemedText type="smallBold" style={styles.centred}>
+          message={register.error ? describeAuthError(register.error) : null}
+        />
+        <Button
+          testID="register-submit"
+          variant="primary"
+          size="lg"
+          accessibilityLabel="Create account"
+          busy={register.isPending}
+          onPress={submit}>
           {register.isPending ? 'Creating your account…' : 'Create account'}
-        </ThemedText>
-      </PressableSurface>
-
-      <SocialSignIn disabled={register.isPending} />
+        </Button>
+        <SocialSignIn disabled={register.isPending} />
+      </View>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    gap: Spacing.three,
-    marginBottom: Spacing.two,
-  },
-  back: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  submit: {
-    marginTop: Spacing.two,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-  },
-  centred: {
-    textAlign: 'center',
-  },
-});
