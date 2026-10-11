@@ -580,17 +580,86 @@ keyboard.
       `trip-form.test.tsx`. Device checks: the largest text size, the focus ring at the row's edges, VoiceOver and TalkBack
       reading each radio, and `currency-CHF` (the fifth chip) in `02-notes-and-expenses` at 360 dp (add a
       `scrollUntilVisible` before that tap if it sits off the row's edge).
-- [ ] T436 [US3] `app/modal/add-expense.tsx` and `components/trip/date-field.tsx`,
+- [x] T436 [US3] `app/modal/add-expense.tsx` and `components/trip/date-field.tsx`,
       `anchor-picker.tsx` onto the adapters; failing tests first in `test/app/us2-screens.test.tsx` (FR-009)
-- [ ] T437 [US3] `components/trip/stop-editor.tsx` (`Modal`, `pageSheet` on iOS) and
+      _As built:_ `modal/add-expense.tsx` is the second `FormSheet` form (add-trip's pattern; nothing in the adapter changed):
+      root `add-expense-screen`, title "New expense", footer `add-expense-cancel` and `add-expense-save` ("Save expense", the one
+      primary). The reading order is kept: title, Amount, Home currency, Category (+ New category), Paid on, City, Note, the save
+      alert, Cancel, Save. Amount and Note are `Field`s with their ids and names; Amount stays a decimal STRING (`decimal-pad`,
+      `autoFocus`, the placeholder from the device decimal separator) read by `parseAmount` in contracts (decimal.js), never
+      `Number` (SC-016); Note has a Done key and a 500 limit; a refusal is `<id>-error`, an alert under the field. The city row is ONE
+      sideways `ChipGroup` named "City" ("No city", then each city once; ids `add-expense-city-<id|none>` and the place-name labels
+      kept). A save failure is the `InlineError` `add-expense-error`. With no form to show (trip loading, unreadable, not on this
+      device) the same root id carries `LoadingState`, `ErrorState` "Couldn't read this trip" (error first, as the trip screen
+      does) or the "isn't on this device" `EmptyState`, plus a secondary Close (`add-expense-close`, new): a sheet that is only a
+      state needs an explicit way out (FR-009). `DateField` keeps its props, `testID`, `<testID>-picker`, name, value (the day in
+      words), hint "Opens a calendar" and the iOS inline calendar and Android dialog; it is built from `Tappable`, `Text`, `Icon` and
+      the `Field` height (no new adapter): the label on top, a box with the field fill and a 3:1 boundary (danger while refused), the
+      day as `numeric` text that wraps beside a calendar glyph at the largest size, and an alert in words under it
+      (`<testID>-error`, new). The iOS calendar stays the system control, not accent-tinted (a token only an adapter can read).
+      `AnchorPicker` keeps its props, container id, `anchor-<key>` radios and its words for a trip with no stop; it is a wrapping
+      `ChipGroup` with an `InlineError` (`<testID>-error`, or `anchor-picker-error`). Its group is left unnamed on purpose: a name
+      would be `accessibilityLabel={label}`, which moves the unresolved-label ratchet. Tests: `us2-screens` (+31: sheet, order, one
+      primary, Field words, locale placeholder, six amount strings, city row, day default through a faked `Date`, save error, the
+      keyboard-visibility set, the three placeholder states, an adapter-only source scan), `date-field.test.tsx` (19),
+      `anchor-picker.test.tsx` (13), `ui-kit/add-expense-real-render.test.tsx` (7). Follow-up: `CurrencyPicker` reads "Home
+      currency" for an expense's own currency (T435, kept for FR-030); an optional `label` prop would fix it. Device checks: `autoFocus`
+      raising the keyboard during presentation with Save above it (the form is taller than 360 x 640, so the body scrolls under the
+      footer), the iOS inline calendar inside a `fitToContents` sheet (growth animation, a calendar below the fold, system accent),
+      the Android date dialog from a sheet, `DateField` beside a `Field` in four themes and at the largest text, the sideways city row,
+      VoiceOver and TalkBack order, Maestro 02 'Transport' after `hideKeyboard` at 360 x 640.
+- [x] T437 [US3] `components/trip/stop-editor.tsx` (`Modal`, `pageSheet` on iOS) and
       `city-picker.tsx` onto `Field`, search list and `FormActions`; failing tests in
       `test/components/city-picker.test.tsx` and `test/app/trip-and-modal-screens.test.tsx`; ids
       `stop-editor`, `stop-editor-place`, `stop-editor-change-city`, `stop-editor-arrive`,
       `stop-editor-depart` kept (FR-009, FR-037)
-- [ ] T438 [US3] `components/trip/note-editor.tsx` as a form sheet; `FormActions` sticky above the keyboard
+      _As built:_ `stop-editor.tsx` is an RN `Modal` (the shared `FormModal`, see T438) around `FormSheet host="modal"`: title ("Add
+      stop" or "Edit dates"), the picker or the place card, the dates, and a sticky Cancel and Save footer on `KeyboardStickyView`.
+      The place is a flat `Card` (`stop-editor-place` is the city text alone, the country beneath, a secondary "Change city" `Button`);
+      Save is the one primary in every state. The editor shows no save error: the write happens after it closes and the trip screen's
+      `trip-write-error` reports it (T431). `DateField` is used through its props. `city-picker.tsx`: a search `Field` per step and ONE
+      `ListGroup` of `ListRow`s (`city-picker-country-<ISO>` named by the country, `city-picker-city-<id>` "City, Country",
+      `city-picker-change-country` "Country: X. Change country", trailing "Change"); loading, empty and error are `state-view`
+      presentations beside the field so a traveller can retype; the offline note is an alert; the picker has no scroller of its own
+      (the sheet body scrolls and keeps taps). The debounce, the geography hooks and every id are unchanged; new ids:
+      `stop-editor-modal`, `-frame`, `-handle` (and `-body`, `-footer` from `FormSheet`). Tests: +13 in `city-picker.test.tsx` (rows,
+      the 40-country cap and "Keep typing", states, a real-picker keyboard test), +19 in `trip-and-modal-screens.test.tsx` (Modal
+      props, handle and inset per platform, order, one primary, keyboard-up submits), `ui-kit/stop-editor-real-render.test.tsx`; no e2e
+      edit. Device checks: the iOS page sheet and swipe to Cancel, the handle beside a system grabber on newer iOS, the sticky footer in
+      a dragged page sheet (keyboard-controller discussion 867), the footer, keyboard, top inset and Back on Android, largest text,
+      Maestro 01, 03 and the offline add-stop helper (they tap city rows by text).
+- [x] T438 [US3] `components/trip/note-editor.tsx` as a form sheet; `FormActions` sticky above the keyboard
       with `react-native-keyboard-controller`; a keyboard-visibility test for each form (FR-009)
-- [ ] T439 [US3] Update `e2e/01-account-and-trip.yaml` and `02-notes-and-expenses.yaml` where text changed;
+      _As built:_ the editor stays an RN `Modal` (the notes screen opens it over its list from state and keeps the typed note on a
+      failed save; it is not a route). The Modal is the shared `FormModal` (`components/ui/form-modal.tsx`, hoisted by the lead after
+      the stop editor and the note editor had each grown the same code: `pageSheet`, `allowSwipeDismissal` so a swipe down is Cancel,
+      `animationType` `none` under reduced motion, the iOS handle and the Android top inset; ids `<testID>-modal`, `-frame`,
+      `-handle`; `form-modal.test.tsx`, 11). Inside it the body is `FormSheet host="modal"`: the title ("New note" or "Edit note"), a
+      `KeyboardAwareScrollView` body of `AnchorPicker` (its current props), the title `Field` and a multiline note `Field`
+      (`numberOfLines={6}`), then `InlineError`, and a sticky `FormActions` footer (Cancel, "Save note", the one primary) on a
+      `KeyboardStickyView`. The form remounts per opening. Ids, names, copy and wire shape are unchanged (`note-editor`, `-anchor`,
+      `-title`, `-body`, `-error`, `-cancel`, `-save`); new: `note-editor-scroll` (the sheet's body), `-footer`,
+      `note-editor-title-error`, `note-editor-body-error`. Additive adapter changes: `FormSheet.bodyTestID` (the Note field owns
+      `note-editor-body`, so the scroller cannot be `<id>-body`; `expectActionAboveKeyboard` takes `{ bodyTestID }`) and `Field`:
+      `numberOfLines` on a multiline field is a minimum height of `lines x 24 dp + 16 dp` times the font scale (RN 0.86 honours the
+      prop on Android only, so an iOS text area opened one line high; nothing else in `src` is a multiline `Field`). Tests:
+      `test/components/note-editor.test.tsx` (30: presentation, parts and order, ids and names, one primary, Field attributes, words-only
+      errors, largest text, the keyboard-visibility block on 360 x 640 for add, edit, invalid submit and save error), plus additions to
+      `field.test.tsx`, `form-sheet.test.tsx` and `test/helpers/keyboard.test.tsx`. Every form sheet now has its keyboard-visibility
+      test: add-trip (T434), add-expense (T436), the stop editor (T437) and this one. Known gap: the save error is last in the
+      scrolling body and could sit below the fold with the keyboard up (announced as an alert; a `FormSheet` notice slot above the
+      actions would fix it). Device checks: pageSheet interactive dismissal and the sticky footer following the keyboard on iOS
+      (keyboard-controller discussion 867), the Android Modal (whether `statusBarTranslucent` and `navigationBarTranslucent` are needed
+      for the footer to land on the keyboard, whether the bottom inset doubles), the six-line note field (internal scroll on Android,
+      the caret followed, no clipping at the largest text size), Maestro 02 and the offline note flows.
+- [x] T439 [US3] Update `e2e/01-account-and-trip.yaml` and `02-notes-and-expenses.yaml` where text changed;
       run on both platforms (FR-037)
+      _Desk part done (as T432):_ every flow named here was read against the new ids, labels and texts of the screens it drives (the
+      branches record the check per screen, and `test/testid-maestro.test.ts` agrees that every selector a flow uses is still served)
+      and none needed an edit. _Pending on a device:_ running them on iOS and Android. Where the new layouts are taller or the sheets
+      are shorter, a flow may need a `scrollUntilVisible` before a tap; the ones to watch are in the device checks of T435 (`currency-CHF`
+      in 02 at 360 dp), T436 ('Transport' after `hideKeyboard`), T443 (flow 05 reaching `document-confirm-save` and
+      `document-upload-status`) and T446 (`register-submit` after `hideKeyboard` in 01 and the offline helpers).
 
 ---
 
@@ -710,8 +779,18 @@ language.
       `test/features/offline-storage.test.ts`. Ratchet: labels 38 to 39. Device checks: `04-zoom` (taps `offline-download-.*` and
       waits for `offline-status-.*` with text `Ready offline.*`; the id now sits on the chip's accessible view), Back twice, the
       chips in four themes, large text, glyphs on both platforms.
-- [ ] T445 [US4] Update `e2e/02-notes-and-expenses.yaml` and `05-photos-and-documents.yaml` where text
+- [x] T445 [US4] Update `e2e/02-notes-and-expenses.yaml` and `05-photos-and-documents.yaml` where text
       changed; run on both platforms (FR-037)
+      _Desk part done (as T432):_ every flow named here was read against the new ids, labels and texts of the screens it drives (the
+      branches record the check per screen, and `test/testid-maestro.test.ts` agrees that every selector a flow uses is still served)
+      and none needed an edit. _Pending on a device:_ running them on iOS and Android. Where the new layouts are taller or the sheets
+      are shorter, a flow may need a `scrollUntilVisible` before a tap; the ones to watch are in the device checks of T435 (`currency-CHF`
+      in 02 at 360 dp), T436 ('Transport' after `hideKeyboard`), T443 (flow 05 reaching `document-confirm-save` and
+      `document-upload-status`) and T446 (`register-submit` after `hideKeyboard` in 01 and the offline helpers).
+
+      Also worth a look in 04-zoom: the offline status chip carries the old id and text on its accessible view (T444), and every
+      `tapOn: 'Back'` after the notes, spending, photos, documents and offline-maps screens is now the header's Back (twice in a row
+      must land on the screen beneath, not on a stale Back).
 
 ---
 
@@ -792,8 +871,18 @@ language.
       `sync-runtime-first-sync` (+8), `ui-kit/profile-gates-real-render`. Device checks: Maestro `07-b` and `10-b` waits ('Syncing
       your trips', 'You.re offline') on both platforms, screen-reader reading of the progressbar and the notices, largest text,
       `Link asChild` navigating through the `Button` adapter.
-- [ ] T450 [US6] Update `e2e/00-smoke.yaml` and `01-account-and-trip.yaml` where text changed; run the full
+- [x] T450 [US6] Update `e2e/00-smoke.yaml` and `01-account-and-trip.yaml` where text changed; run the full
       Maestro suite on both platforms (FR-037)
+      _Desk part done (as T432):_ every flow named here was read against the new ids, labels and texts of the screens it drives (the
+      branches record the check per screen, and `test/testid-maestro.test.ts` agrees that every selector a flow uses is still served)
+      and none needed an edit. _Pending on a device:_ running them on iOS and Android. Where the new layouts are taller or the sheets
+      are shorter, a flow may need a `scrollUntilVisible` before a tap; the ones to watch are in the device checks of T435 (`currency-CHF`
+      in 02 at 360 dp), T436 ('Transport' after `hideKeyboard`), T443 (flow 05 reaching `document-confirm-save` and
+      `document-upload-status`) and T446 (`register-submit` after `hideKeyboard` in 01 and the offline helpers).
+
+      Also: `11-a-sign-out-unsynced` taps `profile-sign-out` and waits for `sign-out-warning` (T448: the profile is taller now), and
+      `07-b` and `10-b` wait on 'Syncing your trips' and the offline text (T449). `01-appearance` uses `tapOn: 'Back'` on Sign in and
+      Create account (T446).
 
 ---
 
