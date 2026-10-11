@@ -112,9 +112,12 @@ describe('<CurrencyPicker>', () => {
   test('keeps the common codes on one scrolling line, not a wall of buttons (feature 003 FR-017)', async () => {
     await render(<CurrencyPicker value="EUR" onChange={jest.fn()} />);
 
-    const line = screen.getByTestId('currency-pills');
-    expect(line.props.horizontal).toBe(true);
-    expect(line.props.showsHorizontalScrollIndicator).toBe(false);
+    // `currency-pills` is the radiogroup (the ChipGroup); its one scroller is inside it.
+    const group = screen.getByTestId('currency-pills');
+    expect(group.props.accessibilityRole).toBe('radiogroup');
+    const lines = group.queryAll((node) => node.props.horizontal === true);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.props.showsHorizontalScrollIndicator).toBe(false);
     // Every common code is still there, in the one line.
     for (const code of [
       'USD',
