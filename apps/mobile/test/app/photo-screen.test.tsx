@@ -1,38 +1,67 @@
 /**
- * The trip photo gallery — `trip/[id]/photos` (tasks.md T117; User Story 5,
- * Acceptance Scenarios 1, 2, 6; FR-028, FR-030, FR-041; feature 002).
+ * The trip photo gallery — `trip/[id]/photos` (tasks.md T117, restyled for Atlas by T442;
+ * User Story 5, Acceptance Scenarios 1, 2, 6; FR-028, FR-030, FR-041; feature 002;
+ * 004 FR-015, FR-021, FR-035, FR-037).
  *
  * The live hooks, the capture hook and the actions are mocked (their own
- * suites run them against a real database and the native fakes); the screen,
- * its tiles and the photo view render for real. Pinned here:
- *   - every state is designed: loading, error, and an empty gallery inviting
- *     "Add photos" / "Take a photo";
+ * suites run them against a real database and the native fakes; the shared fixtures are
+ * `photo-screen-harness.tsx`); the screen, its tiles and the photo view render for real.
+ * Pinned here:
+ *   - every state is designed: skeleton tiles while loading, an error with a retry that
+ *     reads again, and an empty gallery whose words name the next action;
  *   - the grid shows local THUMBNAILS, never the full image (Acceptance 5.6);
  *   - a photo whose bytes have not arrived says "Waiting to upload" — visibly
  *     and to a screen reader — and a failed upload is distinct, with a retry;
  *   - the photo view shows the full image, when and where it was taken, where
  *     its bytes are, and files it under another of the trip's cities or none;
  *     a filing its own position contradicts is surfaced;
- *   - there is no share or public control anywhere (private by default).
+ *   - there is no share or public control anywhere (private by default);
+ *   - the title and the way back are the navigator's (`trip/[id]/_layout.tsx`, whose suite
+ *     is `photos-header.test.tsx`), so the screen draws no Back.
+ *
+ * What the restyle promises (emphasis, boundaries, nothing across a photograph, the
+ * sources) is `photo-screen-atlas.test.tsx`.
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { AccessibilityInfo, Alert, Linking, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Alert, Linking } from 'react-native';
 
 import PhotosScreen from '@/app/trip/[id]/photos';
 import type { PhotoWithPlace } from '@/db/repositories/photos';
-import type { StopWithPlace } from '@/db/repositories/stops';
-import type { TripRow } from '@/db/schema';
-import type { CaptureMessage } from '@/features/photos/capture';
 import { Sentry } from '@/lib/sentry';
 
 import { DOCUMENTS } from '../features/photo-fakes';
+import {
+  TRIP,
+  failed,
+  hidden,
+  mockActions,
+  mockCapture,
+  mockPhotos,
+  mockTrip,
+  mockUploads,
+  mockUsePhotos,
+  pending,
+  photo,
+  readingOrder,
+  resetPhotoScreen,
+  styleOf,
+  uploaded,
+} from './photo-screen-harness';
 
-const mockBack = jest.fn();
+// The screen asks the router for its params only: the title and Back belong to the
+// navigator (`trip/[id]/_layout.tsx`), so a screen that reached for `useRouter` would fail.
 const mockParams: { id: string | string[] | undefined } = { id: 'trip-42' };
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ back: mockBack, push: jest.fn(), replace: jest.fn() }),
   useLocalSearchParams: () => mockParams,
 }));
+
+// A View that carries every prop, so a test reads an icon's `name` as the symbol gets it.
+jest.mock('expo-symbols', () => {
+  const { View } = require('react-native');
+  return {
+    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
+  };
+});
 
 jest.mock('expo-file-system', () =>
   jest.requireActual('../features/photo-fakes').createFileSystemMock(),
@@ -53,151 +82,27 @@ jest.mock('@/lib/sentry', () => ({
   initSentry: jest.fn(),
 }));
 
-const TRIP = '5e0c1d2a-3b4c-4d5e-8f90-a1b2c3d4e5f6';
-
-const trip: TripRow = {
-  id: 'trip-42',
-  title: 'Italy, spring 2026',
-  home_currency: 'EUR',
-  is_public: false,
-  cover_photo_id: null,
-  status: 'planning',
-  created_at: '2026-04-01T10:00:00.000Z',
-  updated_at: '2026-04-01T10:00:00.000Z',
-  deleted_at: null,
-  is_dirty: false,
-  synced_at: '2026-04-01T10:00:00.000Z',
-};
-
-const stop = (overrides: Partial<StopWithPlace>): StopWithPlace => ({
-  id: 'stop-rome',
-  trip_id: 'trip-42',
-  city_id: 100,
-  sort_order: 0,
-  arrive_date: '2026-05-10',
-  depart_date: '2026-05-12',
-  created_at: 'x',
-  updated_at: 'x',
-  deleted_at: null,
-  is_dirty: false,
-  synced_at: 'x',
-  city_name: 'Roma',
-  country_id: 1,
-  country_name: 'Italy',
-  lat: 41.9028,
-  lng: 12.4964,
-  ...overrides,
-});
-
-const mockTrip = { data: trip as TripRow | null, loading: false, error: null };
-const mockStops = {
-  data: [
-    stop({}),
-    stop({
-      id: 'stop-florence',
-      city_id: 101,
-      city_name: 'Firenze',
-      lat: 43.7696,
-      lng: 11.2558,
-    }),
-  ],
-  loading: false,
-  error: null,
-};
-jest.mock('@/features/trips/use-trips', () => ({
-  useTrip: () => mockTrip,
-  useTripStops: () => mockStops,
-}));
-
-const mockPhotos = {
-  data: [] as PhotoWithPlace[],
-  loading: false,
-  error: null as Error | null,
-};
-const mockActions = {
-  refile: jest.fn(),
-  remove: jest.fn(),
-  retryUpload: jest.fn(),
-};
-const mockUploads = jest.fn();
-jest.mock('@/features/photos/use-photos', () => ({
-  usePhotos: () => mockPhotos,
-  usePhotoActions: () => mockActions,
-  usePhotoUploads: (tripId: string) => mockUploads(tripId),
-}));
-
-const mockCapture = {
-  busy: false,
-  message: null as CaptureMessage | null,
-  clearMessage: jest.fn(),
-  addFromLibrary: jest.fn(async () => undefined),
-  takePhoto: jest.fn(async () => undefined),
-};
-jest.mock('@/features/photos/use-capture', () => ({
-  useCapture: () => mockCapture,
-}));
-
-function photo(id: string, overrides: Partial<PhotoWithPlace> = {}): PhotoWithPlace {
-  const photoId = `${id.padEnd(8, '0').slice(0, 8)}-1111-4111-8111-111111111111`;
-  return {
-    id: photoId,
-    trip_id: 'trip-42',
-    city_id: 100,
-    taken_at: '2026-05-12T16:30:05.000Z',
-    exif_lat: 41.8986,
-    exif_lng: 12.4769,
-    is_public: false,
-    upload_state: 'uploaded',
-    moderation_state: 'pending',
-    has_thumbnail: false,
-    created_at: '2026-06-01T10:00:00.000Z',
-    updated_at: '2026-06-01T10:00:00.000Z',
-    deleted_at: null,
-    is_dirty: false,
-    synced_at: '2026-06-01T10:00:00.000Z',
-    local_file_uri: `photos/${TRIP}/${photoId}.jpg`,
-    city_name: 'Roma',
-    country_name: 'Italy',
-    city_lat: 41.9028,
-    city_lng: 12.4964,
-    city_timezone: 'Europe/Rome',
-    ...overrides,
-  };
-}
-
-const pending = photo('aaaaaaaa', {
-  upload_state: 'pending',
-  is_dirty: true,
-  synced_at: null,
-});
-const failed = photo('bbbbbbbb', {
-  upload_state: 'failed',
-  is_dirty: true,
-  synced_at: null,
-});
-const uploaded = photo('cccccccc');
+jest.mock('@/features/trips/use-trips', () =>
+  require('./photo-screen-harness').tripsModule(),
+);
+jest.mock('@/features/photos/use-photos', () =>
+  require('./photo-screen-harness').photosModule(),
+);
+jest.mock('@/features/photos/use-capture', () =>
+  require('./photo-screen-harness').captureModule(),
+);
 
 beforeEach(() => {
   mockParams.id = 'trip-42';
-  mockTrip.data = trip;
-  mockPhotos.data = [];
-  mockPhotos.loading = false;
-  mockPhotos.error = null;
-  mockCapture.busy = false;
-  mockCapture.message = null;
-  mockActions.refile.mockReset();
-  mockActions.remove.mockReset();
-  mockActions.retryUpload.mockReset();
+  resetPhotoScreen();
 });
 
 describe('<PhotosScreen> — states', () => {
-  test('an empty gallery invites the traveller to add or take photos, and says they are private', async () => {
+  test('an empty gallery says what to do next, offers both ways in, and says photos are private', async () => {
     await render(<PhotosScreen />);
 
-    expect(screen.getByTestId('photos-title')).toHaveTextContent(
-      'Photos · Italy, spring 2026',
-    );
     expect(screen.getByText('No photos yet')).toBeTruthy();
+    // The empty state names the next action in words; the two controls are the ones above.
     expect(screen.getByText(/Add photos from your library or take one/)).toBeTruthy();
     expect(screen.getByLabelText('Add photos from your library')).toBeTruthy();
     expect(screen.getByLabelText('Take a photo with the camera')).toBeTruthy();
@@ -206,21 +111,97 @@ describe('<PhotosScreen> — states', () => {
     expect(mockUploads).toHaveBeenCalledWith('trip-42');
   });
 
-  test('loading and a store that did not answer are designed states, not blanks', async () => {
-    mockPhotos.loading = true;
+  test('the trip’s name is the first thing on the page; the native header says "Photos"', async () => {
     await render(<PhotosScreen />);
-    expect(screen.getByText('Loading photos')).toBeTruthy();
 
-    mockPhotos.loading = false;
-    mockPhotos.error = new Error('boom');
-    await screen.rerender(<PhotosScreen />);
-    expect(screen.getByText('Couldn’t read the photos')).toBeTruthy();
+    expect(screen.getByTestId('photos-title')).toHaveTextContent('Italy, spring 2026');
+    // "Photos" is the navigator's title (`_layout.tsx`): not drawn a second time here.
+    expect(screen.queryByText('Photos')).toBeNull();
   });
 
-  test('Back leaves the gallery', async () => {
+  test('loading is skeleton tiles shaped like the grid, announced as ONE busy region, never the empty state', async () => {
+    mockPhotos.loading = true;
     await render(<PhotosScreen />);
-    await fireEvent.press(screen.getByLabelText('Back'));
-    expect(mockBack).toHaveBeenCalled();
+
+    const region = screen.getByLabelText('Loading photos');
+    expect(region.props.accessibilityRole).toBe('progressbar');
+    expect(screen.getAllByLabelText('Loading photos')).toHaveLength(1);
+    expect(screen.queryByText('No photos yet')).toBeNull();
+    expect(screen.queryByTestId(/^photo-tile-/)).toBeNull();
+    expect(screen.getByTestId('photos-screen')).toBeTruthy();
+  });
+
+  test('the skeleton has the grid’s own number of tiles per row, so nothing reflows when photos arrive', async () => {
+    mockPhotos.data = Array.from({ length: 8 }, (_, index) => photo(`${index}aaaaaaa`));
+    await render(<PhotosScreen />);
+    const first = screen.getByTestId(`photo-tile-${mockPhotos.data[0]!.id}`);
+    const columns = (first.parent as unknown as { children: unknown[] }).children.length;
+    expect(columns).toBeGreaterThanOrEqual(1);
+
+    mockPhotos.data = [];
+    mockPhotos.loading = true;
+    await screen.rerender(<PhotosScreen />);
+    const wrapper = screen.getByLabelText('Loading photos').children[0] as unknown as {
+      children: { children: unknown[] }[];
+    };
+    expect(wrapper.children).toHaveLength(3);
+    for (const row of wrapper.children) expect(row.children).toHaveLength(columns);
+  });
+
+  test('a store that did not answer says so in words and shows no stale tiles', async () => {
+    mockPhotos.error = new Error('boom');
+    mockPhotos.loading = true; // a failed live read never reports its first result
+    mockPhotos.data = [uploaded];
+    await render(<PhotosScreen />);
+
+    expect(screen.getByText('Couldn’t read the photos')).toBeTruthy();
+    expect(screen.getByText('The local store did not answer.')).toBeTruthy();
+    expect(screen.queryByText('boom')).toBeNull();
+    expect(screen.queryByLabelText('Loading photos')).toBeNull();
+    expect(screen.queryByText('No photos yet')).toBeNull();
+    expect(screen.queryByTestId(`photo-tile-${uploaded.id}`)).toBeNull();
+  });
+
+  test('the error offers "Try again", which reads the photos again (C4-10 rule 2)', async () => {
+    mockPhotos.error = new Error('boom');
+    await render(<PhotosScreen />);
+    const reads = mockUsePhotos.mock.calls.length;
+
+    // The store answers this time.
+    mockPhotos.error = null;
+    await fireEvent.press(screen.getByLabelText('Try again'));
+
+    expect(mockUsePhotos.mock.calls.length).toBeGreaterThan(reads);
+    expect(screen.queryByText('Couldn’t read the photos')).toBeNull();
+    expect(screen.getByText('No photos yet')).toBeTruthy();
+  });
+
+  test('draws no Back of its own: the native header carries it (trip-layout.test.tsx)', async () => {
+    await render(<PhotosScreen />);
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.queryByText('Back')).toBeNull();
+  });
+
+  test('the controls and the note keep their reading order: title, add, take, the write error, the note', async () => {
+    mockPhotos.data = [failed];
+    mockActions.retryUpload.mockImplementationOnce(() => {
+      throw new Error('disk I/O error');
+    });
+    await render(<PhotosScreen />);
+    await fireEvent.press(screen.getByLabelText('Try uploading this photo again'));
+
+    const order = readingOrder();
+    const at = (needle: string) => order.indexOf(needle);
+    expect(at('photos-title')).toBeGreaterThanOrEqual(0);
+    expect(at('photos-title')).toBeLessThan(at('photos-add'));
+    expect(at('photos-add')).toBeLessThan(at('photos-take'));
+    expect(at('photos-take')).toBeLessThan(at('photos-write-error'));
+    expect(at('photos-write-error')).toBeLessThan(
+      at('Private — only you can see your photos.'),
+    );
+    expect(at('Private — only you can see your photos.')).toBeLessThan(
+      at(`photo-tile-${failed.id}`),
+    );
   });
 });
 
@@ -304,6 +285,10 @@ describe('<PhotosScreen> — the grid (Acceptance 5.1, 5.6; FR-041)', () => {
     expect(screen.getByTestId('photos-write-error')).toHaveTextContent(
       'That change couldn’t be saved on this device. Please try again.',
     );
+    // In words and with the alert icon, never colour alone (FR-025).
+    expect(screen.getByTestId('photos-write-error').props.accessibilityRole).toBe(
+      'alert',
+    );
   });
 });
 
@@ -330,21 +315,27 @@ describe('<PhotosScreen> — adding photos (Acceptance 5.1, 5.2)', () => {
     ).toMatchObject({ busy: true });
   });
 
-  test('what a capture came to is said — a failure as an alert', async () => {
+  test('what a capture came to is said — a failure as an alert, with an icon as well as the words', async () => {
     mockCapture.message = { tone: 'info', text: '3 photos added.' };
     await render(<PhotosScreen />);
     expect(screen.getByTestId('photos-capture-message')).toHaveTextContent(
       '3 photos added.',
     );
+    expect(
+      screen.getByTestId('photos-capture-message').props.accessibilityLiveRegion,
+    ).toBe('polite');
+    expect(screen.queryByTestId('photos-capture-error')).toBeNull();
 
     mockCapture.message = {
       tone: 'error',
       text: 'There isn’t enough free space on this device. Free some space and try again.',
     };
     await screen.rerender(<PhotosScreen />);
-    expect(screen.getByTestId('photos-capture-error').props.accessibilityRole).toBe(
-      'alert',
-    );
+    const error = screen.getByTestId('photos-capture-error');
+    expect(error.props.accessibilityRole).toBe('alert');
+    expect(error).toHaveTextContent(/enough free space/);
+    expect(within(error).getByTestId('symbol', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('photos-capture-message')).toBeNull();
   });
 
   test('a camera refusal the system will not ask again offers Settings', async () => {
@@ -483,11 +474,6 @@ describe('<PhotosScreen> — the photo view', () => {
   });
 });
 
-/**
- * Edges the states above do not reach: the route parameter's shapes, the
- * notice's own controls, a full image that will not draw, an unfiled photo,
- * and the ring that says which tile has focus.
- */
 describe('<PhotosScreen> — edges', () => {
   const confirmDeletes = () =>
     jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
@@ -504,10 +490,11 @@ describe('<PhotosScreen> — edges', () => {
     expect(mockUploads).toHaveBeenLastCalledWith('');
   });
 
-  test('a trip that is not on this device leaves the title plain', async () => {
+  test('a trip that is not on this device leaves its name out; the header still says "Photos"', async () => {
     mockTrip.data = null;
     await render(<PhotosScreen />);
-    expect(screen.getByTestId('photos-title')).toHaveTextContent(/^Photos$/);
+    expect(screen.queryByTestId('photos-title')).toBeNull();
+    expect(screen.getByTestId('photos-add')).toBeTruthy();
   });
 
   test('a capture message can be dismissed', async () => {
@@ -530,32 +517,37 @@ describe('<PhotosScreen> — edges', () => {
 
     await fireEvent.press(screen.getByLabelText('Open Settings'));
 
-    expect(
-      await screen.findByText(
-        'Settings couldn’t be opened. Open them from your home screen.',
-      ),
-    ).toBeTruthy();
+    const said = await screen.findByText(
+      'Settings couldn’t be opened. Open them from your home screen.',
+    );
+    expect(said).toBeTruthy();
     expect(Sentry.captureException).toHaveBeenCalled();
+    // Said as an alert with the icon, like every other failure (FR-025).
+    const alert = screen.getByTestId('photos-settings-error');
+    expect(alert.props.accessibilityRole).toBe('alert');
+    expect(within(alert).getByTestId('symbol', hidden)).toBeTruthy();
   });
 
-  test('the tile with focus or under a finger is ringed, and only while it is', async () => {
+  test('the tile under a finger is ringed outside the picture and paints no fill (the held state itself is tappable.test.tsx)', async () => {
     mockPhotos.data = [uploaded];
     await render(<PhotosScreen />);
     const open = screen.getByTestId(`photo-open-${uploaded.id}`);
-    const borderWidth = () =>
-      StyleSheet.flatten(screen.getByTestId(`photo-frame-${uploaded.id}`).props.style)
-        .borderWidth;
-    expect(borderWidth()).toBe(StyleSheet.hairlineWidth);
+    const frameBefore = styleOf(screen.getByTestId(`photo-frame-${uploaded.id}`));
+    expect(styleOf(open).outlineWidth).toBeUndefined();
 
-    await fireEvent(open, 'focus');
-    expect(borderWidth()).toBeGreaterThan(StyleSheet.hairlineWidth);
-    await fireEvent(open, 'blur');
-    expect(borderWidth()).toBe(StyleSheet.hairlineWidth);
+    // What the responder system sends when a finger goes down on the tile.
+    await fireEvent(open, 'responderGrant', {
+      persist: jest.fn(),
+      currentTarget: 1,
+      nativeEvent: { touches: [{ pageX: 0, pageY: 0 }], changedTouches: [] },
+    });
 
-    await fireEvent(open, 'pressIn');
-    expect(borderWidth()).toBeGreaterThan(StyleSheet.hairlineWidth);
-    await fireEvent(open, 'pressOut');
-    expect(borderWidth()).toBe(StyleSheet.hairlineWidth);
+    expect(styleOf(open).outlineWidth).toBeGreaterThan(0);
+    expect(styleOf(open).backgroundColor).toBeUndefined();
+    // The ring is the control's; the picture's own frame does not change.
+    expect(styleOf(screen.getByTestId(`photo-frame-${uploaded.id}`))).toEqual(
+      frameBefore,
+    );
   });
 
   test('a full image that will not draw says so instead of leaving a blank', async () => {

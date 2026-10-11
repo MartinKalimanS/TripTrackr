@@ -22,8 +22,15 @@
  *   copy in the bar would be read twice.
  * - The colours, and no hairline, come from `useHeaderTheme` (tokens, never a literal).
  *
- * Offline maps (T444) is the first sub-screen to follow: the same `headerLeft` and theme, and
- * the title "Offline maps" in the bar, because that screen's page no longer draws one.
+ * The sub-screens that have moved to Atlas (offline maps T444, photos T442, documents
+ * T443) have the same header with a title of their own, built by `titled` below: a screen
+ * that is not the trip's hero has its title in the bar (FR-007; the trip's name is the
+ * first line of the page), with the same `HeaderBackButton` and theme. Each takes
+ * `headerTitleStyle` from `useStackHeaderOptions` (the foreground ink in the display face;
+ * without it `headerTintColor` would paint the title in the accent, which FR-003 keeps for
+ * actions, the selected and the active). A standard title, not a large one: the large
+ * title is for the top-level lists. `document-capture` stays headerless: it is a camera
+ * surface with its own opaque bar (see that screen's header comment).
  *
  * No `unstable_settings` and no `initialParams` here: the root layout keeps the anchor
  * (`(tabs)`) and the route's params and deep links are exactly what they were.
@@ -33,11 +40,21 @@ import { Stack } from 'expo-router';
 import { RequireLocalStore } from '@/components/require-local-store';
 import { HeaderBackButton } from '@/components/ui/header-back-button';
 import { useHeaderTheme } from '@/components/ui/header-theme';
+import { useStackHeaderOptions } from '@/components/ui/stack-header';
 
 const renderBack = () => <HeaderBackButton />;
 
 export default function TripLayout() {
   const theme = useHeaderTheme();
+  // Only its title face is used; the title text is each screen's own, set below.
+  const { headerTitleStyle } = useStackHeaderOptions('');
+  const titled = (title: string) => ({
+    ...theme,
+    headerShown: true,
+    title,
+    headerTitleStyle,
+    headerLeft: renderBack,
+  });
 
   return (
     <RequireLocalStore>
@@ -46,15 +63,10 @@ export default function TripLayout() {
           name="index"
           options={{ ...theme, headerShown: true, title: '', headerLeft: renderBack }}
         />
-        <Stack.Screen
-          name="offline-maps"
-          options={{
-            ...theme,
-            headerShown: true,
-            title: 'Offline maps',
-            headerLeft: renderBack,
-          }}
-        />
+        <Stack.Screen name="offline-maps" options={titled('Offline maps')} />
+        <Stack.Screen name="photos" options={titled('Photos')} />
+        <Stack.Screen name="documents" options={titled('Documents')} />
+        <Stack.Screen name="document-view" options={titled('Document')} />
       </Stack>
     </RequireLocalStore>
   );

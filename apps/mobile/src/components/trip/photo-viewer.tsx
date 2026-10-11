@@ -1,18 +1,25 @@
 /**
- * The photo view — tasks.md T117 (FR-028, FR-029, FR-041; User Story 5,
- * Acceptance Scenarios 2, 6; research D-27; feature 002 FR-024).
+ * The photo view — tasks.md T117, restyled for Atlas by T442 (FR-028, FR-029, FR-041;
+ * User Story 5, Acceptance Scenarios 2, 6; research D-27; 004 FR-005, FR-024, FR-025,
+ * FR-026, FR-029, FR-033).
  *
- * The one place the FULL image is drawn (the grid draws thumbnails). Below it:
- * when and where the photo was taken — in the time zone of the city it is filed
- * under, when this device has that city — and where its bytes are, so a photo
- * that has not uploaded is never presented as saved. The traveller can file it
- * under another of the trip's cities, or none, and can retry a failed upload
- * or delete it (after asking). A filing that contradicts the photo's own
- * position is SAID, never silently corrected (spec edge case; data-model §5).
+ * The one place the FULL image is drawn (the grid draws thumbnails), in a `MediaFrame`
+ * with nothing laid across it. Below it: when and where the photo was taken — in the time
+ * zone of the city it is filed under, when this device has that city — and where its
+ * bytes are, so a photo that has not uploaded is never presented as saved (the same
+ * badge as the grid's, and its explanation). The traveller can file it under another of
+ * the trip's cities, or none (a `ChipGroup`: the selected one is filled, bold and checked,
+ * never colour alone), and can retry a failed upload or delete it (after asking). A
+ * filing that contradicts the photo's own position is SAID, never silently corrected
+ * (spec edge case; data-model §5).
  *
- * Every change is a local write first; a write that fails is shown in this
- * view (`photo-viewer-error`), not swallowed. A React Native `Modal` (as the
- * stop and note editors), full screen, with an explicit Close.
+ * Emphasis (FR-005): nothing here is primary. "Close" is secondary, the retry is
+ * secondary, and "Delete" is the one destructive control, with its icon and its words.
+ *
+ * Every change is a local write first; a write that fails is shown in this view
+ * (`photo-viewer-error`), not swallowed. A React Native `Modal` (as the stop and note
+ * editors), full screen, with an explicit Close; a modal has no navigator, hence no
+ * native header, so the bar is the Close button at the top of a scrolling `Screen`.
  *
  * Visibility posture: private. This view has no share or public control —
  * per-photo visibility is User Story 7.
@@ -21,21 +28,21 @@ import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
 import { Alert, Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
 import { PhotoRetryButton, PhotoStatusBadge } from '@/components/trip/photo-status';
+import { PrivateNote } from '@/components/trip/private-note';
+import { Button } from '@/components/ui/button';
+import { ChipGroup, type ChipOption } from '@/components/ui/chip';
+import type { IconName } from '@/components/ui/icon';
 import { InlineError } from '@/components/ui/inline-error';
 import { MediaFrame } from '@/components/ui/media-frame';
-import { PillGroup, type PillOption } from '@/components/ui/pill-group';
-import { PressableSurface } from '@/components/ui/pressable-surface';
 import { Screen } from '@/components/ui/screen';
-import { Spacing } from '@/constants/theme';
+import { Text } from '@/components/ui/text';
 import type { PhotoWithPlace } from '@/db/repositories/photos';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import { filingChoices } from '@/features/photos/city-match';
 import {
   GALLERY_COPY,
   PHOTO_COPY,
-  PRIVATE_COPY,
   UPLOAD_STATE_COPY,
 } from '@/features/photos/photo-copy';
 import { photoUri } from '@/features/photos/photo-files';
@@ -52,6 +59,9 @@ import { useWriteAttempt } from '@/hooks/use-write-attempt';
 /** The picture takes up to this share of the window's height, so the details stay in reach. */
 const IMAGE_HEIGHT_SHARE = 0.5;
 
+const CLOSE: IconName = { ios: 'xmark', android: 'close' };
+const TRASH: IconName = { ios: 'trash', android: 'delete' };
+
 export type PhotoViewerProps = {
   photo: PhotoWithPlace;
   /** The trip's stops: the cities the photo may be filed under. */
@@ -67,9 +77,9 @@ function ViewerImage({ photo }: { photo: PhotoWithPlace }) {
 
   if (!uri || undrawable) {
     return (
-      <ThemedText type="small" themeColor="textMuted">
+      <Text type="callout" tone="muted">
         {uri ? GALLERY_COPY.cannotDraw : GALLERY_COPY.notStored}
-      </ThemedText>
+      </Text>
     );
   }
   return (
@@ -79,6 +89,7 @@ function ViewerImage({ photo }: { photo: PhotoWithPlace }) {
         source={{ uri }}
         recyclingKey={photo.id}
         contentFit="contain"
+        transition={0}
         accessible
         accessibilityLabel={photoLabel(photo)}
         onError={() => setUndrawable(true)}
@@ -97,11 +108,11 @@ function ViewerStatus({
 }) {
   const status = photo.upload_state;
   return (
-    <View style={styles.block}>
+    <View className="gap-2">
       {status !== 'uploaded' ? <PhotoStatusBadge status={status} /> : null}
-      <ThemedText type="small" themeColor="textMuted">
+      <Text type="callout" tone="muted">
         {UPLOAD_STATE_COPY[status].detail}
-      </ThemedText>
+      </Text>
       {status === 'failed' ? <PhotoRetryButton onPress={onRetry} /> : null}
     </View>
   );
@@ -115,7 +126,7 @@ type ViewerFilingProps = {
 
 function ViewerFiling({ photo, stops, onRefile }: ViewerFilingProps) {
   const choices = useMemo(() => filingChoices(stops, photo), [stops, photo]);
-  const options: PillOption[] = choices.map((choice) => ({
+  const options: ChipOption[] = choices.map((choice) => ({
     key: choice.key,
     label: choice.label,
     testID: `photo-file-${choice.key}`,
@@ -130,9 +141,9 @@ function ViewerFiling({ photo, stops, onRefile }: ViewerFilingProps) {
   };
 
   return (
-    <View style={styles.block}>
-      <ThemedText type="smallBold">{GALLERY_COPY.fileUnder}</ThemedText>
-      <PillGroup options={options} selectedKey={selectedKey} onSelect={select} />
+    <View className="gap-2">
+      <Text type="headline">{GALLERY_COPY.fileUnder}</Text>
+      <ChipGroup options={options} selectedKey={selectedKey} onSelect={select} />
     </View>
   );
 }
@@ -141,15 +152,15 @@ function ViewerWhenAndWhere({ photo }: { photo: PhotoWithPlace }) {
   const place = placeOf(photo);
   const mismatch = filingMismatchLine(photo);
   return (
-    <View style={styles.block}>
-      <ThemedText>{takenAtLine(photo)}</ThemedText>
-      <ThemedText testID="photo-viewer-place" type="small" themeColor="textMuted">
+    <View className="gap-2">
+      <Text>{takenAtLine(photo)}</Text>
+      <Text testID="photo-viewer-place" type="callout" tone="muted">
         {place ? `Filed under ${place}` : 'Not filed under a city'}
-      </ThemedText>
+      </Text>
       {mismatch ? (
-        <ThemedText testID="photo-viewer-mismatch" type="small">
+        <Text testID="photo-viewer-mismatch" type="callout">
           {mismatch}
-        </ThemedText>
+        </Text>
       ) : null}
     </View>
   );
@@ -166,15 +177,14 @@ function DeleteButton({ onConfirmed }: DeleteButtonProps) {
     ]);
 
   return (
-    <PressableSurface
+    <Button
+      variant="destructive"
+      icon={TRASH}
       accessibilityLabel={GALLERY_COPY.deleteLabel}
-      treatment="flat"
       onPress={confirm}
-      style={styles.button}>
-      <ThemedText type="smallBold" themeColor="danger">
-        {GALLERY_COPY.deleteText}
-      </ThemedText>
-    </PressableSurface>
+      className="self-start">
+      {GALLERY_COPY.deleteText}
+    </Button>
   );
 }
 
@@ -183,13 +193,15 @@ function ViewerContent({ photo, stops, actions, onClose }: PhotoViewerProps) {
 
   return (
     <>
-      <PressableSurface
+      <Button
+        variant="secondary"
+        size="sm"
+        icon={CLOSE}
         accessibilityLabel={GALLERY_COPY.closeLabel}
-        treatment="flat"
         onPress={onClose}
-        style={styles.button}>
-        <ThemedText type="smallBold">{GALLERY_COPY.closeText}</ThemedText>
-      </PressableSurface>
+        className="self-start">
+        {GALLERY_COPY.closeText}
+      </Button>
 
       <ViewerImage photo={photo} />
       <ViewerWhenAndWhere photo={photo} />
@@ -204,9 +216,7 @@ function ViewerContent({ photo, stops, actions, onClose }: PhotoViewerProps) {
       />
 
       <InlineError testID="photo-viewer-error" message={writeError} />
-      <ThemedText type="small" themeColor="textMuted">
-        {PRIVATE_COPY}
-      </ThemedText>
+      <PrivateNote />
 
       <DeleteButton
         onConfirmed={() => {
@@ -233,12 +243,3 @@ export function PhotoViewer(props: PhotoViewerProps) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  block: { gap: Spacing.two },
-  button: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-});

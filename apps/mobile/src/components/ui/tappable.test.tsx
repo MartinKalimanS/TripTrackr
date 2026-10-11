@@ -263,3 +263,53 @@ describe('tappableStyle - FR-019, discrete states', () => {
     );
   });
 });
+
+/**
+ * T442 - `feedback="ring"`: a control over a photograph shows its held press as the focus
+ * ring drawn outside it, because a fill behind an opaque thumbnail would show nowhere and
+ * one over it would be a tint across the picture (FR-033, 002 C12). Additive: the default
+ * is the fill every other control has.
+ */
+describe('tappableStyle - feedback "ring" for a control over a photograph (FR-019, FR-033)', () => {
+  const options = { fontScale: 1, pressedColor: 'pressed', focusColor: 'focus' };
+  const ring = { outlineWidth: FocusRing.width, outlineOffset: FocusRing.offset };
+
+  test('a held press draws the focus ring outside the control and paints no fill', () => {
+    const style = tappableStyle(
+      { pressed: true, focused: false, feedback: 'ring' },
+      options,
+    );
+    expect(style).toMatchObject({ ...ring, outlineColor: 'focus' });
+    expect(style.backgroundColor).toBeUndefined();
+  });
+
+  test('at rest it draws neither a ring nor a fill, and focus still draws the ring', () => {
+    const rest = tappableStyle(
+      { pressed: false, focused: false, feedback: 'ring' },
+      options,
+    );
+    expect(rest.outlineWidth).toBeUndefined();
+    expect(rest.backgroundColor).toBeUndefined();
+
+    const focused = tappableStyle(
+      { pressed: false, focused: true, feedback: 'ring' },
+      options,
+    );
+    expect(focused).toMatchObject(ring);
+  });
+
+  test('"fill" is the default: a held press paints the fill and no ring', () => {
+    for (const feedback of [undefined, 'fill' as const]) {
+      const style = tappableStyle({ pressed: true, focused: false, feedback }, options);
+      expect(style.backgroundColor).toBe('pressed');
+      expect(style.outlineWidth).toBeUndefined();
+    }
+  });
+
+  test('the component takes the option and does not hand it to the host node', async () => {
+    await renderTappable({ feedback: 'ring' });
+    expect(screen.getByLabelText('Open trip').props.feedback).toBeUndefined();
+    await fireEvent(screen.getByLabelText('Open trip'), 'focus');
+    expect(styleNow().outlineWidth).toBe(FocusRing.width);
+  });
+});

@@ -66,12 +66,23 @@ export type TappableProps = Omit<PressableProps, 'style' | 'disabled'> & {
   busy?: boolean;
   /** Unavailable: dimmed, announced unavailable, presses are ignored. */
   disabled?: boolean;
+  /**
+   * How a held press shows. `fill` (the default) is the pressed fill every control has.
+   * `ring` draws the focus ring outside the control instead and paints no fill: for a
+   * control around a photograph, where a fill behind an opaque thumbnail would show
+   * nowhere and one over it would tint the picture (FR-033).
+   */
+  feedback?: TappableFeedback;
   style?: StyleProp<ViewStyle>;
 };
+
+export type TappableFeedback = 'fill' | 'ring';
 
 export interface TappableState {
   pressed: boolean;
   focused: boolean;
+  /** Default `fill`. */
+  feedback?: TappableFeedback;
 }
 
 export interface TappableColors {
@@ -87,16 +98,17 @@ export interface TappableColors {
  * `Pressable` keeps its pressed state to itself, so the host node cannot show it.
  */
 export function tappableStyle(
-  { pressed, focused }: TappableState,
+  { pressed, focused, feedback = 'fill' }: TappableState,
   { fontScale, pressedColor, focusColor }: TappableColors,
 ): ViewStyle {
+  const ringed = focused || (pressed && feedback === 'ring');
   return {
     minHeight: MinTouchTarget * Math.max(1, fontScale),
     minWidth: MinTouchTarget,
     justifyContent: 'center',
     ...cornerStyle('md'),
-    ...(pressed ? { backgroundColor: pressedColor } : {}),
-    ...(focused
+    ...(pressed && feedback === 'fill' ? { backgroundColor: pressedColor } : {}),
+    ...(ringed
       ? {
           outlineWidth: FocusRing.width,
           outlineOffset: FocusRing.offset,
@@ -115,6 +127,7 @@ export function Tappable({
   onPress,
   onFocus,
   onBlur,
+  feedback,
   style,
   className,
   ...rest
@@ -148,7 +161,10 @@ export function Tappable({
       }}
       className={classes || undefined}
       style={({ pressed }) => [
-        tappableStyle({ pressed, focused }, { fontScale, pressedColor, focusColor }),
+        tappableStyle(
+          { pressed, focused, feedback },
+          { fontScale, pressedColor, focusColor },
+        ),
         style,
       ]}
       {...rest}

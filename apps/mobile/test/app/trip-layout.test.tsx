@@ -64,6 +64,17 @@ const SUB_SCREENS = [
   'offline-maps',
 ] as const;
 
+/**
+ * The sub-screens that moved to Atlas and so have a native header (004 phase 5); each is
+ * asserted in its own suite (offline-maps-header, photos-header, the document block below).
+ */
+const MIGRATED_HEADERS = new Set<string>([
+  'offline-maps',
+  'photos',
+  'documents',
+  'document-view',
+]);
+
 function routes(root: object) {
   return {
     _layout: root,
@@ -129,7 +140,7 @@ async function openTrip(root: object, url: string) {
 }
 
 describe('trip/[id]/_layout - the header is on for the overview only (FR-007)', () => {
-  test('the overview has a native header; a sub-screen has one only once migrated (004 phase 5)', async () => {
+  test('the overview has a native header; so has each migrated screen, no other does yet', async () => {
     await openTrip(anchored, '/trip/abc');
     for (const name of SUB_SCREENS) {
       await act(async () => router.push(`/trip/abc/${name}`));
@@ -138,12 +149,8 @@ describe('trip/[id]/_layout - the header is on for the overview only (FR-007)', 
     const headers = tripHeaders();
     expect(Object.keys(headers).sort()).toEqual(['index', ...SUB_SCREENS].sort());
     expect(headers.index?.hidden).toBe(false);
-    // Offline maps (004 T444) is migrated: its header is asserted in offline-maps-header.test.tsx.
-    expect(headers['offline-maps']?.hidden).toBe(false);
-    for (const name of SUB_SCREENS.filter(
-      (screenName) => screenName !== 'offline-maps',
-    )) {
-      expect(headers[name]?.hidden).toBe(true);
+    for (const name of SUB_SCREENS) {
+      expect(headers[name]?.hidden).toBe(!MIGRATED_HEADERS.has(name));
     }
   });
 
