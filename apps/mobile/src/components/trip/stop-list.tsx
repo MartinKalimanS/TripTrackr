@@ -25,6 +25,13 @@
  * The gap between rows is the rows' own (a row carries 12 dp under its card), not the
  * grid's `rowGap`, so the rail between two dots is one unbroken line. The handle is the
  * grip glyph in a platform-sized target; its name and hint are what they were.
+ *
+ * The grip answers the finger at once (FR-019, T460): a row lifts only after the 150 ms hold,
+ * so while a finger is on the grip it shows the held fill every control has, from the
+ * touch events (which do not claim the responder, so they cannot compete with the drag
+ * gesture). The cue is dropped as the row lifts and after it has landed, so a touch the
+ * gesture took over can never leave it behind. The lift and the drop settle in the
+ * in-place transition budget (`Motion.transitionMs`), not the library's 300 ms.
  */
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -34,6 +41,7 @@ import { StopRow } from '@/components/trip/stop-row';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { MinTouchTarget } from '@/constants/theme';
 import type { StopWithPlace } from '@/db/repositories/stops';
+import { Motion, cornerStyle } from '@/theme';
 
 export type StopListProps = {
   stops: readonly StopWithPlace[];
@@ -49,12 +57,28 @@ export const DRAG_ACTIVATION_DELAY_MS = 150;
 
 const GRIP: IconName = { ios: 'line.3.horizontal', android: 'drag_handle' };
 
-function GripHandle({ stopId }: { stopId: string }) {
+/** The held fill of every control (`Tappable`'s), as a class: this folder may not read the kit. */
+const HELD_FILL = 'bg-separator-secondary';
+
+function GripHandle({ stopId, dragging }: { stopId: string; dragging: boolean }) {
+  const [held, setHeld] = useState(false);
+  const [wasDragging, setWasDragging] = useState(dragging);
+  // A drag starting or ending supersedes the cue (adjusting state while rendering).
+  if (dragging !== wasDragging) {
+    setWasDragging(dragging);
+    setHeld(false);
+  }
+  const release = () => setHeld(false);
+
   return (
     <Sortable.Handle>
       <View
         testID={`stop-grip-${stopId}`}
+        className={held && !dragging ? HELD_FILL : undefined}
         style={styles.grip}
+        onTouchStart={() => setHeld(true)}
+        onTouchEnd={release}
+        onTouchCancel={release}
         accessibilityLabel="Drag to reorder"
         accessibilityHint="Hold and move to change this stop's position">
         <Icon name={GRIP} size={20} tone="muted" testID={`stop-grip-${stopId}-icon`} />
@@ -80,7 +104,11 @@ export function StopList({ stops, onMove, onReorder, onEdit, onRemove }: StopLis
         onMoveDown={() => onMove(item.id, 'down')}
         onEdit={() => onEdit(item)}
         onRemove={() => onRemove(item)}
-        handle={stops.length > 1 ? <GripHandle stopId={item.id} /> : undefined}
+        handle={
+          stops.length > 1 ? (
+            <GripHandle stopId={item.id} dragging={dragging} />
+          ) : undefined
+        }
         dragging={dragging}
       />
     ),
@@ -97,6 +125,8 @@ export function StopList({ stops, onMove, onReorder, onEdit, onRemove }: StopLis
         rowGap={0}
         customHandle
         dragActivationDelay={DRAG_ACTIVATION_DELAY_MS}
+        activationAnimationDuration={Motion.transitionMs}
+        dropAnimationDuration={Motion.transitionMs}
         onDragStart={() => setDragging(true)}
         onActiveItemDropped={() => setDragging(false)}
         onDragEnd={({ data }) => onReorder(data.map((stop) => stop.id))}
@@ -107,6 +137,7 @@ export function StopList({ stops, onMove, onReorder, onEdit, onRemove }: StopLis
 
 const styles = StyleSheet.create({
   grip: {
+    ...cornerStyle('md'),
     minWidth: MinTouchTarget,
     minHeight: MinTouchTarget,
     alignItems: 'center',

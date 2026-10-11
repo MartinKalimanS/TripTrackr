@@ -14,6 +14,7 @@ import { Dimensions, StyleSheet } from 'react-native';
 import { MinTouchTarget } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
 import type { Haptics } from '@/hooks/use-haptics';
+import { Motion } from '@/theme';
 
 import { Button, PRESSED_CLASS, buttonFrame, type ButtonVariant } from './button';
 
@@ -337,8 +338,25 @@ describe('<Button> pressed state and kit animation - FR-019, FR-022, review rule
   test('turns the kit highlight off: it is a 20% soft fill under the text', async () => {
     for (const variant of ['primary', 'secondary', 'text', 'destructive'] as const) {
       await renderButton({ variant, testID: variant, accessibilityLabel: variant });
-      expect(screen.getByTestId(variant).props.animation).toEqual({ highlight: false });
+      expect(screen.getByTestId(variant).props.animation).toMatchObject({
+        highlight: false,
+      });
     }
+  });
+
+  // T460: the kit's press scale defaults to a 300 ms timing, so the movement it starts at
+  // touch-down used to finish (and, on release, return) after FR-022's 200 ms and the
+  // 100 ms press budget of the motion tokens. The scale stays (movement only, and the
+  // provider removes it for reduced motion); only its duration is the press budget.
+  test('keeps the kit press scale but finishes it within the press budget (FR-019, FR-022)', async () => {
+    for (const variant of ['primary', 'secondary', 'text', 'destructive'] as const) {
+      await renderButton({ variant, testID: variant, accessibilityLabel: variant });
+      expect(screen.getByTestId(variant).props.animation).toEqual({
+        highlight: false,
+        scale: { timingConfig: { duration: Motion.pressMs } },
+      });
+    }
+    expect(Motion.pressMs).toBeLessThanOrEqual(100);
   });
 
   test('replaces it with a discrete pressed fill, measured in adapter-pressed-fills', async () => {

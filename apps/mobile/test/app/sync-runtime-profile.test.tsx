@@ -9,12 +9,14 @@
  * on the next sign-in), offers exactly the two real choices — and every
  * pre-existing behaviour of the row (busy, error text) is unchanged.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
+import * as ExpoHaptics from 'expo-haptics';
 import { AccessibilityInfo, Platform } from 'react-native';
 
 import ProfileScreen from '@/app/(tabs)/profile';
 import { useSessionStore } from '@/features/auth/session-store';
 import { UnsyncedChangesError } from '@/features/auth/use-sign-out';
+import { __resetAppearanceStoreForTests } from '@/hooks/appearance-store';
 import { ApiRequestError } from '@/lib/api-client';
 
 const mockSignOut = {
@@ -353,5 +355,58 @@ describe('profile — the warning on the Atlas primitives (T448; FR-005, FR-016,
       /from '@\/components\/(themed-text|themed-view|ui\/surface|ui\/pressable-surface)'/,
     );
     expect(source).not.toMatch(/from 'heroui-native|from 'uniwind/);
+  });
+});
+
+/**
+ * T460 - FR-020: "Sign out anyway" is the destructive confirmation of the sign-out guard,
+ * so it plays the warning haptic; "Stay signed in" is the one primary and plays the
+ * selection haptic; neither plays under reduced motion. The real `useHaptics` is under
+ * this, so what is read is `expo-haptics` (a global stand-in, jest.setup.ts).
+ */
+describe('profile — sign-out warning haptics (T460; FR-020)', () => {
+  const haptics = jest.mocked(ExpoHaptics);
+
+  beforeEach(() => {
+    mockSignOut.error = new UnsyncedChangesError(2, 1, 'offline');
+    haptics.notificationAsync.mockClear();
+    haptics.selectionAsync.mockClear();
+  });
+  afterEach(() => __resetAppearanceStoreForTests());
+
+  test('"Sign out anyway" plays the warning haptic and signs out', async () => {
+    await render(<ProfileScreen />);
+
+    await fireEvent.press(screen.getByTestId('sign-out-warning-anyway'));
+
+    expect(mockSignOut.mutate).toHaveBeenCalledWith({ force: true });
+    expect(haptics.notificationAsync.mock.calls).toEqual([['warning']]);
+    expect(haptics.selectionAsync).not.toHaveBeenCalled();
+  });
+
+  test('"Stay signed in" plays the selection haptic and nothing destructive', async () => {
+    await render(<ProfileScreen />);
+
+    await fireEvent.press(screen.getByTestId('sign-out-warning-stay'));
+
+    expect(mockSignOut.reset).toHaveBeenCalled();
+    expect(haptics.selectionAsync).toHaveBeenCalledTimes(1);
+    expect(haptics.notificationAsync).not.toHaveBeenCalled();
+  });
+
+  test('with reduced motion on, neither choice plays a haptic', async () => {
+    const reduced = jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(true);
+    await render(<ProfileScreen />);
+    await act(async () => undefined);
+
+    await fireEvent.press(screen.getByTestId('sign-out-warning-stay'));
+    await fireEvent.press(screen.getByTestId('sign-out-warning-anyway'));
+
+    expect(mockSignOut.mutate).toHaveBeenCalledWith({ force: true });
+    expect(haptics.selectionAsync).not.toHaveBeenCalled();
+    expect(haptics.notificationAsync).not.toHaveBeenCalled();
+    reduced.mockRestore();
   });
 });

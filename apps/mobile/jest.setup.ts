@@ -144,6 +144,7 @@ jest.mock('react-native-reanimated', () => {
 // three more moments the library reports, in this order: `onDragStart` when a row lifts,
 // `onDragEnd` at the drop (with the data), `onActiveItemDropped` once the drop animation
 // has finished; `__dragStart` and `__activeItemDropped` deliver the two around `__dropAt`.
+// `__gridSettings()` returns every other prop the grid was given (the animation durations).
 jest.mock('react-native-sortables', () => {
   const React = require('react') as typeof import('react');
   const { View } = require('react-native') as typeof import('react-native');
@@ -152,7 +153,8 @@ jest.mock('react-native-sortables', () => {
     onDragEnd: ((params: { data: unknown[] }) => void) | null;
     onDragStart: ((params: MockDragParams) => void) | null;
     onActiveItemDropped: ((params: MockDragParams) => void) | null;
-  } = { onDragEnd: null, onDragStart: null, onActiveItemDropped: null };
+    props: Record<string, unknown>;
+  } = { onDragEnd: null, onDragStart: null, onActiveItemDropped: null, props: {} };
   const Grid = ({
     data,
     renderItem,
@@ -160,6 +162,7 @@ jest.mock('react-native-sortables', () => {
     onDragStart,
     onActiveItemDropped,
     keyExtractor,
+    ...settings
   }: {
     data: unknown[];
     renderItem: (info: { item: unknown; index: number }) => React.ReactNode;
@@ -167,7 +170,9 @@ jest.mock('react-native-sortables', () => {
     onDragStart?: (params: MockDragParams) => void;
     onActiveItemDropped?: (params: MockDragParams) => void;
     keyExtractor?: (item: unknown) => string;
+    [setting: string]: unknown;
   }) => {
+    registry.props = settings;
     registry.onDragEnd = onDragEnd ?? null;
     registry.onDragStart = onDragStart ?? null;
     registry.onActiveItemDropped = onActiveItemDropped ?? null;
@@ -193,6 +198,8 @@ jest.mock('react-native-sortables', () => {
     __dropAt: (data: unknown[]) => registry.onDragEnd?.({ data }),
     __dragStart: (key: string) => registry.onDragStart?.({ key }),
     __activeItemDropped: (key: string) => registry.onActiveItemDropped?.({ key }),
+    // The settings the list handed the grid (durations, handle mode), for a suite to read.
+    __gridSettings: () => registry.props,
   };
 });
 

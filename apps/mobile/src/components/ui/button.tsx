@@ -52,7 +52,8 @@
  *   themes) in all four themes: `test/theme/adapter-pressed-fills.test.ts` measures them.
  *   The kit's own 4% hover and the `surface-tertiary` fill were measured and rejected.
  *   The kit's scale animation stays: movement only, and the provider removes it for
- *   reduced motion.
+ *   reduced motion. Its timing is the press budget (`Motion.pressMs`, 100 ms) in both
+ *   directions, not the kit's 300 ms, so it is done within FR-022's 200 ms (T460).
  * - The icon is an `IconName`, drawn by `Icon` with the ink that reads on the variant's
  *   fill, so a caller cannot pick an unreadable one. It is decorative.
  *
@@ -80,6 +81,7 @@ import {
 
 import { MinTouchTarget } from '@/constants/theme';
 import { useHaptics, type Haptics } from '@/hooks/use-haptics';
+import { Motion } from '@/theme';
 
 import { assertAccessibleName, assertNotBusyAndDisabled } from './adapter-guards';
 import { Icon, type IconName, type IconSize, type IconTone } from './icon';
@@ -155,8 +157,16 @@ const PRESS_HAPTIC: Partial<Record<ButtonVariant, keyof Haptics>> = {
   destructive: 'warning',
 };
 
-/** The kit's press highlight off, scale kept: see the header. */
-const NO_HIGHLIGHT = { highlight: false } as const;
+/**
+ * The kit's press highlight off, scale kept (see the header), and the scale finished within
+ * the press budget (FR-019, FR-022): the kit's own timing is 300 ms, which would leave the
+ * movement it starts at touch-down running past the 200 ms of an in-place transition.
+ * The easing stays the kit's (out, no overshoot); reduced motion removes the scale.
+ */
+const PRESS_FEEDBACK = {
+  highlight: false,
+  scale: { timingConfig: { duration: Motion.pressMs } },
+} as const;
 
 /**
  * The frame the kit's fixed height is replaced by. Exported so the arithmetic is
@@ -263,7 +273,7 @@ export function Button({
       size={size}
       isIconOnly={iconOnly}
       isDisabled={inert}
-      animation={NO_HIGHLIGHT}
+      animation={PRESS_FEEDBACK}
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ busy, disabled: inert }}
       onPress={inert ? undefined : handlePress}

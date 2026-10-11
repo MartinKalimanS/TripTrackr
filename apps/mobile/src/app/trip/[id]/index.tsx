@@ -220,7 +220,8 @@ function confirmRemove(stop: StopWithPlace, remove: () => void) {
  */
 function useStopWrites(tripId: string) {
   const actions = useTripActions();
-  const { writeError, attempt } = useWriteAttempt(WRITE_FAILED);
+  const { writeError, attempt, attemptSave, attemptRemoval } =
+    useWriteAttempt(WRITE_FAILED);
 
   return {
     writeError,
@@ -229,10 +230,10 @@ function useStopWrites(tripId: string) {
     reorder: (orderedIds: string[]) =>
       attempt(() => actions.reorderStops(tripId, orderedIds)),
     remove: (stop: StopWithPlace) =>
-      confirmRemove(stop, () => attempt(() => actions.removeStop(stop.id))),
+      confirmRemove(stop, () => attemptRemoval(() => actions.removeStop(stop.id))),
     /** `stopId` null adds a stop to the trip; otherwise it moves that stop's dates. */
     save: (stopId: string | null, values: StopEditorValues) =>
-      attempt(() => {
+      attemptSave(() => {
         if (stopId) {
           actions.updateStopDates(stopId, values);
         } else {

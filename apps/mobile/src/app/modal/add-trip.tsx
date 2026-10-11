@@ -32,6 +32,7 @@ import {
   type TripFormValues,
 } from '@/features/trips/trip-form';
 import { useTripActions } from '@/features/trips/use-trips';
+import { useHaptics } from '@/hooks/use-haptics';
 import { fieldMessage } from '@/lib/form-copy';
 import { Sentry } from '@/lib/sentry';
 
@@ -41,6 +42,7 @@ function useAddTripForm() {
   const router = useRouter();
   const homeCurrency = useSessionStore((session) => session.user?.home_currency ?? 'USD');
   const { createTrip } = useTripActions();
+  const haptics = useHaptics();
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const { control, handleSubmit } = useForm<TripFormValues>({
@@ -53,6 +55,7 @@ function useAddTripForm() {
   const save = handleSubmit((values) => {
     try {
       const trip = createTrip(values);
+      haptics.success();
       router.replace(`/trip/${trip.id}`);
     } catch (error) {
       // A local write failing is a defect worth knowing about (FR-073) AND a

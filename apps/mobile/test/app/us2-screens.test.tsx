@@ -20,6 +20,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
+import * as ExpoHaptics from 'expo-haptics';
 import { getLocales } from 'expo-localization';
 import { Alert } from 'react-native';
 
@@ -1480,5 +1481,101 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
     expect(source).not.toMatch(
       /@\/constants\/theme|use-appearance|Colors\[|#[0-9a-fA-F]{3,8}\b|rgba?\(/,
     );
+  });
+});
+
+/**
+ * T460 - FR-020: a successful save and a destructive confirmation give a brief haptic, and
+ * a failed write gives none (the record is not saved). The real `useHaptics` is under
+ * these, so what is read is `expo-haptics` itself (a global stand-in, jest.setup.ts). A
+ * `Button` of the destructive kind also plays the warning as it is pressed; the native
+ * confirmation is a separate moment, so the answer is held and given by hand.
+ */
+describe('save and destructive-confirmation haptics (T460; FR-020)', () => {
+  const haptics = jest.mocked(ExpoHaptics);
+  const notified = () => haptics.notificationAsync.mock.calls.map(([kind]) => kind);
+
+  beforeEach(() => {
+    haptics.notificationAsync.mockClear();
+    haptics.selectionAsync.mockClear();
+  });
+
+  /** Holds the native confirmation open; `confirm` is the traveller pressing the destructive choice. */
+  function holdConfirmation() {
+    let destructive: (() => void) | undefined;
+    jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
+      destructive = buttons?.find((b) => b.style === 'destructive')?.onPress;
+    });
+    return { confirm: () => destructive?.() };
+  }
+
+  async function saveNote(body = 'Try the raclette.') {
+    await render(<NotesScreen />);
+    await fireEvent.press(screen.getByTestId('notes-add'));
+    await fireEvent.changeText(screen.getByTestId('note-editor-body'), body);
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('note-editor-save'));
+    });
+  }
+
+  test('a saved note plays the success haptic once', async () => {
+    await saveNote();
+    await waitFor(() => expect(mockNoteActions.createNote).toHaveBeenCalled());
+    expect(notified()).toEqual(['success']);
+  });
+
+  test('a note that failed to write, or was refused, plays no success haptic', async () => {
+    mockNoteActions.createNote.mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+    await saveNote();
+    await waitFor(() => expect(screen.getByTestId('notes-write-error')).toBeTruthy());
+    expect(notified()).not.toContain('success');
+  });
+
+  test('confirming the deletion of a note plays the warning haptic, and the question alone does not', async () => {
+    mockNotes.data = [note({})];
+    const answer = holdConfirmation();
+    await render(<NotesScreen />);
+
+    await fireEvent.press(screen.getByTestId('note-remove-note-1'));
+    haptics.notificationAsync.mockClear();
+    expect(mockNoteActions.removeNote).not.toHaveBeenCalled();
+
+    await act(async () => answer.confirm());
+    expect(mockNoteActions.removeNote).toHaveBeenCalledWith('note-1');
+    expect(notified()).toEqual(['warning']);
+  });
+
+  test('confirming the deletion of an expense plays the warning haptic', async () => {
+    mockExpenses.data = [expense({})];
+    const answer = holdConfirmation();
+    await render(<ExpensesScreen />);
+
+    await fireEvent.press(screen.getByTestId('expense-remove-exp-1'));
+    haptics.notificationAsync.mockClear();
+
+    await act(async () => answer.confirm());
+    expect(mockExpenseActions.removeExpense).toHaveBeenCalledWith('exp-1');
+    expect(notified()).toEqual(['warning']);
+  });
+
+  test('a saved expense plays the success haptic once, and a failed one none', async () => {
+    mockExpenseActions.createExpense.mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+    await render(<AddExpenseScreen />);
+    await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '4');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('add-expense-save'));
+    });
+    await waitFor(() => expect(screen.getByTestId('add-expense-error')).toBeTruthy());
+    expect(notified()).not.toContain('success');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('add-expense-save'));
+    });
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    expect(notified()).toEqual(['success']);
   });
 });

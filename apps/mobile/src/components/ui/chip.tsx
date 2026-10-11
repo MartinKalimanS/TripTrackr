@@ -119,14 +119,14 @@ const HIT_SLOP = { top: SLOP, bottom: SLOP, left: SLOP, right: SLOP } as const;
 
 /**
  * Literal strings, so Tailwind finds each class; the pressed fills are gated for their
- * text. `overflow-visible` undoes the kit's `overflow: hidden` (it only clips a theme
+ * text, and measured for a visible step (`test/ui-kit/pressed-fills-chip-row-card.test.ts`). `overflow-visible` undoes the kit's `overflow: hidden` (it only clips a theme
  * background layer we never use) so the focus ring drawn outside the chip is not clipped.
  */
 const OUTLINE = {
   selected: 'overflow-visible border border-accent',
   unselected: 'overflow-visible border border-border',
 };
-const PRESSED = {
+export const CHIP_PRESSED_CLASS = {
   selected: 'active:bg-accent-hover',
   unselected: 'active:bg-surface-tertiary',
 };
@@ -162,7 +162,7 @@ function chipClasses({ selected, interactive, disabled, className }: ChipLook): 
   const key = selected ? 'selected' : 'unselected';
   return [
     OUTLINE[key],
-    interactive ? PRESSED[key] : '',
+    interactive ? CHIP_PRESSED_CLASS[key] : '',
     disabled ? 'opacity-disabled' : '',
     className,
   ]

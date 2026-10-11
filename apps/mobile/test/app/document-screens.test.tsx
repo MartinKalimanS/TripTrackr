@@ -25,6 +25,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import { scanFromURLAsync } from 'expo-camera';
+import * as ExpoHaptics from 'expo-haptics';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { usePreventScreenCapture } from 'expo-screen-capture';
 import { Alert, Linking, Share, StyleSheet } from 'react-native';
@@ -1531,5 +1532,63 @@ describe('document screens — composed from the Atlas adapter layer only (FR-03
     for (const file of sources) {
       expect(fs.readFileSync(path.join(root, file), 'utf8')).not.toMatch(logged);
     }
+  });
+});
+
+/**
+ * T460 - FR-020: confirming the fields of a document is a save (success haptic once the
+ * fields are stored, none for a refusal or a failed write), and confirming the deletion
+ * plays the warning. The real `useHaptics` is under this, so what is read is `expo-haptics`
+ * (a global stand-in, jest.setup.ts). The destructive `Button` also plays the warning as it
+ * is pressed; the native confirmation is a separate moment, so its answer is given by hand.
+ */
+describe('<DocumentViewScreen> — save and destructive-confirmation haptics (T460; FR-020)', () => {
+  const haptics = jest.mocked(ExpoHaptics);
+  const notified = () => haptics.notificationAsync.mock.calls.map(([kind]) => kind);
+
+  beforeEach(() => {
+    mockParams = { id: 'trip-42', documentId: PASS_ID };
+    haptics.notificationAsync.mockClear();
+  });
+
+  const confirmFields = async () => {
+    await render(<DocumentViewScreen />);
+    await fireEvent.press(screen.getByTestId('document-review'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('document-confirm-save'));
+    });
+  };
+
+  test('confirmed fields play the success haptic once', async () => {
+    await confirmFields();
+    await waitFor(() => expect(mockActions.confirmFields).toHaveBeenCalled());
+    expect(notified()).toEqual(['success']);
+  });
+
+  test('fields that could not be stored play no success haptic', async () => {
+    mockActions.confirmFields.mockImplementationOnce(() => {
+      throw new Error('locked');
+    });
+    await confirmFields();
+    await waitFor(() =>
+      expect(screen.getByTestId('document-confirm-error')).toBeTruthy(),
+    );
+    expect(notified()).not.toContain('success');
+  });
+
+  test('confirming the deletion plays the warning haptic, and the question alone does not', async () => {
+    let destructive: (() => void) | undefined;
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      destructive = buttons?.find((button) => button.style === 'destructive')?.onPress;
+    });
+    await render(<DocumentViewScreen />);
+    await fireEvent.press(screen.getByTestId('document-delete'));
+    haptics.notificationAsync.mockClear();
+    expect(mockActions.remove).not.toHaveBeenCalled();
+
+    await act(async () => destructive?.());
+
+    expect(mockActions.remove).toHaveBeenCalledWith(PASS_ID);
+    expect(notified()).toEqual(['warning']);
   });
 });

@@ -8,6 +8,7 @@
  * failed local write is reported and shown rather than swallowed.
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
+import * as ExpoHaptics from 'expo-haptics';
 import { AccessibilityInfo, Alert, Platform, StyleSheet } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
@@ -1323,5 +1324,109 @@ describe('<NotFoundScreen> — +not-found', () => {
     await render(<NotFoundScreen />);
     expect(screen.getByTestId('link:/')).toBeTruthy();
     expect(screen.getByText('Back to your globe')).toBeTruthy();
+  });
+});
+
+/**
+ * T460 - FR-020: a saved trip or stop gives the success haptic, a confirmed removal the
+ * warning, a failed write nothing, and none of it plays when the traveller asked for
+ * reduced motion. The real `useHaptics` is under these, so what is read is `expo-haptics`
+ * (a global stand-in, jest.setup.ts).
+ */
+describe('save and destructive-confirmation haptics (T460; FR-020)', () => {
+  const haptics = jest.mocked(ExpoHaptics);
+  const notified = () => haptics.notificationAsync.mock.calls.map(([kind]) => kind);
+
+  beforeEach(() => {
+    haptics.notificationAsync.mockClear();
+    haptics.selectionAsync.mockClear();
+  });
+  afterEach(() => __resetAppearanceStoreForTests());
+
+  async function saveTrip() {
+    await fireEvent.changeText(screen.getByLabelText('Trip name'), 'Italy');
+    await fireEvent.press(screen.getByTestId('add-trip-save'));
+  }
+
+  test('a saved trip plays the success haptic once, before the sheet is replaced', async () => {
+    mockActions.createTrip.mockReturnValue({ ...trip, id: 'new-trip' });
+    await render(<AddTripScreen />);
+    await saveTrip();
+
+    expect(mockReplace).toHaveBeenCalledWith('/trip/new-trip');
+    expect(notified()).toEqual(['success']);
+    expect(haptics.notificationAsync.mock.invocationCallOrder[0]).toBeLessThan(
+      mockReplace.mock.invocationCallOrder[0],
+    );
+  });
+
+  test('a trip that failed to write, or was refused, plays no success haptic', async () => {
+    mockActions.createTrip.mockImplementation(() => {
+      throw new Error('disk full');
+    });
+    await render(<AddTripScreen />);
+    await fireEvent.press(screen.getByTestId('add-trip-save'));
+    await saveTrip();
+
+    expect(screen.getByTestId('add-trip-error')).toBeTruthy();
+    expect(notified()).not.toContain('success');
+  });
+
+  test('with reduced motion on, saving a trip plays no haptic at all', async () => {
+    const reduced = jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(true);
+    mockActions.createTrip.mockReturnValue({ ...trip, id: 'new-trip' });
+    await render(<AddTripScreen />);
+    await act(async () => undefined);
+    await saveTrip();
+
+    expect(mockReplace).toHaveBeenCalledWith('/trip/new-trip');
+    expect(haptics.notificationAsync).not.toHaveBeenCalled();
+    expect(haptics.selectionAsync).not.toHaveBeenCalled();
+    reduced.mockRestore();
+  });
+
+  test('a saved stop plays the success haptic once, and a failed one none', async () => {
+    mockStops.data = [rome];
+    mockActions.addStop.mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+    await render(<TripScreen />);
+    await fireEvent.press(screen.getByTestId('trip-add-stop'));
+    await fireEvent.press(screen.getByTestId('pick-florence'));
+    await fireEvent.press(screen.getByTestId('stop-editor-save'));
+    expect(screen.getByTestId('trip-write-error')).toBeTruthy();
+    expect(notified()).not.toContain('success');
+
+    await fireEvent.press(screen.getByTestId('trip-add-stop'));
+    await fireEvent.press(screen.getByTestId('pick-florence'));
+    await fireEvent.press(screen.getByTestId('stop-editor-save'));
+    expect(mockActions.addStop).toHaveBeenCalledTimes(2);
+    expect(notified()).toEqual(['success']);
+  });
+
+  test('confirming the removal of a stop plays the warning haptic, and the question alone does not', async () => {
+    mockStops.data = [rome];
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await render(<TripScreen />);
+
+    await fireEvent.press(screen.getByTestId('stop-remove-stop-rome'));
+    haptics.notificationAsync.mockClear();
+    expect(mockActions.removeStop).not.toHaveBeenCalled();
+
+    const buttons = alert.mock.calls[0]?.[2] as { text: string; onPress?: () => void }[];
+    await act(async () => buttons.find((b) => b.text === 'Remove')?.onPress?.());
+    expect(mockActions.removeStop).toHaveBeenCalledWith('stop-rome');
+    expect(notified()).toEqual(['warning']);
+    alert.mockRestore();
+  });
+
+  test('moving a stop is not a save: no success haptic', async () => {
+    mockStops.data = [rome, florence];
+    await render(<TripScreen />);
+    await fireEvent.press(screen.getByTestId('stop-move-down-stop-rome'));
+    expect(mockActions.moveStop).toHaveBeenCalled();
+    expect(notified()).toEqual([]);
   });
 });

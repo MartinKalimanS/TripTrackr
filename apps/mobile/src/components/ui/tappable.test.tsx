@@ -14,6 +14,7 @@ import { MinTouchTarget } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
 import { FocusRing } from '@/theme';
 
+import { touchDown } from '../../../test/helpers/touch';
 import { TAPPABLE_PRESSED_TOKEN, Tappable, tappableStyle } from './tappable';
 
 // The adapter reads the font scale from the window, not from `useAppearance`: a control
@@ -218,6 +219,56 @@ describe('<Tappable> focus ring - FR-024, design-tokens C4-3', () => {
     await fireEvent(screen.getByLabelText('Open trip'), 'focus');
     expect(styleNow().outlineColor).toBe(focusColor);
   });
+});
+
+/**
+ * T460 - FR-019 and SC-005: a visual response within 100 ms of touch-down. The pure
+ * function above says WHAT a held press looks like; these say WHEN: the responder is
+ * granted, no timer is advanced, nothing is released, and the host node already carries
+ * the pressed look. `fireEvent.press` cannot show that, because it never enters the state.
+ */
+describe('<Tappable> touch-down - FR-019, SC-005', () => {
+  const pressedColor = HeroUI.useThemeColor(TAPPABLE_PRESSED_TOKEN);
+  const host = () => screen.getByLabelText('Open trip');
+
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  test('paints the pressed fill as the finger lands, before release and with no timer run', async () => {
+    await renderTappable();
+    expect(styleNow().backgroundColor).toBeUndefined();
+
+    await touchDown(host());
+
+    expect(styleNow().backgroundColor).toBe(pressedColor);
+    expect(styleNow().outlineWidth).toBeUndefined();
+  });
+
+  test('a touch-down is not a press: the action waits for the release', async () => {
+    const onPress = jest.fn();
+    await renderTappable({ onPress });
+    await touchDown(host());
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  test('feedback "ring" shows the ring and no fill as the finger lands', async () => {
+    await renderTappable({ feedback: 'ring' });
+    await touchDown(host());
+    expect(styleNow()).toMatchObject({
+      outlineWidth: FocusRing.width,
+      outlineOffset: FocusRing.offset,
+    });
+    expect(styleNow().backgroundColor).toBeUndefined();
+  });
+
+  test.each([['busy'], ['disabled']])(
+    'a %s control shows no pressed state: the touch is ignored',
+    async (state) => {
+      await renderTappable({ [state]: true });
+      await touchDown(host());
+      expect(styleNow().backgroundColor).toBeUndefined();
+    },
+  );
 });
 
 describe('tappableStyle - FR-019, discrete states', () => {
