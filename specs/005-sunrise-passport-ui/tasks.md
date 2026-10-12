@@ -53,13 +53,13 @@ Prettier character classes (`AGENTS.md`).
 
 ## Phase 0: Prerequisites (branch `feat/005-sunrise-passport-ui`)
 
-- [ ] T500 Create `feat/005-sunrise-passport-ui` from the tip of `feat/004-app-ui-redesign` after
+- [x] T500 Create `feat/005-sunrise-passport-ui` from the tip of `feat/004-app-ui-redesign` after
       `npm run lint && npm run typecheck && npm run test:cov -w apps/mobile` pass there; tag `pre-005-baseline`.
       Capture, from that tag: the baseline of every `testID` and accessible name (the existing
       `test/testid-parity` extractor), the list of strings the Maestro flows assert (spec, "Copy and label policy"),
       the release bundle size and font asset size, and, **[DEVICE]**, the scroll frame rate of a 200-trip list, a
       1,000-row expense list and a 1,000-photo grid on the oldest test device (FR-081; SC-003, SC-006, SC-011)
-- [ ] T501 Record the owner's answers to Q-1 to Q-10 of `plan.md` (or their defaults) in `research.md`; list
+- [x] T501 Record the owner's answers to Q-1 to Q-10 of `plan.md` (or their defaults) in `research.md`; list
       feature 004's open device checks (research item V7) as carried and repeated in T547 and T566 (FR-081; D5-18)
 
 ---
@@ -71,7 +71,7 @@ Prettier character classes (`AGENTS.md`).
 findings and config worth keeping. The seven checks are in
 [research.md](./research.md#items-to-verify-empirically-device-spikes).
 
-- [ ] T502 Failing tests first: `adapter-guards` (the new packages importable only from `components/ui/**`,
+- [x] T502 Failing tests first: `adapter-guards` (the new packages importable only from `components/ui/**`,
       `components/navigation/**` and tests) and `test/config/app-config.test.ts` (the font entries). Then ONE root
       `npm install` with exact pins `expo-glass-effect` 57.0.3, `react-native-view-shot` 5.1.0 (if Q-6 is yes),
       `@expo-google-fonts/dm-sans` 0.4.2, `@expo-google-fonts/instrument-serif` 0.4.1, `phosphor-react-native`

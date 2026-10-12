@@ -539,3 +539,22 @@ bundle) is in its task.
    sideways chip row, continuous corners, the first frame after the splash in all four themes.
 
 **Result**: _pending; each spike writes its result here in its task._
+
+## Owner answers to the open questions (T501)
+
+The owner chose Sunrise Passport as the base direction (2026-10-12) and asked for continued polishing and for the build to proceed; the ten questions of [plan.md](./plan.md#open-questions-for-the-owner) were not answered individually, so each takes its **default** until the owner says otherwise (each is cheap to reverse):
+
+| #    | Answer taken                                                                                                         | Decision it fixes |
+| ---- | -------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Q-1  | Yes: only tab labels, chip captions and hero numerals are capped at 1.3 times text size; all other text scales fully | T515              |
+| Q-2  | Yes: the fixed 195 and 7 denominators stay                                                                           | T536, T556        |
+| Q-3  | Platform emoji flags in a clipped chip                                                                               | T520              |
+| Q-4  | Yes: Plan a trip is a floating button on iOS too                                                                     | T541              |
+| Q-5  | Welcome keeps two buttons; Apple and Google live inside the forms                                                    | T554              |
+| Q-6  | Yes: react-native-view-shot is in the native batch, spike-gated (T508)                                               | T502, T508        |
+| Q-7  | Agreed: no schema change for photo placeholders in this feature                                                      | T523              |
+| Q-8  | Empty frames, not commissioned illustrations                                                                         | T537              |
+| Q-9  | No Tier 3 item is specified now                                                                                      | none              |
+| Q-10 | Glass for the iOS 26 pill with the blur and solid fallbacks                                                          | T526, T510        |
+
+Feature 004 device checks (research item V7 of 004) stay open and are repeated in T547 and T566.
