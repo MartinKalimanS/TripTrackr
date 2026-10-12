@@ -303,12 +303,16 @@ describe('<TripScreen> — trip/[id]', () => {
   });
 
   test('lists stops in order with place, country, and dates', async () => {
-    mockStops.data = [rome, florence];
+    // Both are still to come, so each node shows its number (a stop done shows a check).
+    mockStops.data = [
+      { ...rome, arrive_date: iso(30), depart_date: iso(32) },
+      { ...florence, arrive_date: iso(32), depart_date: iso(35) },
+    ];
     await render(<TripScreen />);
 
     expect(screen.getByText('Roma')).toBeTruthy();
     expect(screen.getByText('Firenze')).toBeTruthy();
-    expect(screen.getByTestId('stop-dates-stop-rome')).toHaveTextContent(/10.*12/);
+    expect(screen.getByTestId('stop-dates-stop-rome')).toHaveTextContent(/\d.*→.*\d/);
     // The timeline numbers each stop by its place in the order; the row's own name
     // (`Stop 1: Roma, Italy. ...`) is what screen readers and the Maestro flows use.
     expect(screen.getByTestId('stop-number-stop-rome')).toHaveTextContent('1');
@@ -504,7 +508,10 @@ describe('<TripScreen> — trip/[id]', () => {
   });
 
   test('numbers the stops again once the dragged one has landed, and not while it is carried', async () => {
-    mockStops.data = [rome, florence];
+    mockStops.data = [
+      { ...rome, arrive_date: iso(30), depart_date: iso(32) },
+      { ...florence, arrive_date: iso(32), depart_date: iso(35) },
+    ];
     await render(<TripScreen />);
     const sortables = jest.requireMock('react-native-sortables') as {
       __dragStart: (key: string) => void;

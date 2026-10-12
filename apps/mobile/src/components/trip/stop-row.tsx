@@ -1,50 +1,72 @@
 /**
- * One stop in the trip's ordered list — tasks.md T068, T071b, 004 T431 (FR-010, FR-012,
- * FR-013, FR-024, FR-026, FR-029, FR-030, FR-034).
+ * One stop on the trip's timeline - tasks.md T068, T071b, 004 T431, 005 T545 (spec FR-041,
+ * FR-070, FR-074, FR-075, FR-076; contract C5-20).
  *
- * A step of a timeline: a numbered dot on a vertical rail, then a flat card with the place
- * (headline), the country (caption), the dates (tabular figures) and, while the stop only
- * exists on this device, the pending marker (words and icon) with a dashed edge. The rail
- * is drawn per row (a line above every dot but the first, below every dot but the last,
- * through the 12 dp of space under each card), so the rows stay independent items for the
- * drag list and the line still reads as one. While a row is being dragged (`dragging`) the
- * numbers and the rail are not trusted, because they come from the data order and the
- * screen is ahead of it: the dot goes neutral (same box, no number) and the rail is hidden.
+ * A node on a rail, then the stop. The rail is 32 dp: a node of 28 dp (a check on the ink for a
+ * stop done, the stop's number on the coral with a halo for the one the traveller is at, the
+ * number in a ring for those to come: three shapes, never colour alone), a solid 3 dp line under
+ * it down to the next stop (the ink, or the coral line under the stop the traveller is at) and,
+ * above it, an 8 dp lead that is DOTTED when the traveller moved on from the stop before (that
+ * journey is drawn beneath that stop as a `TransitRow` with its distance) and solid when the
+ * two are one stay. The body: the place with a "Now" chip, the country beside its flag, the
+ * dates (tabular figures) and the nights, a picture of the city and, while the stop only exists
+ * on this device, the pending marker (words and icon) with a dashed edge; the cream tile of the
+ * chosen day (`highlighted`) is the same card with a fill.
  *
- * Reordering has two paths. The explicit "Move up" / "Move down" controls
- * work one-handed, with a screen reader, with a switch, and under every
- * appearance adaptation; the same four actions are also exposed as
- * `accessibilityActions`, so an assistive-technology user can act on the row
- * itself without hunting for the small buttons. The optional `handle` is the
- * drag affordance the list supplies (research D-22) — additive, never the
- * only way — and this row knows nothing about the gesture behind it.
+ * The rail is drawn per row, so the rows stay independent items for the drag list and the line
+ * still reads as one. While a row is being dragged (`dragging`) the numbers and the rail are not
+ * trusted, because they come from the data order and the screen is ahead of it: the node goes
+ * neutral (same box, no number, no check) and the spine, the lead and the journey are hidden.
  *
- * What did not change for assistive technology (FR-030): the row is ONE element named
- * `Stop N: place, country. dates` with the same four actions, and the four controls keep
- * their ids and names. The visible "Stop N" caption became the number in the dot, which
- * the row's name already says.
+ * Reordering has two paths, unchanged. The explicit "Move up" / "Move down" controls work
+ * one-handed, with a screen reader, with a switch, and under every appearance adaptation; the
+ * same four actions are also `accessibilityActions` of the row, and the optional `handle` is the
+ * drag affordance the list supplies (research D-22): additive, never the only way.
  *
- * The controls are compact `Button`s: arrows icon-only (the name is the label), Dates an
- * icon and a word, Remove the destructive emphasis (a tinted fill, a caution glyph and
- * the word, never colour alone). Each has the platform's touch target and the row wraps
- * them onto a second line at large text instead of clipping.
+ * What did not change for assistive technology (FR-075): the row is ONE element named
+ * `Stop N: place, country. dates` with the same four actions, and the four controls keep their
+ * ids and names. The name gains, at its end, what the node and the journey draw: "Now." for the
+ * stop the traveller is at and "23 kilometres from Lisbon." for the journey that led here. The
+ * journey beneath the row, the node and the picture are decoration and are not read twice.
  */
 import type { ReactNode } from 'react';
 import { View, type AccessibilityActionEvent } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { FlagChip } from '@/components/ui/flag-chip';
 import type { IconName } from '@/components/ui/icon';
 import { SyncBadge } from '@/components/ui/sync-badge';
 import { Text } from '@/components/ui/text';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import { formatIsoDate } from '@/features/trips/stop-dates';
+import {
+  nightsLabel,
+  stopNights,
+  type StopNodeState,
+} from '@/features/trips/stop-timeline';
+import { formatDistance } from '@/lib/locale';
+
+import { NowChip } from './now-chip';
+import { StopNode, StopRail, leadOf } from './stop-rail';
+import { StopThumb } from './stop-thumb';
+import { TransitRow } from './transit-row';
 
 export type StopRowProps = {
   stop: StopWithPlace;
   position: number;
   isFirst: boolean;
   isLast: boolean;
+  /** Done, the stop the traveller is at, or to come. */
+  state: StopNodeState;
+  /** The journey on to the next stop, drawn beneath this one; none where nothing is drawn. */
+  transit?: { km: number } | null;
+  /** The journey that led here from the stop before; none where the two are one stay. */
+  from?: { place: string; km: number } | null;
+  /** The thumbnail of the traveller's photograph of this city, if they have one. */
+  thumb?: string | null;
+  /** This stop is on the day the traveller chose: drawn as a cream tile. */
+  highlighted?: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onEdit: () => void;
@@ -52,10 +74,9 @@ export type StopRowProps = {
   /** A drag affordance rendered beside the place; omitted when there is nothing to drag. */
   handle?: ReactNode;
   /**
-   * A stop in this list is being dragged. The number and the rail come from the row's
-   * index in the data, which only follows the drop once it is written back, so while a
-   * row is carried they would read 1, 3, 2 and the "last" row's rail would stay on the
-   * item that was last when the drag began: the dot goes neutral and the rail goes.
+   * A stop in this list is being dragged. The number and the rail come from the row's index in
+   * the data, which only follows the drop once it is written back, so while a row is carried
+   * they would read 1, 3, 2: the node goes neutral and the rail goes.
    */
   dragging?: boolean;
 };
@@ -65,54 +86,11 @@ const DOWN: IconName = 'chevron-down';
 const DATES: IconName = 'calendar';
 const REMOVE: IconName = 'trash';
 
-/** The rail's line; the stub above the dot is as tall as the card's padding is to its first line. */
-const RAIL_LINE = 'w-0.5 bg-border';
-
 /** A stop whose city is not in the cache yet still has a name a traveller can follow. */
 export function describePlace(
   stop: Pick<StopWithPlace, 'city_name' | 'city_id'>,
 ): string {
   return stop.city_name ?? `City #${stop.city_id}`;
-}
-
-type RailProps = Pick<StopRowProps, 'position' | 'isFirst' | 'isLast'> & {
-  id: string;
-  dragging: boolean;
-};
-
-/** The dot's box: the same size with or without the number, so lifting a row moves nothing. */
-const DOT = 'min-h-8 min-w-8 items-center justify-center rounded-full px-1';
-
-/** The number on its dot, with the rail running above and below it. */
-function TimelineRail({ id, position, isFirst, isLast, dragging }: RailProps) {
-  if (dragging) {
-    return (
-      <View className="items-center">
-        <View className="h-3 w-0.5" />
-        <View testID={`stop-dot-${id}`} className={`${DOT} bg-border`} />
-      </View>
-    );
-  }
-  return (
-    <View className="items-center">
-      <View
-        testID={`stop-rail-top-${id}`}
-        className={isFirst ? 'h-3 w-0.5' : `h-3 ${RAIL_LINE}`}
-      />
-      <View testID={`stop-dot-${id}`} className={`${DOT} bg-accent`}>
-        <Text
-          testID={`stop-number-${id}`}
-          type="numeric"
-          context="callout"
-          tone="onAccent">
-          {position}
-        </Text>
-      </View>
-      {isLast ? null : (
-        <View testID={`stop-rail-bottom-${id}`} className={`grow ${RAIL_LINE}`} />
-      )}
-    </View>
-  );
 }
 
 type ActionsProps = Pick<
@@ -221,73 +199,144 @@ function rowActionHandler({
   };
 }
 
-/** The place, with its country under it, and the list's drag handle at the end of the line. */
+/**
+ * What the node and the journey draw, said at the end of the row's name: ". Now." for the stop
+ * the traveller is at and ". 23 kilometres from Lisbon." for the journey that led here. Empty
+ * for a stop with neither, whose name is then exactly the 004 row's.
+ */
+function spokenExtras({ state, from }: Pick<StopRowProps, 'state' | 'from'>): string {
+  const sentences = [
+    state === 'now' ? 'Now.' : null,
+    from ? `${formatDistance(from.km).spoken} from ${from.place}.` : null,
+  ].filter((sentence) => sentence !== null);
+  return sentences.length > 0 ? `. ${sentences.join(' ')}` : '';
+}
+
+/** The place, with the "Now" chip beside it and the list's drag handle at the end of the line. */
 function StopHeading({
+  id,
   place,
-  country,
+  now,
   handle,
 }: {
+  id: string;
   place: string;
-  country: string | null;
+  now: boolean;
   handle?: ReactNode;
 }) {
   return (
     <View className="flex-row items-start gap-2">
-      <View className="flex-1">
-        <Text type="headline">{place}</Text>
-        {country ? (
-          <Text type="caption" tone="muted">
-            {country}
-          </Text>
-        ) : null}
+      <View className="flex-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
+        <Text variant="callout">{place}</Text>
+        {now ? <NowChip stopId={id} /> : null}
       </View>
       {handle}
     </View>
   );
 }
 
+function Country({ stop }: { stop: StopWithPlace }) {
+  if (!stop.country_name) return null;
+  return (
+    <View className="flex-row items-center gap-2">
+      {stop.country_iso ? (
+        <FlagChip iso2={stop.country_iso} testID={`stop-flag-${stop.id}`} />
+      ) : null}
+      <Text variant="label" tone="muted" className="shrink">
+        {stop.country_name}
+      </Text>
+    </View>
+  );
+}
+
+function StopText(props: StopRowProps & { place: string; dates: string }) {
+  const { stop, place, dates, state, handle } = props;
+  const nights = nightsLabel(stopNights(stop));
+  return (
+    <View className="flex-1 gap-0.5">
+      <StopHeading id={stop.id} place={place} now={state === 'now'} handle={handle} />
+      <Country stop={stop} />
+      <Text
+        type="numeric"
+        context="callout"
+        tone="muted"
+        testID={`stop-dates-${stop.id}`}>
+        {dates}
+      </Text>
+      {nights ? (
+        <Text variant="label" tone="muted" testID={`stop-nights-${stop.id}`}>
+          {nights}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 export function StopRow(props: StopRowProps) {
-  const { stop, position, isFirst, isLast, handle, dragging = false } = props;
+  const {
+    stop,
+    position,
+    isFirst,
+    isLast,
+    state,
+    transit,
+    from,
+    dragging = false,
+  } = props;
   const place = describePlace(stop);
-  const country = stop.country_name ? `, ${stop.country_name}` : '';
   const dates = `${formatIsoDate(stop.arrive_date)} → ${formatIsoDate(stop.depart_date)}`;
+  const country = stop.country_name ? `, ${stop.country_name}` : '';
 
   return (
-    <View
-      testID={`stop-row-${stop.id}`}
-      accessible
-      accessibilityLabel={`Stop ${position}: ${place}${country}. ${dates}`}
-      accessibilityActions={ROW_ACTIONS}
-      onAccessibilityAction={rowActionHandler(props)}
-      className="flex-row gap-3">
-      <TimelineRail
-        id={stop.id}
-        position={position}
-        isFirst={isFirst}
-        isLast={isLast}
-        dragging={dragging}
-      />
-      <View className={isLast ? 'flex-1' : 'flex-1 pb-3'}>
-        <Card variant="flat" pending={stop.is_dirty} testID={`stop-card-${stop.id}`}>
-          <View className="gap-2">
-            <StopHeading place={place} country={stop.country_name} handle={handle} />
-            <Text type="numeric" context="callout" testID={`stop-dates-${stop.id}`}>
-              {dates}
-            </Text>
-            {stop.is_dirty ? <SyncBadge state="pending" /> : null}
-            <StopActions
-              id={stop.id}
-              place={place}
-              isFirst={isFirst}
-              isLast={isLast}
-              onMoveUp={props.onMoveUp}
-              onMoveDown={props.onMoveDown}
-              onEdit={props.onEdit}
-              onRemove={props.onRemove}
-            />
-          </View>
-        </Card>
+    <View>
+      <View
+        testID={`stop-row-${stop.id}`}
+        accessible
+        accessibilityLabel={`Stop ${position}: ${place}${country}. ${dates}${spokenExtras(props)}`}
+        accessibilityActions={ROW_ACTIONS}
+        onAccessibilityAction={rowActionHandler(props)}
+        className="flex-row gap-3">
+        <StopRail
+          id={stop.id}
+          state={state}
+          lead={leadOf(isFirst, from)}
+          showSpine={!isLast}
+          dragging={dragging}>
+          <StopNode id={stop.id} state={state} position={position} dragging={dragging} />
+        </StopRail>
+        <View className="min-w-0 flex-1 pb-3 pt-2">
+          <Card
+            variant={props.highlighted ? 'tile' : 'flat'}
+            pending={stop.is_dirty}
+            testID={`stop-card-${stop.id}`}
+            className="p-3">
+            <View className="gap-2">
+              <View className="flex-row items-center gap-3">
+                <StopText {...props} place={place} dates={dates} />
+                <StopThumb
+                  stopId={stop.id}
+                  cityId={stop.city_id}
+                  iso2={stop.country_iso}
+                  place={place}
+                  uri={props.thumb}
+                />
+              </View>
+              {stop.is_dirty ? <SyncBadge state="pending" /> : null}
+              <StopActions
+                id={stop.id}
+                place={place}
+                isFirst={isFirst}
+                isLast={isLast}
+                onMoveUp={props.onMoveUp}
+                onMoveDown={props.onMoveDown}
+                onEdit={props.onEdit}
+                onRemove={props.onRemove}
+              />
+            </View>
+          </Card>
+        </View>
       </View>
+      {dragging || !transit ? null : <TransitRow stopId={stop.id} km={transit.km} />}
     </View>
   );
 }

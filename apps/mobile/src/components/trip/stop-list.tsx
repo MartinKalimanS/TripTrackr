@@ -26,6 +26,16 @@
  * grid's `rowGap`, so the rail between two dots is one unbroken line. The handle is the
  * grip glyph in a platform-sized target; its name and hint are what they were.
  *
+ * 005 T545 draws the journey. `stopStates` says which stop is done, which one the traveller is
+ * at and which come next (`today` is the device's unless a test says otherwise), and
+ * `stopLegs` the great-circle distance between consecutive stops: a leg that moves the
+ * traveller on is drawn beneath the stop it leaves (a dotted segment) and said in the name of the
+ * stop it leads to; two stops in one place, or an unplaced stop, have only the solid line.
+ * `thumbs` is the traveller's picture of each city and `highlighted` the stops of the day they
+ * chose. `onOffsets` reports where each stop starts in the list, from the heights its row laid
+ * out at (sortables positions rows with transforms, so a row's own `y` says nothing), for the
+ * day strip to scroll to.
+ *
  * The grip answers the finger at once (FR-019, T460): a row lifts only after the 150 ms hold,
  * so while a finger is on the grip it shows the held fill every control has, from the
  * touch events (which do not claim the responder, so they cannot compete with the drag
@@ -33,14 +43,16 @@
  * gesture took over can never leave it behind. The lift and the drop settle in the
  * in-place transition budget (`Motion.transitionMs`), not the library's 300 ms.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Sortable from 'react-native-sortables';
 
-import { StopRow } from '@/components/trip/stop-row';
+import { StopRow, describePlace } from '@/components/trip/stop-row';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { MinTouchTarget } from '@/constants/theme';
 import type { StopWithPlace } from '@/db/repositories/stops';
+import { todayIso } from '@/features/trips/stop-dates';
+import { hasTransit, stopLegs, stopStates } from '@/features/trips/stop-timeline';
 import { Motion, cornerStyle } from '@/theme';
 
 export type StopListProps = {
@@ -50,6 +62,14 @@ export type StopListProps = {
   onReorder: (orderedIds: string[]) => void;
   onEdit: (stop: StopWithPlace) => void;
   onRemove: (stop: StopWithPlace) => void;
+  /** The day it is today, for the nodes: the device's own unless a test says otherwise. */
+  today?: string;
+  /** The thumbnail of the traveller's photograph of each city, by city id. */
+  thumbs?: ReadonlyMap<number, string>;
+  /** The stops of the day the traveller chose, drawn as cream tiles. */
+  highlighted?: ReadonlySet<string>;
+  /** Where each stop starts in the list (dp from its top), as the rows lay out. */
+  onOffsets?: (offsets: ReadonlyMap<string, number>) => void;
 };
 
 /** How long a press must hold before the row lifts — short enough to feel direct, long enough not to fire on a scroll. */
@@ -89,30 +109,105 @@ function GripHandle({ stopId, dragging }: { stopId: string; dragging: boolean })
 
 const keyExtractor = (stop: StopWithPlace) => stop.id;
 
-export function StopList({ stops, onMove, onReorder, onEdit, onRemove }: StopListProps) {
+/** The state of each stop and the leg between each pair, from the order they are in. */
+function useTimeline(stops: readonly StopWithPlace[], today: string | undefined) {
+  return useMemo(
+    () => ({
+      states: stopStates(stops, today ?? todayIso()),
+      legs: stopLegs(stops),
+    }),
+    [stops, today],
+  );
+}
+
+/** Each row's laid-out height, summed in data order into where each starts. */
+function useRowOffsets(
+  stops: readonly StopWithPlace[],
+  onOffsets: StopListProps['onOffsets'],
+) {
+  const heights = useRef(new Map<string, number>());
+  return useCallback(
+    (id: string, height: number) => {
+      heights.current.set(id, height);
+      if (!onOffsets) return;
+      let top = 0;
+      const offsets = new Map<string, number>();
+      for (const stop of stops) {
+        offsets.set(stop.id, top);
+        top += heights.current.get(stop.id) ?? 0;
+      }
+      onOffsets(offsets);
+    },
+    [stops, onOffsets],
+  );
+}
+
+export function StopList({
+  stops,
+  onMove,
+  onReorder,
+  onEdit,
+  onRemove,
+  today,
+  thumbs,
+  highlighted,
+  onOffsets,
+}: StopListProps) {
   const last = stops.length - 1;
   const [dragging, setDragging] = useState(false);
+  const { states, legs } = useTimeline(stops, today);
+  const measured = useRowOffsets(stops, onOffsets);
 
   const renderItem = useCallback(
-    ({ item, index }: { item: StopWithPlace; index: number }) => (
-      <StopRow
-        stop={item}
-        position={index + 1}
-        isFirst={index === 0}
-        isLast={index === last}
-        onMoveUp={() => onMove(item.id, 'up')}
-        onMoveDown={() => onMove(item.id, 'down')}
-        onEdit={() => onEdit(item)}
-        onRemove={() => onRemove(item)}
-        handle={
-          stops.length > 1 ? (
-            <GripHandle stopId={item.id} dragging={dragging} />
-          ) : undefined
-        }
-        dragging={dragging}
-      />
-    ),
-    [dragging, last, onEdit, onMove, onRemove, stops.length],
+    ({ item, index }: { item: StopWithPlace; index: number }) => {
+      const next = legs[index];
+      const before = legs[index - 1];
+      const previous = stops[index - 1];
+      return (
+        <View
+          testID={`stop-item-${item.id}`}
+          onLayout={(event) => measured(item.id, event.nativeEvent.layout.height)}>
+          <StopRow
+            stop={item}
+            position={index + 1}
+            isFirst={index === 0}
+            isLast={index === last}
+            state={states[item.id] ?? 'next'}
+            transit={hasTransit(next) ? { km: next.km } : null}
+            from={
+              previous && hasTransit(before)
+                ? { place: describePlace(previous), km: before.km }
+                : null
+            }
+            thumb={thumbs?.get(item.city_id)}
+            highlighted={highlighted?.has(item.id)}
+            onMoveUp={() => onMove(item.id, 'up')}
+            onMoveDown={() => onMove(item.id, 'down')}
+            onEdit={() => onEdit(item)}
+            onRemove={() => onRemove(item)}
+            handle={
+              stops.length > 1 ? (
+                <GripHandle stopId={item.id} dragging={dragging} />
+              ) : undefined
+            }
+            dragging={dragging}
+          />
+        </View>
+      );
+    },
+    [
+      dragging,
+      highlighted,
+      last,
+      legs,
+      measured,
+      onEdit,
+      onMove,
+      onRemove,
+      states,
+      stops,
+      thumbs,
+    ],
   );
 
   return (
