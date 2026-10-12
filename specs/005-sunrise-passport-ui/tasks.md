@@ -78,20 +78,43 @@ findings and config worth keeping. The seven checks are in
       3.0.6, `react-native-zoom-toolkit` 5.1.1; re-run `npm view <pkg> time --json` for each (at least 7 days
       old), review install scripts, `npm audit`, `npm run doctor`, `npm ci --dry-run` on Windows; commit the
       lockfile; rebuild the Android and iOS dev clients ONCE (SC-012, SC-017; D5-19)
-- [ ] T503 [P] Jest mocks, with a failing suite that imports each module first: `expo-glass-effect`
+- [x] T503 [P] Jest mocks, with a failing suite that imports each module first: `expo-glass-effect`
       (`GlassView`, `isLiquidGlassAvailable`), `react-native-view-shot` (`captureRef`), `react-native-zoom-toolkit`,
-      Phosphor deep imports; `transformIgnorePatterns` and `jest.setup.ts` (D5-19)
-- [ ] T504 [P] Fonts: extend `test/theme/global-css.test.ts` first (every family name read from the font files, both
+      Phosphor deep imports; `transformIgnorePatterns` and `jest.setup.ts` (D5-19). _As built:_ one stand-in
+      file each in `test/mocks/` (`expo-glass-effect`, `react-native-view-shot`, `react-native-zoom-toolkit`:
+      `ResumableZoom` and `Gallery`), three one-line `jest.mock` entries in `jest.setup.ts`, pinned by
+      `test/mocks/native-batch.test.tsx` (21 tests, observed red first). The glass is unavailable by default (as on
+      Android); `captureRef` rejects an unlaid-out view as the native module does. Phosphor needs no stand-in:
+      its deep path is `phosphor-react-native/src/icons/<Name>` (the only subpath its `exports` serves), added to
+      `transformIgnorePatterns`; the bare package is refused under Jest by a `moduleNameMapper` entry
+      (`test/stubs/phosphor-barrel.js`), so the 1,500-icon barrel is never loaded (D5-07).
+- [x] T504 [P] Fonts: extend `test/theme/global-css.test.ts` first (every family name read from the font files, both
       spellings, no third Bricolage weight, six files in all); then the `expo-font` entries in `app.config.ts`
       (Bricolage 600 and 700, DM Sans 400, 600 and 700, Instrument Serif Italic 400) and the `global.css`
-      variables with the `@variant ios` PostScript names (FR-004; D5-06)
-- [ ] T505 [P] Failing `test/globe/basemap-config-keys.test.ts`: every `StyleImport` config key is in a literal
+      variables with the `@variant ios` PostScript names (FR-004; D5-06). _As built:_ six variables in
+      `global.css`: `--font-display` and `--font-display-bold` (Bricolage 600, 700), `--font-body`,
+      `--font-body-semibold` and `--font-body-bold` (DM Sans 400, 600, 700) and `--font-serif` (Instrument Serif
+      Italic 400); the classes are `font-display`, `font-display-bold`, `font-body`, `font-body-semibold`,
+      `font-body-bold` and `font-serif`. Android answers to the file name (`DMSans_400Regular`, ...,
+      `InstrumentSerif_400Regular_Italic`), iOS to the PostScript name (`DMSans-Regular`, `DMSans-SemiBold`,
+      `DMSans-Bold`, `InstrumentSerif-Italic`). `app.config.ts` lists the six files by package specifier;
+      `app-config.test.ts`, `global-css.test.ts` and `css-variable-stand-in.test.ts` were extended first. The
+      kit's own `--font-normal` and the other three stay unset (the adapters decide, T518).
+- [x] T505 [P] Failing `test/globe/basemap-config-keys.test.ts`: every `StyleImport` config key is in a literal
       allow-list taken from the provider's Standard documentation; `colorBoundaries` and `colorGreenspaces` are
-      rejected; then the `basemap-config.ts` skeleton that satisfies it (SC-014; D5-04)
-- [ ] T506 Desk spike: with the packages installed, `npx expo export --platform android` and `--platform ios`
+      rejected; then the `basemap-config.ts` skeleton that satisfies it (SC-014; D5-04). _As built:_ the list is
+      the 46 properties of `docs.mapbox.com/map-styles/reference/standard/`; the test also scans every inline
+      `StyleImport` config in `src/` and pins which typed keys the package gets wrong. `basemap-config.ts` exports
+      `BasemapConfigs` (`light` by day, `dark` by night) and `BasemapWorldScaleLabels`, typed so that a
+      non-Standard key does not compile; the starting colours of C5-11 are in `constants/globe-basemap.ts`
+      (outside the component lint scope; T532 folds them into `GlobeStyle` and wires the config in).
+      `globe-view.tsx` is unchanged.
+- [x] T506 Desk spike: with the packages installed, `npx expo export --platform android` and `--platform ios`
       bundle with the Sentry Debug ID present; the React Compiler compiles a throwaway screen using Phosphor,
       the glass mock and the zoom mock with no bail-out; the whole existing suite is green; record the result in
-      research (SC-012; D5-19)
+      research (SC-012; D5-19). _As built:_ pass; both exports bundle with the Debug ID, the compiler compiles 3
+      functions with 0 bail-outs, the suite is 197 suites and 4,397 tests green; recorded in `research.md`,
+      "Desk spike T506".
 - [ ] T507 [DEVICE] V1 fonts: render the gallery's type specimen on iOS and Android; check the six faces load
       with both name spellings, `1111` and `0000` have equal widths in Bricolage with `tabular-nums` on iOS,
       the prototype's headings are within 3 percent of width with the tracking compensation of C5-7, and

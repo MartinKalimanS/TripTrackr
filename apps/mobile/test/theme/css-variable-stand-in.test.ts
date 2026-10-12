@@ -6,7 +6,7 @@
  * that answered a placeholder for ANY name would let a typo (`--surfce`) or a variable
  * dropped from the theme pass every component test and show up as a missing colour on a
  * phone. So it answers a placeholder only for the names the app's own stylesheets declare,
- * `src/theme/generated/theme.css` and `src/global.css` (the display-face variables), and
+ * `src/theme/generated/theme.css` and `src/global.css` (the six type-face variables), and
  * `undefined` for the rest.
  */
 import { renderHook } from '@testing-library/react-native';
@@ -39,7 +39,14 @@ describe('useCSSVariable under Jest', () => {
     ]) {
       expect(generated.has(name)).toBe(true);
     }
-    expect([...global].sort()).toEqual(['--font-display', '--font-display-bold']);
+    expect([...global].sort()).toEqual([
+      '--font-body',
+      '--font-body-bold',
+      '--font-body-semibold',
+      '--font-display',
+      '--font-display-bold',
+      '--font-serif',
+    ]);
   });
 
   test.each(['--background', '--accent', '--surface-shadow', '--status-planning-ink'])(
@@ -54,14 +61,18 @@ describe('useCSSVariable under Jest', () => {
     expect(await read('--color-status-active')).toBeDefined();
   });
 
-  test.each(['--font-display', '--font-display-bold'])(
-    'answers for %s, which global.css declares for the display face',
-    async (name) => {
-      // The generated theme does not declare it: the name comes from scanning global.css.
-      expect(generated.has(name)).toBe(false);
-      expect(await read(name)).toEqual(expect.any(String));
-    },
-  );
+  test.each([
+    '--font-display',
+    '--font-display-bold',
+    '--font-body',
+    '--font-body-semibold',
+    '--font-body-bold',
+    '--font-serif',
+  ])('answers for %s, which global.css declares for a type face', async (name) => {
+    // The generated theme does not declare it: the name comes from scanning global.css.
+    expect(generated.has(name)).toBe(false);
+    expect(await read(name)).toEqual(expect.any(String));
+  });
 
   test('answers for every name either stylesheet declares, array or single', async () => {
     const names = [...generated, ...global];

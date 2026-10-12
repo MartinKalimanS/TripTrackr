@@ -15,6 +15,10 @@ module.exports = {
     // Jest it is an empty module. FIRST, because the `@/` alias below would
     // otherwise resolve `@/global.css` to the real file, which no transform reads.
     '\\.css$': '<rootDir>/test/stubs/css-stub.js',
+    // Phosphor ships 1,500 icons behind one barrel; an icon is imported by its deep path
+    // (`phosphor-react-native/src/icons/<Name>`, research D5-07), which this anchored rule
+    // does not match. The bare package throws, with the reason, instead of loading them all.
+    '^phosphor-react-native$': '<rootDir>/test/stubs/phosphor-barrel.js',
     // Mirrors tsconfig.json `paths`: `@/assets/*` resolves to the project-root
     // assets directory, NOT to src/assets. Listed before the general alias
     // because moduleNameMapper takes the first match, and the general rule
@@ -46,8 +50,13 @@ module.exports = {
   // `react-native-*` and `expo-*` peers are already caught by the prefix rules
   // above; they are listed so the requirement stays visible and survives a
   // narrowing of those rules.
+  //
+  // Feature 005 (T503): `phosphor-react-native` is the one that needs the entry. Its
+  // `exports` map serves each icon as TypeScript source (`./src/icons/*` to
+  // `./src/icons/*.tsx`), which Babel must transform; the three others are stood in by
+  // `test/mocks/*` and are listed for visibility, like the peers above.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@rnmapbox/maps|react-native-purchases|expo-router|standard-navigation|heroui-native|uniwind|tailwind-variants|tailwind-merge|react-native-reanimated|react-native-worklets|react-native-gesture-handler|react-native-safe-area-context|react-native-keyboard-controller|expo-blur|expo-haptics))',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@rnmapbox/maps|react-native-purchases|expo-router|standard-navigation|heroui-native|uniwind|tailwind-variants|tailwind-merge|react-native-reanimated|react-native-worklets|react-native-gesture-handler|react-native-safe-area-context|react-native-keyboard-controller|expo-blur|expo-haptics|expo-glass-effect|react-native-view-shot|react-native-zoom-toolkit|phosphor-react-native))',
   ],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
