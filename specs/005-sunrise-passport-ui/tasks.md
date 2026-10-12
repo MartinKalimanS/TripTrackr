@@ -290,18 +290,30 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 **Purpose**: the signature screen, reviewed first. The globe's geometry is untouched.
 
-- [ ] T531 [P] [US1] Failing `test/features/globe-fit.test.ts` (peek radius `clamp((band − 24) / 2, 110, 175)`,
+- [x] T531 [P] [US1] Failing `test/features/globe-fit.test.ts` (peek radius `clamp((band − 24) / 2, 110, 175)`,
       other detents `clamp(0.95 × band, 150, 286)`, padding, `zoomDelta` clamped to `minZoomLevel`, at least 220 dp
       of free space and 20 dp of margin at peek for window heights 640 to 932) then `features/globe/globe-fit.ts`
-      (FR-013; D5-03; SC-018)
-- [ ] T532 [P] [US1] Globe style (branch `feat/005-home-globe`): failing tests (filter built with the worldview
+      (FR-013; D5-03; SC-018). _As built:_ 38 tests over heights 640 to 932 and widths 360 to 430; `globeFit` takes
+      `windowHeight` as a fifth parameter, caps the peek radius at `windowWidth / 2 - 20`, and its `zoomDelta` is
+      `log2(radius / FIT_REFERENCE_RADIUS)`; `globeFitCamera` gives the one `setCamera` move per settle (none at
+      `full`); recorded in `contracts/components.md`, "As built (T531 to T533)".
+- [x] T532 [P] [US1] Globe style (branch `feat/005-home-globe`): failing tests (filter built with the worldview
       clause, allow-listed config keys from T505, gradient stops measured by the globe gate, graticule geometry,
       stand-in tags) then `GlobeColors` stops and `GlobeStyle`, `basemap-config.ts`, `AtmosphereLayer`,
       `VisitedCountriesLayer`, `GraticuleLayer`, `GradientArcLayer`; extend
-      `test/theme/globe-contrast-gate.test.ts` first (FR-010, FR-082; D5-04, D5-22; SC-014)
-- [ ] T533 [P] [US1] Pins: failing tests (status rank order, dots beyond about 60, callout side flip, still under
+      `test/theme/globe-contrast-gate.test.ts` first (FR-010, FR-082; D5-04, D5-22; SC-014). _As built:_ the gate
+      measures every sample of each ramp, the keylines on the greenspace, the graticule, the atmosphere and the sea
+      under the greeting and the labels, and the callout card; `GlobeStyle` and `GlobeLayers` are new
+      (`GlobeColors` already had its stops), `constants/globe-basemap.ts` is folded in and deleted, the inline
+      `StyleImport` config is `basemapConfig(...)`, and stops carry their country's ISO code for the tint.
+- [x] T533 [P] [US1] Pins: failing tests (status rank order, dots beyond about 60, callout side flip, still under
       reduced motion, announced once) then `RoundelLayer`, the `CircleLayer` fallback and `ActiveCallout` (ONE
-      `MarkerView` with pulse rings); the shared hit source and `tripIdFromPress` unchanged (FR-011; D5-04)
+      `MarkerView` with pulse rings); the shared hit source and `tripIdFromPress` unchanged (FR-011; D5-04).
+      _As built:_ dots are the default and the roundel path (`useRoundels`, `RoundelStage`, `PinLayer`'s
+      `SymbolLayer`, captured through `components/ui/view-capture.ts`) is complete and tested through the view-shot
+      stand-in but OFF behind `GlobeLayers.pins.roundelsEnabled`; the callout is one `MarkerView` whose pin is its
+      middle, with a Reanimated CSS pulse that is still under reduced motion and an announcement once for each
+      thing it says. **[DEVICE]** the capture and the style checks are V2 (T508).
 - [ ] T534 [US1] Branch `feat/005-home-sheet`. Failing `ui/sheet.test.tsx` with `fireGestureHandler` (nearest
       detent by velocity, rubber band, body scroll hand-off, `adjustable` handle with increment and decrement and
       `accessibilityValue`, `BackHandler` stepping, one settle callback, selection haptic, no per-frame JS), then
