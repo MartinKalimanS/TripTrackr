@@ -356,8 +356,7 @@ describe('<PhotosScreen> — the photo view on Atlas (FR-005, FR-024, FR-025, FR
       selected: false,
       checked: false,
     });
-    // The selected chip is the filled one, with a check glyph in place of nothing.
-    expect(roma.props.color).toBe('accent');
+    // The selected chip is the filled one (ink), with a check glyph in place of nothing.
     expect(within(roma).getByTestId('photo-file-city:100-check', hidden)).toBeTruthy();
     expect(within(firenze).queryByTestId('photo-file-city:101-check', hidden)).toBeNull();
     // Names are as they were.

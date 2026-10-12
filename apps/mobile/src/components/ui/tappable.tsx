@@ -1,8 +1,9 @@
 /**
- * `Tappable` - the bare control of Atlas (feature 004; contract C4-7; FR-019, FR-024,
- * FR-026, FR-029; data-model section 6). It is the bare pressable of every screen: the
- * tab bar, the header's back button, a row's own press target, a glyph that is its own
- * control. A control with a fill and a label is a `Button`.
+ * `Tappable` - the bare control of Sunrise Passport (features 004 and 005; contracts C4-7
+ * and C5-15; FR-019, FR-024, FR-026, FR-029, FR-063, FR-071; data-model section 6). It is
+ * the bare pressable of every screen: the tab bar, the header's back button, a row's own
+ * press target, a glyph that is its own control. A control with a fill and a label is a
+ * `Button`.
  *
  *   <Tappable accessibilityLabel="Open trip" onPress={open} busy={saving} hitSlop={8}>
  *     ...children...
@@ -22,27 +23,25 @@
  *   scale, so a large label grows the control instead of clipping (FR-026, FR-029). It
  *   never shrinks below the minimum when the text is made smaller. A caller `style` is
  *   applied last and may override it (the header's back button has a fixed-height bar).
- * - A held press swaps to a pressed fill at once: no transition, so it is inside the
- *   100 ms budget (FR-019) and there is nothing for reduced motion to remove. The fill is
- *   the kit's `separator-secondary` (the surface pulled 15% toward the ink), a SOLID tone
- *   that is a visible step (at least 1.08:1) from canvas, surface and overlay in all four
- *   themes and keeps ink, muted and accent text at 4.5:1 (7:1 in the contrast themes).
- *   `surface-tertiary` is not used: in the dark themes it IS the overlay colour, so a press
- *   on a menu or sheet would show nothing. `test/theme/adapter-pressed-fills.test.ts`
- *   measures it.
+ * - A held press swaps to the `pressed` fill at once: no transition, so it is inside the
+ *   100 ms budget (FR-019) and there is nothing for reduced motion to remove. The kit's
+ *   `--surface-tertiary` is generated from the palette key `pressed` (C5-6), a SOLID tone
+ *   that is a visible step (at least 1.08:1) from canvas, paper and overlay in all four
+ *   themes (`test/theme/adapter-pressed-fills.test.ts` measures it). Only ink text is
+ *   gated on it (P6: `ink` on `pressed`), so the content of a control that takes this fill
+ *   carries ink while held; `muted` and `subtle` are not gated on it (finding M-4).
  * - The font scale comes from `useWindowDimensions`, not from `useAppearance`: a control
  *   repeated down a list needs nothing else from that hook, so it skips the hook's
  *   per-component colour-scheme subscription and derived object. The platform's
  *   accessibility settings are one app-wide subscription (`hooks/appearance-store.ts`),
  *   so a consumer adds no listener of its own either way (tasks.md T461).
- * - A focused control draws a ring `FocusRing.width` thick, `FocusRing.offset` OUTSIDE it
+ * - A focused control draws the focus ring of `focus-ring.ts`: 2.5 dp thick, 2 dp OUTSIDE it
  *   (an `outline`, which takes no layout space), in the `focus` token. It does not depend
  *   on the pressed appearance, and the offset keeps it off any accent fill (review rule 6).
  *
  * Colours come from the kit's theme (`useThemeColor`) and never from a literal.
  */
 import { useThemeColor, type ThemeColor } from 'heroui-native';
-import { useState } from 'react';
 import {
   Pressable,
   useWindowDimensions,
@@ -52,12 +51,16 @@ import {
 } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
-import { FocusRing, cornerStyle } from '@/theme';
+import { cornerStyle } from '@/theme';
 
 import { assertAccessibleName, assertNotBusyAndDisabled } from './adapter-guards';
+import { focusRingStyle, useFocusRing } from './focus-ring';
 
-/** The kit colour a held `Tappable` paints. Exported so the gate measures what is used. */
-export const TAPPABLE_PRESSED_TOKEN = 'separator-secondary' satisfies ThemeColor;
+/**
+ * The kit colour a held `Tappable` paints: the palette key `pressed`. Exported so the gate
+ * measures what is used.
+ */
+export const TAPPABLE_PRESSED_TOKEN = 'surface-tertiary' satisfies ThemeColor;
 
 export type TappableProps = Omit<PressableProps, 'style' | 'disabled'> & {
   /** Required: what a screen reader says. */
@@ -108,14 +111,7 @@ export function tappableStyle(
     justifyContent: 'center',
     ...cornerStyle('md'),
     ...(pressed && feedback === 'fill' ? { backgroundColor: pressedColor } : {}),
-    ...(ringed
-      ? {
-          outlineWidth: FocusRing.width,
-          outlineOffset: FocusRing.offset,
-          outlineColor: focusColor,
-          outlineStyle: 'solid' as const,
-        }
-      : {}),
+    ...(ringed ? focusRingStyle(focusColor) : {}),
   };
 }
 
@@ -136,7 +132,7 @@ export function Tappable({
   assertNotBusyAndDisabled('Tappable', busy, disabled);
 
   const { fontScale } = useWindowDimensions();
-  const [focused, setFocused] = useState(false);
+  const focus = useFocusRing(onFocus, onBlur);
   const pressedColor = useThemeColor(TAPPABLE_PRESSED_TOKEN);
   const focusColor = useThemeColor('focus');
   const inert = busy || disabled;
@@ -151,18 +147,12 @@ export function Tappable({
       accessibilityState={{ ...accessibilityState, disabled: inert, busy }}
       disabled={inert}
       onPress={inert ? undefined : onPress}
-      onFocus={(event) => {
-        setFocused(true);
-        onFocus?.(event);
-      }}
-      onBlur={(event) => {
-        setFocused(false);
-        onBlur?.(event);
-      }}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
       className={classes || undefined}
       style={({ pressed }) => [
         tappableStyle(
-          { pressed, focused, feedback },
+          { pressed, focused: focus.focused, feedback },
           { fontScale, pressedColor, focusColor },
         ),
         style,

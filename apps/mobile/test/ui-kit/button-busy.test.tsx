@@ -1,22 +1,20 @@
 /**
- * T417 - the `Button` adapter against the REAL kit: a busy button is announced busy and
- * unavailable, ignores presses, and is NOT dimmed (research D4-02 item 4; FR-019).
+ * T417 and T519 - the `Button` adapter beside the REAL kit: a busy button is announced busy
+ * and unavailable, ignores presses, shows the kit's own `Spinner` and is NOT dimmed
+ * (FR-019; data-model section 6).
  *
- * The kit has no busy state. The adapter passes `isDisabled` for both `busy` and
- * `disabled`, because React Native's Pressable replaces `accessibilityState.disabled`
- * with its own `disabled` prop (`Libraries/Components/Pressable/Pressable.js`: a
- * non-null `disabled` wins), so a button the kit still sees as enabled could not be
- * announced unavailable. The price is the kit's `disabled:element-disabled` class, which
- * dims to 50% opacity; the adapter cancels it with `disabled:opacity-100`, written after
- * it. Uniwind resolves two classes that set one property by order
- * (`test/ui-kit/button-class-merge.test.ts`), so the later class wins.
+ * Feature 004 wrapped the kit's Button and had to cancel its `disabled:element-disabled`
+ * dimming with a later class (pinned by `button-class-merge.test.ts`). The Sunrise button is
+ * a React Native `Pressable` painted from tokens (C5-15): there is no kit class to cancel,
+ * and what remains of the kit is the Spinner and the theme colours. This suite keeps the one
+ * check that needs the real kit: that the adapter's spinner is the real `Spinner`, hidden
+ * from assistive technology, and that the semantics hold with the real provider mounted.
  *
  * Every other suite sees the stand-in kit; this one swaps the real one back in, with the
- * same Reanimated and worklets doubles `real-render.test.tsx` needs. Under Jest
- * `className` is an inert prop on the host node, so what is asserted is the class list
- * the kit hands the Pressable, which is what Uniwind reads on a device.
+ * same Reanimated and worklets doubles `real-render.test.tsx` needs.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 
@@ -60,50 +58,55 @@ function renderButton(props: Record<string, unknown> = {}) {
   );
 }
 
-const classesOf = () =>
-  String(screen.getByLabelText('Save trip').props.className ?? '').split(/\s+/);
+const button = () => screen.getByLabelText('Save trip');
+const hidden = { includeHiddenElements: true };
 
-describe('the Button adapter on the real kit (T417)', () => {
-  test('idle: not disabled, not dimmed, announced as available', async () => {
-    await renderButton();
-    const node = screen.getByLabelText('Save trip');
-    expect(node.props.accessibilityState).toMatchObject({ busy: false, disabled: false });
-    expect(classesOf()).not.toContain('disabled:element-disabled');
-    expect(classesOf()).not.toContain('disabled:opacity-100');
+describe('the Button adapter beside the real kit (T417, T519)', () => {
+  test('idle: not disabled, announced as available, no spinner', async () => {
+    await renderButton({ testID: 'save' });
+    expect(button().props.accessibilityState).toMatchObject({
+      busy: false,
+      disabled: false,
+    });
+    expect(screen.queryByTestId('save-spinner', hidden)).toBeNull();
   });
 
-  test('disabled: announced unavailable and dimmed by the kit', async () => {
-    await renderButton({ disabled: true });
-    const node = screen.getByLabelText('Save trip');
-    expect(node.props.accessibilityState).toMatchObject({ busy: false, disabled: true });
-    expect(classesOf()).toContain('disabled:element-disabled');
-    expect(classesOf()).not.toContain('disabled:opacity-100');
+  test('disabled: announced unavailable, with no spinner', async () => {
+    await renderButton({ disabled: true, testID: 'save' });
+    expect(button().props.accessibilityState).toMatchObject({
+      busy: false,
+      disabled: true,
+    });
+    expect(screen.queryByTestId('save-spinner', hidden)).toBeNull();
   });
 
-  test('busy: announced busy and unavailable, and the dimming class is cancelled', async () => {
+  test('busy: announced busy and unavailable, with the real Spinner, hidden from assistive technology', async () => {
+    await renderButton({ busy: true, testID: 'save' });
+    expect(button().props.accessibilityState).toMatchObject({
+      busy: true,
+      disabled: true,
+    });
+    const spinner = screen.getByTestId('save-spinner', hidden);
+    expect(spinner.props.accessibilityElementsHidden).toBe(true);
+    expect(spinner.props.importantForAccessibility).toBe('no-hide-descendants');
+  });
+
+  test('busy is not dimmed: no opacity in the style, none among the classes', async () => {
     await renderButton({ busy: true });
-    const node = screen.getByLabelText('Save trip');
-    expect(node.props.accessibilityState).toMatchObject({ busy: true, disabled: true });
-
-    const classes = classesOf();
-    expect(classes).toContain('disabled:element-disabled');
-    expect(classes).toContain('disabled:opacity-100');
-    // Same property, same weight: the later class wins in Uniwind, so the cancel is last.
-    expect(classes.indexOf('disabled:opacity-100')).toBeGreaterThan(
-      classes.indexOf('disabled:element-disabled'),
-    );
+    const style = StyleSheet.flatten(button().props.style) as Record<string, unknown>;
+    expect(style.opacity).toBeUndefined();
+    expect(String(button().props.className ?? '')).not.toMatch(/opacity|disabled/);
   });
 
   test('busy ignores presses on the real Pressable', async () => {
     const onPress = jest.fn();
     await renderButton({ busy: true, onPress });
-    await fireEvent.press(screen.getByLabelText('Save trip'));
+    await fireEvent.press(button());
     expect(onPress).not.toHaveBeenCalled();
   });
 
-  test('a caller class that is not ours still comes last', async () => {
+  test('a caller class reaches the node unchanged: there is no kit class beside it', async () => {
     await renderButton({ busy: true, className: 'self-stretch' });
-    const classes = classesOf();
-    expect(classes[classes.length - 1]).toBe('self-stretch');
+    expect(button().props.className).toBe('self-stretch');
   });
 });
