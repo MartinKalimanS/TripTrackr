@@ -275,7 +275,7 @@ describe('<Field> largest text - FR-029', () => {
 
   test('a multiline field is as tall as the lines it asks for, text and padding', () => {
     // numberOfLines is Android-only in React Native 0.86: iOS would start at one line.
-    const lines = (count: number) => count * TypeRoles.body.lineHeight + 24;
+    const lines = (count: number) => count * (TypeRoles.body.lineHeight ?? 24) + 24;
     expect(fieldMinHeight(1, 6)).toBe(lines(6));
     expect(fieldMinHeight(2, 6)).toBe(lines(6) * 2);
     expect(fieldMinHeight(0.8, 6)).toBe(lines(6));

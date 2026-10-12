@@ -67,13 +67,7 @@ import {
   useThemeColor,
 } from 'heroui-native';
 import { useState } from 'react';
-import {
-  View,
-  type NativeSyntheticEvent,
-  type TextInputFocusEventData,
-  type TextInputProps,
-  type ViewStyle,
-} from 'react-native';
+import { View, type TextInputProps, type ViewStyle } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -108,6 +102,8 @@ const MULTILINE_PADDING_DP = 24;
 /** The danger boundary of an invalid field, in dp. */
 const INVALID_BORDER = 1.5;
 
+/** The body role's line height (the accent role is the only one without a number). */
+const BODY_LINE_HEIGHT = TypeRoles.body.lineHeight ?? 24;
 const LABEL_CLASSES = typeClasses('label', 'default', true);
 const HELPER_CLASSES = 'flex-1 text-[13px] leading-[18px] font-body text-muted';
 const INFO: IconName = { ios: 'info.circle', android: 'info' };
@@ -120,7 +116,7 @@ const INFO: IconName = { ios: 'info.circle', android: 'info' };
  */
 export function fieldMinHeight(fontScale: number, lines?: number): number {
   const floor = Math.max(FIELD_MIN_HEIGHT, MinTouchTarget);
-  const wanted = lines ? lines * TypeRoles.body.lineHeight + MULTILINE_PADDING_DP : 0;
+  const wanted = lines ? lines * BODY_LINE_HEIGHT + MULTILINE_PADDING_DP : 0;
   return Math.max(floor, wanted) * Math.max(1, fontScale);
 }
 
@@ -178,26 +174,23 @@ function HelperLine({ text }: { text: string }) {
   );
 }
 
-export function Field({
-  label,
-  value,
-  onChangeText,
-  error,
-  description,
+type FieldInputProps = Omit<
+  FieldProps,
+  'label' | 'error' | 'description' | 'accessibilityLabel' | 'editable'
+> & { name: string; invalid: boolean };
+
+/** The input: the focus ring, the boundary and the size, around the caller's own props. */
+function FieldInput({
+  name,
+  invalid,
   isRequired = false,
-  accessibilityLabel,
   accessibilityHint,
-  editable,
   multiline,
   numberOfLines,
   onFocus,
   onBlur,
-  testID,
   ...rest
-}: FieldProps) {
-  const name = accessibilityLabel ?? label;
-  assertAccessibleName('Field', name);
-
+}: FieldInputProps) {
   const { fontScale } = useAppearance();
   const [focused, setFocused] = useState(false);
   const colours = {
@@ -205,42 +198,53 @@ export function Field({
     surface: useThemeColor('surface'),
     danger: useThemeColor('danger'),
   };
-  const invalid = Boolean(error);
   const minHeight = fieldMinHeight(fontScale, multiline ? numberOfLines : 0);
 
-  const focusing = (event: NativeSyntheticEvent<TextInputFocusEventData>) => {
-    setFocused(true);
-    onFocus?.(event);
-  };
-  const blurring = (event: NativeSyntheticEvent<TextInputFocusEventData>) => {
-    setFocused(false);
-    onBlur?.(event);
-  };
+  return (
+    <Input
+      accessibilityLabel={name}
+      accessibilityHint={accessibilityHint ?? (isRequired ? REQUIRED_HINT : undefined)}
+      aria-invalid={invalid}
+      multiline={multiline}
+      numberOfLines={numberOfLines}
+      textAlignVertical={multiline ? 'top' : undefined}
+      className={inputClasses(invalid, multiline) || undefined}
+      style={inputStyle({ focused, invalid, minHeight }, colours)}
+      onFocus={(event) => {
+        setFocused(true);
+        onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        setFocused(false);
+        onBlur?.(event);
+      }}
+      {...rest}
+    />
+  );
+}
+
+export function Field({
+  label,
+  error,
+  description,
+  accessibilityLabel,
+  editable,
+  ...input
+}: FieldProps) {
+  const name = accessibilityLabel ?? label;
+  assertAccessibleName('Field', name);
+  const invalid = Boolean(error);
+  const { testID } = input;
 
   return (
     <TextField
       isInvalid={invalid}
       isDisabled={editable === false}
-      isRequired={isRequired}>
+      isRequired={input.isRequired ?? false}>
       <Label>
         <Label.Text className={LABEL_CLASSES}>{label}</Label.Text>
       </Label>
-      <Input
-        testID={testID}
-        accessibilityLabel={name}
-        accessibilityHint={accessibilityHint ?? (isRequired ? REQUIRED_HINT : undefined)}
-        aria-invalid={invalid}
-        value={value}
-        onChangeText={onChangeText}
-        multiline={multiline}
-        numberOfLines={numberOfLines}
-        textAlignVertical={multiline ? 'top' : undefined}
-        className={inputClasses(invalid, multiline) || undefined}
-        style={inputStyle({ focused, invalid, minHeight }, colours)}
-        onFocus={focusing}
-        onBlur={blurring}
-        {...rest}
-      />
+      <FieldInput {...input} name={name} invalid={invalid} />
       <FieldError
         accessible
         accessibilityRole="alert"

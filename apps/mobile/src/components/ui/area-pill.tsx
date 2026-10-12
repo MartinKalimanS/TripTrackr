@@ -97,6 +97,35 @@ function WarnDot({ testID }: { testID?: string }) {
   );
 }
 
+/** The icon, the figure and the label, stacked and centred. */
+function Figures({
+  icon,
+  label,
+  count,
+}: Pick<AreaPillProps, 'icon' | 'label' | 'count'>) {
+  return (
+    <>
+      <Icon name={icon} size={24} tone="muted" />
+      <Text
+        variant="callout"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        className="max-w-full">
+        {String(count)}
+      </Text>
+      <Text
+        variant="caption"
+        capped
+        tone="muted"
+        numberOfLines={1}
+        className="max-w-full">
+        {label}
+      </Text>
+    </>
+  );
+}
+
 export function AreaPill({
   icon,
   label,
@@ -125,23 +154,7 @@ export function AreaPill({
       style={{ minHeight }}
       innerClassName="min-h-[72px] items-center justify-center gap-0.5 px-1.5 pb-2 pt-2.5"
       innerStyle={warn ? { borderColor: danger, borderWidth: WARN_RING } : undefined}>
-      <Icon name={icon} size={24} tone="muted" />
-      <Text
-        variant="callout"
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.8}
-        className="max-w-full">
-        {String(count)}
-      </Text>
-      <Text
-        variant="caption"
-        capped
-        tone="muted"
-        numberOfLines={1}
-        className="max-w-full">
-        {label}
-      </Text>
+      <Figures icon={icon} label={label} count={count} />
       {isPrivate ? <Lock testID={testID} /> : null}
       {warn ? <WarnDot testID={testID} /> : null}
     </Card>

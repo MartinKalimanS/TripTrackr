@@ -238,6 +238,113 @@ function rowState(pressable: boolean, disabled: boolean, working: boolean) {
   return working ? { disabled: true, busy: true } : { disabled };
 }
 
+/** The title and the description: the description leaves the muted ink while held. */
+function RowText({
+  title,
+  description,
+  destructive,
+  held,
+}: {
+  title: string;
+  description?: string;
+  destructive: boolean;
+  held: boolean;
+}) {
+  return (
+    <KitListGroup.ItemContent>
+      <Text variant="callout" tone={destructive ? 'danger' : 'default'}>
+        {title}
+      </Text>
+      {description ? (
+        <Text variant="label" tone={held ? 'default' : 'muted'}>
+          {description}
+        </Text>
+      ) : null}
+    </KitListGroup.ItemContent>
+  );
+}
+
+interface RowBodyProps {
+  leading?: ReactNode;
+  title: string;
+  description?: string;
+  trailing?: ReactNode;
+  destructive: boolean;
+  held: boolean;
+  pressable: boolean;
+  working: boolean;
+  testID?: string;
+}
+
+/** What is inside the row: the leading slot, the words and the trailing slot. */
+function RowBody(row: RowBodyProps) {
+  return (
+    <>
+      <Leading leading={row.leading} destructive={row.destructive} testID={row.testID} />
+      <RowText
+        title={row.title}
+        description={row.description}
+        destructive={row.destructive}
+        held={row.held}
+      />
+      <Trailing
+        trailing={row.trailing}
+        pressable={row.pressable}
+        busy={row.working}
+        testID={row.testID}
+      />
+    </>
+  );
+}
+
+interface RowFlags {
+  pressable: boolean;
+  disabled: boolean;
+  busy: boolean;
+  /** Named, or given actions: one element for assistive technology even without a press. */
+  named: boolean;
+  onPress?: ListRowProps['onPress'];
+}
+
+/** The role, the state and the press of the host row, and the two states that gate them. */
+function rowHost({ pressable, disabled, busy, named, onPress }: RowFlags) {
+  const inert = pressable && disabled;
+  const working = pressable && busy;
+  return {
+    inert,
+    working,
+    props: {
+      accessible: pressable || named,
+      focusable: pressable,
+      accessibilityRole: pressable ? ('button' as const) : undefined,
+      accessibilityState: rowState(pressable, disabled, working),
+      disabled: pressable ? disabled || working : undefined,
+      onPress: inert || working ? undefined : onPress,
+    },
+  };
+}
+
+/** Focus and a held press, which only a pressable row has: the ring and the ink on the fill. */
+function useRowFeedback(pressable: boolean) {
+  const { fontScale } = useAppearance();
+  const focusColor = useThemeColor('focus');
+  const [focused, setFocused] = useState(false);
+  const [held, setHeld] = useState(false);
+  return {
+    held: held && pressable,
+    style: [
+      { minHeight: ROW_MIN_HEIGHT * Math.max(1, fontScale) },
+      pressable && focused ? focusRing(focusColor) : null,
+    ],
+    handlers: {
+      onFocus: () => setFocused(true),
+      onBlur: () => setFocused(false),
+      onPressIn: pressable ? () => setHeld(true) : undefined,
+      onPressOut: pressable ? () => setHeld(false) : undefined,
+    },
+  };
+}
+
 export function ListRow({
   title,
   description,
@@ -253,54 +360,32 @@ export function ListRow({
   busy = false,
   testID,
 }: ListRowProps) {
-  const { fontScale } = useAppearance();
-  const focusColor = useThemeColor('focus');
-  const [focused, setFocused] = useState(false);
-  const [held, setHeld] = useState(false);
   const pressable = onPress !== undefined;
-  const grouped =
-    pressable || accessibilityLabel !== undefined || accessibilityActions !== undefined;
-  const inert = pressable && disabled;
-  const working = pressable && busy;
+  const feedback = useRowFeedback(pressable);
+  const named = accessibilityLabel !== undefined || accessibilityActions !== undefined;
+  const { inert, working, props } = rowHost({
+    pressable,
+    disabled,
+    busy,
+    named,
+    onPress,
+  });
   const destructive = tone === 'destructive';
 
   return (
     <KitListGroup.Item
       testID={testID}
-      accessible={grouped}
-      focusable={pressable}
-      accessibilityRole={pressable ? 'button' : undefined}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityActions={accessibilityActions}
       onAccessibilityAction={onAccessibilityAction}
-      accessibilityState={rowState(pressable, disabled, working)}
-      disabled={pressable ? disabled || working : undefined}
-      onPress={inert || working ? undefined : onPress}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      onPressIn={pressable ? () => setHeld(true) : undefined}
-      onPressOut={pressable ? () => setHeld(false) : undefined}
+      {...props}
+      {...feedback.handlers}
       className={rowClasses(pressable, inert)}
-      style={[
-        { minHeight: ROW_MIN_HEIGHT * Math.max(1, fontScale) },
-        pressable && focused ? focusRing(focusColor) : null,
-      ]}>
-      <Leading leading={leading} destructive={destructive} testID={testID} />
-      <KitListGroup.ItemContent>
-        <Text variant="callout" tone={destructive ? 'danger' : 'default'}>
-          {title}
-        </Text>
-        {description ? (
-          <Text variant="label" tone={held && pressable ? 'default' : 'muted'}>
-            {description}
-          </Text>
-        ) : null}
-      </KitListGroup.ItemContent>
-      <Trailing
-        trailing={trailing}
-        pressable={pressable}
-        busy={working}
+      style={feedback.style}>
+      <RowBody
+        {...{ leading, title, description, trailing, destructive, pressable, working }}
+        held={feedback.held}
         testID={testID}
       />
     </KitListGroup.Item>
