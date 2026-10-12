@@ -202,3 +202,9 @@ export function listedYears(items: readonly TripListItem[]): number[] {
 export function yearHeaderIndex(items: readonly TripListItem[], year: number): number {
   return items.findIndex((item) => item.type === 'yearHeader' && item.year === year);
 }
+
+/**
+ * From this many trips the list shows a year strip on its edge and says since when
+ * (FR-035): below it the headers are enough.
+ */
+export const YEAR_SCRUBBER_MIN_TRIPS = 200;

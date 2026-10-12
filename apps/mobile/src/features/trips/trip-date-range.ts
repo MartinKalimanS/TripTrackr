@@ -92,3 +92,35 @@ export function formatDateRange(
   const first = dayFormatter(languageTag, start.year !== end.year).format(noonUtc(start));
   return `${first} – ${last}`;
 }
+
+const MONTH_AND_YEAR = { month: 'short', year: 'numeric', timeZone: 'UTC' } as const;
+
+/** The month-and-year formatter of a language: one per language, made on first use. */
+function monthFormatter(languageTag: string): Intl.DateTimeFormat {
+  const key = `${languageTag}|month`;
+  const known = formatters.get(key);
+  if (known) return known;
+
+  let made: Intl.DateTimeFormat;
+  try {
+    made = new Intl.DateTimeFormat(languageTag, MONTH_AND_YEAR);
+  } catch {
+    made = new Intl.DateTimeFormat(undefined, MONTH_AND_YEAR);
+  }
+  formatters.set(key, made);
+  return made;
+}
+
+/**
+ * The month a calendar day is in, with its year ("Jan 2027"), in the device locale: what a
+ * ticket and a row say of when a trip is (feature 005, FR-032, FR-033). The day is read as
+ * the three numbers of the string, as above, so the month is the one the traveller picked
+ * whatever zone the phone is in. `null` for anything that is not a day on the calendar.
+ */
+export function formatMonthYear(
+  iso: string,
+  languageTag: string = deviceLocale().languageTag,
+): string | null {
+  const day = dayOf(iso);
+  return day === null ? null : monthFormatter(languageTag).format(noonUtc(day));
+}
