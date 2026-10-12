@@ -626,7 +626,7 @@ describe('root layout — the kit follows useAppearance (feature 004, T402, T412
       },
     );
 
-    test('a live switch of the increased-contrast setting repaints all of them together', async () => {
+    test('a live switch of the scheme repaints all of them together, and the contrast setting keeps them in step', async () => {
       HeroUINativeProvider.mockImplementation(
         ({ children }: { children?: ReactNode }) => (
           <>
@@ -637,24 +637,33 @@ describe('root layout — the kit follows useAppearance (feature 004, T402, T412
       );
       await renderApp(undefined, WelcomeCanvas);
       await screen.findByText('welcome-screen');
-      const lightCanvas = backgroundVariable('light').toLowerCase();
-      expect(
+      const canvasOf = () =>
         String(
           flatStyle(screen.getByTestId('welcome-canvas')).backgroundColor,
-        ).toLowerCase(),
-      ).toBe(lightCanvas);
+        ).toLowerCase();
+      const lightCanvas = backgroundVariable('light').toLowerCase();
+      expect(canvasOf()).toBe(lightCanvas);
 
+      await setScheme('dark');
+
+      const darkCanvas = backgroundVariable('dark').toLowerCase();
+      expect(darkCanvas).not.toBe(lightCanvas);
+      await waitFor(() => expect(canvasOf()).toBe(darkCanvas));
+      expect(
+        String(flatStyle(screen.getByTestId('app-root')).backgroundColor).toLowerCase(),
+      ).toBe(darkCanvas);
+      expect(screen.getByTestId('navigation-probe').props.children.toLowerCase()).toBe(
+        darkCanvas,
+      );
+      expect(rootSceneBehind('welcome-canvas')?.toLowerCase()).toBe(darkCanvas);
+
+      // Sunrise keeps the paper in the contrast themes (C5-3): the switch must still reach
+      // every surface, and they must all still agree on the one canvas.
       await setAccessibility({ darker: true });
 
-      const contrastCanvas = backgroundVariable('light-contrast').toLowerCase();
-      expect(contrastCanvas).not.toBe(lightCanvas);
-      await waitFor(() =>
-        expect(
-          String(
-            flatStyle(screen.getByTestId('welcome-canvas')).backgroundColor,
-          ).toLowerCase(),
-        ).toBe(contrastCanvas),
-      );
+      const contrastCanvas = backgroundVariable('dark-contrast').toLowerCase();
+      await waitFor(() => expect(themesAsked()).toContain('dark-contrast'));
+      expect(canvasOf()).toBe(contrastCanvas);
       expect(
         String(flatStyle(screen.getByTestId('app-root')).backgroundColor).toLowerCase(),
       ).toBe(contrastCanvas);

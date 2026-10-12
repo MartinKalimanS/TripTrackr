@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Writes `src/theme/generated/theme.css` from the palette (feature 004, contract C4-5).
+ * Writes `src/theme/generated/theme.css` from the palette (feature 004, contract C4-5; the
+ * Sunrise variable map of feature 005, contract C5-6).
  *
  *   npm run theme:build -w apps/mobile    (repository root) regenerate the file
  *   npm run theme:check -w apps/mobile    exit 1 when the committed file is stale

@@ -1,5 +1,5 @@
 /**
- * T412 (generator part) — contract C4-5.
+ * T412 (generator part) — contract C4-5; feature 005 contract C5-6 (the Sunrise variable map).
  *
  * `src/theme/generated/theme.css` is a pure function of the palette and the variable map
  * in `scripts/theme-css.js`. Two failures this guards against:
@@ -20,11 +20,11 @@ import path from 'node:path';
 
 import { PaletteNames, Palettes, type Palette, type PaletteName } from '@/theme/palette';
 
-import { buildThemeCss } from '../../scripts/theme-css';
+import { TRANSLUCENT_KEYS, buildThemeCss } from '../../scripts/theme-css';
 import {
   DECORATIVE_GENERATED_VARIABLES,
-  DECORATIVE_PALETTE_KEYS,
   SHARED_NON_COLOUR_VARIABLES,
+  decorativeKeys,
 } from './gate-exemptions';
 import { buildPairs, coveredKeys } from './palette-gate-support';
 
@@ -38,7 +38,7 @@ const KIT_COLOUR_VARIABLES: Record<string, keyof Palette> = {
   '--surface-foreground': 'ink',
   '--surface-secondary': 'surfaceSecondary',
   '--surface-secondary-foreground': 'ink',
-  '--surface-tertiary': 'surfaceTertiary',
+  '--surface-tertiary': 'pressed',
   '--surface-tertiary-foreground': 'ink',
   '--overlay': 'overlay',
   '--overlay-foreground': 'ink',
@@ -53,30 +53,71 @@ const KIT_COLOUR_VARIABLES: Record<string, keyof Palette> = {
   '--field-placeholder': 'placeholder',
   '--field-border': 'border',
   '--success': 'success',
-  '--success-foreground': 'successInk',
-  '--warning': 'warning',
-  '--warning-foreground': 'warningInk',
+  '--success-foreground': 'onInk',
+  '--warning': 'amberInk',
+  '--warning-foreground': 'onInk',
   '--danger': 'danger',
   '--danger-foreground': 'dangerInk',
   '--segment': 'overlay',
   '--segment-foreground': 'ink',
   '--border': 'border',
-  '--separator': 'separator',
+  '--separator': 'hairline',
   '--focus': 'focus',
   '--link': 'link',
 };
 
-/** The app's own variables, and the Tailwind colour each is exposed as. */
-const APP_VARIABLES: Record<string, { key: keyof Palette; colour: string }> = {
-  '--status-planning': { key: 'statusPlanning', colour: '--color-status-planning' },
-  '--status-planning-ink': {
-    key: 'statusPlanningInk',
-    colour: '--color-status-planning-ink',
-  },
-  '--status-active': { key: 'statusActive', colour: '--color-status-active' },
-  '--status-past': { key: 'statusPast', colour: '--color-status-past' },
-  '--pending': { key: 'pending', colour: '--color-pending' },
-};
+/** The app's own variables, and the Tailwind colour each is exposed as (C5-6). */
+const APP_VARIABLES: Record<string, { key: keyof Palette; colour: string }> =
+  Object.fromEntries(
+    (
+      [
+        ['--status-planning', 'statusPlanning'],
+        ['--status-planning-ink', 'statusPlanningInk'],
+        ['--status-active', 'statusActive'],
+        ['--status-past', 'statusPast'],
+        ['--pending', 'pending'],
+        ['--subtle', 'subtle'],
+        ['--on-ink', 'onInk'],
+        ['--sand', 'sand'],
+        ['--accent-press', 'accentPress'],
+        ['--accent-line', 'accentLine'],
+        ['--accent-text', 'accentText'],
+        ['--accent-tint', 'accentTint'],
+        ['--aqua', 'aqua'],
+        ['--aqua-line', 'aquaLine'],
+        ['--aqua-ink', 'aquaInk'],
+        ['--aqua-tint', 'aquaTint'],
+        ['--amber', 'amber'],
+        ['--amber-line', 'amberLine'],
+        ['--amber-ink', 'amberInk'],
+        ['--amber-tint', 'amberTint'],
+        ['--danger-tint', 'dangerTint'],
+        ['--success-tint', 'successTint'],
+        ['--grab', 'grab'],
+        ['--on-photo', 'onPhoto'],
+        ['--scrim-button', 'scrimButton'],
+        ['--scrim-button-line', 'scrimButtonLine'],
+        ['--photo-ring', 'ring'],
+        ['--skeleton', 'skeleton'],
+        ['--skeleton-highlight', 'skeletonHighlight'],
+        ['--toast-surface', 'toastSurface'],
+        ['--toast-ink', 'toastInk'],
+        ['--stamp-coral', 'stampCoral'],
+        ['--stamp-navy', 'stampNavy'],
+        ['--stamp-teal', 'stampTeal'],
+        ['--stamp-green', 'stampGreen'],
+        ['--cover1-start', 'cover1Start'],
+        ['--cover1-end', 'cover1End'],
+        ['--cover2-start', 'cover2Start'],
+        ['--cover2-end', 'cover2End'],
+        ['--cover3-start', 'cover3Start'],
+        ['--cover3-end', 'cover3End'],
+      ] as const
+    ).map(([variable, key]) => [
+      variable,
+      { key, colour: `--color-${variable.slice(2)}` },
+    ]),
+  );
 
 const SHADOWS = DECORATIVE_GENERATED_VARIABLES as readonly string[];
 
@@ -205,8 +246,8 @@ describe('buildThemeCss', () => {
     expect(() => buildThemeCss(bad as never)).toThrow(/theme name/i);
   });
 
-  test('only the backdrop may carry an alpha channel (8-digit hex)', () => {
-    const withAlpha = { ...Palettes, dark: { ...Palettes.dark, ink: '#F4F1ECCC' } };
+  test('only tints, scrims and alpha lines may carry an alpha channel (8-digit hex)', () => {
+    const withAlpha = { ...Palettes, dark: { ...Palettes.dark, ink: '#F4F7FBCC' } };
     expect(() => buildThemeCss(withAlpha)).toThrow(/dark.*ink.*hex/);
     const translucent = {
       ...Palettes,
@@ -216,11 +257,27 @@ describe('buildThemeCss', () => {
     expect(parseThemes(buildThemeCss(translucent)).dark['--backdrop']).toBe('#04080e99');
   });
 
-  test('refuses an 8-digit hex on every non-backdrop key, not just ink', () => {
+  test('the translucent keys of the generator are exactly the keys the palette makes translucent', () => {
+    const translucent = (Object.keys(Palettes.light) as (keyof Palette)[]).filter((key) =>
+      PaletteNames.some((name) => Palettes[name][key].length === 9),
+    );
+    expect([...TRANSLUCENT_KEYS].sort()).toEqual(translucent.sort());
+  });
+
+  test('refuses an 8-digit hex on every opaque key, not just ink', () => {
     for (const key of Object.keys(Palettes.dark) as (keyof Palette)[]) {
-      if (key === 'backdrop') continue;
+      if ((TRANSLUCENT_KEYS as readonly string[]).includes(key)) continue;
       const bad = { ...Palettes, dark: { ...Palettes.dark, [key]: '#11223344' } };
       expect(() => buildThemeCss(bad)).toThrow(new RegExp(`dark.*${key}.*hex`));
+    }
+  });
+
+  test('accepts an 8-digit hex on every translucent key, and writes it lowercase', () => {
+    for (const key of TRANSLUCENT_KEYS) {
+      const next = { ...Palettes, dark: { ...Palettes.dark, [key]: '#11223344' } };
+      expect(() => buildThemeCss(next)).not.toThrow();
+      const css = buildThemeCss(next);
+      expect(css).toContain('#11223344'.toLowerCase());
     }
   });
 
@@ -319,7 +376,6 @@ describe('generated/theme.css — contract C4-5', () => {
   });
 
   describe('every generated variable is classified (gate-exemptions.ts)', () => {
-    const decorativeKeys = new Set<string>(DECORATIVE_PALETTE_KEYS);
     const mapped: Record<string, keyof Palette> = {
       ...KIT_COLOUR_VARIABLES,
       ...Object.fromEntries(
@@ -331,8 +387,9 @@ describe('generated/theme.css — contract C4-5', () => {
       '%s: each colour variable maps to a palette key the gate measures or allowlists',
       (name) => {
         const measured = coveredKeys(buildPairs(Palettes[name], name));
+        const decorative = new Set<string>(decorativeKeys(name));
         const unclassified = Object.entries(mapped)
-          .filter(([, key]) => !measured.has(key) && !decorativeKeys.has(key))
+          .filter(([, key]) => !measured.has(key) && !decorative.has(key))
           .map(([variable]) => variable);
         expect(unclassified).toEqual([]);
       },

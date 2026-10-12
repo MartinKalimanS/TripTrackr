@@ -309,16 +309,16 @@ describe('<TabBar> selection - FR-010, FR-025', () => {
     expect(screen.getByTestId('tab-index')).toContainElement(mark);
   });
 
-  test('the selected label is accent ink and heavier than the others, which are muted', async () => {
+  test('the selected label is accent ink (Sunrise: accentText) and heavier than the others, which are muted', async () => {
     await render(<TabBar {...makeProps(1)} />);
 
     const selected = classesOf(labelOf('Trips'));
-    expect(selected).toEqual(expect.arrayContaining(['text-accent', 'font-bold']));
+    expect(selected).toEqual(expect.arrayContaining(['text-accent-text', 'font-bold']));
     for (const title of ['Globe', 'Profile']) {
       const rest = classesOf(labelOf(title));
       expect(rest).toContain('text-muted');
       expect(rest).not.toContain('font-bold');
-      expect(rest).not.toContain('text-accent');
+      expect(rest).not.toContain('text-accent-text');
     }
   });
 
