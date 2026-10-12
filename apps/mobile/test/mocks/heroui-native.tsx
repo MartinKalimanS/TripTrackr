@@ -314,15 +314,22 @@ export const Avatar = Object.assign(view('Avatar'), {
 
 // ---------------------------------------------------------------- toast
 export const mockToast = {
-  show: jest.fn((): string => 'toast-id'),
-  hide: jest.fn(),
+  show: jest.fn((..._options: unknown[]): string => 'toast-id'),
+  hide: jest.fn((..._ids: unknown[]): void => undefined),
 };
 export const ToastProvider = ({ children }: { children?: ReactNode }) =>
   createElement(Fragment, null, children);
 export const useToast = () => ({ toast: mockToast, isToastVisible: false });
-export const Toast = Object.assign(view('Toast', { accessibilityRole: 'alert' }), {
-  Title: text('Toast.Title'),
-  Description: text('Toast.Description'),
-  Action: pressable('Toast.Action', { defaults: { accessibilityRole: 'button' } }),
-  Close: pressable('Toast.Close', { defaults: { accessibilityRole: 'button' } }),
-});
+/**
+ * Like the kit's root (primitives/toast): a `status` with a polite live region, announced
+ * as the toast appears without interrupting a screen reader. NOT an `alert`.
+ */
+export const Toast = Object.assign(
+  view('Toast', { role: 'status', 'aria-live': 'polite', 'aria-atomic': true }),
+  {
+    Title: text('Toast.Title'),
+    Description: text('Toast.Description'),
+    Action: pressable('Toast.Action', { defaults: { accessibilityRole: 'button' } }),
+    Close: pressable('Toast.Close', { defaults: { accessibilityRole: 'button' } }),
+  },
+);
