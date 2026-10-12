@@ -33,8 +33,34 @@ const GENERATED = path.resolve(
   'theme.css',
 );
 
-/** Variables the app adds beside the kit's: their names are ours, not the kit's. */
-const APP_VARIABLE = /^--(?:status-|pending$)/;
+/**
+ * Variables the app adds beside the kit's: their names are ours, not the kit's (feature 005,
+ * contract C5-6). Written out as prefixes so a variable the kit adds later, under a name we
+ * did not choose, is still reported as unknown.
+ */
+const APP_VARIABLE = new RegExp(
+  '^--(?:' +
+    [
+      'status-',
+      'pending$',
+      'subtle$',
+      'on-ink$',
+      'on-photo$',
+      'sand$',
+      'accent-(?:press|line|text|tint)$',
+      'aqua(?:-|$)',
+      'amber(?:-|$)',
+      '(?:danger|success)-tint$',
+      'grab$',
+      'scrim-button(?:-line)?$',
+      'photo-ring$',
+      'skeleton(?:-highlight)?$',
+      'toast-',
+      'stamp-',
+      'cover[123]-',
+    ].join('|') +
+    ')',
+);
 
 const read = (file: string) =>
   readFileSync(file, 'utf8')
@@ -128,7 +154,7 @@ describe('the kit’s themeable variables, read from its own stylesheets', () =>
 });
 
 describe('theme/generated/theme.css against the kit', () => {
-  test('defines the four Atlas themes', () => {
+  test('defines the four themes', () => {
     expect(Object.keys(themes)).toEqual([
       'light',
       'dark',
