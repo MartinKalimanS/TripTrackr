@@ -36,6 +36,7 @@ import {
   uploaded,
   variantOf,
 } from './photo-screen-harness';
+import { anyGlyph, glyphId } from '../helpers/icons';
 
 // The screen asks the router for its params only: the title and Back belong to the
 // navigator (`trip/[id]/_layout.tsx`), so a screen that reached for `useRouter` would fail.
@@ -43,14 +44,6 @@ const mockParams: { id: string | string[] | undefined } = { id: 'trip-42' };
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
 }));
-
-// A View that carries every prop, so a test reads an icon's `name` as the symbol gets it.
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 jest.mock('expo-file-system', () =>
   jest.requireActual('../features/photo-fakes').createFileSystemMock(),
@@ -128,10 +121,8 @@ describe('<PhotosScreen> — one primary control per state (FR-005)', () => {
 describe('<PhotosScreen> — a photo not yet uploaded is marked in words, an icon and an edge (FR-025, FR-034)', () => {
   const badge = (shown: PhotoWithPlace, words: string) =>
     within(screen.getByTestId(`photo-tile-${shown.id}`)).getByLabelText(words);
-  const glyph = (shown: PhotoWithPlace, words: string) => {
-    const symbol = within(badge(shown, words)).getByTestId('symbol', hidden);
-    return `${symbol.props.name.ios}/${symbol.props.name.android}`;
-  };
+  const glyph = (shown: PhotoWithPlace, words: string) =>
+    within(badge(shown, words)).getByTestId(anyGlyph, hidden).props.testID as string;
   const classesOf = (node: { props: Record<string, unknown> }) =>
     String(node.props.className ?? '').split(/\s+/);
 
@@ -321,7 +312,7 @@ describe('<PhotosScreen> — the photo view on Atlas (FR-005, FR-024, FR-025, FR
     expect(close.props.accessibilityRole).toBe('button');
     expect(variantOf(close)).toBe('secondary');
     expect(within(close).getByText('Close')).toBeTruthy();
-    expect(within(close).getByTestId('symbol', hidden)).toBeTruthy();
+    expect(within(close).getByTestId(glyphId('x'), hidden)).toBeTruthy();
   });
 
   test('Delete is the one destructive control, in words and with an icon, and no control is primary', async () => {
@@ -330,7 +321,7 @@ describe('<PhotosScreen> — the photo view on Atlas (FR-005, FR-024, FR-025, FR
 
     expect(variantOf(remove)).toBe('destructive');
     expect(within(remove).getByText('Delete')).toBeTruthy();
-    expect(within(remove).getByTestId('symbol', hidden)).toBeTruthy();
+    expect(within(remove).getByTestId(glyphId('trash'), hidden)).toBeTruthy();
     // Close and the retry are secondary: nothing in the view competes for primary.
     const inViewer = within(viewer).getAllByRole('button', hidden);
     expect(inViewer.filter((button) => variantOf(button) === 'primary')).toHaveLength(0);
@@ -365,8 +356,7 @@ describe('<PhotosScreen> — the photo view on Atlas (FR-005, FR-024, FR-025, FR
       selected: false,
       checked: false,
     });
-    // The selected chip is the filled one, with a check glyph in place of nothing.
-    expect(roma.props.color).toBe('accent');
+    // The selected chip is the filled one (ink), with a check glyph in place of nothing.
     expect(within(roma).getByTestId('photo-file-city:100-check', hidden)).toBeTruthy();
     expect(within(firenze).queryByTestId('photo-file-city:101-check', hidden)).toBeNull();
     // Names are as they were.

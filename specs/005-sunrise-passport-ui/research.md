@@ -593,6 +593,18 @@ Facts learned on the way (they change the wording of D5-07 and D5-13, not their 
   package types, exactly `colorBoundaries` and `colorGreenspaces` are not Mapbox's. The bundled native SDK
   (11.23.1) is newer than every compatibility entry for the keys the globe sets (`colorLand` needs 11.17.0).
 
+### As built T518 (desk, 2026-10-12): the registry is bundled
+
+`npx expo export --platform android --no-minify` on `feat/005-adapters-core` with the 63-icon registry in place:
+exit 0, "React Compiler enabled", **5,286 modules** (5,150 at T506: +136, which is the 63 icon components, their 63
+weight tables and Phosphor's shared base, so no barrel), a 12.8 MB Hermes bundle (12.5 MB at T506; the feature 005
+adapters and the screens moved since). The tree-shaking claim of D5-07 is therefore measured: a deep import costs one
+module per icon and one per weight table. Two findings: (a) `MaterialSymbols_400Regular.ttf` (967 KB) is **still in the
+export's asset list** after nothing in `src/` imports `expo-symbols`: expo-router's `native-tabs`
+(`utils/materialIconConverter.android.js`) imports it, so the SC-011 baseline keeps that font until the router stops
+bundling the native tabs; (b) the iOS export was not re-run for this task (the imports are platform-independent; T525
+runs both).
+
 ## Owner answers to the open questions (T501)
 
 The owner chose Sunrise Passport as the base direction (2026-10-12) and asked for continued polishing and for the build to proceed; the ten questions of [plan.md](./plan.md#open-questions-for-the-owner) were not answered individually, so each takes its **default** until the owner says otherwise (each is cheap to reverse):

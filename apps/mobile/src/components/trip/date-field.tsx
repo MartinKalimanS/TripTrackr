@@ -56,7 +56,7 @@ export type DateFieldProps = {
   testID?: string;
 };
 
-const CALENDAR: IconName = { ios: 'calendar', android: 'calendar_month' };
+const CALENDAR: IconName = 'calendar';
 
 /** The field's fill and boundary; while refused, the boundary is the danger ink. */
 const BOX = 'bg-field border';

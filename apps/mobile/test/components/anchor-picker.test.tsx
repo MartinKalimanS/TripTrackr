@@ -11,17 +11,12 @@
  */
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
+import { MinTouchTarget } from '@/constants/theme';
 import { AnchorPicker } from '@/components/trip/anchor-picker';
 import type { AnchorTarget } from '@/features/notes/use-move-note';
 
 import { classesOf, hostsWhere, scrollers } from '../helpers/host-nodes';
-
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
+import { anyGlyph } from '../helpers/icons';
 
 const HIDDEN = { includeHiddenElements: true } as const;
 
@@ -126,14 +121,13 @@ describe('<AnchorPicker> as chips (FR-019, FR-024, FR-025, FR-026, FR-029)', () 
     const selected = screen.getByTestId('anchor-city:100');
     expect(within(selected).getByTestId('anchor-city:100-check', HIDDEN)).toBeTruthy();
     expect(screen.queryByTestId('anchor-city:101-check', HIDDEN)).toBeNull();
-    expect(classesOf(within(selected).getByText('Roma, Italy'))).toContain(
-      'font-semibold',
-    );
+    // The selected chip is the ink fill: its label is onInk, the unselected one's is ink.
+    expect(classesOf(within(selected).getByText('Roma, Italy'))).toContain('text-on-ink');
     expect(
       classesOf(
         within(screen.getByTestId('anchor-city:101')).getByText('Firenze, Italy'),
       ),
-    ).not.toContain('font-semibold');
+    ).toContain('text-foreground');
   });
 
   test('chips wrap onto further lines, so every target is in view and none is hidden off a sideways row', async () => {
@@ -147,9 +141,14 @@ describe('<AnchorPicker> as chips (FR-019, FR-024, FR-025, FR-026, FR-029)', () 
     await renderPicker();
 
     for (const radio of screen.getAllByRole('radio')) {
-      const style = [radio.props.style].flat(Infinity).filter(Boolean);
-      expect(style.some((entry) => (entry as { minHeight?: number }).minHeight)).toBe(
-        true,
+      // 40 dp visible, and slop above and below up to the platform floor (C5-16).
+      const style = Object.assign(
+        {},
+        ...[radio.props.style].flat(Infinity).filter(Boolean),
+      );
+      const slop = radio.props.hitSlop as { top: number; bottom: number };
+      expect(style.minHeight + slop.top + slop.bottom).toBeGreaterThanOrEqual(
+        MinTouchTarget,
       );
     }
   });
@@ -169,7 +168,7 @@ describe('<AnchorPicker> words (FR-025, FR-035)', () => {
     const words = screen.getByTestId('note-editor-anchor-error');
     expect(words.props.accessibilityRole).toBe('alert');
     expect(words).toHaveTextContent('Choose where this note belongs.');
-    expect(within(words).getByTestId('symbol', HIDDEN)).toBeTruthy();
+    expect(within(words).getByTestId(anyGlyph, HIDDEN)).toBeTruthy();
     const order = hostsWhere(
       (node) =>
         node.props.testID === 'anchor-city:101' ||

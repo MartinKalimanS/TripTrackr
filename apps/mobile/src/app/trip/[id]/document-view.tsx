@@ -57,7 +57,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 }
 
 const DELETE_FAILED = 'That document could not be deleted. Please try again.';
-const TRASH: IconName = { ios: 'trash', android: 'delete' };
+const TRASH: IconName = 'trash';
 
 function confirmDelete(onDelete: () => void) {
   Alert.alert(

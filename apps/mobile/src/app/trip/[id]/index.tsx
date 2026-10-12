@@ -83,35 +83,35 @@ const TRIP_LINKS: readonly {
     segment: 'notes',
     label: 'Notes for this trip',
     text: 'Notes',
-    icon: { ios: 'note.text', android: 'sticky_note_2' },
+    icon: 'note',
   },
   {
     segment: 'expenses',
     label: 'Spending for this trip',
     text: 'Spending',
-    icon: { ios: 'creditcard', android: 'payments' },
+    icon: 'wallet',
   },
   {
     segment: 'photos',
     label: 'Photos for this trip',
     text: 'Photos',
-    icon: { ios: 'photo', android: 'photo_library' },
+    icon: 'images',
   },
   {
     segment: 'documents',
     label: 'Travel documents for this trip',
     text: 'Documents',
-    icon: { ios: 'doc.text', android: 'description' },
+    icon: 'file-text',
   },
   {
     segment: 'offline-maps',
     label: 'Offline maps for this trip',
     text: 'Offline maps',
-    icon: { ios: 'map', android: 'map' },
+    icon: 'map',
   },
 ];
 
-const ADD: IconName = { ios: 'plus', android: 'add' };
+const ADD: IconName = 'plus';
 
 function TripLinks({ tripId }: { tripId: string }) {
   const router = useRouter();

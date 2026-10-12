@@ -18,15 +18,10 @@ import { Radii, liftOf } from '@/theme';
 
 import { touchDown } from '../../../test/helpers/touch';
 import { Card, Panel, cardClasses } from './card';
+import { glyphsIn } from '../../../test/helpers/icons';
 
 jest.mock('@/hooks/use-appearance');
 jest.mock('@/hooks/use-color-scheme');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
@@ -331,7 +326,7 @@ describe('<Card> with nothing to press - a plain container', () => {
     const node = screen.getByTestId('card');
     expect(node.props.accessibilityRole).toBeUndefined();
     expect(node.props.onPress).toBeUndefined();
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
   });
 
   test('passes a name, hint and role through when the caller gives one (a notice)', async () => {
@@ -521,19 +516,19 @@ describe('<Card onPress> is ONE control - FR-024, FR-026', () => {
 });
 
 describe('<Card onPress> names its cue - FR-024', () => {
-  const NAME = { ios: 'chevron.forward', android: 'chevron_right' };
+  const NAME = 'chevron-right';
 
   test('shows a trailing chevron at the muted ink by default, decorative', async () => {
     const useThemeColor = jest.spyOn(HeroUI, 'useThemeColor');
-    useThemeColor.mockReturnValue('themed' as never);
+    useThemeColor.mockReturnValue('#123456' as never);
     await render(
       <Card testID="card" accessibilityLabel="Lisbon" onPress={jest.fn()}>
         <Text>Lisbon</Text>
       </Card>,
     );
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual(NAME);
-    expect(symbol.props.tintColor).toBe('themed');
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: NAME, color: '#123456' }),
+    ]);
     expect(useThemeColor).toHaveBeenCalledWith('muted');
     expect(screen.getByTestId('card-cue', hidden).props.accessible).toBe(false);
     expect(screen.getByText('Lisbon')).toBeTruthy();
@@ -545,7 +540,7 @@ describe('<Card onPress> names its cue - FR-024', () => {
         <Text>Lisbon, Open</Text>
       </Card>,
     );
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
     expect(screen.getByText('Lisbon, Open')).toBeTruthy();
   });
 
@@ -555,7 +550,7 @@ describe('<Card onPress> names its cue - FR-024', () => {
         <Text>Lisbon</Text>
       </Card>,
     );
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
   });
 });
 

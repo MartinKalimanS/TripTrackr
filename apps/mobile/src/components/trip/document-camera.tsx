@@ -43,7 +43,7 @@ export type DocumentCameraProps = {
   onShutter: () => void;
 };
 
-const CAMERA: IconName = { ios: 'camera', android: 'photo_camera' };
+const CAMERA: IconName = 'camera';
 
 export function DocumentCamera({
   type,

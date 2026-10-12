@@ -1,6 +1,7 @@
 /**
- * Pending-synchronisation marker - contract C11 (002), FR-007; restyled for Atlas by
- * T421 (contract C4-8; FR-025, FR-029, FR-030, FR-034; review rules 3 and 5).
+ * Pending-synchronisation marker - contract C11 (002), FR-007; restyled for Atlas by T421
+ * and for Sunrise Passport by T520 (contract C5-16; FR-025, FR-029, FR-030, FR-034, FR-065;
+ * review rules 3 and 5).
  *
  * Why a styling feature ships this component: Constitution Principle II forbids
  * presenting a record as saved before its bytes have landed. A visual language
@@ -11,40 +12,46 @@
  * synchronisation - that boundary is the whole reason it is safe for a
  * presentation layer to show it.
  *
- * What it announces and the ids it carries are stable (e2e flows and tests read them): the badge is a text node named
- * "Sync pending", "Sync in progress" or "Sync failed" (what assistive technology and the
- * tests read), its icon is `sync-badge-icon`, and the visible words ("Not yet synced",
- * "Syncing", "Sync failed") are what the Maestro flows look for.
+ * What it announces and the ids it carries are stable (e2e flows and tests read them): the
+ * badge is a text node named "Sync pending", "Sync in progress" or "Sync failed" (what
+ * assistive technology and the tests read), its icon is `sync-badge-icon`, and the visible
+ * words ("Not yet synced", "Syncing", "Sync failed") are what the Maestro flows look for.
  *
- * The look is a small kit-Chip-like capsule: an icon and the words, the `pending` ink on
- * its 15% soft fill for a record that is waiting or on its way, the `danger` ink for one
- * that failed. Both pairs are exactly what the contrast gate measures on every neutral
- * fill (C4-3); the fill is NEVER the kit's 20% soft hover (rule 5). It stays dashed, like
- * every other pending marker, so the state is a shape and a glyph as well as a hue
- * (FR-025). Each state has its own icon.
+ * The look is a small capsule (`SoftLabel`): an icon and the words, `amberInk` on `amberTint`
+ * for a record that is waiting or on its way, `danger` on `dangerTint` for one that failed,
+ * each with a DASHED edge in its line colour (`amberLine`, `danger`), like every other
+ * pending marker, so the state is a shape and a glyph as well as a hue (FR-025). Each state
+ * has its own icon (a clock, a sync, an alert). Every pair is measured by
+ * `test/theme/chip-contrast.test.ts`.
  *
- * Layout: it hugs its content (`self-start`) instead of stretching across a column, and
- * grows with the text size; nothing about it is fixed.
+ * `glyphOnly` is the form for a photograph (FR-007, FR-008): no words, a 24 dp disc, so the
+ * marker never covers a face. Waiting and syncing are a white glyph on the `scrimButton`
+ * disc; failed is the `dangerInk` glyph on a `danger` disc (P5), which is the one that must
+ * not be missed. The announcement, the role and the id are the same.
+ *
+ * Layout: it hugs its content instead of stretching across a column, and grows with the
+ * text size; nothing about it is fixed but the disc, which holds one glyph.
  */
 import { View } from 'react-native';
 
-import { Icon, type IconName, type IconTone } from './icon';
-import { Text } from './text';
+import { Radii } from '@/theme';
+
+import { SYNC_BADGE_LOOKS } from './chip-look';
+import { Icon } from './icon';
+import { SoftLabel } from './soft-label';
+import { useColors } from './theme-tokens';
 
 export type SyncState = 'pending' | 'syncing' | 'failed';
 
 export type SyncBadgeProps = {
   state: SyncState;
+  /** For a photograph: the glyph in a 24 dp disc, with no words. */
+  glyphOnly?: boolean;
 };
 
 interface Presentation {
-  icon: IconName;
   label: string;
   announce: string;
-  tone: IconTone;
-  /** Literal classes, so Tailwind finds them: the ink, then the edge and the 15% fill. */
-  ink: string;
-  box: string;
 }
 
 /**
@@ -53,47 +60,55 @@ interface Presentation {
  * note is safe should not have to distinguish two similar violets.
  */
 const PRESENTATION: Record<SyncState, Presentation> = {
-  pending: {
-    icon: { ios: 'clock', android: 'schedule' },
-    label: 'Not yet synced',
-    announce: 'Sync pending',
-    tone: 'pending',
-    ink: 'text-pending',
-    box: 'border-pending bg-pending/15',
-  },
-  syncing: {
-    icon: { ios: 'arrow.triangle.2.circlepath', android: 'sync' },
-    label: 'Syncing',
-    announce: 'Sync in progress',
-    tone: 'pending',
-    ink: 'text-pending',
-    box: 'border-pending bg-pending/15',
-  },
-  failed: {
-    icon: { ios: 'exclamationmark.triangle', android: 'warning' },
-    label: 'Sync failed',
-    announce: 'Sync failed',
-    tone: 'danger',
-    ink: 'text-danger',
-    box: 'border-danger bg-danger/15',
-  },
+  pending: { label: 'Not yet synced', announce: 'Sync pending' },
+  syncing: { label: 'Syncing', announce: 'Sync in progress' },
+  failed: { label: 'Sync failed', announce: 'Sync failed' },
 };
 
-const CAPSULE =
-  'flex-row items-center self-start gap-1 rounded-full border border-dashed px-2 py-0.5';
+const DISC = 24;
+const COLOR_KEYS = ['scrimButton', 'danger'] as const;
 
-export function SyncBadge({ state }: SyncBadgeProps) {
-  const { icon, label, announce, tone, ink, box } = PRESENTATION[state];
-
+/** The glyph-only form: a 24 dp disc on a photograph. */
+function GlyphDisc({ state }: { state: SyncState }) {
+  const colors = useColors(COLOR_KEYS);
+  const failed = state === 'failed';
+  const { announce } = PRESENTATION[state];
   return (
     <View
-      accessibilityLabel={announce}
+      accessible
       accessibilityRole="text"
-      className={`${CAPSULE} ${box}`}>
-      <Icon testID="sync-badge-icon" name={icon} size={16} tone={tone} />
-      <Text type="caption" className={ink}>
-        {label}
-      </Text>
+      accessibilityLabel={announce}
+      style={{
+        width: DISC,
+        height: DISC,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: Radii.full,
+        backgroundColor: failed ? colors.danger : colors.scrimButton,
+      }}>
+      <Icon
+        testID="sync-badge-icon"
+        name={SYNC_BADGE_LOOKS[state].icon}
+        size={16}
+        tone={failed ? 'dangerInk' : 'onPhoto'}
+      />
     </View>
+  );
+}
+
+export function SyncBadge({ state, glyphOnly = false }: SyncBadgeProps) {
+  if (glyphOnly) return <GlyphDisc state={state} />;
+
+  const look = SYNC_BADGE_LOOKS[state];
+  const { label, announce } = PRESENTATION[state];
+  return (
+    <SoftLabel
+      look={look}
+      label={label}
+      accessibilityLabel={announce}
+      leading={
+        <Icon testID="sync-badge-icon" name={look.icon} size={16} tone={look.ink} />
+      }
+    />
   );
 }

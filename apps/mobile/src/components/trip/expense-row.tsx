@@ -39,7 +39,7 @@ export type ExpenseRowProps = {
   onRemove: () => void;
 };
 
-const REMOVE: IconName = { ios: 'trash', android: 'delete' };
+const REMOVE: IconName = 'trash';
 const ROW_ACTIONS = [{ name: 'delete', label: 'Delete expense' }];
 
 type AmountsProps = {

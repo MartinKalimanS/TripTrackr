@@ -36,10 +36,7 @@ import type { UnsyncedChangesError } from '@/features/auth/use-sign-out';
 import { useAnnouncement } from '@/hooks/use-announcement';
 
 /** The destructive choice leaves the account: the same door as the Sign out row. */
-export const SIGN_OUT_ICON: IconName = {
-  ios: 'rectangle.portrait.and.arrow.right',
-  android: 'logout',
-};
+export const SIGN_OUT_ICON: IconName = 'log-out';
 
 export type SignOutWarningProps = {
   error: UnsyncedChangesError;

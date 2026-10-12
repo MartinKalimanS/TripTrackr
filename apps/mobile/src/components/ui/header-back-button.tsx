@@ -46,7 +46,7 @@ export interface HeaderBackButtonProps {
   testID?: string;
 }
 
-const CHEVRON: IconName = { ios: 'chevron.backward', android: 'chevron_left' };
+const CHEVRON: IconName = 'chevron-left';
 
 /** Above this font scale the bar has no room for the word beside the chevron. */
 const HIDE_WORD_ABOVE = 1.3;

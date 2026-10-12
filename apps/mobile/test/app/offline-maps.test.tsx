@@ -15,7 +15,14 @@
  * The title and Back are the navigator's now (`trip/[id]/_layout.tsx`, asserted in
  * trip-layout.test.tsx and offline-maps-header.test.tsx): this screen draws neither.
  */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import * as ExpoHaptics from 'expo-haptics';
 import { readFileSync } from 'node:fs';
 import { Alert } from 'react-native';
@@ -24,6 +31,7 @@ import OfflineMapsScreen from '@/app/trip/[id]/offline-maps';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import type { TripRow } from '@/db/schema';
 import { OFFLINE_PACK_COPY } from '@/features/trips/offline-packs';
+import { anyGlyph } from '../helpers/icons';
 
 let mockParams: Record<string, string | string[]> = { id: 'trip-42' };
 
@@ -36,14 +44,6 @@ jest.mock('expo-router', () => ({
   }),
   useLocalSearchParams: () => mockParams,
 }));
-
-// Icons carry the props they were given, so a state's glyph can be read.
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 jest.mock('@/lib/sentry', () => ({
   Sentry: { captureException: jest.fn() },
@@ -192,14 +192,12 @@ const classesOf = (node: { props: { className?: unknown } }) =>
   String(node.props.className ?? '')
     .split(/\s+/)
     .filter(Boolean);
-/** The glyph a state draws: its platform names, joined. */
-const glyphOf = (cityId: number) => {
-  const wrapper = screen.getByTestId(`offline-status-${cityId}-icon`, hidden);
-  const name = wrapper.children
-    .map((child) => (typeof child === 'string' ? null : child.props.name))
-    .find(Boolean) as { ios: string; android: string };
-  return `${name.ios}/${name.android}`;
-};
+/** The glyph a state draws: its id (registry glyph and weight). */
+const glyphOf = (cityId: number) =>
+  within(screen.getByTestId(`offline-status-${cityId}-icon`, hidden)).getByTestId(
+    anyGlyph,
+    hidden,
+  ).props.testID as string;
 /** The kit variant of every button on the screen, by test id. */
 const variants = () =>
   Object.fromEntries(

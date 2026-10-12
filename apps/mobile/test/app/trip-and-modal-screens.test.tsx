@@ -424,7 +424,7 @@ describe('<TripScreen> — trip/[id]', () => {
     expect(source).not.toMatch(/Spacing\.four/);
   });
 
-  test('each area is an icon and a label in a chip, and the words are never capped, so the row stays reachable at the largest text size (FR-029)', async () => {
+  test('each area is an icon and a label in a chip, and the words wrap and are capped only at 1.3 like every chip, so the row stays reachable at the largest text size (FR-029, FR-074)', async () => {
     await render(<TripScreen />);
 
     const row = screen.getByTestId('trip-links');
@@ -437,7 +437,7 @@ describe('<TripScreen> — trip/[id]', () => {
       /Notes|Spending|Photos|Documents|Offline maps/,
     )) {
       expect(label.props.numberOfLines).toBeUndefined();
-      expect(label.props.maxFontSizeMultiplier).toBeUndefined();
+      expect(label.props.maxFontSizeMultiplier).toBe(1.3);
     }
   });
 

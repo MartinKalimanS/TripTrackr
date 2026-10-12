@@ -34,7 +34,7 @@ import { ListScreen } from '@/components/ui/list-screen';
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/ui/state-view';
 import { useTrips, type TripSummary } from '@/features/trips/use-trips';
 
-const SUITCASE: IconName = { ios: 'suitcase', android: 'luggage' };
+const SUITCASE: IconName = 'suitcase';
 
 /** What the list shows instead of rows: the one state that applies. */
 function TripsEmpty({

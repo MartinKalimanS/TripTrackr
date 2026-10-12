@@ -29,13 +29,6 @@ jest.mock('@/components/require-local-store', () => ({
 jest.mock('@/components/sync/first-sync-gate', () => ({
   FirstSyncGate: ({ children }: { children: unknown }) => children,
 }));
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
-
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
 };

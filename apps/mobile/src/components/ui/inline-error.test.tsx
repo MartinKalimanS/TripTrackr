@@ -8,15 +8,8 @@
 import { render, screen } from '@testing-library/react-native';
 
 import { InlineError } from './inline-error';
+import { glyphId, glyphsIn } from '../../../test/helpers/icons';
 
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
-
-const hidden = { includeHiddenElements: true };
 const classesOf = (node: { props: Record<string, unknown> }) =>
   String(node.props.className ?? '').split(/\s+/);
 
@@ -66,13 +59,8 @@ describe('<InlineError>', () => {
   test('is not colour alone: a decorative alert icon leads the words', async () => {
     await render(<InlineError testID="e" message="Could not be saved." />);
 
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual({
-      ios: 'exclamationmark.triangle',
-      android: 'warning',
-    });
-    expect(symbol.props.size).toBe(16);
-    expect(screen.queryByTestId('symbol')).toBeNull();
+    expect(glyphsIn()).toEqual([expect.objectContaining({ name: 'alert', size: 16 })]);
+    expect(screen.queryByTestId(glyphId('alert'))).toBeNull();
   });
 
   test('wraps a long message beside the icon instead of clipping it', async () => {

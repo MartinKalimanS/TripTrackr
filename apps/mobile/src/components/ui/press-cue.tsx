@@ -7,8 +7,8 @@
  */
 import { Icon, type IconName } from './icon';
 
-/** `chevron.forward` mirrors itself in a right-to-left layout on iOS. */
-export const CHEVRON: IconName = { ios: 'chevron.forward', android: 'chevron_right' };
+/** `chevron-right` is a direction glyph: `Icon` mirrors it in a right-to-left layout. */
+export const CHEVRON: IconName = 'chevron-right';
 
 export function PressCue({ testID }: { testID?: string }) {
   return <Icon name={CHEVRON} size={20} tone="muted" testID={testID} />;

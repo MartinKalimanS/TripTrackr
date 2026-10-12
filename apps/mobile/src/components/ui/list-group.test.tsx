@@ -20,15 +20,9 @@ import { touchDown, touchUp } from '../../../test/helpers/touch';
 import { Card } from './card';
 import { ListGroup, ListRow } from './list-group';
 import { Icon } from './icon';
+import { glyphNamesIn, glyphsIn } from '../../../test/helpers/icons';
 
 jest.mock('@/hooks/use-appearance');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
-
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
 };
@@ -57,7 +51,7 @@ const classesOf = (testID: string) => tokens(screen.getByTestId(testID).props.cl
 const styleOf = (testID: string) =>
   StyleSheet.flatten(screen.getByTestId(testID).props.style) as Record<string, unknown>;
 
-const CHEVRON = { ios: 'chevron.forward', android: 'chevron_right' };
+const CHEVRON = 'chevron-right';
 
 describe('<ListGroup> - rows in one cream group, FR-013, C5-18', () => {
   test('puts its rows in order inside the kit group, in a continuous 24 dp corner', async () => {
@@ -270,7 +264,7 @@ describe('<ListRow> content - FR-029', () => {
       />,
     );
     expect(screen.getByTestId('trailing')).toBeTruthy();
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
   });
 });
 
@@ -298,11 +292,11 @@ describe('<ListRow onPress> is one control with a cue - FR-024, FR-026', () => {
 
   test('shows the default chevron in the muted ink when it has no trailing node', async () => {
     const useThemeColor = jest.spyOn(HeroUI, 'useThemeColor');
-    useThemeColor.mockReturnValue('themed' as never);
+    useThemeColor.mockReturnValue('#123456' as never);
     await renderRow();
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual(CHEVRON);
-    expect(symbol.props.tintColor).toBe('themed');
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: CHEVRON, color: '#123456' }),
+    ]);
     expect(useThemeColor).toHaveBeenCalledWith('muted');
     expect(screen.getByTestId('row-cue', hidden).props.accessible).toBe(false);
   });
@@ -310,7 +304,7 @@ describe('<ListRow onPress> is one control with a cue - FR-024, FR-026', () => {
   test('a trailing node replaces the chevron: the row supplies its own cue', async () => {
     await renderRow({ trailing: <NativeText testID="own-cue">Open</NativeText> });
     expect(screen.getByTestId('own-cue')).toBeTruthy();
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
   });
 
   test('forwards the name, the hint and the actions, and handles an action', async () => {
@@ -428,7 +422,7 @@ describe('<ListRow> without onPress is not a control - FR-030', () => {
     expect(row.props.onPress).toBeUndefined();
     expect(row.props.focusable).toBe(false);
     expect(classesOf('row')).not.toContain('active:bg-surface-tertiary');
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
     expect(row.props.accessibilityState?.disabled).not.toBe(true);
   });
 
@@ -464,7 +458,7 @@ describe('<ListRow> without onPress is not a control - FR-030', () => {
 describe('<ListRow tone="destructive"> is not colour alone - FR-025', () => {
   test('uses the danger ink for the title and a leading icon beside it', async () => {
     const useThemeColor = jest.spyOn(HeroUI, 'useThemeColor');
-    useThemeColor.mockReturnValue('themed' as never);
+    useThemeColor.mockReturnValue('#123456' as never);
     await render(
       <ListRow
         title="Delete account"
@@ -489,16 +483,10 @@ describe('<ListRow tone="destructive"> is not colour alone - FR-025', () => {
         title="Sign out"
         tone="destructive"
         testID="row"
-        leading={
-          <Icon name={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout' }} />
-        }
+        leading={<Icon name={'log-out'} />}
       />,
     );
-    expect(screen.getAllByTestId('symbol', hidden)).toHaveLength(1);
-    expect(screen.getByTestId('symbol', hidden).props.name).toEqual({
-      ios: 'rectangle.portrait.and.arrow.right',
-      android: 'logout',
-    });
+    expect(glyphNamesIn()).toEqual(['log-out']);
   });
 
   test('the default tone uses the foreground ink and adds no icon', async () => {
@@ -506,7 +494,7 @@ describe('<ListRow tone="destructive"> is not colour alone - FR-025', () => {
     expect(tokens(screen.getByText('Notes').props.className)).toContain(
       'text-foreground',
     );
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
   });
 });
 

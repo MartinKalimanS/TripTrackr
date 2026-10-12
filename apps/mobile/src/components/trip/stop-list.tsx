@@ -55,7 +55,7 @@ export type StopListProps = {
 /** How long a press must hold before the row lifts — short enough to feel direct, long enough not to fire on a scroll. */
 export const DRAG_ACTIVATION_DELAY_MS = 150;
 
-const GRIP: IconName = { ios: 'line.3.horizontal', android: 'drag_handle' };
+const GRIP: IconName = 'grip';
 
 /** The held fill of every control (`Tappable`'s), as a class: this folder may not read the kit. */
 const HELD_FILL = 'bg-separator-secondary';

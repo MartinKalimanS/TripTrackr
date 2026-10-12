@@ -8,19 +8,16 @@
 import { SYSTEM_EXPENSE_CATEGORIES } from '@triptrackr/contracts';
 
 import { categoryIconName } from '@/components/trip/category-icon';
+import { isIconKey } from '@/components/ui/icon-registry';
 
 describe('categoryIconName', () => {
-  test('every system category has its own glyph on both platforms', () => {
+  test('every system category has its own registry glyph', () => {
     const glyphs = SYSTEM_EXPENSE_CATEGORIES.map((category) =>
       categoryIconName(category.icon),
     );
 
-    for (const glyph of glyphs) {
-      expect(typeof glyph.ios).toBe('string');
-      expect(typeof glyph.android).toBe('string');
-    }
-    expect(new Set(glyphs.map((glyph) => glyph.ios)).size).toBe(glyphs.length);
-    expect(new Set(glyphs.map((glyph) => glyph.android)).size).toBe(glyphs.length);
+    for (const glyph of glyphs) expect(isIconKey(glyph)).toBe(true);
+    expect(new Set(glyphs).size).toBe(glyphs.length);
   });
 
   test.each([null, undefined, '', 'coffee', '  food', 'constructor', '__proto__'])(

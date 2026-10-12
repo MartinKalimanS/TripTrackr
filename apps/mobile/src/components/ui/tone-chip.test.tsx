@@ -11,18 +11,12 @@ import { render, screen } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';
 
 import { ToneChip, type ToneChipTone } from './tone-chip';
-
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
+import { glyphNamesIn } from '../../../test/helpers/icons';
 
 afterEach(() => jest.restoreAllMocks());
 
 const hidden = { includeHiddenElements: true };
-const ICON = { ios: 'checkmark.circle', android: 'check_circle' } as const;
+const ICON = 'check-circle';
 const TONES = ['muted', 'default', 'success', 'danger'] as const;
 const classesOf = (element: { props: { className?: unknown } }) =>
   String(element.props.className ?? '').split(/\s+/);
@@ -36,9 +30,7 @@ describe('<ToneChip> identity - FR-025, FR-030', () => {
     await renderChip({ tone: 'success' });
 
     expect(screen.getByText('Ready offline')).toBeTruthy();
-    const symbols = screen.getAllByTestId('symbol', hidden);
-    expect(symbols).toHaveLength(1);
-    expect(symbols[0]?.props.name).toEqual(ICON);
+    expect(glyphNamesIn()).toEqual([ICON]);
   });
 
   test('is ONE announced text element named by its label, or by the spoken form it is given', async () => {

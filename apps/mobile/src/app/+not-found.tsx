@@ -19,7 +19,7 @@ import type { IconName } from '@/components/ui/icon';
 import { Screen } from '@/components/ui/screen';
 import { EmptyState } from '@/components/ui/state-view';
 
-const LOST: IconName = { ios: 'questionmark.circle', android: 'help' };
+const LOST: IconName = 'question';
 
 /** The state sits in the middle of the screen, not at its top. */
 const CENTRED = { justifyContent: 'center' } as const;

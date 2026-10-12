@@ -19,26 +19,19 @@ import { liftOf } from '@/theme';
 
 import { Card, Panel } from '@/components/ui/card';
 import { ListGroup, ListRow } from '@/components/ui/list-group';
+import { glyphNamesIn, glyphsIn } from '../helpers/icons';
 
 jest.mock('react-native-worklets', () => require('../mocks/worklets'));
 jest.mock('react-native-reanimated', () => require('../mocks/reanimated-full'));
 // The suite-wide stand-in is replaced by the real kit for THIS file only.
 jest.mock('heroui-native', () => jest.requireActual('heroui-native'));
 jest.mock('@/hooks/use-appearance');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
-
 const { HeroUINativeProvider } = jest.requireActual<typeof HeroUI>('heroui-native');
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
 };
 
 const CONFIG = { devInfo: { stylingPrinciples: false } };
-const hidden = { includeHiddenElements: true };
 const tokens = (className: unknown) =>
   String(className ?? '')
     .split(/\s+/)
@@ -92,10 +85,7 @@ describe('Card over the real kit', () => {
     expect(surface.indexOf('bg-surface')).toBeGreaterThan(
       surface.indexOf('surface__root'),
     );
-    expect(screen.getByTestId('symbol', hidden).props.name).toEqual({
-      ios: 'chevron.forward',
-      android: 'chevron_right',
-    });
+    expect(glyphNamesIn()).toEqual(['chevron-right']);
 
     await fireEvent.press(control);
     expect(onPress).toHaveBeenCalledTimes(1);
@@ -172,7 +162,7 @@ describe('ListGroup and ListRow over the real kit', () => {
     expect(tokens(screen.getByTestId('group-separator-1').props.className)).toEqual(
       expect.arrayContaining(['separator__root', 'ms-4']),
     );
-    expect(screen.getAllByTestId('symbol', hidden)).toHaveLength(2);
+    expect(glyphsIn()).toHaveLength(2);
     expect(screen.getByText('1.0.0')).toBeTruthy();
   });
 

@@ -1,11 +1,8 @@
 /**
- * The one "something is wrong" glyph of Atlas (feature 004; FR-025, FR-035): drawn
- * beside danger-toned words so a failure is never conveyed by colour alone. Both
- * platforms are named (contract C4-8, research D4-08).
+ * The one "something is wrong" glyph (features 004 and 005; FR-025, FR-035): drawn
+ * beside danger-toned words so a failure is never conveyed by colour alone. It is the
+ * registry key `alert` (a circle with an exclamation mark, as the prototype draws it).
  */
 import type { IconName } from './icon';
 
-export const ALERT_ICON: IconName = {
-  ios: 'exclamationmark.triangle',
-  android: 'warning',
-};
+export const ALERT_ICON: IconName = 'alert';

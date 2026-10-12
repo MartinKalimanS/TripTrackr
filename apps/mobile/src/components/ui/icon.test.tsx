@@ -1,24 +1,19 @@
 /**
- * T423 - contract C4-8 (`Icon`), research D4-08, FR-008, FR-025.
+ * T518 - contract C5-14 (`Icon` over Phosphor), research D5-07, FR-005, FR-030.
  *
- * `expo-symbols` is replaced by a view that carries the props it was given, so the test
- * reads what the adapter asked of it (name for both platforms, size, tint). The
- * accessibility contract is asserted on the adapter's own wrapper, which is where it
- * lives on both platforms: the Android `SymbolView` forwards only `style`.
+ * Phosphor draws a `react-native-svg` node that carries the size, the tint and, when
+ * mirrored, a `scaleX: -1` transform (`test/helpers/icons.ts` reads them back by registry
+ * key). The accessibility contract is asserted on the adapter's own wrapper, which is where
+ * it lives on both platforms.
  */
 import { render, screen } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';
+import { I18nManager } from 'react-native';
 
-import { Icon, type IconTone } from './icon';
-
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
-
-const NAME = { ios: 'chevron.left', android: 'chevron_left' } as const;
+import { glyphId, glyphsIn } from '../../../test/helpers/icons';
+import { themeVariable } from '../../../test/helpers/theme-css';
+import { IconSize as IconSizes, PaletteNames, Palettes, contrastRatio } from '@/theme';
+import { Icon, type IconSize, type IconTone } from './icon';
 
 afterEach(() => jest.restoreAllMocks());
 
@@ -27,65 +22,157 @@ afterEach(() => jest.restoreAllMocks());
 const hidden = { includeHiddenElements: true };
 const byId = (id: string) => screen.getByTestId(id, hidden);
 
-describe('<Icon> symbol - D4-08', () => {
-  test('hands the symbol both platform names, unchanged', async () => {
-    await render(<Icon name={NAME} />);
-    expect(byId('symbol').props.name).toEqual(NAME);
+describe('<Icon> glyph - D5-07', () => {
+  test('draws the glyph its registry key names, regular, 20 dp, unless asked', async () => {
+    await render(<Icon name="chevron-left" />);
+    expect(glyphsIn()).toEqual([
+      {
+        name: 'chevron-left',
+        weight: 'regular',
+        size: 20,
+        color: expect.any(String),
+        mirrored: false,
+      },
+    ]);
   });
 
-  test('is 20 dp unless asked, and accepts 16, 20 and 24', async () => {
-    await render(<Icon name={NAME} />);
-    expect(byId('symbol').props.size).toBe(20);
+  test('accepts 16, 20 and 24, the sizes of IconSize', async () => {
+    expect(Object.values(IconSizes)).toEqual([16, 20, 24]);
     for (const size of [16, 20, 24] as const) {
-      await render(<Icon name={NAME} size={size} testID={`icon-${size}`} />);
-      expect(screen.getAllByTestId('symbol', hidden).at(-1)?.props.size).toBe(size);
+      await render(<Icon name="plus" size={size} />);
+      expect(glyphsIn().at(0)?.size).toBe(size);
     }
+    const sizes: IconSize[] = [16, 20, 24];
+    expect(sizes).toHaveLength(3);
   });
 
-  test('rejects an iOS-only name at compile time', () => {
-    // @ts-expect-error - a bare SF Symbol would render on iOS only (v57 reference)
-    const bare = <Icon name="chevron.left" />;
-    expect(bare).toBeTruthy();
-  });
-});
-
-describe('<Icon> tone - FR-023, C4-1', () => {
-  const TOKENS: Record<IconTone, string> = {
-    default: 'foreground',
-    muted: 'muted',
-    accent: 'accent',
-    danger: 'danger',
-    success: 'success',
-    onAccent: 'accent-foreground',
-    // The app's own variables (`--color-status-*`, `--color-pending`), for the status
-    // and sync chips; planning is the INK variant, the one gated as text (C4-3).
-    statusPlanning: 'status-planning-ink',
-    statusActive: 'status-active',
-    statusPast: 'status-past',
-    pending: 'pending',
-  };
-
-  test.each(Object.entries(TOKENS) as [IconTone, string][])(
-    'tone %s tints with the theme colour %s',
-    async (tone, token) => {
-      const useThemeColor = jest.spyOn(HeroUI, 'useThemeColor');
-      useThemeColor.mockReturnValue('themed' as never);
-      await render(<Icon name={NAME} tone={tone} />);
-      expect(useThemeColor).toHaveBeenCalledWith(token);
-      expect(byId('symbol').props.tintColor).toBe('themed');
+  test.each(['regular', 'fill', 'duotone'] as const)(
+    'draws the %s weight of the glyph',
+    async (weight) => {
+      await render(<Icon name="globe" weight={weight} />);
+      expect(byId(glyphId('globe', weight))).toBeTruthy();
+      expect(glyphsIn().at(0)?.weight).toBe(weight);
     },
   );
 
-  test('is the default ink unless asked', async () => {
-    const useThemeColor = jest.spyOn(HeroUI, 'useThemeColor');
-    await render(<Icon name={NAME} />);
-    expect(useThemeColor).toHaveBeenCalledWith('foreground');
+  test('refuses what the registry cannot draw, at compile time', () => {
+    // @ts-expect-error - an unknown key
+    const unknown = <Icon name="globe.europe.africa" />;
+    // @ts-expect-error - the feature 004 form, one name per platform
+    const legacy = <Icon name={{ ios: 'plus', android: 'add' }} />;
+    // @ts-expect-error - 18 dp is not on the size scale
+    const size = <Icon name="plus" size={18} />;
+    // @ts-expect-error - a weight Phosphor has but the app does not use
+    const weight = <Icon name="plus" weight="bold" />;
+    // @ts-expect-error - a tone is a name, never a colour
+    const tone = <Icon name="plus" tone="#ff0000" />;
+    expect([unknown, legacy, size, weight, tone]).toHaveLength(5);
   });
 });
 
-describe('<Icon> accessibility - FR-030, contract C4-8', () => {
+describe('<Icon> direction - mirrored when the layout is reversed', () => {
+  const mirroredIn = async (name: 'chevron-right' | 'plus', rtl: boolean) => {
+    jest.replaceProperty(I18nManager, 'isRTL', rtl);
+    await render(<Icon name={name} />);
+    return glyphsIn().at(0)?.mirrored;
+  };
+
+  test('a direction glyph mirrors in a right-to-left layout', async () => {
+    expect(await mirroredIn('chevron-right', true)).toBe(true);
+  });
+
+  test('and not in a left-to-right one', async () => {
+    expect(await mirroredIn('chevron-right', false)).toBe(false);
+  });
+
+  test('a glyph that points nowhere never mirrors', async () => {
+    expect(await mirroredIn('plus', true)).toBe(false);
+  });
+});
+
+/**
+ * Every tone: the kit or app variable it asks `useThemeColor` for, and the palette key that
+ * variable is generated from (C5-6), so the contrast themes need no promotion.
+ */
+const TONES: [IconTone, string, keyof (typeof Palettes)['light']][] = [
+  ['ink', 'foreground', 'ink'],
+  ['muted', 'muted', 'muted'],
+  ['subtle', 'subtle', 'subtle'],
+  ['onInk', 'on-ink', 'onInk'],
+  ['onPhoto', 'on-photo', 'onPhoto'],
+  ['accentInk', 'accent-foreground', 'accentInk'],
+  ['accentText', 'accent-text', 'accentText'],
+  ['accentLine', 'accent-line', 'accentLine'],
+  ['aquaInk', 'aqua-ink', 'aquaInk'],
+  ['aquaLine', 'aqua-line', 'aquaLine'],
+  ['amberInk', 'amber-ink', 'amberInk'],
+  ['amberLine', 'amber-line', 'amberLine'],
+  ['danger', 'danger', 'danger'],
+  ['dangerInk', 'danger-foreground', 'dangerInk'],
+  ['success', 'success', 'success'],
+  // The feature 004 names, kept for the call sites that have not moved. Each reads a token
+  // that passes: coral as ink is `accentText`, never the coral fill (D5-22, M-1).
+  ['default', 'foreground', 'ink'],
+  ['accent', 'accent-text', 'accentText'],
+  ['onAccent', 'accent-foreground', 'accentInk'],
+  ['statusPlanning', 'amber-ink', 'amberInk'],
+  ['statusActive', 'accent-line', 'accentLine'],
+  ['statusPast', 'muted', 'muted'],
+  ['pending', 'amber-ink', 'amberInk'],
+];
+
+describe('<Icon> tone - FR-023, C5-14', () => {
+  test.each(TONES)('tone %s tints with the theme colour %s', async (tone, token) => {
+    const useThemeColor = jest.spyOn(HeroUI, 'useThemeColor');
+    useThemeColor.mockReturnValue('#123456' as never);
+    await render(<Icon name="plus" tone={tone} />);
+    expect(useThemeColor).toHaveBeenCalledWith(token);
+    expect(glyphsIn().at(0)?.color).toBe('#123456');
+  });
+
+  test('is the ink unless asked', async () => {
+    const useThemeColor = jest.spyOn(HeroUI, 'useThemeColor');
+    await render(<Icon name="plus" />);
+    expect(useThemeColor).toHaveBeenCalledWith('foreground');
+  });
+
+  describe.each(PaletteNames)('in %s', (theme) => {
+    test.each(TONES)('%s paints what %s paints, the palette key %s', (_t, token, key) => {
+      expect(themeVariable(theme, `--${token}`)).toBe(Palettes[theme][key].toLowerCase());
+    });
+
+    // Tones the screens draw on paper or cream: a graphic needs 3:1 (FR-069). The three
+    // left out sit on their own grounds: onInk on ink, onPhoto on a scrim, accentInk on coral.
+    const ON_PAPER = TONES.filter(
+      ([tone]) =>
+        !['onInk', 'onPhoto', 'accentInk', 'onAccent', 'dangerInk'].includes(tone),
+    );
+
+    test.each(ON_PAPER)('%s reads on paper and on cream', (_t, token) => {
+      const colour = themeVariable(theme, `--${token}`);
+      expect(contrastRatio(colour, Palettes[theme].surface)).toBeGreaterThanOrEqual(3);
+      expect(
+        contrastRatio(colour, Palettes[theme].surfaceSecondary),
+      ).toBeGreaterThanOrEqual(3);
+    });
+  });
+});
+
+describe.each(['light', 'light-contrast'] as const)(
+  'no tone is the coral fill, which is under 3:1 on paper in %s',
+  (theme) => {
+    test('so no ink resolves to it', () => {
+      const fill = Palettes[theme].accent.toLowerCase();
+      expect(contrastRatio(fill, Palettes[theme].surface)).toBeLessThan(3);
+      const drawn = TONES.map(([, token]) => themeVariable(theme, `--${token}`));
+      expect(drawn).not.toContain(fill);
+    });
+  },
+);
+
+describe('<Icon> accessibility - FR-030, contract C5-14', () => {
   test('is decorative by default: hidden from assistive technology', async () => {
-    await render(<Icon name={NAME} testID="icon" />);
+    await render(<Icon name="chevron-left" testID="icon" />);
     const node = byId('icon');
     expect(node.props.accessible).toBe(false);
     expect(node.props.accessibilityElementsHidden).toBe(true);
@@ -95,7 +182,7 @@ describe('<Icon> accessibility - FR-030, contract C4-8', () => {
   });
 
   test('is an image with a name when it carries a label', async () => {
-    await render(<Icon name={NAME} testID="icon" label="Planning" />);
+    await render(<Icon name="chevron-left" testID="icon" label="Planning" />);
     const node = byId('icon');
     expect(node.props.accessible).toBe(true);
     expect(node.props.accessibilityRole).toBe('image');
@@ -106,15 +193,15 @@ describe('<Icon> accessibility - FR-030, contract C4-8', () => {
   });
 
   test('a blank label is no label: the icon stays decorative', async () => {
-    await render(<Icon name={NAME} testID="icon" label="   " />);
+    await render(<Icon name="chevron-left" testID="icon" label="   " />);
     expect(byId('icon').props.accessible).toBe(false);
   });
 
   test('forwards testID to the node a test finds it by, in both modes', async () => {
     await render(
       <>
-        <Icon name={NAME} testID="decorative" />
-        <Icon name={NAME} testID="meaningful" label="Back" />
+        <Icon name="plus" testID="decorative" />
+        <Icon name="plus" testID="meaningful" label="Add" />
       </>,
     );
     expect(byId('decorative')).toBeTruthy();

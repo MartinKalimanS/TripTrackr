@@ -53,32 +53,16 @@ import { TextRoles } from '@/theme';
 type TabRoute = BottomTabBarProps['state']['routes'][number];
 type TabOptions = BottomTabBarProps['descriptors'][string]['options'];
 
-/** One tab's symbols, named for BOTH platforms (`Icon` accepts nothing else). */
-interface TabIcons {
-  rest: IconName;
-  selected: IconName;
-}
-
 /**
- * The icon of each tab route: the outline at rest and the filled SF Symbol when selected.
- * The Android symbol is the same in both states: `expo-symbols` draws Material Symbols
- * from one static font (https://docs.expo.dev/versions/v57.0.0/sdk/symbols.md), which has
- * no fill axis, so on Android the weight, the accent and the mark carry the selection.
- * A route missing here gets a label but no icon rather than a crash.
+ * The icon of each tab route, a registry key: drawn `regular` at rest and `fill` when
+ * selected (Phosphor has the weight on both platforms, which the Material symbols of
+ * feature 004 did not on Android). A route missing here gets a label but no icon rather
+ * than a crash.
  */
-const TAB_ICONS: Record<string, TabIcons> = {
-  index: {
-    rest: { ios: 'globe.europe.africa', android: 'globe' },
-    selected: { ios: 'globe.europe.africa.fill', android: 'globe' },
-  },
-  trips: {
-    rest: { ios: 'suitcase', android: 'luggage' },
-    selected: { ios: 'suitcase.fill', android: 'luggage' },
-  },
-  profile: {
-    rest: { ios: 'person.crop.circle', android: 'account_circle' },
-    selected: { ios: 'person.crop.circle.fill', android: 'account_circle' },
-  },
+const TAB_ICONS: Record<string, IconName> = {
+  index: 'globe',
+  trips: 'suitcase',
+  profile: 'user',
 };
 
 /**
@@ -122,7 +106,7 @@ interface TabButtonProps {
 
 function TabButton({ route, options, focused, navigation }: TabButtonProps) {
   const label = tabLabel(options, route.name);
-  const icons = TAB_ICONS[route.name];
+  const icon = TAB_ICONS[route.name];
 
   // Mirrors React Navigation's default bar: listeners may veto the press (a screen with
   // unsaved edits, for instance) before anything moves.
@@ -156,9 +140,10 @@ function TabButton({ route, options, focused, navigation }: TabButtonProps) {
           style={styles.mark}
         />
       ) : null}
-      {icons ? (
+      {icon ? (
         <Icon
-          name={focused ? icons.selected : icons.rest}
+          name={icon}
+          weight={focused ? 'fill' : 'regular'}
           size={TabMetrics.iconSize}
           tone={focused ? 'accent' : 'muted'}
         />

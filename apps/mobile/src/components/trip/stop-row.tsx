@@ -60,10 +60,10 @@ export type StopRowProps = {
   dragging?: boolean;
 };
 
-const UP: IconName = { ios: 'chevron.up', android: 'keyboard_arrow_up' };
-const DOWN: IconName = { ios: 'chevron.down', android: 'keyboard_arrow_down' };
-const DATES: IconName = { ios: 'calendar', android: 'calendar_month' };
-const REMOVE: IconName = { ios: 'trash', android: 'delete' };
+const UP: IconName = 'chevron-up';
+const DOWN: IconName = 'chevron-down';
+const DATES: IconName = 'calendar';
+const REMOVE: IconName = 'trash';
 
 /** The rail's line; the stub above the dot is as tall as the card's padding is to its first line. */
 const RAIL_LINE = 'w-0.5 bg-border';

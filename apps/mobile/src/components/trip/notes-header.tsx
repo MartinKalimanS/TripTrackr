@@ -30,7 +30,7 @@ export type NotesHeaderProps = {
 
 const ALL_KEY = 'all';
 
-const ADD: IconName = { ios: 'plus', android: 'add' };
+const ADD: IconName = 'plus';
 
 export function NotesHeader({
   targets,

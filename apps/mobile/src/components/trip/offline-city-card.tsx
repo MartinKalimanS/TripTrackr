@@ -52,18 +52,18 @@ export type CityPackCardProps = {
 type ChipState = Exclude<OfflinePackState['kind'], 'error'>;
 
 const STATUS_LOOK: Record<ChipState, { icon: IconName; tone: ToneChipTone }> = {
-  none: { icon: { ios: 'icloud.slash', android: 'cloud_off' }, tone: 'muted' },
+  none: { icon: 'cloud-off', tone: 'muted' },
   downloading: {
-    icon: { ios: 'arrow.down.circle', android: 'downloading' },
+    icon: 'download',
     tone: 'default',
   },
-  ready: { icon: { ios: 'checkmark.circle', android: 'check_circle' }, tone: 'success' },
+  ready: { icon: 'check-circle', tone: 'success' },
 };
 
-const DOWNLOAD: IconName = { ios: 'arrow.down.circle', android: 'download' };
-const RETRY: IconName = { ios: 'arrow.clockwise', android: 'refresh' };
-const STOP: IconName = { ios: 'stop.circle', android: 'stop_circle' };
-const REMOVE: IconName = { ios: 'trash', android: 'delete' };
+const DOWNLOAD: IconName = 'download';
+const RETRY: IconName = 'refresh';
+const STOP: IconName = 'stop-circle';
+const REMOVE: IconName = 'trash';
 
 /** What a city's map is doing, in words and a glyph; a failure is an alert instead. */
 function PackStatus({ cityId, state }: { cityId: number; state: OfflinePackState }) {

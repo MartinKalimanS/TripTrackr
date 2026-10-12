@@ -12,8 +12,9 @@
  *
  * Jest has no layout engine, so the 56 dp budget is arithmetic over the constants the bar
  * renders with (`TabMetrics`), and the rendered styles are asserted to BE those constants.
- * The kit's text and `expo-symbols` are plain nodes that forward their props, so colours
- * are the semantic classes and tones the bar ASKS for, never values.
+ * The kit's text is a plain node that forwards its props, and a Phosphor glyph is read back
+ * by registry key (`test/helpers/icons.ts`), so colours are the semantic classes and tones the
+ * bar ASKS for, never values.
  *
  * The props are the `BottomTabBarProps` shape the JS `Tabs` navigator passes to a custom
  * `tabBar`, built by hand so the component's own behaviour is tested without mounting a
@@ -32,14 +33,7 @@ import { TabBar, TabContentHeight, TabMetrics } from '@/components/navigation/ta
 import { BorderHairline, MinTouchTarget } from '@/constants/theme';
 import { FocusRing, TextRoles } from '@/theme';
 
-// `expo-symbols` is replaced by a view that carries the props it was given, so the test
-// reads the symbol each tab asked for (both platform names), its size and its tint.
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
+import { glyphsIn } from '../helpers/icons';
 
 const ROUTES = [
   { key: 'index-1', name: 'index', title: 'Globe' },
@@ -47,20 +41,8 @@ const ROUTES = [
   { key: 'profile-1', name: 'profile', title: 'Profile' },
 ] as const;
 
-/** The symbols each tab asks for: the outline at rest, the filled one when selected. */
-const ICONS = {
-  index: {
-    rest: 'globe.europe.africa',
-    filled: 'globe.europe.africa.fill',
-    android: 'globe',
-  },
-  trips: { rest: 'suitcase', filled: 'suitcase.fill', android: 'luggage' },
-  profile: {
-    rest: 'person.crop.circle',
-    filled: 'person.crop.circle.fill',
-    android: 'account_circle',
-  },
-} as const;
+/** The glyph each tab asks for (a registry key): `regular` at rest, `fill` when selected. */
+const ICONS = { index: 'globe', trips: 'suitcase', profile: 'user' } as const;
 
 /** The most a bar's content may be at the default text size, above the inset. */
 const BUDGET = 56;
@@ -146,7 +128,6 @@ function minTouchTargetOn(os: 'ios' | 'android'): number {
 beforeEach(() => mockFontScale(1));
 afterEach(() => jest.restoreAllMocks());
 
-const hidden = { includeHiddenElements: true };
 type Node = { props: Record<string, unknown> };
 const styleOf = (node: Node) =>
   (StyleSheet.flatten(node.props.style as never) ?? {}) as Record<
@@ -158,7 +139,7 @@ const classesOf = (node: Node) =>
     .split(/\s+/)
     .filter(Boolean);
 const barStyle = () => styleOf(screen.getByTestId('tab-bar'));
-const symbols = () => screen.getAllByTestId('symbol', hidden);
+const symbols = () => glyphsIn();
 const labelOf = (text: string) => screen.getByText(text);
 
 describe('<TabBar> identity - C4-9, FR-030', () => {
@@ -323,32 +304,29 @@ describe('<TabBar> selection - FR-010, FR-025', () => {
   });
 
   test.each(Object.entries(ICONS))(
-    'the %s tab shows its filled symbol only while selected',
-    async (name, icon) => {
+    'the %s tab shows its filled glyph only while selected',
+    async (name, glyph) => {
       const index = ROUTES.findIndex((route) => route.name === name);
       await render(<TabBar {...makeProps(index)} />);
-      const selected = symbols()[index]!.props.name as { ios: string; android: string };
-      expect(selected).toEqual({ ios: icon.filled, android: icon.android });
-      expect(selected.ios).toMatch(/\.fill$/);
+      expect(symbols()[index]).toMatchObject({ name: glyph, weight: 'fill' });
 
       await render(<TabBar {...makeProps((index + 1) % ROUTES.length)} />);
-      const rest = symbols().at(index - ROUTES.length)!.props.name as {
-        ios: string;
-        android: string;
-      };
-      expect(rest).toEqual({ ios: icon.rest, android: icon.android });
-      expect(rest.ios).not.toMatch(/\.fill$/);
+      expect(symbols().at(index - ROUTES.length)).toMatchObject({
+        name: glyph,
+        weight: 'regular',
+      });
     },
   );
 
   test('tints the selected icon with the accent and the others with the muted ink', async () => {
     jest
       .spyOn(HeroUI, 'useThemeColor')
-      .mockImplementation(((token: string) => `themed:${token}`) as never);
+      .mockImplementation(((token: string) =>
+        token === 'accent-text' ? '#aa0000' : '#00aa00') as never);
     await render(<TabBar {...makeProps(2)} />);
 
-    const tints = symbols().map((symbol) => symbol.props.tintColor);
-    expect(tints).toEqual(['themed:muted', 'themed:muted', 'themed:accent']);
+    const tints = symbols().map((symbol) => symbol.color);
+    expect(tints).toEqual(['#00aa00', '#00aa00', '#aa0000']);
   });
 });
 
@@ -363,7 +341,7 @@ describe('<TabBar> the 56 dp budget - feature 003 FR-013', () => {
         TabMetrics.captionLineHeight +
         2 * TabMetrics.paddingY,
     );
-    for (const symbol of symbols()) expect(symbol.props.size).toBe(TabMetrics.iconSize);
+    for (const symbol of symbols()) expect(symbol.size).toBe(TabMetrics.iconSize);
     for (const route of ROUTES) {
       expect(classesOf(labelOf(route.title))).toContain(
         `leading-[${TabMetrics.captionLineHeight}px]`,

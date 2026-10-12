@@ -1,8 +1,10 @@
 /**
- * T417 - contract C4-7 (`Tappable`), FR-019, FR-024, FR-026, FR-029, data-model section 6.
+ * T417 and T519 - contracts C4-7 and C5-15 (`Tappable`), FR-019, FR-024, FR-026, FR-029,
+ * FR-063, FR-071, data-model section 6.
  *
- * `Tappable` is the bare control of Atlas: no fill, no border, only a pressed fill, a
- * focus ring and the guarantees every control makes. Pressable owns its pressed state, so
+ * `Tappable` is the bare control of Sunrise Passport: no fill, no border, only the `pressed`
+ * fill (the one palette key only ink text sits on), the focus ring (2.5 dp, 2 dp off) and
+ * the guarantees every control makes. Pressable owns its pressed state, so
  * the state-to-style mapping is asserted through the exported pure function; the rest is
  * asserted on the host node.
  */
@@ -12,8 +14,9 @@ import { Dimensions, StyleSheet, Text } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
-import { FocusRing } from '@/theme';
+import { FocusRing, PaletteNames, Palettes, contrastRatio } from '@/theme';
 
+import { asCss, mockThemeColors } from '../../../test/helpers/theme-colors';
 import { touchDown } from '../../../test/helpers/touch';
 import { TAPPABLE_PRESSED_TOKEN, Tappable, tappableStyle } from './tappable';
 
@@ -177,16 +180,17 @@ describe('<Tappable> cost in a list - research D4-05', () => {
   test('asks the theme for its pressed fill: one that is visible on every ground', async () => {
     const spy = jest.spyOn(HeroUI, 'useThemeColor');
     await renderTappable();
-    expect(TAPPABLE_PRESSED_TOKEN).toBe('separator-secondary');
+    // The kit's `--surface-tertiary` is generated from the palette key `pressed` (C5-6).
+    expect(TAPPABLE_PRESSED_TOKEN).toBe('surface-tertiary');
     expect(spy).toHaveBeenCalledWith(TAPPABLE_PRESSED_TOKEN);
     expect(spy).toHaveBeenCalledWith('focus');
   });
 });
 
-describe('<Tappable> focus ring - FR-024, design-tokens C4-3', () => {
+describe('<Tappable> focus ring - FR-071, design-tokens C5-4 P13', () => {
   const focusColor = HeroUI.useThemeColor('focus');
 
-  test('draws a 2 dp ring 2 dp outside the control while focused, and drops it on blur', async () => {
+  test('draws a 2.5 dp ring 2 dp outside the control while focused, and drops it on blur', async () => {
     await renderTappable();
     const node = screen.getByLabelText('Open trip');
     expect(styleNow().outlineWidth).toBeUndefined();
@@ -364,3 +368,29 @@ describe('tappableStyle - feedback "ring" for a control over a photograph (FR-01
     expect(styleNow().outlineWidth).toBe(FocusRing.width);
   });
 });
+
+describe.each(PaletteNames)(
+  '<Tappable> in %s - the pressed fill is the pressed key',
+  (theme) => {
+    beforeEach(() => {
+      mockThemeColors(theme);
+      jest.useFakeTimers();
+    });
+    afterEach(() => jest.useRealTimers());
+
+    test('a held press paints Palettes.pressed, and the focus ring is Palettes.focus', async () => {
+      await renderTappable();
+      await touchDown(screen.getByLabelText('Open trip'));
+      expect(styleNow().backgroundColor).toBe(asCss(Palettes[theme].pressed));
+      await fireEvent(screen.getByLabelText('Open trip'), 'focus');
+      expect(styleNow().outlineColor).toBe(asCss(Palettes[theme].focus));
+    });
+
+    test('only ink text is measured on it, and ink reads on it', () => {
+      const floor = theme.endsWith('contrast') ? 7 : 4.5;
+      expect(
+        contrastRatio(Palettes[theme].ink, Palettes[theme].pressed),
+      ).toBeGreaterThanOrEqual(floor);
+    });
+  },
+);

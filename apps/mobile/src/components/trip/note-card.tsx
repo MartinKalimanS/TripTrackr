@@ -44,8 +44,8 @@ export function describeAnchor(note: NoteWithPlace): string {
 
 const PREVIEW_LENGTH = 160;
 
-const EDIT: IconName = { ios: 'pencil', android: 'edit' };
-const REMOVE: IconName = { ios: 'trash', android: 'delete' };
+const EDIT: IconName = 'pencil';
+const REMOVE: IconName = 'trash';
 
 const ROW_ACTIONS = [
   { name: 'edit', label: 'Edit note' },

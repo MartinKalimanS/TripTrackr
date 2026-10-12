@@ -32,9 +32,9 @@ export type ExpensesHeaderProps = {
   onToggleSummary: () => void;
 };
 
-const ADD: IconName = { ios: 'plus', android: 'add' };
-const COLLAPSE: IconName = { ios: 'chevron.up', android: 'keyboard_arrow_up' };
-const EXPAND: IconName = { ios: 'chevron.down', android: 'keyboard_arrow_down' };
+const ADD: IconName = 'plus';
+const COLLAPSE: IconName = 'chevron-up';
+const EXPAND: IconName = 'chevron-down';
 
 function SummaryToggle({
   showSummary,
