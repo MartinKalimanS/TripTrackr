@@ -7,12 +7,24 @@
  */
 import { Radius, Spacing } from '@/constants/theme';
 import { deepFreeze } from '@/theme/freeze';
+import { PaletteNames, Palettes } from '@/theme/palette';
 import {
   AtlasRadius,
   AtlasSpacing,
   FocusRing,
+  IconSize,
+  IconWeights,
+  Lift,
+  LiftElevation,
+  Radii,
+  ScreenMargin,
+  Space,
+  cornerOf,
   cornerStyle,
+  innerRadius,
+  liftOf,
   type AtlasRadiusName,
+  type RadiiName,
 } from '@/theme/shape';
 
 describe('AtlasRadius — contract C4-6', () => {
@@ -127,5 +139,212 @@ describe('deepFreeze', () => {
     expect(deepFreeze('x')).toBe('x');
     const once = Object.freeze({ k: Object.freeze({ v: 1 }) });
     expect(deepFreeze(once)).toBe(once);
+  });
+});
+
+/**
+ * T516 — feature 005, contract C5-8, data-model section 3.
+ *
+ * Sunrise space, radius, lift and icon sizes are NEW names beside the 004 `AtlasRadius` and
+ * `AtlasSpacing` above, which keep their values until Phase 10: the 004 steps are ordinals
+ * and the 004 radii have a `pill` where Sunrise has a `full` and a 28 dp sheet.
+ */
+describe('Space — contract C5-8', () => {
+  test('is the 4 dp grid: 4, 8, 12, 16, 20, 24, 32, 40 under the data-model keys', () => {
+    expect(Space).toEqual({ 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24, 8: 32, 10: 40 });
+  });
+
+  test('grows from step to step and is deeply frozen', () => {
+    const values = Object.values(Space);
+    expect([...values].sort((a, b) => a - b)).toEqual(values);
+    expect(Object.isFrozen(Space)).toBe(true);
+  });
+
+  test('the screen margin is 20, and 16 on an Android list', () => {
+    expect(ScreenMargin).toEqual({ default: 20, androidList: 16 });
+    expect(ScreenMargin.default).toBe(Space[5]);
+    expect(ScreenMargin.androidList).toBe(Space[4]);
+  });
+});
+
+describe('Radii — contract C5-8', () => {
+  test('holds 8, 12 (inputs), 16 (thumbnails, tiles), 24 (cards), 28 (sheets) and full', () => {
+    expect(Radii).toEqual({ sm: 8, md: 12, lg: 16, xl: 24, sheet: 28, full: 999 });
+  });
+
+  test('grows from step to step and is deeply frozen', () => {
+    const values = Object.values(Radii);
+    expect([...values].sort((a, b) => a - b)).toEqual(values);
+    expect(Object.isFrozen(Radii)).toBe(true);
+  });
+
+  test('the 004 radii are unchanged, so no unmigrated screen moves by a pixel', () => {
+    expect(AtlasRadius).toEqual({ sm: 8, md: 12, lg: 16, xl: 24, pill: 999 });
+  });
+
+  test.each(['sm', 'md', 'lg', 'xl', 'sheet'] as RadiiName[])(
+    '%s uses the continuous corner curve',
+    (name) => {
+      expect(cornerOf(name)).toEqual({
+        borderRadius: Radii[name],
+        borderCurve: 'continuous',
+      });
+    },
+  );
+
+  test('full is circular, never continuous', () => {
+    expect(cornerOf('full')).toEqual({ borderRadius: 999 });
+  });
+
+  test.each([
+    [24, 16, 8],
+    [24, 8, 16],
+    [24, 0, 24],
+    [12, 8, 8],
+    [28, 24, 8],
+  ])(
+    'an inner radius is outer %s minus padding %s, never below 8: %s',
+    (outer, pad, inner) => {
+      expect(innerRadius(outer, pad)).toBe(inner);
+    },
+  );
+});
+
+describe('Lift — contract C5-8', () => {
+  const LIGHT = {
+    lift1: [
+      {
+        offsetX: 0,
+        offsetY: 1,
+        blurRadius: 2,
+        spreadDistance: 0,
+        color: 'rgba(14, 42, 71, 0.06)',
+      },
+      {
+        offsetX: 0,
+        offsetY: 8,
+        blurRadius: 24,
+        spreadDistance: -8,
+        color: 'rgba(14, 42, 71, 0.14)',
+      },
+    ],
+    lift2: [
+      {
+        offsetX: 0,
+        offsetY: 2,
+        blurRadius: 6,
+        spreadDistance: 0,
+        color: 'rgba(14, 42, 71, 0.1)',
+      },
+      {
+        offsetX: 0,
+        offsetY: 16,
+        blurRadius: 32,
+        spreadDistance: -8,
+        color: 'rgba(14, 42, 71, 0.28)',
+      },
+    ],
+  };
+  const DARK = {
+    lift1: [
+      {
+        offsetX: 0,
+        offsetY: 0,
+        blurRadius: 0,
+        spreadDistance: 1,
+        color: 'rgba(255, 255, 255, 0.1)',
+      },
+      {
+        offsetX: 0,
+        offsetY: 8,
+        blurRadius: 24,
+        spreadDistance: -8,
+        color: 'rgba(0, 0, 0, 0.5)',
+      },
+    ],
+    lift2: [
+      {
+        offsetX: 0,
+        offsetY: 0,
+        blurRadius: 0,
+        spreadDistance: 1,
+        color: 'rgba(255, 255, 255, 0.1)',
+      },
+      {
+        offsetX: 0,
+        offsetY: 2,
+        blurRadius: 6,
+        spreadDistance: 0,
+        color: 'rgba(0, 0, 0, 0.35)',
+      },
+      {
+        offsetX: 0,
+        offsetY: 16,
+        blurRadius: 32,
+        spreadDistance: -8,
+        color: 'rgba(0, 0, 0, 0.6)',
+      },
+    ],
+  };
+
+  test.each(['light', 'light-contrast'] as const)(
+    '%s holds the navy lifts of the contract',
+    (name) => {
+      expect(Lift[name]).toEqual(LIGHT);
+    },
+  );
+
+  test.each(['dark', 'dark-contrast'] as const)(
+    '%s holds a hairline ring and a tonal lift, as the contract draws them',
+    (name) => {
+      expect(Lift[name]).toEqual(DARK);
+    },
+  );
+
+  test.each(PaletteNames)('%s has exactly two lifts: no other shadow exists', (name) => {
+    expect(Object.keys(Lift[name])).toEqual(['lift1', 'lift2']);
+  });
+
+  test('the light lifts are tinted with the ink, never a literal black', () => {
+    const [r, g, b] = [1, 3, 5].map((i) =>
+      parseInt(Palettes.light.ink.slice(i, i + 2), 16),
+    );
+    for (const layer of [...Lift.light.lift1, ...Lift.light.lift2]) {
+      expect(layer.color).toContain(`rgba(${r}, ${g}, ${b},`);
+    }
+  });
+
+  test('a lift is a softer step than the one above it: lift2 casts more than lift1', () => {
+    for (const name of PaletteNames) {
+      const reach = (layers: readonly { offsetY: number; blurRadius: number }[]) =>
+        Math.max(...layers.map((layer) => layer.offsetY + layer.blurRadius));
+      expect(reach(Lift[name].lift2)).toBeGreaterThan(reach(Lift[name].lift1));
+    }
+  });
+
+  test('is deeply frozen, and liftOf hands out a copy a caller may extend', () => {
+    expect(Object.isFrozen(Lift)).toBe(true);
+    expect(Object.isFrozen(Lift.light.lift1)).toBe(true);
+    const copy = liftOf('light', 'lift1');
+    expect(copy).toEqual(Lift.light.lift1);
+    expect(copy).not.toBe(Lift.light.lift1);
+    expect(copy[0]).not.toBe(Lift.light.lift1[0]);
+  });
+
+  test('below Android 9 an outset shadow is an elevation: two steps, lift2 above lift1', () => {
+    expect(LiftElevation).toEqual({ lift1: 2, lift2: 6 });
+    expect(LiftElevation.lift2).toBeGreaterThan(LiftElevation.lift1);
+  });
+});
+
+describe('IconSize — contract C5-8', () => {
+  test('holds 16, 20 and 24', () => {
+    expect(IconSize).toEqual({ sm: 16, md: 20, lg: 24 });
+    expect(Object.isFrozen(IconSize)).toBe(true);
+  });
+
+  test('has three weights: regular at rest, fill for selected and status, duotone for stat tiles', () => {
+    expect([...IconWeights]).toEqual(['regular', 'fill', 'duotone']);
+    expect(Object.isFrozen(IconWeights)).toBe(true);
   });
 });

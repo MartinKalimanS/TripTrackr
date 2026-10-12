@@ -10,12 +10,22 @@ import {
   AtlasSpacing,
   ContrastFloor,
   FocusRing,
+  IconSize,
+  Lift,
   Motion,
   PaletteKeys,
   PaletteNames,
   Palettes,
+  Passport,
+  PrimaryEdgeRing,
+  Radii,
+  Scrim,
+  Sky,
+  Space,
   TextRoles,
+  TypeRoles,
   blend,
+  colourAt,
   contrastRatio,
   meetsFloor,
   platformQueries,
@@ -67,6 +77,22 @@ describe('token layer public API — contract C7', () => {
     expect(AtlasSpacing.twelve).toBe(12);
     expect(FocusRing).toEqual({ width: 2.5, offset: 2 });
     expect(Motion.transitionMs).toBe(200);
+  });
+
+  test('exports the Sunrise type, shape, motion and scrim tables as data (005 C5-7 to C5-10)', () => {
+    expect(Object.keys(TypeRoles)).toEqual(
+      expect.arrayContaining(['display', 'numeral', 'eyebrow', 'accent']),
+    );
+    expect(Space[5]).toBe(20);
+    expect(Radii.sheet).toBe(28);
+    expect(IconSize.lg).toBe(24);
+    expect(Object.keys(Lift.light)).toEqual(['lift1', 'lift2']);
+    expect(PrimaryEdgeRing.colourKey).toBe('accentLine');
+    expect(Motion.sheetSpring.stiffness).toBe(700);
+    expect(Scrim.base.rgb).toBe('#081A30');
+    expect(Sky.light.stops).toHaveLength(4);
+    expect(Passport.angle).toBe(135);
+    expect(colourAt(Sky.light.stops, 0)).toBe('#FFF1DF');
   });
 
   test('exports the platform query facade', () => {

@@ -62,19 +62,38 @@ export {
   AtlasRadius,
   AtlasSpacing,
   FocusRing,
+  IconSize,
+  IconWeights,
+  Lift,
+  LiftElevation,
   PrimaryEdgeRing,
+  Radii,
+  ScreenMargin,
+  Space,
+  cornerOf,
   cornerStyle,
+  innerRadius,
+  liftOf,
   type AtlasRadiusName,
   type AtlasSpacingName,
+  type IconWeight,
+  type LiftLayer,
+  type LiftName,
+  type RadiiName,
 } from './shape';
 
 export {
   Motion,
+  MotionDurationNames,
   MotionProperties,
   isMotionProperty,
   motionDuration,
+  pressScaleOf,
+  springOf,
+  type MotionDurationName,
   type MotionName,
   type MotionProperty,
+  type Spring,
 } from './motion';
 
 export {
