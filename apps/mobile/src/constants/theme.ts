@@ -253,6 +253,48 @@ export const GlobeLayers = {
     fadeEndZoom: 4,
   },
   worldScaleZoom: 5,
+  /**
+   * The pins (T533, FR-011). A pin is a dot by default; the photo roundel (a bitmap baked from
+   * a hidden laid-out view with `react-native-view-shot` and drawn by a `SymbolLayer`) is OFF
+   * until the device check V2 (T508) says the capture works on both platforms, hence a typed
+   * `boolean` and not the literal `false`. Beyond `roundelLimit` the rest are dots; at most
+   * `captureBatch` badges are laid out at once, so sixty photographs are not decoded together.
+   * Sizes are dp: the roundel of the live trip is the largest, a planned one smaller, a past
+   * one smallest (the prototype's 56, 44 and 40).
+   */
+  pins: {
+    roundelsEnabled: false as boolean,
+    roundelLimit: 60,
+    captureBatch: 12,
+    dotRadius: { past: 5, planning: 6, active: 8 },
+    dotRing: 2,
+    roundelSize: { past: 40, planning: 44, active: 56 },
+    /** The white ring of a roundel, and the coral or dashed amber ring round it. */
+    roundelRing: 2,
+    statusRing: 2.5,
+    statusRingGap: 3,
+    /** The symbol is a little smaller while the whole planet is in view. */
+    iconSize: { farZoom: 1, farScale: 0.8, nearZoom: 5, nearScale: 1 },
+  },
+  /**
+   * The callout of the live trip (T533, FR-011): a white card, 220 dp at most, 12 dp inside
+   * the sides of the screen, `gap` from the ring; the ring is `ringSize` wide (round the dot,
+   * or round the roundel). The card is never narrowed below `minWidth`.
+   */
+  callout: {
+    maxWidth: 220,
+    minWidth: 96,
+    margin: 12,
+    verticalMargin: 6,
+    gap: 14,
+    arrow: 12,
+    ringSize: { dot: 32, roundel: 72 },
+    ringWidth: 2.5,
+    pulseWidth: 2,
+    /** The prototype's still pulse under reduced motion. */
+    stillScale: 1.25,
+    stillOpacity: 0.28,
+  },
 } as const;
 
 /**

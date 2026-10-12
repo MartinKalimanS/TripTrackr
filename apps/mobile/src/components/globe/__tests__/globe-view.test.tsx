@@ -9,6 +9,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { createRef } from 'react';
+import { StyleSheet } from 'react-native';
 
 import {
   Colors,
@@ -712,7 +713,7 @@ describe('<GlobeView> — the Sunrise look (T532; FR-010, FR-082)', () => {
     ).toHaveProperty('lineDasharray');
   });
 
-  test('stacks atmosphere, graticule, countries, terrain, connections, gradients, beacons in that order', async () => {
+  test('stacks atmosphere, graticule, countries, terrain, connections, gradients, pins, beacons in that order', async () => {
     await renderGlobe(tripsWithCountries());
     const order = [
       'mapbox-Atmosphere',
@@ -723,6 +724,7 @@ describe('<GlobeView> — the Sunrise look (T532; FR-010, FR-082)', () => {
       'mapbox-ShapeSource-globe-arcs',
       'mapbox-ShapeSource-globe-markers',
       'mapbox-ShapeSource-globe-arc-gradients',
+      'mapbox-ShapeSource-globe-pins',
       'mapbox-ShapeSource-globe-beacons',
     ];
     const seen = screen
@@ -767,5 +769,172 @@ describe('<GlobeView> — the Sunrise look (T532; FR-010, FR-082)', () => {
     ref.current?.setCamera(settings!);
     expect(camera().setCamera).toHaveBeenCalledTimes(1);
     expect(camera().setCamera).toHaveBeenCalledWith(settings);
+  });
+});
+
+describe('<GlobeView> — pins and the callout (T533; FR-011)', () => {
+  const LIVE = { tripId: 'italy', title: 'Italy', detail: 'Day 3 of 8 · Florence' };
+  const dotTripIds = () =>
+    (
+      screen.getByTestId('mapbox-ShapeSource-globe-pins').props.shape.features as {
+        properties: { trip_id: string };
+      }[]
+    ).map((f) => f.properties.trip_id);
+
+  test('draws one dot for each trip with a placed stop, the live trip last', async () => {
+    await renderGlobe();
+    expect(dotTripIds()).toEqual(['france', 'italy']);
+    expect(screen.getByTestId('mapbox-CircleLayer-globe-pin-dot')).toBeTruthy();
+  });
+
+  test('the dots are the default: no roundel source, no bitmap, nothing captured', async () => {
+    const { captureRef } = jest.requireMock('react-native-view-shot') as {
+      captureRef: jest.Mock;
+    };
+    captureRef.mockClear();
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        covers={{ italy: 'file:///italy.jpg', france: 'file:///france.jpg' }}
+      />,
+    );
+    expect(screen.queryByTestId('mapbox-ShapeSource-globe-roundels')).toBeNull();
+    expect(screen.queryByTestId('mapbox-Images')).toBeNull();
+    expect(screen.queryByTestId('roundel-stage')).toBeNull();
+    expect(captureRef).not.toHaveBeenCalled();
+  });
+
+  test('a tap on a pin opens the trip, through the same handler as an arc', async () => {
+    await renderGlobe();
+    const features = screen.getByTestId('mapbox-ShapeSource-globe-pins').props.shape
+      .features;
+    await fireEvent(screen.getByTestId('mapbox-ShapeSource-globe-pins'), 'press', {
+      features,
+    });
+    // Both trips are under the finger: the active one opens first.
+    expect(mockPush).toHaveBeenCalledWith('/trip/italy');
+  });
+
+  test('draws the pins over the connections and under the beacons and the callout', async () => {
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={LIVE}
+      />,
+    );
+    const order = [
+      'mapbox-ShapeSource-globe-arcs',
+      'mapbox-ShapeSource-globe-arc-gradients',
+      'mapbox-ShapeSource-globe-pins',
+      'mapbox-ShapeSource-globe-beacons',
+      'mapbox-MarkerView',
+    ];
+    const seen = screen
+      .getAllByTestId(/^mapbox-/)
+      .map((node) => node.props.testID as string)
+      .filter((id) => order.includes(id));
+    expect(seen).toEqual(order);
+  });
+
+  test('has no callout without a live trip', async () => {
+    await renderGlobe();
+    expect(screen.queryByTestId('mapbox-MarkerView')).toBeNull();
+  });
+
+  test('has ONE callout for the live trip, at the stop it is at today, naming it', async () => {
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={LIVE}
+      />,
+    );
+    const markers = screen.getAllByTestId('mapbox-MarkerView');
+    expect(markers).toHaveLength(1);
+    // Today is the 10th: the traveller is in Florence.
+    expect(markers[0]!.props.coordinate).toEqual([FLORENCE.lng, FLORENCE.lat]);
+    // The callout is hidden from the screen reader on purpose (it is announced instead), and
+    // a query skips what is hidden from it.
+    const seen = { includeHiddenElements: true };
+    expect(screen.getByTestId('globe-callout-title', seen).props.children).toBe('Italy');
+    expect(screen.getByTestId('globe-callout-detail', seen).props.children).toBe(
+      'Day 3 of 8 · Florence',
+    );
+  });
+
+  test('has no callout for a live trip that is not on the globe', async () => {
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={{ ...LIVE, tripId: 'nowhere' }}
+      />,
+    );
+    expect(screen.queryByTestId('mapbox-MarkerView')).toBeNull();
+  });
+
+  test('the callout’s pulse runs while the globe is on screen, pauses while it is not, and is still under reduced motion', async () => {
+    const pulse = () =>
+      StyleSheet.flatten(
+        screen.getByTestId('globe-callout-pulse', { includeHiddenElements: true }).props
+          .style,
+      ) as Record<string, unknown>;
+    const trips = sampleTrips();
+    // A fresh element each time: React skips an identical one, and the focus hook is a mock.
+    const view = () => (
+      <GlobeView
+        trips={trips}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={LIVE}
+      />
+    );
+    const rendered = await render(view());
+    expect(pulse().animationPlayState).toBe('running');
+
+    mockFocus.focused = false;
+    await rendered.rerender(view());
+    expect(pulse().animationPlayState).toBe('paused');
+
+    mockFocus.focused = true;
+    mockAppearance({ prefersLessMotion: true });
+    await rendered.rerender(view());
+    expect(pulse()).not.toHaveProperty('animationName');
+  });
+
+  test('says where the callout may go: the free area between the header and the sheet', async () => {
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={LIVE}
+        calloutArea={{ top: 110, bottom: 632 }}
+      />,
+    );
+    expect(screen.getAllByTestId('mapbox-MarkerView')).toHaveLength(1);
+  });
+
+  test('leaves the shared hit source, the stop markers and tripIdFromPress as they were', async () => {
+    const trips = sampleTrips();
+    await renderGlobe(trips);
+    const markers = screen.getByTestId('mapbox-ShapeSource-globe-markers');
+    expect(markers.props.shape).toEqual(markerCollection(trips));
+    await fireEvent(markers, 'press', {
+      features: [{ type: 'Feature', properties: { trip_id: 'france', status: 'past' } }],
+    });
+    expect(mockPush).toHaveBeenCalledWith('/trip/france');
   });
 });

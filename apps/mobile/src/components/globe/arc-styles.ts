@@ -29,7 +29,7 @@ export const LEG_DURATION_MS = 2400;
 export const BEACON_FRAME_MS = 33;
 
 /** Pick a value by the feature's `status` property. */
-function byStatus(values: Record<TripStatus, string | number>): Expression {
+export function byStatus(values: Record<TripStatus, string | number>): Expression {
   return [
     'match',
     ['get', 'status'],
