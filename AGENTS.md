@@ -16,7 +16,7 @@ it; where they disagree, the constitution wins.
 | `apps/api`           | NestJS 11 API, BullMQ worker, hand-written SQL migrations in `src/db/migrations/`.         |
 | `packages/contracts` | `@triptrackr/contracts` — zod schemas both apps import. Change the wire format here only.  |
 | `infra/`             | Compose stack, backup image, `scripts/backup.sh` + `scripts/restore-rehearsal.sh`.         |
-| `specs/`             | Spec Kit features. `001-triptrackr-mvp` is the product; `004-app-ui-redesign` the visuals. |
+| `specs/`             | Spec Kit features. `001-triptrackr-mvp` is the product; `005-sunrise-passport-ui` visuals. |
 | `docs/`              | Product documents, legal sources (`legal/`), store checklist (`release/`).                 |
 
 ## Commands
@@ -97,11 +97,12 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
   `src/`. `useAppearance().tokens` is `Colors[themeName]`, which has all four themes (light, dark and
   the two contrast ones). Tabs use `expo-router` `Tabs` with a custom bar, not native tabs (D-17,
   rationale amended by research D4-06: the native module is still `unstable-` in SDK 57).
-- **The look is Atlas** (feature 004). Every screen is on it. The spike (T409) is a conditional go: the
-  desk checks passed and the device checks are still pending. UI primitives come from `components/ui/*`
-  only, and only that folder imports `heroui-native` (research D4-02, D4-03); a failed device check
-  switches the adapters to the fallback without touching a screen. Read
-  `specs/004-app-ui-redesign/tasks.md` before touching shared UI.
+- **The look is Sunrise Passport** (feature 005, which replaces the rejected Atlas look of feature 004; its
+  structure, adapters and token pipeline stay). The spike (004 T409) is a conditional go: the desk checks
+  passed and the device checks are still pending. UI primitives come from `components/ui/*` only, and only
+  that folder imports `heroui-native` (research D4-02, D4-03); a failed device check switches the adapters
+  to the fallback without touching a screen. Read `specs/005-sunrise-passport-ui/tasks.md` (and
+  `specs/004-app-ui-redesign/tasks.md`) before touching shared UI.
 - **Navigation chrome (feature 004).** `(tabs)/trips` and `(tabs)/profile` are nested stacks with a large
   title (`useStackHeaderOptions`); `trip/[id]` has a native header per screen, built by `titled()` in
   `trip/[id]/_layout.tsx` (title in `useHeaderTitleStyle`, Back is the `HeaderBackButton` adapter so
@@ -123,9 +124,9 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
 - **The home is always the globe** (feature 003): it is mounted with no trips, with trips but no stop
   and when the store cannot be read; a flat bordered card (`empty-state.tsx`, contract C12) floats over
   it instead of replacing it. The legs between trips are a second, non-tappable source derived by
-  `features/globe/journey.ts` and drawn under the trip arcs in the past style. The tab bar is a flat
-  strip (`TabBar`, one `Tappable` per tab): keep its testIDs and never give a tab a surface or
-  border.
+  `features/globe/journey.ts` and drawn under the trip arcs in the past style. The tab bar is a floating
+  pill (`TabBar`, one `Tappable` per tab; a tab may have a surface, feature 005 amends 003 FR-013 to
+  FR-015): keep its testIDs.
 - Mapbox under Jest: `jest.setup.ts` turns each Mapbox component into a View tagged
   `mapbox-<Kind>-<id>` carrying its props (a layer's `style` arrives as `layerStyle`), so suites
   read a source's `shape` or fire its `onPress`. To assert on a component's own timer, spy on
@@ -144,7 +145,7 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
 | Locale, decimal separator   | `expo-localization` `getLocales()`; format with `Intl`                                                                   |
 | A recurring server job      | BullMQ job scheduler (`upsertJobScheduler`) in `apps/api/src/common/queue/`, not `setInterval` or `@nestjs/schedule`     |
 | Expense categories          | System rows are `SYSTEM_EXPENSE_CATEGORIES` in contracts (fixed ids, seeded by migration 0009)                           |
-| UI components (feature 004) | `heroui-native` on `uniwind`, only through the adapters in `components/ui/` (subject to spike T409)                      |
+| UI components (feature 005) | `heroui-native` on `uniwind` via `components/ui/` only (T409); icons: Phosphor; Home sheet: custom `ui/sheet.tsx`        |
 
 Native modules (`flash-list`, `keyboard-controller`, `expo-localization`) follow the SDK 57 pin in
 `node_modules/expo/bundledNativeModules.json`; check it before bumping.

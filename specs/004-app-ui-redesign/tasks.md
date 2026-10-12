@@ -4,6 +4,11 @@ description: 'Task list for App UI Redesign (Atlas)'
 
 # Tasks: App UI Redesign ("Atlas")
 
+> **Superseded in part by [005 Sunrise Passport UI](../005-sunrise-passport-ui/spec.md).** The Atlas look (its
+> palette, type, depth and flat tab bar: research D4-01, D4-07, D4-08 and spec FR-001 to FR-004 and FR-010) was rejected by the
+> owner on a phone and is replaced by Sunrise Passport. The structure of this feature (navigation, adapters, token
+> pipeline, accessibility gates, testID parity) is inherited by 005. See 005 `spec.md`, "Amendments".
+
 **Input**: Design documents from `/specs/004-app-ui-redesign/`
 
 **Prerequisites**: [plan.md](./plan.md), [spec.md](./spec.md), [research.md](./research.md),
