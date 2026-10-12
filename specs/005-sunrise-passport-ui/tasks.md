@@ -215,11 +215,20 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
       `EmptyState` variants (`ghost-stamp`, `frames`, `plain`, `filtered`), `ErrorState`, `Banner`, `Toast` over
       the HeroUI toast, `PermissionState`; each skeleton ONE `progressbar`; failing tests for roles and states
       (FR-064, FR-065, FR-066, FR-067; D5-14)
-- [ ] T523 [P] Branch `feat/005-adapters-visual`. `Scrim` (the only gradient consumer) with `top`, `bottom`,
+- [x] T523 [P] Branch `feat/005-adapters-visual`. `Scrim` (the only gradient consumer) with `top`, `bottom`,
       `caption`, `sky` and a white-photograph contrast test; `GeneratedCover` (three palettes, `fnv1a32` pick);
       `Stamp` and `GhostStamp` (SVG, `TextPath`, baked wear mask, accessible label on the parent); `AnimatedNumber`
       (final value announced, final text under reduced motion); `useHaptics` semantic map (FR-007, FR-008, FR-060,
       FR-062, FR-076; D5-08, D5-10, D5-11, D5-14; Q-7)
+      _As built:_ `scrim.tsx` (kinds `top`, `bottom`, `caption`, `sky` and a fifth, `cover`) paints through the typed
+      object form of `experimental_backgroundImage`, with 52 tests that measure what it renders over `WHITE_PHOTO` in all
+      four themes; `generated-cover.tsx` (`coverPalette` is `fnv1a32(seed) % 3`; the flag chip stays in the card's
+      caption); `src/lib/fnv1a.ts`; `stamp-spec.ts` (`stampSpec`, pinned and covering 6 shapes by 4 inks),
+      `stamp.tsx` (`Stamp`, `GhostStamp`), `stamp-in.tsx` (`StampIn`); the wear is baked path data in an SVG `<Mask>`,
+      not PNGs; `animated-number.tsx` over `count-up.ts` (a clock-driven interval, not Reanimated; the prop is
+      `variant`); `useHaptics` with `SemanticHaptics` (`Haptics` keeps its three names), the Android constants and an
+      80 ms debounce. 313 new tests, red first. See `contracts/components.md`, "As built (T523)", for the facts, the
+      deviations and the device-only checks (V5, V6).
 - [ ] T524 Dev gallery `app/(dev)/gallery.tsx` behind a `Stack.Protected` `__DEV__` guard: every adapter in four
       themes at font scale 1 and 2, a numerals row, skeletons, the sheet detents, stamps and scrims over the
       white-photograph fixture; the `assertScreenshot` harness and `e2e/__baselines__/` (D5-18)

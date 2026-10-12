@@ -341,3 +341,230 @@ heavy)`, `success`, `warning`, `error`, each a no-op under reduced motion or whe
    `scrimButton` disc; a grid thumbnail or the viewer carries no overlay.
 9. A component with a fixed height is a bug: use a minimum and let it grow.
 10. A component never fades the glass pill by opacity.
+
+---
+
+## As built (T523): Scrim, GeneratedCover, stamps, AnimatedNumber, haptics
+
+Branch `feat/005-adapters-visual`. Everything is in `apps/mobile/src/components/ui/` except the hash
+(`src/lib/fnv1a.ts`) and the haptics (`src/hooks/use-haptics.ts`). 313 new tests, written red first.
+
+### `Scrim` (`scrim.tsx`), C5-10 and C5-19
+
+```tsx
+<Scrim kind="top" | "bottom" | "sky" style? testID? />
+<Scrim kind="caption" style? contentStyle? testID?>{text}</Scrim>
+<Scrim kind="cover" palette={0 | 1 | 2} style? testID? />
+```
+
+- **The only gradient consumer.** The values stay data in `src/theme/scrim.ts` (`scrimSpec`, `Sky`, `Passport`,
+  `withAlpha`); `scrim.tsx` writes no number of its own. It paints with React Native 0.86's
+  `experimental_backgroundImage` in its **typed object form**: an array of linear gradients (`direction`, then
+  `colorStops` of `{ color, positions: ['44%'] }`) and radial ones (`shape`, `size`, `position`, `colorStops`), so no
+  gradient _string_ exists outside `src/theme/` at all. Read in `processBackgroundImage.js` of `react-native`
+  (`Libraries/StyleSheet`): the object form needs no parsing, hex with alpha (`#RRGGBBAA`) is a valid stop, a bad stop
+  drops the whole gradient (so the tests read every stop back), and layers are listed top first, as in CSS. Uniwind
+  maps a CSS `background-image` onto this very style (`css-processor/rn.js` in `uniwind/dist/module/bundler`); the
+  adapter sets the style directly because the alphas are computed from tokens, not written into a stylesheet.
+  `expo-linear-gradient` is not installed (Batch 2, D5-19) and nothing needs it; no stacked-alpha fallback was built.
+- **Kinds.** `top` is the 120 dp band pinned to the top edge (alpha `.68` held to 44 percent, then to nothing);
+  `bottom`, `sky` and `cover` fill their parent (`StyleSheet.absoluteFill`: React Native 0.86 has no
+  `absoluteFillObject`); `caption` is a column of a 48 dp ramp and a block that **wraps the children** (a minimum,
+  never a height, so it grows with large text and the alpha under any line is at least `minUnderText` at every text
+  scale). `contentStyle` is the block's, where its padding belongs; `style` is the container's. A caller `style` is
+  applied last.
+- **`cover` is a fifth kind** (the contract lists four): `GeneratedCover` and, later, the passport card need a
+  gradient and `scrim.tsx` is the only file the ESLint rule exempts. It draws the passport's amber corner
+  (`Passport.glow`, alpha .20) over a 135 degree gradient between `cover1..3Start` and `End` of the theme's palette.
+  The prototype's cover glow is .62; that value is not a token, so it was not invented here (see "Needs from the
+  token layer").
+- **Theme.** `useAppearance()`: `prefersMoreContrast` picks the darker scrims, the colour scheme the sky (the
+  contrast themes keep the base sky), `themeName` the cover stops. Read live.
+- **Behaviour.** `pointerEvents="none"`, `accessibilityElementsHidden` and `importantForAccessibility` `"no-hide-descendants"` on every gradient View; the caption's ramp is hidden, its block is not (the text is read)
+  and its container is `box-none`. A hidden node is not found by a default query: tests use
+  `includeHiddenElements`.
+- **The contrast test** (`scrim.test.tsx`, 52 tests) reads the stops back from what the component renders and
+  composites them over the gate's `WHITE_PHOTO` (`test/theme/palette-gate-support.ts`) in all four themes: white
+  (`onPhoto`) holds 4.5:1 (7:1 in the contrast themes) in the top scrim's status-bar zone (0 to 44 percent), in the
+  bottom scrim from its 55 percent stop down, and at every position of the caption block (alpha never under
+  `minUnderText`); on the **sky** the text is `ink` and `muted` (never white), measured on every linear stop and at
+  each glow's peak over the gradient at its centre. A mutation (the block's last stop at .30) fails five tests.
+
+### `GeneratedCover` (`generated-cover.tsx`), C5-19, FR-008
+
+```tsx
+<GeneratedCover palette={coverPalette(trip.id)} iso2="PT" initial="Portugal Road Trip" thumb? style? testID? />
+coverPalette(seed: string): 0 | 1 | 2     // fnv1a32(seed) % 3: pass the trip id, or the title with no id
+coverGlyph(iso2, initial): string         // the code in upper case, else the first letter of the title
+```
+
+A `Scrim kind="cover"` gradient, the country code as a ghost glyph (120 dp Bricolage Bold, `onPhoto` at 16 percent,
+bottom corner), a dashed stamp outline (two SVG rings, top corner, tilted -10 degrees), all clipped to
+`absoluteFill` so it fills the frame of the photograph it replaces. `thumb` is the row form: the code only, 40 dp, in
+**opaque** `onPhoto` (text on a picture is never alpha). It is decoration, hidden with its descendants. **The flag
+chip is not drawn by the cover**: in the prototype frames (`trips-nocover`, `trip-nocover`) the flag sits in the
+caption row over the cover exactly as over a photograph, so the card draws it once (`FlagChip`, T520); FR-008's
+"flag chip" is met at the card. `generated-cover.test.tsx` (32 tests) re-measures white on both stops of the three
+palettes in all four themes from the rendered gradient.
+
+### `fnv1a32` (`src/lib/fnv1a.ts`)
+
+The 32-bit FNV-1a of the UTF-8 bytes of a string (a lone surrogate counts as U+FFFD instead of throwing), integer
+arithmetic only, pinned to the published vectors (`''` is `0x811c9dc5`, `'foobar'` is `0xbf9cf968`). It did not
+exist before; the stamp and the cover share it.
+
+### Stamps: `stamp-spec.ts`, `stamp-wear.ts`, `stamp-layout.ts`, `stamp.tsx`, `stamp-in.tsx`
+
+```ts
+stampSpec(iso2, firstVisit /* 'YYYY-MM-DD' */, top?): StampSpec
+// { iso2, shape, ink, rotationDeg, wear, perforated, top, date }
+stampDateText(isoDate, locale?)    // '12 OCT 2026' (en-US 'OCT 12, 2026'): upper case, Intl, local calendar day
+stampLabel(place, isoDate, locale?) // 'Stamp: Portugal, 12 October 2026': what the PARENT says
+```
+
+```tsx
+<Stamp spec size={124} testID="stamp" />
+<GhostStamp size={96} rotationDeg={0} testID="ghost-stamp" />
+<StampIn tiltDeg={spec.rotationDeg} play={true} style? testID="stamp-in"><Stamp spec={spec} /></StampIn>
+```
+
+- **`stampSpec` is `deriveStamp` of data-model section 4**, in `components/ui/` because `Stamp` consumes it and the
+  adapter layer must not import from `features/`; the passport feature (T556) chooses the country, the earliest
+  arrival and the city, and calls it. `h = fnv1a32(ISO2 + '|' + day)`, `shape = SHAPES[h % 6]`, `ink = INKS[(h >>> 3) % 4]`, `rotationDeg = ((h >>> 7) % 17) - 8` (never `-0`), `wear = (h >>> 12) % 4`, and
+  `perforated` is bit 15. `top` (a city or the country, upper case, cut to 16 whole characters, `ARRIVAL` when empty) and the
+  formatted date are **not** part of the hash. Pinned by seven golden rows computed with an independent
+  implementation of the formula, by 240 pairs asked twice and in reverse order (SC-016 asks for 200), and by 1,000
+  pairs that reach all 24 shape and ink combinations, all 17 tilts and all four wear masks.
+- **`Stamp`**: the six shapes of the prototype's `stampSVG` in a 120 by 120 `viewBox`, the ink one of
+  `stampCoral|Navy|Teal|Green`, the outer ring heavy (dashed `7 5` when perforated; the scallop's dotted ring is
+  already perforated) and the inner rings fine. The circle writes its top and its date on two arcs and the scallop
+  its top on one (`TextPath`, `startOffset` 50 percent, `textAnchor` middle); the others write on lines. Each line
+  is **fitted to its room by arithmetic** (`fitLabel`: the letter spacing closes up first, then the size shrinks,
+  never under 6.5; width is estimated as characters times 0.64 em plus the spacing), because SVG text ignores
+  Dynamic Type. The text is the embedded Bricolage Bold: the family name is read from the `--font-display-bold`
+  variable with `useCSSVariable` and `fontFamilyOf` (the name differs by platform and `global.css` spells both;
+  no name is written in the component), with `fontWeight="normal"` so a weight-named family is not emboldened
+  twice. The box is tilted by the spec's degrees and blends with `mixBlendMode` `multiply` in the light themes
+  and `normal` in the dark ones. Ids come from `useId()`, stripped to letters and digits, so two stamps never share
+  a mask or an arc.
+- **The wear is baked path data, not a PNG (a deviation from D5-08's "four grayscale PNGs").** Each of the four
+  textures is ONE path: the whole box followed by 130 specks, 26 chips, 7 blotches and 5 scratches (about 8.7 kB
+  and 4 to 5 percent of the box), cut by a seeded integer generator (`mulberry32` over `fnv1a32('stamp-wear-<n>')`),
+  clamped to the box and drawn with `fillRule="evenodd"` in `onPhoto` as the shape of an SVG `<Mask>` in user-space units. One path is one node however many holes, which answers D5-08's objection to a
+  mask of 100 circles, and it removes the risk that spike V5 was written for: a mask whose `<Image>` fails to draw
+  on a platform would hide the WHOLE stamp, whereas a mask of shapes cannot fail that way. No binary asset ships.
+  A guard test fails the build if `stamp.tsx`, `stamp-layout.ts` or `stamp-wear.ts` ever mention a filter
+  (`feTurbulence`, `feDisplacementMap`, `feMorphology`, `<Filter`), which draw nothing in 15.15.4.
+- **Decoration (FR-076).** A stamp and a ghost are `accessible={false}`, hidden with their descendants and
+  `pointerEvents="none"`. The parent is labelled with `stampLabel`. `GhostStamp` is the dashed outline of the
+  prototype (`r` 54, dash `7 6`, round caps, and a fine inner ring, in the `border` token), no text, no wear, no
+  blend.
+- **`StampIn`** (the separate wrapper the brief asks for; the contract's `landing?` prop on `Stamp` is not built):
+  a Reanimated layout animation, `entering` with a `Keyframe` from scale 1.6, rotate `-14 - tiltDeg` degrees and
+  opacity 0 to scale 1, rotate 0 and opacity 1, easing out cubic, `Motion.stampLandMs` (200 ms; the contract says
+  180 to 220). The stamp holds its own tilt in its style, so the wrapper turns from `-14 - tiltDeg` to 0 and the two
+  never fight over `transform`. At the landing it plays `useHaptics().stamp()` once (a timer cleared on unmount, not
+  restarted by a re-render, withdrawn if reduced motion comes on mid-flight). `play` is read at mount: the screen
+  decides "earned in the last seven days and not yet landed this session" and keeps its own once-per-session set.
+  With reduced motion, or `play={false}`, there is no animation, no timer and no haptic. The 2 dp settle of C5-9 is
+  not built.
+- Tests: `stamp-spec` 30, `stamp-wear` 17, `stamp-layout` 13, `stamp` 45 (over a `react-native-svg` stand-in that
+  keeps every prop), `stamp-render` 9 (the real library draws every shape in every ink, with a real `TextPath` where
+  the shape has one), `stamp-in` 12.
+
+### `AnimatedNumber` (`animated-number.tsx`, `count-up.ts`), C5-30, D5-11
+
+```tsx
+<AnimatedNumber value={14} format? locale? delay? duration? variant="numeral" containerStyle? accessibilityLabel? testID? {...Text props} />
+```
+
+- **The prop is `variant`, not the contract's `role`**: `role` is a React Native accessibility prop, and `variant`
+  is what `Text` calls it. The roles on offer are the display ones (`numeral`, `display`, `title`, `headline`,
+  `callout`) because only Bricolage has `tnum`; both texts get `fontVariant: ['tabular-nums']` whatever the role.
+- **Counts 0 to `value` once per mount** in `Motion.countUpMs` (700 ms), eased out (`1 - (1 - t)^3`, the curve of
+  `Easing.out(Easing.cubic)` written out), and on a new `value` counts on from the figure last drawn; `delay` is the
+  80 ms stagger. A value that is not a number is 0.
+- **The engine is a small interval, not a Reanimated shared value (a deviation, within the options the brief gives
+  and D5-11 names).** The digits are an ordinary `Text`, so every frame needs the JavaScript thread anyway and a
+  UI-thread clock would only add a worklet hop per frame; a `TextInput` with animated props flickers on Android
+  Fabric and announces nothing, so it is not used. The interval runs at about 30 frames a second (`FRAME_MS` 33),
+  only while a count is under way, and takes its progress from `Date.now()`, never from a tick count, so a slow
+  frame costs smoothness and not time. No Reanimated import means a screen that shows a figure needs no Reanimated
+  double in its test (the global stand-in of `jest.setup.ts` has no `useSharedValue`).
+- **Assistive technology hears the final value once.** The visible text's `accessibilityLabel` is the final
+  formatted value from the first render (`accessibilityLabel` replaces it, e.g. "14 of 195 countries"), no frame
+  changes it, and nothing is a live region.
+- **No layout shift.** While counting, the figure (absolute, over the box) lies on an invisible copy of the FINAL
+  text that sizes the box and is hidden from assistive technology (so it is read once); every text style applies to
+  both, `textAlign` included, and `containerStyle` lays the box out. Under reduced motion there is a single `Text`
+  with the final text on the first render and no timer.
+- **Figures follow the device**: `Intl.NumberFormat` with `deviceLocale().languageTag` (or `locale`), a whole
+  number unless `format` asks for more; one formatter per locale and options is cached (Hermes constructors are
+  slow); a locale `Intl` refuses is read as English. Compact notation (`notation: 'compact'`, "1.26M") is the
+  caller's `format`; Hermes support for it is a device check. For non-negative figures.
+- **Testing a screen that shows one**: `testID` is the visible figure (`<testID>-width` the keeper,
+  `<testID>-container` the box). The first render draws `0`; ask for reduced motion (`prefersLessMotion: true` in the
+  mocked `useAppearance`) to read the final text at once, or drive the clock with
+  `test/helpers/captured-interval.ts` (`captureIntervals()` captures the component's own interval and `tick()` runs
+  a frame; Jest's fake clock does not coexist with Testing Library's async `render` across the tests of a file here).
+- Tests: `count-up` 23 (easing, `countUpValue`, `formatFigure` in en, de, fr and an unknown locale, `useCountUp`
+  through a captured interval), `animated-number` 27.
+
+### `useHaptics` (`src/hooks/use-haptics.ts`), D5-14, FR-062
+
+`const haptics = useHaptics()` returns a `SemanticHaptics`: the original `selection`, `success`, `warning` plus
+`tap`, `select`, `sheetSnap`, `tabChange`, `error`, `stamp` and `impact('light' | 'heavy')`. **`Haptics` is still
+the three-name type** (`button.tsx` reads `keyof Haptics`, and three test doubles implement it), so no sibling's
+file stops compiling; `SemanticHaptics extends Haptics` is what the hook returns.
+
+| Name                       | iOS and the fallback | Android (`performAndroidHapticsAsync`) |
+| -------------------------- | -------------------- | -------------------------------------- |
+| `tap`, `impact('light')`   | `impactAsync(Light)` | `Virtual_Key`                          |
+| `select`, `selection`      | `selectionAsync()`   | `Segment_Tick`                         |
+| `sheetSnap`                | `selectionAsync()`   | `Segment_Tick`                         |
+| `tabChange`                | `selectionAsync()`   | `Virtual_Key`                          |
+| `success`                  | `notificationAsync`  | `Confirm`                              |
+| `warning`                  | `notificationAsync`  | `Long_Press`                           |
+| `error`                    | `notificationAsync`  | `Reject`                               |
+| `stamp`, `impact('heavy')` | `impactAsync(Heavy)` | `Long_Press`                           |
+
+- Android uses the platform constants where `performAndroidHapticsAsync` exists (it does in expo-haptics 57.0.3:
+  `Haptics.d.ts` and the v57 reference, "Supported platforms: Android"; it needs no VIBRATE permission and the
+  docs prefer it to the `Vibrator` the other calls simulate); an Android client without it falls back to the
+  cross-platform call. The constants are looked up when played, so a client without the `AndroidHaptics` enum cannot
+  break an import (several suites mock `expo-haptics` with their own factory). `Segment_Tick`, `Virtual_Key` and
+  the rest are the starting point of device check V6 (T512); there is no heavy-impact constant, so `warning` and
+  `stamp` share `Long_Press`.
+- **Silent under reduced motion** (read live; the object is stable while the setting does not change), every device
+  failure swallowed (a synchronous throw, a rejection, a missing enum), fire and forget.
+- **Debounced 80 ms per name, per hook instance** (D5-14 says "debounced 80 ms"): the same name asked again within
+  80 ms by the same component is dropped, `select` and `selection` are one name, and different names never silence
+  each other (a failure right after a tap is felt). It is per instance and not module-wide on purpose: a module
+  window leaks between the tests of a file and between two components that happen to fire together.
+- Tests: `use-haptics-map.test.ts` 42 (the whole map on both platforms, the fallback, silence, swallowing, the
+  debounce); the original `use-haptics.test.ts` (13) passes unchanged.
+
+### Verified from source, and what only a phone can say
+
+- Read in `node_modules`: `experimental_backgroundImage` and its object form in `react-native` 0.86.3
+  (`processBackgroundImage.js`, `StyleSheetTypes.d.ts`); `TextPath` and `Mask` props in `react-native-svg` 15.15.4;
+  `performAndroidHapticsAsync` and `AndroidHaptics` in `expo-haptics` 57.0.3; the `Keyframe` builder in
+  `react-native-reanimated` 4.5.1. All the new components and hooks (`Scrim`, `GeneratedCover`, `Stamp`,
+  `GhostStamp`, `StampIn`, `AnimatedNumber`, `useCountUp`, `useHaptics`) compile under `babel-plugin-react-compiler`
+  1.0.0 with 0 bail-outs and 0 skips (its logger, over a throwaway script that was deleted); Jest does not enable the
+  compiler itself, so the suites test the uncompiled source, as 004 and the T506 spike noted.
+- **Device-only checks** (the doubles prove the request, not the pixels): (1) **V5**: `TextPath` draws the embedded
+  Bricolage on both platforms (and the `fitLabel` estimate of 0.64 em per capital), the evenodd wear mask applies on
+  both, `mixBlendMode: 'multiply'` on Android, and a passport of 100 stamps scrolls (else rasterise, D5-08);
+  (2) **V6**: the Android haptic constants, and `Intl` `notation: 'compact'` on Hermes; (3) that layered
+  `experimental_backgroundImage` (radial over linear) draws top layer first on both platforms, the caption block
+  and ramp meet without a seam, and the cover and sky glows look like the prototype's; (4) the landing's `Keyframe`
+  with an array `transform` plays as drawn, and the thud lands with it; (5) AnimatedNumber at 30 frames a second on a
+  mid Android phone, with three figures at once.
+
+### Needs from the token layer (not changed here)
+
+- A `CoverGlow` (or a `cover` entry in `scrim.ts`) if the prototype's .62 amber corner is wanted on generated
+  covers; the cover uses the passport's .20 glow today.
+- `scrim.ts`'s `Sky`, `Passport` and `Glow` types are `readonly number[]` after `deepFreeze`, not the tuple types
+  they declare; the adapter takes the structural type it reads (`centre[0]`, `centre[1]`).
