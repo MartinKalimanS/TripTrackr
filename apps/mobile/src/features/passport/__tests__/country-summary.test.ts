@@ -16,6 +16,7 @@ import {
   continentsVisited,
   filterCountries,
   groupByContinent,
+  recentVisits,
   summariseCountries,
   worldTotals,
   type CountryInfo,
@@ -534,5 +535,44 @@ describe('filterCountries: the search field', () => {
     const before = [...summaries];
     names('fra');
     expect(summaries).toEqual(before);
+  });
+});
+
+describe('recentVisits: the countries of the newest stamps', () => {
+  const globe = trips(
+    ['a'],
+    [
+      stop('a', PARIS, '2021-02-03'),
+      stop('a', TOKYO, '2024-05-01'),
+      stop('a', LISBON, '2023-09-10'),
+      stop('a', ZURICH, '2022-01-01'),
+      stop('a', SYDNEY, '2027-03-01'),
+    ],
+  );
+  const summaries = summariseCountries(globe, COUNTRIES, TODAY);
+
+  test('are the countries first visited most recently, newest first', () => {
+    expect(recentVisits(summaries, 2).map((s) => s.iso2)).toEqual(['JP', 'PT']);
+    expect(recentVisits(summaries, 3).map((s) => s.iso2)).toEqual(['JP', 'PT', 'CH']);
+  });
+
+  test('never a country that is only planned: nothing has been stamped there yet', () => {
+    expect(recentVisits(summaries, 10).map((s) => s.iso2)).not.toContain('AU');
+  });
+
+  test('is fewer when there are fewer, and none for none', () => {
+    const visited = summaries.filter((summary) => !summary.planned);
+    expect(recentVisits(visited.slice(0, 1), 5)).toHaveLength(1);
+    expect(recentVisits([], 2)).toEqual([]);
+  });
+
+  test('breaks a tie by name, so the same two are chosen every time', () => {
+    const tie = trips(
+      ['a'],
+      [stop('a', PARIS, '2024-05-01'), stop('a', ZURICH, '2024-05-01')],
+    );
+    expect(
+      recentVisits(summariseCountries(tie, COUNTRIES, TODAY), 1).map((s) => s.iso2),
+    ).toEqual(['FR']);
   });
 });

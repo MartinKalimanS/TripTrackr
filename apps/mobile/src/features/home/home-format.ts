@@ -54,13 +54,13 @@ export function daysUntil(from: string, to: string): number {
   return differenceInCalendarDays(fromIsoDate(to), fromIsoDate(from));
 }
 
-/** A number grouped by the language, with its noun in the singular or the plural form. */
-export function countOf(
+/** A number grouped by the language and its noun in the singular or the plural form, apart. */
+export function countParts(
   count: number,
   singular: string,
   plural: string,
   languageTag: string,
-): string {
+): { figure: string; noun: string } {
   let one: boolean;
   let figure: string;
   try {
@@ -70,7 +70,23 @@ export function countOf(
     one = new Intl.PluralRules().select(count) === 'one';
     figure = new Intl.NumberFormat().format(count);
   }
-  return `${figure} ${one ? singular : plural}`;
+  return { figure, noun: one ? singular : plural };
+}
+
+/** "3 trips", "1 trip": a number grouped by the language, with its noun. */
+export function countOf(
+  count: number,
+  singular: string,
+  plural: string,
+  languageTag: string,
+): string {
+  const { figure, noun } = countParts(count, singular, plural, languageTag);
+  return `${figure} ${noun}`;
+}
+
+/** "2021": the year of a calendar day, in the device language. */
+export function yearOf(iso: string, languageTag: string): string {
+  return dateFormatter(languageTag, { year: 'numeric' }).format(fromIsoDate(iso));
 }
 
 /** "in 94 days", "in 1 day". */

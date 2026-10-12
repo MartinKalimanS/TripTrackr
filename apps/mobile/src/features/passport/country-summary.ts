@@ -242,6 +242,23 @@ export function groupByContinent(summaries: readonly CountrySummary[]): Continen
     }));
 }
 
+/**
+ * The countries of the newest stamps: those first visited most recently, newest first, ties by
+ * name so the same ones are chosen every time. A country that is only planned has no stamp yet.
+ */
+export function recentVisits(
+  summaries: readonly CountrySummary[],
+  count: number,
+): CountrySummary[] {
+  return summaries
+    .filter((summary) => !summary.planned)
+    .sort(
+      (a, b) =>
+        b.firstVisit.localeCompare(a.firstVisit) || nameOrder.compare(a.name, b.name),
+    )
+    .slice(0, count);
+}
+
 /** How many of the seven continents have a listed country; `Unknown` is none of them. */
 export function continentsVisited(summaries: readonly CountrySummary[]): number {
   return new Set(

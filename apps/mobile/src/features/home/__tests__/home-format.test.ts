@@ -6,12 +6,14 @@
  */
 import {
   countOf,
+  countParts,
   daysUntil,
   eyebrowDate,
   figureFormat,
   inDays,
   monthYear,
   plannedLine,
+  yearOf,
 } from '../home-format';
 
 describe('eyebrowDate: the day over the globe', () => {
@@ -113,5 +115,34 @@ describe('plannedLine: a planned trip in one line', () => {
 
   test('is empty for a trip with no date', () => {
     expect(plannedLine(null, null, 'en-GB')).toBe('');
+  });
+});
+
+describe('yearOf: the year of a calendar day', () => {
+  test('is the year, in the device language', () => {
+    expect(yearOf('2021-02-03', 'en-GB')).toBe('2021');
+    expect(yearOf('2026-12-31', 'en-GB')).toBe('2026');
+  });
+});
+
+describe('countParts: the number and its noun, apart', () => {
+  test('is the grouped figure and the singular or plural noun', () => {
+    expect(countParts(3, 'trip', 'trips', 'en-GB')).toEqual({
+      figure: '3',
+      noun: 'trips',
+    });
+    expect(countParts(1, 'trip', 'trips', 'en-GB')).toEqual({
+      figure: '1',
+      noun: 'trip',
+    });
+    expect(countParts(1234, 'trip', 'trips', 'de-DE')).toEqual({
+      figure: '1.234',
+      noun: 'trips',
+    });
+  });
+
+  test('agrees with countOf, which is built on it', () => {
+    const { figure, noun } = countParts(7, 'country', 'countries', 'en-GB');
+    expect(countOf(7, 'country', 'countries', 'en-GB')).toBe(`${figure} ${noun}`);
   });
 });
