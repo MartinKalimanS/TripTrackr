@@ -30,6 +30,7 @@ import { SafeAreaInsetsContext, type Edge } from 'react-native-safe-area-context
 
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
+import { useTabInset } from '@/hooks/use-tab-inset';
 
 export type ListScreenProps<Item> = {
   testID?: string;
@@ -91,7 +92,13 @@ export function ListScreen<Item>({
     right: 0,
   };
   const paddingTop = Spacing.four + (edges.includes('top') ? insets.top : 0);
-  const paddingBottom = Spacing.four + (edges.includes('bottom') ? insets.bottom : 0);
+  // In a tab scene the floating pill runs over the bottom of the screen: the list ends 16 dp
+  // above it (FR-024), or at its own padding if that is more. Zero above the tabs.
+  const tabInset = useTabInset();
+  const paddingBottom = Math.max(
+    Spacing.four + (edges.includes('bottom') ? insets.bottom : 0),
+    tabInset,
+  );
 
   return (
     <View

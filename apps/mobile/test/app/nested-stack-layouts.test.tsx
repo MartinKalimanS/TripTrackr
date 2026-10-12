@@ -89,14 +89,14 @@ describe('<TripsLayout> - a large title on iOS, a standard header on Android', (
 });
 
 describe('<ProfileLayout> - a large title on iOS, a standard header on Android (T448)', () => {
-  test('on iOS: a large title named Profile, accent controls, flat header, the canvas behind', async () => {
+  test('on iOS: a large title named You, accent controls, flat header, the canvas behind', async () => {
     const os = jest.replaceProperty(Platform, 'OS', 'ios');
     await render(<ProfileLayout />);
     os.restore();
 
     const options = screenOptions();
     expect(options).toMatchObject({
-      title: 'Profile',
+      title: 'You',
       headerLargeTitleEnabled: true,
       headerLargeTitleShadowVisible: false,
       headerShadowVisible: false,
@@ -112,7 +112,7 @@ describe('<ProfileLayout> - a large title on iOS, a standard header on Android (
     os.restore();
 
     const options = screenOptions();
-    expect(options.title).toBe('Profile');
+    expect(options.title).toBe('You');
     expect(options.headerLargeTitleEnabled).toBeFalsy();
     expect(options.headerShadowVisible).toBe(false);
     expect(flat(options.headerStyle).backgroundColor).toEqual(expect.any(String));

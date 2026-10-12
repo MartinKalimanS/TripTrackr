@@ -37,7 +37,7 @@ import {
   capsuleLayout,
   pillBottomOffset,
 } from '@/components/navigation/tab-metrics';
-import { Motion, Radii, FocusRing } from '@/theme';
+import { Motion, Palettes, Radii, FocusRing } from '@/theme';
 
 import { appearanceOf } from '../helpers/appearance';
 import { glyphsIn } from '../helpers/icons';
@@ -472,6 +472,46 @@ describe('<TabBar> large text - FR-074, Q-1', () => {
         expect(style[key]).toBeUndefined();
       }
     }
+  });
+});
+
+describe('<TabBar> the fade under the pill - FR-022', () => {
+  const fade = () => screen.getByTestId('tab-fade', HIDDEN) as unknown as Node;
+
+  test('is 48 dp of the ground across the bottom edge, behind the pill, and takes no touch', async () => {
+    await render(<TabBar {...makeProps(1)} />);
+
+    expect(PillMetrics.fadeHeight).toBe(48);
+    expect(styleOf(fade())).toMatchObject({
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: PillMetrics.fadeHeight,
+    });
+    expect(fade().props.pointerEvents).toBe('none');
+    // Drawn BEFORE the pill, so the pill is above it.
+    const order = JSON.stringify(screen.toJSON());
+    expect(order.indexOf('tab-fade')).toBeLessThan(order.indexOf('"tab-bar"'));
+  });
+
+  test('is the canvas the lists are painted with, and the surface of the sheet on Home', async () => {
+    const ground = () => {
+      const [layer] = styleOf(fade()).experimental_backgroundImage as {
+        colorStops: { color: string }[];
+      }[];
+      return layer.colorStops[1]!.color;
+    };
+    await render(<TabBar {...makeProps(1)} />);
+    expect(ground()).toBe(Palettes.light.canvas.toUpperCase());
+    await render(<TabBar {...makeProps(0)} />);
+    expect(ground()).toBe(Palettes.light.surface.toUpperCase());
+  });
+
+  test('does not take the pill off the screen readers or add a node to the tablist', async () => {
+    await render(<TabBar {...makeProps(0)} />);
+    expect(screen.getAllByRole('tab')).toHaveLength(ROUTES.length);
+    expect(screen.queryByTestId('tab-fade')).toBeNull();
   });
 });
 

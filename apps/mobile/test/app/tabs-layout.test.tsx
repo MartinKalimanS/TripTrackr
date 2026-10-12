@@ -13,6 +13,7 @@ import { StyleSheet, Text } from 'react-native';
 
 import { pillBottomOffset } from '@/components/navigation/tab-metrics';
 import { Colors } from '@/constants/theme';
+import { useTabInset } from '@/hooks/use-tab-inset';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 import { PaletteNames, type PaletteName } from '@/theme/palette';
 
@@ -52,7 +53,9 @@ const HIDDEN = { includeHiddenElements: true } as const;
 function Home() {
   // A screen that floats a control above the bar reads the height like this.
   const height = useBottomTabBarHeight();
-  return <Text testID="home-screen">{`bar-height:${height}`}</Text>;
+  // A scroll container reads the clearance like this: the height plus 16 dp.
+  const inset = useTabInset();
+  return <Text testID="home-screen">{`bar-height:${height} inset:${inset}`}</Text>;
 }
 
 function renderTabs() {
@@ -84,7 +87,7 @@ describe('(tabs) layout - the tab pill in the real navigator', () => {
     for (const [id, title] of [
       ['tab-index', 'Globe'],
       ['tab-trips', 'Trips'],
-      ['tab-profile', 'Profile'],
+      ['tab-profile', 'You'],
     ] as const) {
       expect(screen.getByTestId(id).props.accessibilityLabel).toBe(title);
     }
@@ -120,7 +123,25 @@ describe('(tabs) layout - the tab pill in the real navigator', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByText(`bar-height:${64 + pillBottomOffset(0)}`)).toBeTruthy(),
+      expect(
+        screen.getByText(new RegExp(`^bar-height:${64 + pillBottomOffset(0)} `)),
+      ).toBeTruthy(),
+    );
+  });
+
+  test('every scene is told how much to keep clear: the reported height plus 16 dp, through useTabInset()', async () => {
+    await renderTabs();
+    const bar = await screen.findByTestId('tab-bar');
+    const reported = 96 + pillBottomOffset(0);
+
+    await fireEvent(bar, 'layout', {
+      nativeEvent: { layout: { x: 16, y: 0, width: 358, height: 96 } },
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(`bar-height:${reported} inset:${reported + 16}`),
+      ).toBeTruthy(),
     );
   });
 

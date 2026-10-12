@@ -15,6 +15,9 @@
  *   a scene reads it as `useBottomTabBarHeight()` (`hooks/use-tab-inset.ts` adds the 16 dp of
  *   FR-024). The pill is 64 dp tall as a MINIMUM, padded 6 with 4 between tabs, and grows with
  *   the text size.
+ * - FADE. A 48 dp fade of the ground (`Scrim kind="fade"`, the only gradient consumer) sits
+ *   under the pill across the bottom edge, so content scrolls beneath it softly (FR-022). Its
+ *   ground is the canvas the lists are painted with, and the surface of the sheet on Home.
  * - SURFACE. `TabSurface` is glass on iOS 26, a blur before it, and opaque where transparency
  *   is reduced or contrast increased (`tabSurface()`); nothing here animates an opacity.
  * - SELECTION is a tinted capsule behind the tab (`TabCapsule`, id `tab-mark-<name>`, one
@@ -35,6 +38,7 @@ import { use, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
+import { Scrim, type FadeGround } from '@/components/ui/scrim';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
 import { Radii } from '@/theme';
@@ -50,6 +54,12 @@ import {
   type TabRoute,
 } from './tab-shared';
 import { TabSurface } from './tab-surface';
+
+/**
+ * What each tab's scene is painted with at the bottom, for the fade: Home's is the sheet (the
+ * `surface`); the lists and You are on the `canvas`. A route not named here is on the canvas.
+ */
+const FADE_GROUND: Readonly<Record<string, FadeGround>> = { index: 'surface' };
 
 interface TabButtonProps {
   route: TabRoute;
@@ -106,36 +116,45 @@ export function TabPill({ state, descriptors, navigation, insets }: BottomTabBar
   };
 
   return (
-    <View
-      testID="tab-bar"
-      accessibilityRole="tablist"
-      pointerEvents="box-none"
-      onLayout={onLayout}
-      style={[styles.bar, { bottom: pillBottomOffset(insets.bottom) }]}>
-      <TabSurface style={styles.pill}>
-        {selected ? (
-          <TabCapsule
-            routeName={selected.name}
-            index={state.index}
-            count={state.routes.length}
-            trackWidth={trackWidth}
-          />
-        ) : null}
-        {state.routes.map((route, index) => (
-          <TabButton
-            key={route.key}
-            route={route}
-            options={descriptors[route.key].options}
-            focused={state.index === index}
-            navigation={navigation}
-          />
-        ))}
-      </TabSurface>
-    </View>
+    <>
+      <Scrim
+        testID="tab-fade"
+        kind="fade"
+        ground={FADE_GROUND[selected?.name ?? ''] ?? 'canvas'}
+        style={styles.fade}
+      />
+      <View
+        testID="tab-bar"
+        accessibilityRole="tablist"
+        pointerEvents="box-none"
+        onLayout={onLayout}
+        style={[styles.bar, { bottom: pillBottomOffset(insets.bottom) }]}>
+        <TabSurface style={styles.pill}>
+          {selected ? (
+            <TabCapsule
+              routeName={selected.name}
+              index={state.index}
+              count={state.routes.length}
+              trackWidth={trackWidth}
+            />
+          ) : null}
+          {state.routes.map((route, index) => (
+            <TabButton
+              key={route.key}
+              route={route}
+              options={descriptors[route.key].options}
+              focused={state.index === index}
+              navigation={navigation}
+            />
+          ))}
+        </TabSurface>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  fade: { height: PillMetrics.fadeHeight },
   bar: {
     position: 'absolute',
     left: PillMetrics.sideMargin,

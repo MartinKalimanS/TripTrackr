@@ -45,6 +45,7 @@ import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
+import { useTabInset } from '@/hooks/use-tab-inset';
 
 export type ScreenProps = PropsWithChildren<{
   testID?: string;
@@ -92,10 +93,17 @@ export function Screen({
   underHeader = false,
 }: ScreenProps) {
   const { tokens } = useAppearance();
+  // In a tab scene the floating pill runs over the bottom of the screen: end 16 dp above it
+  // (FR-024). Zero above the tabs, where there is no pill.
+  const tabInset = useTabInset();
   const content = (
     <SafeAreaView
       edges={edges ?? (underHeader ? UNDER_HEADER_EDGES : DEFAULT_EDGES)}
-      style={[styles.safeArea, style]}>
+      style={[
+        styles.safeArea,
+        style,
+        tabInset > 0 ? { paddingBottom: Math.max(Spacing.four, tabInset) } : null,
+      ]}>
       {children}
     </SafeAreaView>
   );
