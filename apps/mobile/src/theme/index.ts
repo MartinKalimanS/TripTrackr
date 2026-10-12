@@ -33,15 +33,29 @@ export {
 } from './accessibility';
 
 export {
+  CappableInContext,
+  CappedFontScale,
+  LegacyRoleMap,
   TextRoleNames,
   TextRoles,
+  TypeRoleNames,
+  TypeRoles,
+  fontClassOf,
+  maxFontScaleOf,
   numericStyle,
   textStyle,
+  typeExtras,
+  typeStyle,
   type FontFamilyRole,
   type FontWeight,
   type TextRole,
   type TextSize,
   type TextStyleToken,
+  type TypeFamily,
+  type TypeRole,
+  type TypeSize,
+  type TypeToken,
+  type TypeWeight,
 } from './typography';
 
 export {
@@ -62,5 +76,19 @@ export {
   type MotionName,
   type MotionProperty,
 } from './motion';
+
+export {
+  Passport,
+  Scrim,
+  Sky,
+  colourAt,
+  scrimSpec,
+  withAlpha,
+  type Glow,
+  type GradientStop,
+  type ScrimSpec,
+  type ScrimStop,
+  type SkySpec,
+} from './scrim';
 
 export { deepFreeze, type DeepReadonly } from './freeze';
