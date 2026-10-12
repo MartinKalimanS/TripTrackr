@@ -1,0 +1,148 @@
+/**
+ * How the Home sheet moves (feature 005, T534; contract C5-22; FR-012, FR-027, FR-062;
+ * research D5-03): the one shared value that is its height, the spring that settles it, and
+ * the three things the JS thread is told about, each ONCE:
+ *
+ * - `announce(detent)`: the traveller moved the sheet (a release, a tap, an accessibility
+ *   action, the back button); the parent follows by passing the same `detent` back.
+ * - `finish(detent)`: the sheet came to rest. This is the one settle: the selection haptic,
+ *   the `settled` state the body's scroller reads, and `onSettle`, which the Home uses to
+ *   re-fit the camera. A spring that is taken over by a finger, or by another spring, never
+ *   reaches it, because Reanimated calls an interrupted animation back with `finished: false`.
+ * - nothing per frame: while a finger is down only the UI thread moves the value.
+ *
+ * `driveTo` is a worklet: the pan calls it on the UI thread when the finger lifts, and the
+ * JS thread calls it for a tap or a parent's change (a worklet is an ordinary function there).
+ * Under reduced motion it assigns the height with no spring and still reports the settle
+ * (FR-073); the haptic hook is silent under reduced motion by itself.
+ *
+ * The sheet is drawn by `translateY` of a sheet as tall as `full` (plus a skirt for the rubber
+ * band), so a frame of dragging is one transform and no layout (`useSheetStyle`).
+ */
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  type SharedValue,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
+
+import { useAppearance } from '@/hooks/use-appearance';
+import { useHaptics } from '@/hooks/use-haptics';
+import { springOf } from '@/theme';
+
+import { stepDetent, type SheetDetent, type SheetHeights } from './sheet-geometry';
+
+export interface SheetMotionInput {
+  detents: SheetHeights;
+  detent: SheetDetent;
+  onDetentChange?: (detent: SheetDetent) => void;
+  onSettle?: (detent: SheetDetent) => void;
+}
+
+export interface SheetMotion {
+  detents: SheetHeights;
+  /** The visible height of the sheet, in dp, drawn on the UI thread. */
+  visible: SharedValue<number>;
+  /** The detent the sheet last came to rest on: what the body's scroller reads. */
+  settled: SheetDetent;
+  /** UI or JS thread: spring (or jump, under reduced motion) to `next`, then settle. */
+  driveTo: (next: SheetDetent, velocityUp: number) => void;
+  /** UI or JS thread (through `scheduleOnRN`): the traveller chose `next`. */
+  announce: (next: SheetDetent) => void;
+  /** JS thread: the traveller chose `next`; tell the parent and move. */
+  moveTo: (next: SheetDetent) => void;
+  /** JS thread: one detent up (`1`) or down (`-1`) from where the sheet is going. */
+  step: (direction: 1 | -1) => SheetDetent;
+  /** JS thread: the detent the sheet is at or heading for. */
+  current: () => SheetDetent;
+}
+
+/** Keeps the latest callbacks where a stable function can read them. */
+function useLatest<T>(value: T) {
+  const ref = useRef(value);
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref;
+}
+
+export function useSheetMotion(input: SheetMotionInput): SheetMotion {
+  const { detents, detent } = input;
+  const { prefersLessMotion } = useAppearance();
+  const haptics = useHaptics();
+  const visible = useSharedValue(detents[detent]);
+  const [settled, setSettled] = useState<SheetDetent>(detent);
+  const heading = useRef<SheetDetent>(detent);
+  const latest = useLatest({ ...input, haptics });
+  const spring = springOf('sheetSpring', prefersLessMotion);
+
+  const finish = useCallback(
+    (next: SheetDetent) => {
+      setSettled(next);
+      latest.current.haptics.sheetSnap();
+      latest.current.onSettle?.(next);
+    },
+    [latest],
+  );
+
+  const announce = useCallback(
+    (next: SheetDetent) => {
+      heading.current = next;
+      latest.current.onDetentChange?.(next);
+    },
+    [latest],
+  );
+
+  const driveTo = (next: SheetDetent, velocityUp: number) => {
+    'worklet';
+    const to = detents[next];
+    if (spring === null) {
+      cancelAnimation(visible);
+      visible.set(to);
+      scheduleOnRN(finish, next);
+      return;
+    }
+    visible.set(
+      withSpring(to, { ...spring, velocity: velocityUp }, (finished) => {
+        'worklet';
+        if (finished) scheduleOnRN(finish, next);
+      }),
+    );
+  };
+
+  const moveTo = (next: SheetDetent) => {
+    announce(next);
+    driveTo(next, 0);
+  };
+
+  // A parent that changes `detent` (a country was chosen) moves the sheet; one that is only
+  // following a drag or a tap has already been announced, so nothing starts twice.
+  useEffect(() => {
+    if (detent === heading.current) return;
+    heading.current = detent;
+    driveTo(detent, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detent]);
+
+  return {
+    detents,
+    visible,
+    settled,
+    driveTo,
+    announce,
+    moveTo,
+    step: (direction) => stepDetent(heading.current, direction),
+    current: () => heading.current,
+  };
+}
+
+/** The sheet's transform: its top edge is `full - visible` below where `full` would put it. */
+export function useSheetStyle(motion: Pick<SheetMotion, 'detents' | 'visible'>) {
+  const { detents, visible } = motion;
+  return useAnimatedStyle(() => {
+    return { transform: [{ translateY: detents.full - visible.get() }] };
+  });
+}
