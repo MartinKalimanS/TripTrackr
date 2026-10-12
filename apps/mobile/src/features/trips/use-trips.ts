@@ -11,13 +11,20 @@
  * needs both `trips` and `trip_stops` (for counts and the derived status), so
  * it runs one live query per table and joins in memory — a personal journal's
  * stop count is small, and this is what keeps every write instantly visible.
+ *
+ * Feature 005 (T539) adds the card model: `useTrips` returns `TripCardModel`s, the 004
+ * `TripSummary` with the day of the trip, the countdown, one dot per stop, the country, the
+ * kilometres and the generated cover beside it (`trip-card-model.ts`). The stops are read with
+ * their cached city and country; like the globe, the stops read is keyed on when the city
+ * cache last changed, because `useLiveQuery` subscribes to the FROM table only.
  */
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { randomUUID } from 'expo-crypto';
 import { useMemo, useState } from 'react';
 
 import { useDatabase } from '@/db/client';
-import { photosRepository, type CoverCandidate } from '@/db/repositories/photos';
+import { geographyRepository } from '@/db/repositories/geography';
+import { photosRepository } from '@/db/repositories/photos';
 import {
   stopsRepository,
   type AddStopInput,
@@ -28,13 +35,9 @@ import {
 import { tripsRepository, type CreateTripInput } from '@/db/repositories/trips';
 import type { TripRow, TripStopRow } from '@/db/schema';
 
-import { resolveTripCover, type TripCover } from './trip-cover';
-import {
-  deriveTripStatus,
-  tripDateRange,
-  type TripDateRange,
-  type TripStatus,
-} from './trip-status';
+import type { TripCover } from './trip-cover';
+import { buildTripCards, type TripCardModel } from './trip-card-model';
+import type { TripDateRange, TripStatus } from './trip-status';
 
 export interface TripSummary {
   trip: TripRow;
@@ -53,132 +56,103 @@ export interface LiveResult<T> {
   error: Error | null;
 }
 
-function groupByTrip<T extends { trip_id: string }>(rows: readonly T[]) {
-  const byTrip = new Map<string, T[]>();
-  for (const row of rows) {
-    const list = byTrip.get(row.trip_id) ?? [];
-    list.push(row);
-    byTrip.set(row.trip_id, list);
-  }
-  return byTrip;
-}
-
 /**
- * Same keys, strictly equal values. Rows, covers and ranges hold primitives only,
- * which is what makes this enough to say "nothing changed".
+ * Plain data, structurally: primitives, arrays and objects of them (rows, covers, ranges,
+ * strips). That is what makes a deep comparison enough to say "nothing changed".
  */
-function shallowEqual<T extends object>(a: T, b: T): boolean {
-  const keys = Object.keys(a) as (keyof T)[];
-  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+function sameData(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) {
+    return false;
+  }
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const keys = Object.keys(a);
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((key) =>
+      sameData((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]),
+    )
+  );
 }
 
 /** `previous` itself when `next` says the same thing, so a consumer sees no change. */
-function keep<T extends object>(previous: T | undefined, next: T): T {
-  return previous !== undefined && shallowEqual(previous, next) ? previous : next;
-}
-
-function keepRange(
-  previous: TripDateRange | null | undefined,
-  next: TripDateRange | null,
-): TripDateRange | null {
-  return next === null ? null : keep(previous ?? undefined, next);
+function keep<T>(previous: T | undefined, next: T): T {
+  return previous !== undefined && sameData(previous, next) ? previous : next;
 }
 
 /**
- * Every query re-run hands back fresh row objects, equal or not, so a summary is
- * rebuilt each time. Reuse the previous summary when every part of it is unchanged
- * (and the previous trip row, cover and range when only others changed), so one
- * trip's edit, or a write that moves no cover, re-renders nothing else.
+ * Every query re-run hands back fresh row objects, equal or not, so a card is rebuilt each
+ * time. Reuse each field of the previous card that is unchanged, and the card itself when
+ * every field is, so one trip's edit, or a write that moves no cover, re-renders nothing else.
  */
-function reuseSummary(previous: TripSummary | undefined, next: TripSummary): TripSummary {
+function reuseCard(
+  previous: TripCardModel | undefined,
+  next: TripCardModel,
+): TripCardModel {
   if (previous === undefined) return next;
-  const trip = keep(previous.trip, next.trip);
-  const cover = keep<TripCover>(previous.cover, next.cover);
-  const dateRange = keepRange(previous.dateRange, next.dateRange);
-  const unchanged =
-    trip === previous.trip &&
-    cover === previous.cover &&
-    dateRange === previous.dateRange &&
-    next.stopCount === previous.stopCount &&
-    next.status === previous.status;
-  return unchanged ? previous : { ...next, trip, cover, dateRange };
+  const merged = Object.fromEntries(
+    Object.entries(next).map(([key, value]) => [
+      key,
+      keep((previous as unknown as Record<string, unknown>)[key], value),
+    ]),
+  ) as unknown as TripCardModel;
+  const unchanged = (Object.keys(next) as (keyof TripCardModel)[]).every(
+    (key) => merged[key] === previous[key],
+  );
+  return unchanged ? previous : merged;
 }
 
 function sameItems<T>(a: readonly T[], b: readonly T[]): boolean {
   return a.length === b.length && a.every((item, index) => item === b[index]);
 }
 
-/** `next`, with every summary (and part of one) that did not change swapped for `previous`'s. */
-function reuseSummaries(previous: TripSummary[], next: TripSummary[]): TripSummary[] {
-  const before = new Map(previous.map((summary) => [summary.trip.id, summary]));
-  const reused = next.map((summary) =>
-    reuseSummary(before.get(summary.trip.id), summary),
-  );
+/** `next`, with every card (and part of one) that did not change swapped for `previous`'s. */
+function reuseCards(previous: TripCardModel[], next: TripCardModel[]): TripCardModel[] {
+  const before = new Map(previous.map((card) => [card.id, card]));
+  const reused = next.map((card) => reuseCard(before.get(card.id), card));
   return sameItems(previous, reused) ? previous : reused;
 }
 
 /**
- * Candidates are grouped by trip once; each group keeps the query's order, which is
- * what `resolveTripCover` relies on. A group whose trip is not in the list (a
- * removed trip's photos) is never read.
- */
-function summarise(
-  trips: TripRow[],
-  stops: TripStopRow[],
-  candidates: CoverCandidate[],
-  today?: string,
-): TripSummary[] {
-  const stopsByTrip = groupByTrip(stops);
-  const candidatesByTrip = groupByTrip(candidates);
-  return trips.map((trip) => {
-    const tripStops = stopsByTrip.get(trip.id) ?? [];
-    const status = deriveTripStatus(tripStops, today);
-    return {
-      trip,
-      stopCount: tripStops.length,
-      status,
-      cover: resolveTripCover(trip, candidatesByTrip.get(trip.id) ?? [], status),
-      dateRange: tripDateRange(tripStops),
-    };
-  });
-}
-
-/**
- * Keeps the previous result so equal summaries are reused (`reuseSummary`). It is
+ * Keeps the previous result so equal cards are reused (`reuseCard`). It is
  * state, not a ref: React's compiler lint (`react-hooks/refs`) forbids reading a
  * ref while rendering, and this is the documented way to carry a value from the last
  * render (https://react.dev/reference/react/useState#storing-information-from-previous-renders).
  * A new `fresh` re-renders once more with the reused result.
  */
-function useReusedSummaries(fresh: TripSummary[]): TripSummary[] {
+function useReusedCards(fresh: TripCardModel[]): TripCardModel[] {
   const [kept, setKept] = useState({ fresh, reused: fresh });
   if (kept.fresh === fresh) return kept.reused;
 
-  const reused = reuseSummaries(kept.reused, fresh);
+  const reused = reuseCards(kept.reused, fresh);
   setKept({ fresh, reused });
   return reused;
 }
 
 /**
- * Every live trip with its stop count, derived status, cover and date range, most
- * recently changed first. Three live queries (trips, stops, photo cover candidates),
- * joined in memory; read from the traveller's own local rows, never the network.
+ * Every live trip as a card model (the 004 summary plus the 005 card fields), most recently
+ * changed first. Four live queries (trips, stops with their city and country, photo cover
+ * candidates, and the city cache's size to know when a city arrives), joined in memory; read
+ * from the traveller's own local rows, never the network.
  *
- * Covers are decorative, so the third query neither holds `loading` nor sets
- * `error`: until it answers (or if it fails) every trip shows its typographic cover,
- * and the photo takes over when candidates arrive. The list is the product.
+ * Covers and places are decorative, so the third and fourth queries neither hold `loading` nor
+ * set `error`: until they answer (or if they fail) every trip shows its generated cover with no
+ * flag, and the photo and the country take over when they arrive. The list is the product.
  */
-export function useTrips(today?: string): LiveResult<TripSummary[]> {
+export function useTrips(today?: string): LiveResult<TripCardModel[]> {
   const db = useDatabase();
   const trips = useLiveQuery(tripsRepository.listQuery(db));
-  const stops = useLiveQuery(stopsRepository.allActiveQuery(db));
+  const cityCache = useLiveQuery(geographyRepository.cityCountQuery(db));
+  const stops = useLiveQuery(stopsRepository.allActiveWithCountryQuery(db), [
+    cityCache.updatedAt?.getTime(),
+  ]);
   const covers = useLiveQuery(photosRepository.coverCandidatesQuery(db));
 
   const fresh = useMemo(
-    () => summarise(trips.data, stops.data, covers.data, today),
+    () => buildTripCards(trips.data, stops.data, covers.data, today),
     [trips.data, stops.data, covers.data, today],
   );
-  const data = useReusedSummaries(fresh);
+  const data = useReusedCards(fresh);
 
   return {
     data,

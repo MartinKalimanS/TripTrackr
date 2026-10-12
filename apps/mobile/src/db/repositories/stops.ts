@@ -49,6 +49,20 @@ export type StopWithPlace = TripStopRow & {
   lng: number | null;
 };
 
+/**
+ * A stop with its cached city's position and its country's code and name, as the trip
+ * list reads it (feature 005, T539): every place column is null while this device has not
+ * cached the city.
+ */
+export type StopWithCountry = TripStopRow & {
+  city_name: string | null;
+  country_id: number | null;
+  country_iso: string | null;
+  country_name: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
 export class StopDatesError extends Error {
   constructor() {
     super(tripStopDatesInOrder.params.message);
@@ -169,6 +183,36 @@ function allWithPlaceQuery(db: AppDatabase) {
     );
 }
 
+/**
+ * Every live stop with its cached city and country, in the order the globe pairs stops
+ * into legs (`sort_order, created_at, id`), so a trip's distance on the list is the
+ * globe's. What the trip list's card model reads (feature 005, T539; research D5-17):
+ * the country of a card, its stop labels and its kilometres. Null place columns mean the
+ * city is not cached on this device. Live-queryable; read-only, local.
+ */
+function allActiveWithCountryQuery(db: AppDatabase) {
+  return db
+    .select({
+      ...getTableColumns(tripStops),
+      city_name: cities.name,
+      country_id: cities.country_id,
+      country_iso: countries.iso_code,
+      country_name: countries.name,
+      lat: cities.lat,
+      lng: cities.lng,
+    })
+    .from(tripStops)
+    .leftJoin(cities, eq(cities.id, tripStops.city_id))
+    .leftJoin(countries, eq(countries.id, cities.country_id))
+    .where(isNull(tripStops.deleted_at))
+    .orderBy(
+      asc(tripStops.trip_id),
+      asc(tripStops.sort_order),
+      asc(tripStops.created_at),
+      asc(tripStops.id),
+    );
+}
+
 function liveStopsOf(db: AppDatabase, tripId: string): TripStopRow[] {
   return db
     .select()
@@ -256,6 +300,7 @@ function remove(db: AppDatabase, id: string): void {
 export const stopsRepository = {
   forTripQuery,
   allActiveQuery,
+  allActiveWithCountryQuery,
   allWithPlaceQuery,
   add,
   updateDates,
