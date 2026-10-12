@@ -264,12 +264,12 @@ describe('<NoteCard> - a note in the list (T440; FR-006, FR-013, FR-030, FR-034)
     );
   });
 
-  test('is a raised card: tone and spacing, no edge of its own while the note is saved (FR-002, FR-006)', async () => {
+  test('is a lift card: a hairline, no dashed edge while the note is saved (FR-002, FR-006)', async () => {
     await renderCard();
 
     const classes = classesOf(screen.getByTestId('note-surface-n1'));
     expect(classes).toContain('bg-surface');
-    expect(classes).not.toContain('shadow-none');
+    expect(classes).toContain('border-separator');
     expect(classes).not.toContain('border-dashed');
     expect(screen.queryByText('Not yet synced')).toBeNull();
   });
@@ -278,7 +278,7 @@ describe('<NoteCard> - a note in the list (T440; FR-006, FR-013, FR-030, FR-034)
     await renderCard({ is_dirty: true });
 
     expect(classesOf(screen.getByTestId('note-surface-n1'))).toEqual(
-      expect.arrayContaining(['border-dashed', 'border-pending']),
+      expect.arrayContaining(['border-dashed', 'border-amber-line']),
     );
     expect(screen.getByText('Not yet synced')).toBeTruthy();
     expect(screen.getByLabelText('Sync pending')).toBeTruthy();

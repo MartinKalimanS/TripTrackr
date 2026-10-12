@@ -73,7 +73,7 @@ const paintOf = (pressedClass: string, palette: Palette) => {
 
 /** The pressed class `Card` paints on its surface while held. */
 const CARD_PRESSED_CLASS = cardClasses({
-  variant: 'raised',
+  variant: 'lift',
   overMap: false,
   pending: false,
   pressed: true,

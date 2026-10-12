@@ -17,7 +17,7 @@ import { Dimensions, StyleSheet } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
-import { FocusRing } from '@/theme';
+import { FocusRing, liftOf } from '@/theme';
 
 import {
   GlobeEmptyState,
@@ -127,14 +127,14 @@ describe('<GlobeEmptyState> — one primary action (FR-005)', () => {
 });
 
 describe('<GlobeEmptyState> — a card over the map, never a replacement for it (FR-018, FR-033)', () => {
-  test('is the opaque surface with a hairline: bg-surface, border, border-border', async () => {
+  test('is the opaque surface with a hairline: bg-surface, border, border-separator', async () => {
     await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
     expect(classesOf('globe-empty-state')).toEqual(
-      expect.arrayContaining(['bg-surface', 'border', 'border-border']),
+      expect.arrayContaining(['bg-surface', 'border', 'border-separator']),
     );
   });
 
-  test('casts no shadow onto the map and is never translucent', async () => {
+  test('carries only the second lift over the map and is never translucent', async () => {
     await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
     const classes = classesOf('globe-empty-state');
     expect(classes).toContain('shadow-none');
@@ -143,7 +143,7 @@ describe('<GlobeEmptyState> — a card over the map, never a replacement for it 
     ]);
     expect(classes.filter((token) => token.includes('/'))).toEqual([]);
     const style = styleOf('globe-empty-state');
-    expect(style.boxShadow).toBeUndefined();
+    expect(style.boxShadow).toEqual(liftOf('light', 'lift2'));
     expect(style.elevation).toBeUndefined();
     expect(style.opacity).toBeUndefined();
     expect(style.backgroundColor).toBeUndefined();
@@ -315,14 +315,14 @@ describe('<GlobeNotice> — a plain-words problem shown over the globe', () => {
     expect(screen.getByText('Couldn’t read your trips')).toBeTruthy();
   });
 
-  test('is an opaque hairline card with no shadow, like the invitation (FR-018, FR-033)', async () => {
+  test('is an opaque hairline card with the second lift, like the invitation (FR-018, FR-033)', async () => {
     await render(<GlobeNotice title="Couldn’t read your trips" />);
     const classes = classesOf('globe-notice-card');
     expect(classes).toEqual(
-      expect.arrayContaining(['bg-surface', 'border', 'border-border', 'shadow-none']),
+      expect.arrayContaining(['bg-surface', 'border', 'border-separator', 'shadow-none']),
     );
     expect(classes.filter((token) => token.includes('/'))).toEqual([]);
-    expect(styleOf('globe-notice-card').boxShadow).toBeUndefined();
+    expect(styleOf('globe-notice-card').boxShadow).toEqual(liftOf('light', 'lift2'));
     expect(styleOf('globe-notice-card').padding).toBe(0);
   });
 });

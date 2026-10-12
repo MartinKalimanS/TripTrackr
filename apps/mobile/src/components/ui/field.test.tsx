@@ -1,6 +1,6 @@
 /**
- * T420 - contract C4-8 (`Field`), FR-009, FR-024, FR-025, FR-029, FR-030, review rules 2
- * and 3.
+ * T420 / T521 - contracts C4-8 and C5-17 (`Field`), FR-009, FR-024, FR-025, FR-029, FR-030,
+ * FR-069, FR-071, review rules 2 and 3.
  *
  * Jest renders the kit's TextField, Label, Input, FieldError and Description as plain host
  * nodes that forward every prop (test/mocks/heroui-native.tsx), with FieldError showing
@@ -9,15 +9,22 @@
  * of the kit (classes, state), never real styling.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import * as HeroUI from 'heroui-native';
 import { StyleSheet } from 'react-native';
 
 import { Colors, MinTouchTarget } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
-import { TextRoles } from '@/theme';
+import { FocusRing, Radii, TypeRoles } from '@/theme';
 
 import { Field, fieldMinHeight } from './field';
 
 jest.mock('@/hooks/use-appearance');
+jest.mock('expo-symbols', () => {
+  const { View } = require('react-native');
+  return {
+    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
+  };
+});
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
@@ -36,6 +43,14 @@ function mockAppearance(overrides: Partial<AppearanceContext> = {}) {
 }
 
 beforeEach(() => mockAppearance());
+
+const hidden = { includeHiddenElements: true };
+const tokens = (className: unknown) =>
+  String(className ?? '')
+    .split(/\s+/)
+    .filter(Boolean);
+const ALERT_ICON = { ios: 'exclamationmark.triangle', android: 'warning' };
+const INFO_ICON = { ios: 'info.circle', android: 'info' };
 
 const input = () => screen.getByLabelText('Destination');
 const classesOf = (element: { props: { className?: unknown } }) =>
@@ -210,7 +225,7 @@ describe('<Field> passes the TextInput props through unchanged - auth depends on
     expect(input().props.multiline).toBe(true);
     expect(input().props.numberOfLines).toBe(4);
     expect(input().props.textAlignVertical).toBe('top');
-    expect(classesOf(input())).toContain('py-2');
+    expect(classesOf(input())).toContain('py-3');
   });
 
   test('a caller textAlignVertical wins', async () => {
@@ -221,7 +236,7 @@ describe('<Field> passes the TextInput props through unchanged - auth depends on
   test('a single-line field is not given multiline padding', async () => {
     await renderField();
     expect(input().props.multiline).toBeUndefined();
-    expect(classesOf(input())).not.toContain('py-2');
+    expect(classesOf(input())).not.toContain('py-3');
   });
 
   test('editable={false} is the kit disabled state, which the input follows', async () => {
@@ -238,8 +253,9 @@ describe('<Field> passes the TextInput props through unchanged - auth depends on
 });
 
 describe('<Field> largest text - FR-029', () => {
-  test('the minimum height is the platform floor at the default size', () => {
-    expect(fieldMinHeight(1)).toBe(Math.max(48, MinTouchTarget));
+  test('the minimum height is 56 dp at the default size, above the platform floor', () => {
+    expect(fieldMinHeight(1)).toBe(56);
+    expect(fieldMinHeight(1)).toBeGreaterThanOrEqual(MinTouchTarget);
   });
 
   test('grows with the font scale instead of clipping', () => {
@@ -259,7 +275,7 @@ describe('<Field> largest text - FR-029', () => {
 
   test('a multiline field is as tall as the lines it asks for, text and padding', () => {
     // numberOfLines is Android-only in React Native 0.86: iOS would start at one line.
-    const lines = (count: number) => count * TextRoles.body.lineHeight + 16;
+    const lines = (count: number) => count * (TypeRoles.body.lineHeight ?? 24) + 24;
     expect(fieldMinHeight(1, 6)).toBe(lines(6));
     expect(fieldMinHeight(2, 6)).toBe(lines(6) * 2);
     expect(fieldMinHeight(0.8, 6)).toBe(lines(6));
@@ -291,6 +307,125 @@ describe('<Field> largest text - FR-029', () => {
     expect(input().props.maxFontSizeMultiplier).toBeUndefined();
     expect(input().props.allowFontScaling).toBeUndefined();
     expect(screen.getByText('Destination').props.maxFontSizeMultiplier).toBeUndefined();
+  });
+});
+
+describe('<Field> look - C5-17', () => {
+  beforeEach(() => {
+    jest
+      .spyOn(HeroUI, 'useThemeColor')
+      .mockImplementation(((token: string) => `colour:${token}`) as never);
+  });
+
+  test('the label is above the input: the label role, 14 / 20 semibold in the ink', async () => {
+    await renderField();
+    const label = screen.getByText('Destination');
+    expect(tokens(label.props.className)).toEqual(
+      expect.arrayContaining(['text-[14px]', 'font-body-semibold', 'text-foreground']),
+    );
+    const tree = JSON.stringify(screen.toJSON());
+    expect(tree.indexOf('Destination')).toBeLessThan(tree.indexOf('"TextInput"'));
+  });
+
+  test('the label stays in the ink while the field is invalid: the words carry the error', async () => {
+    await renderField({ error: 'Enter a destination' });
+    const label = tokens(screen.getByText('Destination').props.className);
+    expect(label).toContain('text-foreground');
+    expect(label).not.toContain('text-danger');
+  });
+
+  test('the input is a 12 dp continuous corner', async () => {
+    await renderField();
+    expect(styleOf()).toMatchObject({
+      borderRadius: Radii.md,
+      borderCurve: 'continuous',
+    });
+  });
+
+  test('at rest it draws no focus ring and no boundary of its own', async () => {
+    await renderField();
+    expect(styleOf()).toMatchObject({ outlineWidth: 0 });
+    expect(styleOf().borderColor).toBeUndefined();
+    expect(styleOf().backgroundColor).toBeUndefined();
+  });
+
+  test('focused it is the surface fill inside a 2.5 dp focus ring with a 2 dp gap', async () => {
+    await renderField();
+    await fireEvent(input(), 'focus');
+    expect(styleOf()).toMatchObject({
+      backgroundColor: 'colour:surface',
+      outlineWidth: FocusRing.width,
+      outlineOffset: FocusRing.offset,
+      outlineColor: 'colour:focus',
+      outlineStyle: 'solid',
+    });
+    expect(FocusRing.width).toBe(2.5);
+    expect(FocusRing.offset).toBe(2);
+    await fireEvent(input(), 'blur');
+    expect(styleOf()).toMatchObject({ outlineWidth: 0 });
+    expect(styleOf().backgroundColor).toBeUndefined();
+  });
+
+  test('the caller\u2019s focus and blur handlers still run beside the ring', async () => {
+    const onFocus = jest.fn();
+    const onBlur = jest.fn();
+    await renderField({ onFocus, onBlur });
+    await fireEvent(input(), 'focus');
+    await fireEvent(input(), 'blur');
+    expect(onFocus).toHaveBeenCalledTimes(1);
+    expect(onBlur).toHaveBeenCalledTimes(1);
+  });
+
+  test('invalid it has a 1.5 dp danger boundary, and the ring still shows when focused', async () => {
+    await renderField({ error: 'Enter a destination' });
+    expect(styleOf()).toMatchObject({
+      borderColor: 'colour:danger',
+      borderWidth: 1.5,
+      outlineWidth: 0,
+    });
+    await fireEvent(input(), 'focus');
+    expect(styleOf()).toMatchObject({
+      borderColor: 'colour:danger',
+      outlineColor: 'colour:focus',
+      outlineWidth: FocusRing.width,
+    });
+  });
+
+  test('the error is an alert icon and words in the danger ink, in one alert element', async () => {
+    await renderField({ error: 'Enter a destination', testID: 'destination' });
+    const alert = screen.getByRole('alert');
+    expect(alert.props.accessible).toBe(true);
+    const symbols = screen.getAllByTestId('symbol', hidden);
+    expect(symbols).toHaveLength(1);
+    expect(symbols[0].props.name).toEqual(ALERT_ICON);
+    expect(symbols[0].props.size).toBe(16);
+    expect(screen.queryByTestId('symbol')).toBeNull();
+    expect(tokens(screen.getByText('Enter a destination').props.className)).toEqual(
+      expect.arrayContaining(['text-[14px]', 'text-danger']),
+    );
+  });
+
+  test('the helper text has a leading info icon and the muted ink, and no alert role', async () => {
+    await renderField({ description: 'A city or a country' });
+    const symbols = screen.getAllByTestId('symbol', hidden);
+    expect(symbols).toHaveLength(1);
+    expect(symbols[0].props.name).toEqual(INFO_ICON);
+    expect(symbols[0].props.size).toBe(16);
+    expect(tokens(screen.getByText('A city or a country').props.className)).toEqual(
+      expect.arrayContaining(['text-[13px]', 'text-muted']),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  test('an error and a helper show both icons, the error first', async () => {
+    await renderField({ error: 'Enter one', description: 'A city or a country' });
+    const names = screen.getAllByTestId('symbol', hidden).map((node) => node.props.name);
+    expect(names).toEqual([ALERT_ICON, INFO_ICON]);
+  });
+
+  test('no icon is drawn for a plain field', async () => {
+    await renderField();
+    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
   });
 });
 

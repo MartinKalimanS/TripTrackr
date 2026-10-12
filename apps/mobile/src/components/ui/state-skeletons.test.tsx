@@ -84,9 +84,12 @@ describe('<TripCardSkeleton> - shaped like a trip card', () => {
     await render(<TripCardSkeleton />);
     const card = elementsOf(shapes().children)[0];
     expect(classesIn(card)).toEqual(
-      expect.arrayContaining(['flex-row', 'items-center', 'bg-surface', 'rounded-2xl']),
+      expect.arrayContaining(['flex-row', 'items-center', 'bg-surface', 'rounded-3xl']),
     );
     expect(bonesIn(card)).toHaveLength(4);
+    for (const bone of bonesIn(card)) {
+      expect(classesIn(bone)).toContain('bg-skeleton');
+    }
   });
 
   test('is one card, and a card never contains a card', async () => {
@@ -94,6 +97,15 @@ describe('<TripCardSkeleton> - shaped like a trip card', () => {
     expect(elementsOf(shapes().children)).toHaveLength(1);
     const surfaces = flatten(shapes()).filter((n) => classesIn(n).includes('bg-surface'));
     expect(surfaces).toHaveLength(1);
+  });
+});
+
+describe('every skeleton shimmers as the traveller\u2019s settings allow (C5-28)', () => {
+  test('a group is the kit\u2019s, asking for the shimmer of C5-9', async () => {
+    await render(<TripCardSkeleton />);
+    const groups = flatten(root()).filter((node) => node.props.variant !== undefined);
+    expect(groups.length).toBeGreaterThanOrEqual(1);
+    for (const group of groups) expect(group.props.variant).toBe('shimmer');
   });
 });
 

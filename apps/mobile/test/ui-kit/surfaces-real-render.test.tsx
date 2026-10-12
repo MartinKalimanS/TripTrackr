@@ -11,10 +11,11 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type * as HeroUI from 'heroui-native';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
+import { liftOf } from '@/theme';
 
 import { Card, Panel } from '@/components/ui/card';
 import { ListGroup, ListRow } from '@/components/ui/list-group';
@@ -85,7 +86,7 @@ describe('Card over the real kit', () => {
         'shadow-none',
         'border',
         'border-dashed',
-        'border-pending',
+        'border-amber-line',
       ]),
     );
     expect(surface.indexOf('bg-surface')).toBeGreaterThan(
@@ -114,8 +115,33 @@ describe('Card over the real kit', () => {
     expect(node.props.accessibilityRole).toBe('alert');
     expect(node.props.accessibilityLabel).toBe('Offline');
     expect(tokens(node.props.className)).toEqual(
-      expect.arrayContaining(['surface__root', 'bg-surface', 'border-border']),
+      expect.arrayContaining(['surface__root', 'bg-surface', 'border-separator']),
     );
+  });
+
+  test('the kit variant and the lift reach the real surface: tile is cream, lift is shadowed', async () => {
+    await renderKit(
+      <>
+        <Card testID="tile" variant="tile" />
+        <Card testID="lifted" />
+      </>,
+    );
+    const tile = screen.getByTestId('tile');
+    expect(tokens(tile.props.className)).toEqual(
+      expect.arrayContaining([
+        'surface__root',
+        'surface__root--variant-secondary',
+        'bg-surface-secondary',
+      ]),
+    );
+    expect(StyleSheet.flatten(tile.props.style).boxShadow).toBeUndefined();
+
+    const lifted = screen.getByTestId('lifted');
+    expect(tokens(lifted.props.className)).toContain('surface__root--variant-default');
+    expect(StyleSheet.flatten(lifted.props.style)).toMatchObject({
+      boxShadow: liftOf('light', 'lift1'),
+      borderRadius: 24,
+    });
   });
 
   test('a panel inside a card renders: it is not a second surface', async () => {

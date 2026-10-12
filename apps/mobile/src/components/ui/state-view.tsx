@@ -1,6 +1,7 @@
 /**
  * Empty, loading and error presentations and their skeletons (feature 004; contract
- * C4-8 and C4-10 rule 2; FR-021, FR-025, FR-029, FR-030, FR-035; research D4-02).
+ * C4-8 and C4-10 rule 2; FR-021, FR-025, FR-029, FR-030, FR-035; research D4-02), in the
+ * Sunrise look of feature 005 (contract C5-28; FR-064, FR-065; research D5-14).
  *
  * These are styled to the same standard as populated screens rather than left as bare
  * defaults, which is where they usually end up. Providing them as primitives is what
@@ -9,6 +10,7 @@
  *
  *   <EmptyState title="No trips yet" detail="Plan one." icon={Map}
  *               action={{ label: 'Plan a trip', onPress: plan }} />
+ *   <EmptyState variant="frames" title="No photos yet" />       art above the words
  *   <LoadingState title="Loading trips" />
  *   <ErrorState title="Could not load trips" detail="..." onRetry={reload} />
  *   <ListSkeleton variant="card" rows={3} label="Loading trips" />
@@ -17,8 +19,13 @@
  * - One flat surface (`bg-surface rounded-2xl p-6 items-center gap-2`): no border, no
  *   shadow, and nothing card-shaped inside it (FR-006). Colours are semantic classes.
  * - `EmptyState` names the next action: an optional `action` is a SECONDARY `Button`
- *   named by its label (never a second primary, FR-005) and an optional decorative
- *   `icon`. `ErrorState` is not colour alone (FR-025): a leading alert icon, the title
+ *   named by its label (never a second primary, FR-005; a screen with no other primary may
+ *   say `primary: true`) and an optional decorative `icon`. `variant` picks the art above
+ *   the words (`state-art.tsx`, all decorative and hidden from assistive technology):
+ *   `plain` (none, the default and what every call site had), `ghost-stamp` (a dashed
+ *   stamp outline: a trip with no stops, an empty passport), `frames` (three tilted empty
+ *   photo frames: no photographs) and `filtered` (a magnifier: a filter or a search with
+ *   no result). The words are the title (`callout`) and the detail (`body`, muted). `ErrorState` is not colour alone (FR-025): a leading alert icon, the title
  *   in the danger ink, and a secondary "Try again" button when a retry is possible. The
  *   accessible name of that button and the container roles are unchanged from before
  *   (FR-030), so screens, tests and Maestro flows still find them.
@@ -32,21 +39,25 @@
  *   `EmptyState` action and a `retryBusy` flag on an `ErrorState`, so a retry that is
  *   under way is announced busy and ignores a second press (FR-019).
  * - Skeletons (`TripCardSkeleton`, `RowSkeleton`, `ListSkeleton`) are shaped like the
- *   content they stand in for, from the kit's `SkeletonGroup`. Each is also ONE
+ *   content they stand in for, from `ShimmerGroup` and `Bone` (`skeleton.tsx`: the
+ *   `skeleton` fill and the 1.4 s shimmer). The screen skeletons are in
+ *   `screen-skeletons.tsx`. Each is also ONE
  *   announced `progressbar` named `label` (default "Loading"), and every shape inside
  *   is hidden from assistive technology: a list of twelve boxes is one busy region, not
- *   twelve anonymous focus stops. Under reduced motion the provider's
- *   `animation: 'disable-all'` stops the shimmer and the fades (D4-05), so the shapes
- *   stay as static placeholders. Skeletons carry no text, so the largest text size
+ *   twelve anonymous focus stops. Under reduced motion (`useAppearance`) and under the
+ *   provider's `animation: 'disable-all'` (D4-05) there is no shimmer and no fade, so the
+ *   shapes stay as static placeholders. Skeletons carry no text, so the largest text size
  *   cannot clip them; the content that replaces them reflows as usual.
  */
-import { SkeletonGroup, Spinner } from 'heroui-native';
+import { Spinner } from 'heroui-native';
 import type { ReactNode } from 'react';
 import { View, type ViewProps } from 'react-native';
 
 import { ALERT_ICON } from './alert-icon';
 import { Button } from './button';
 import { Icon, type IconName } from './icon';
+import { Bone, ShimmerGroup } from './skeleton';
+import { StateArt, type EmptyVariant } from './state-art';
 import { Text } from './text';
 
 /** Continuous corners are the kit's own on its views; a plain `View` asks for them. */
@@ -72,9 +83,13 @@ export type StateAction = {
   testID?: string;
   /** The action is under way: announced busy, presses are ignored. */
   busy?: boolean;
+  /** The screen's one primary: only where the screen has no other. Default secondary. */
+  primary?: boolean;
 };
 
 export type EmptyStateProps = StateViewProps & {
+  /** The art above the words. Default `plain`: none. */
+  variant?: EmptyVariant;
   /** A decorative glyph above the title. */
   icon?: IconName;
   /** The next step, drawn as a secondary button named by its label. */
@@ -93,7 +108,7 @@ export type LoadingStateProps = Partial<StateViewProps> & {
 };
 
 /** The flat surface every state sits on; accessibility props pass straight through. */
-function StateBox({ children, ...rest }: ViewProps) {
+export function StateBox({ children, ...rest }: ViewProps) {
   return (
     <View className={STATE_BOX} style={CONTINUOUS} {...rest}>
       {children}
@@ -101,27 +116,38 @@ function StateBox({ children, ...rest }: ViewProps) {
   );
 }
 
-function Detail({ children }: { children?: string }) {
+export function Detail({ children }: { children?: string }) {
   if (!children) return null;
   return (
-    <Text type="callout" tone="muted" className="text-center">
+    <Text variant="body" tone="muted" className="text-center">
       {children}
     </Text>
   );
 }
 
 /** Nothing here yet — and that is a normal, designed state, not a failure. */
-export function EmptyState({ title, detail, icon, action, ...surface }: EmptyStateProps) {
+export function EmptyState({
+  variant = 'plain',
+  title,
+  detail,
+  icon,
+  action,
+  ...surface
+}: EmptyStateProps) {
   return (
     <StateBox {...surface}>
+      <StateArt
+        variant={variant}
+        testID={surface.testID ? `${surface.testID}-art` : undefined}
+      />
       {icon ? <Icon name={icon} size={24} tone="muted" /> : null}
-      <Text type="headline" className="text-center">
+      <Text variant="callout" className="text-center">
         {title}
       </Text>
       <Detail>{detail}</Detail>
       {action ? (
         <Button
-          variant="secondary"
+          variant={action.primary ? 'primary' : 'secondary'}
           accessibilityLabel={action.label}
           testID={action.testID}
           busy={action.busy}
@@ -159,7 +185,7 @@ export function LoadingState({
           importantForAccessibility="no-hide-descendants"
         />
       ) : null}
-      <Text type="callout" tone="muted" className="text-center">
+      <Text variant="label" tone="muted" className="text-center">
         {title}
       </Text>
       <Detail>{detail}</Detail>
@@ -181,7 +207,7 @@ export function ErrorState({
   return (
     <StateBox {...surface}>
       <Icon name={ALERT_ICON} size={24} tone="danger" />
-      <Text type="headline" tone="danger" className="text-center">
+      <Text variant="callout" tone="danger" className="text-center">
         {title}
       </Text>
       <Detail>{detail}</Detail>
@@ -219,6 +245,8 @@ export type ListSkeletonProps = SkeletonRegionProps & {
 type RegionProps = SkeletonRegionProps & {
   /** Spacing between the shapes, when there are several. */
   gap?: string;
+  /** Layout classes for the region itself (`flex-1` for a skeleton that fills a screen). */
+  className?: string;
   children?: ReactNode;
 };
 
@@ -226,12 +254,19 @@ type RegionProps = SkeletonRegionProps & {
  * The single announced region: focusable as one `progressbar`, with every shape inside
  * hidden from assistive technology (both platforms' flags).
  */
-export function LoadingRegion({ label = 'Loading', testID, gap, children }: RegionProps) {
+export function LoadingRegion({
+  label = 'Loading',
+  testID,
+  gap,
+  className,
+  children,
+}: RegionProps) {
   return (
     <View
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={label}
+      className={className}
       testID={testID}>
       <View
         accessibilityElementsHidden
@@ -243,37 +278,32 @@ export function LoadingRegion({ label = 'Loading', testID, gap, children }: Regi
   );
 }
 
-/** One placeholder box, shaped by its classes; it inherits the group's animation. */
-function Bone({ className }: { className: string }) {
-  return <SkeletonGroup.Item className={className} />;
-}
-
 /** A trip card: cover beside a title, a status chip and a line of dates and stops. */
 function TripCardBones() {
   return (
-    <SkeletonGroup
-      className="flex-row items-center gap-4 rounded-2xl bg-surface p-4"
+    <ShimmerGroup
+      className="flex-row items-center gap-4 rounded-3xl bg-surface p-4"
       style={CONTINUOUS}>
-      <Bone className="h-16 w-16 rounded-xl" />
+      <Bone className="size-16 rounded-2xl" />
       <View className="flex-1 gap-2">
-        <Bone className="h-5 w-3/4 rounded-md" />
+        <Bone className="h-5 w-3/4 rounded-lg" />
         <Bone className="h-4 w-1/3 rounded-full" />
-        <Bone className="h-4 w-1/2 rounded-md" />
+        <Bone className="h-4 w-1/2 rounded-lg" />
       </View>
-    </SkeletonGroup>
+    </ShimmerGroup>
   );
 }
 
 /** A list row: a leading shape beside a title and a second line. */
 function RowBones() {
   return (
-    <SkeletonGroup className="flex-row items-center gap-3 py-3">
-      <Bone className="h-10 w-10 rounded-full" />
+    <ShimmerGroup className="flex-row items-center gap-3 py-3">
+      <Bone className="size-10 rounded-full" />
       <View className="flex-1 gap-2">
-        <Bone className="h-4 w-2/3 rounded-md" />
-        <Bone className="h-3 w-1/2 rounded-md" />
+        <Bone className="h-4 w-2/3 rounded-lg" />
+        <Bone className="h-3 w-1/2 rounded-lg" />
       </View>
-    </SkeletonGroup>
+    </ShimmerGroup>
   );
 }
 

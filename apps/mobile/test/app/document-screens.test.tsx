@@ -446,7 +446,7 @@ describe('<DocumentsScreen> — trip/[id]/documents (T118)', () => {
 
     for (const id of [PASS_ID, BOOKING_ID]) {
       expect(classesOf(screen.getByTestId(`document-row-${id}-surface`))).toEqual(
-        expect.arrayContaining(['border-dashed', 'border-pending']),
+        expect.arrayContaining(['border-dashed', 'border-amber-line']),
       );
     }
     expect(screen.getByTestId(`document-row-${PASS_ID}`)).toHaveTextContent(

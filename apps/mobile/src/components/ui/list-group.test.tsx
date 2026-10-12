@@ -1,5 +1,6 @@
 /**
- * T419 - contract C4-8 (`ListGroup`, `ListRow`), FR-013, FR-024, FR-025, FR-029, FR-030.
+ * T419 / T521 - contracts C4-8 and C5-18 (`ListGroup`, `ListRow`), FR-013, FR-024, FR-025,
+ * FR-029, FR-030, FR-055, FR-069.
  *
  * The kit's ListGroup, its Item and its Separator are plain host nodes under Jest
  * (test/mocks/heroui-native.tsx) that carry every prop they were given, so what is
@@ -7,14 +8,15 @@
  * children) and the accessibility contract on the row's host node: role, name, state,
  * hint and actions, which the kit's Item does not set itself.
  */
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';
 import { StyleSheet, Text as NativeText } from 'react-native';
 
 import { Colors, MinTouchTarget } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
-import { AtlasRadius, FocusRing } from '@/theme';
+import { FocusRing, Radii } from '@/theme';
 
+import { touchDown, touchUp } from '../../../test/helpers/touch';
 import { Card } from './card';
 import { ListGroup, ListRow } from './list-group';
 import { Icon } from './icon';
@@ -57,8 +59,8 @@ const styleOf = (testID: string) =>
 
 const CHEVRON = { ios: 'chevron.forward', android: 'chevron_right' };
 
-describe('<ListGroup> - rows in one raised group, FR-013', () => {
-  test('puts its rows in order inside the kit group, in a continuous lg corner', async () => {
+describe('<ListGroup> - rows in one cream group, FR-013, C5-18', () => {
+  test('puts its rows in order inside the kit group, in a continuous 24 dp corner', async () => {
     await render(
       <ListGroup testID="group">
         <ListRow title="Notes" testID="row-notes" />
@@ -66,15 +68,28 @@ describe('<ListGroup> - rows in one raised group, FR-013', () => {
       </ListGroup>,
     );
     const group = screen.getByTestId('group');
-    expect(group.props.variant).toBeUndefined();
+    expect(group.props.variant).toBe('secondary');
     expect(styleOf('group')).toMatchObject({
-      borderRadius: AtlasRadius.lg,
+      borderRadius: Radii.xl,
       borderCurve: 'continuous',
     });
     const titles = screen
       .getAllByText(/Notes|Spending/)
       .map((node) => node.props.children);
     expect(titles).toEqual(['Notes', 'Spending']);
+  });
+
+  test('is a tile: the cream fill, a hairline and no shadow of its own', async () => {
+    await render(<ListGroup testID="group" />);
+    expect(classesOf('group')).toEqual(
+      expect.arrayContaining([
+        'bg-surface-secondary',
+        'border',
+        'border-separator',
+        'shadow-none',
+      ]),
+    );
+    expect(styleOf('group').boxShadow).toBeUndefined();
   });
 
   test('draws an inset separator BETWEEN rows, not before the first or after the last', async () => {
@@ -129,7 +144,7 @@ describe('<ListGroup> - rows in one raised group, FR-013', () => {
     const header = screen.getByText('Account');
     expect(header.props.accessibilityRole).toBe('header');
     expect(tokens(header.props.className)).toEqual(
-      expect.arrayContaining(['text-muted', 'text-[12px]']),
+      expect.arrayContaining(['text-muted', 'text-[14px]', 'font-body-semibold']),
     );
   });
 
@@ -194,14 +209,23 @@ describe('a group is a raised surface: never inside a card (FR-006)', () => {
 });
 
 describe('<ListRow> content - FR-029', () => {
-  test('shows the title as a headline and the description as a muted callout', async () => {
+  test('shows the title as a callout and the description as a muted label', async () => {
     await render(<ListRow title="Spending" description="3 expenses" />);
     expect(tokens(screen.getByText('Spending').props.className)).toEqual(
-      expect.arrayContaining(['text-[17px]', 'font-semibold', 'text-foreground']),
+      expect.arrayContaining(['text-[17px]', 'font-display', 'text-foreground']),
     );
     expect(tokens(screen.getByText('3 expenses').props.className)).toEqual(
-      expect.arrayContaining(['text-[14px]', 'text-muted']),
+      expect.arrayContaining(['text-[14px]', 'font-body', 'text-muted']),
     );
+  });
+
+  test('is a 60 dp row: a minimum, scaled by the text size, never a height', async () => {
+    await render(<ListRow title="Version" testID="row" />);
+    expect(styleOf('row').minHeight).toBe(60);
+    mockAppearance({ fontScale: 1.5 });
+    await render(<ListRow title="Version" testID="big" />);
+    expect(styleOf('big').minHeight).toBe(90);
+    expect(styleOf('big').height).toBeUndefined();
   });
 
   test('has no description line when there is none', async () => {
@@ -334,12 +358,48 @@ describe('<ListRow onPress> is one control with a cue - FR-024, FR-026', () => {
     expect(styleOf('row').minHeight).toBeGreaterThanOrEqual(MinTouchTarget);
     mockAppearance({ fontScale: 2 });
     await renderRow({ testID: 'big' });
-    expect(styleOf('big').minHeight).toBe(MinTouchTarget * 2);
+    expect(styleOf('big').minHeight).toBe(120);
   });
 
   test('swaps to the tertiary fill while held, at once, with no transition', async () => {
     await renderRow();
     expect(classesOf('row')).toContain('active:bg-surface-tertiary');
+  });
+
+  test('while held only ink sits on the pressed fill: the description leaves the muted ink', async () => {
+    jest.useFakeTimers();
+    try {
+      await renderRow();
+      expect(tokens(screen.getByText('4 notes').props.className)).toContain('text-muted');
+      await touchDown(screen.getByTestId('row'));
+      const held = tokens(screen.getByText('4 notes').props.className);
+      expect(held).toContain('text-foreground');
+      expect(held).not.toContain('text-muted');
+      expect(tokens(screen.getByText('Notes').props.className)).toContain(
+        'text-foreground',
+      );
+      await touchUp(screen.getByTestId('row'));
+      // Pressability keeps a press visible for a minimum time before it ends.
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+      expect(tokens(screen.getByText('4 notes').props.className)).toContain('text-muted');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('a destructive row keeps its danger title while held', async () => {
+    jest.useFakeTimers();
+    try {
+      await renderRow({ tone: 'destructive', title: 'Delete account' });
+      await touchDown(screen.getByTestId('row'));
+      expect(tokens(screen.getByText('Delete account').props.className)).toContain(
+        'text-danger',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('draws an inset 2 dp focus ring in the focus token while focused', async () => {

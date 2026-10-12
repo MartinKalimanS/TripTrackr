@@ -208,13 +208,22 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 - [ ] T520 [P] `Chip`, `ChipGroup`, `SegmentedPill`, `StatusChip` (words Planning, Active, Past kept), `SyncChip`,
       `SyncBadge`, `FlagChip` (glyph in a clipped box, letters fallback), `PrivacyChip`; every existing id and
       text equivalent preserved (FR-055, FR-065, FR-070; D5-16; Q-3)
-- [ ] T521 [P] Branch `feat/005-adapters-surfaces`. `Card` (`lift`, `tile`, `flat`, `overMap`, `pending`),
+- [x] T521 [P] Branch `feat/005-adapters-surfaces`. `Card` (`lift`, `tile`, `flat`, `overMap`, `pending`),
       `ListGroup`, `ListRow`, `StatTile`, `AreaPill`, `Field` (56 dp, cream, 3:1 border, words and icon errors),
       `FormActions`, `InlineError`; nesting guard kept (FR-055, FR-069; D5-02)
-- [ ] T522 [P] `Skeleton` shapes (`TripListSkeleton`, `TripDetailSkeleton`, `AreaSkeleton`, `HomeSkeleton`),
+      _As built:_ `Card` (`lift`, `tile`, `flat`, `overMap`, `pending`; the nesting guard kept) over the two `Lift` tokens
+      (`lift.ts`), `ListGroup` as a cream tile and `ListRow` at 60 dp, `StatTile`, `AreaPill` (a tile `Card`), `Field` (56 dp,
+      adapter-held focus ring, error and helper icons), `FormActions` and `InlineError`; written red first. The 004 tests that
+      pinned Atlas classes are updated to the contract. See `contracts/components.md`, "As built (T521, T522)".
+- [x] T522 [P] `Skeleton` shapes (`TripListSkeleton`, `TripDetailSkeleton`, `AreaSkeleton`, `HomeSkeleton`),
       `EmptyState` variants (`ghost-stamp`, `frames`, `plain`, `filtered`), `ErrorState`, `Banner`, `Toast` over
       the HeroUI toast, `PermissionState`; each skeleton ONE `progressbar`; failing tests for roles and states
       (FR-064, FR-065, FR-066, FR-067; D5-14)
+      _As built:_ `skeleton.tsx` (`ShimmerGroup`, `Bone`, `PhotoBone`) and `screen-skeletons.tsx` (`TripListSkeleton`,
+      `TripDetailSkeleton`, `AreaSkeleton`, `HomeSkeleton`, each ONE `progressbar`), `EmptyState` variants over `state-art.tsx`,
+      `ErrorState`, `Banner`, `Toast` and `useToast` over the HeroUI Toast, `PermissionState`; the shimmer is still under
+      reduced motion. See `contracts/components.md`, "As built (T521, T522)".
+
 - [x] T523 [P] Branch `feat/005-adapters-visual`. `Scrim` (the only gradient consumer) with `top`, `bottom`,
       `caption`, `sky` and a white-photograph contrast test; `GeneratedCover` (three palettes, `fnv1a32` pick);
       `Stamp` and `GhostStamp` (SVG, `TextPath`, baked wear mask, accessible label on the parent); `AnimatedNumber`

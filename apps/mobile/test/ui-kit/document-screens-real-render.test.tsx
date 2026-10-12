@@ -178,7 +178,7 @@ describe('the document list over the real kit', () => {
     );
 
     expect(classesOf(screen.getByTestId('document-row-pass-1-surface'))).toEqual(
-      expect.arrayContaining(['bg-surface', 'border-dashed', 'border-pending']),
+      expect.arrayContaining(['bg-surface', 'border-dashed', 'border-amber-line']),
     );
     expect(classesOf(screen.getByTestId('document-row-booking-1-surface'))).not.toContain(
       'border-dashed',

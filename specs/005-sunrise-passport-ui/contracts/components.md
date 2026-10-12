@@ -568,3 +568,104 @@ file stops compiling; `SemanticHaptics extends Haptics` is what the hook returns
   covers; the cover uses the passport's .20 glow today.
 - `scrim.ts`'s `Sky`, `Passport` and `Glow` types are `readonly number[]` after `deepFreeze`, not the tuple types
   they declare; the adapter takes the structural type it reads (`centre[0]`, `centre[1]`).
+
+## As built (T521, T522)
+
+Branch `feat/005-adapters-surfaces`. Every adapter below restyles a 004 adapter in place (same file, export names,
+props, roles, states and testIDs) or is new; the call sites are untouched. Facts about the kit are read from
+`node_modules/heroui-native/src` and re-checked against the real kit in `test/ui-kit/surfaces-real-render.test.tsx`,
+`field-chip-real-render.test.tsx` and `states-real-render.test.tsx`.
+
+### Kit facts verified from source
+
+- **Surface and Card** (`styles/components/surface.css`): the root has `padding: 16`, `border-radius: var(--radius-3xl)`,
+  `box-shadow: var(--shadow-surface)` and `overflow: hidden`; `variant` is `default`, `secondary`, `tertiary` or
+  `transparent` (fills `surface`, `surface-secondary`, `surface-tertiary` = the Sunrise `pressed`, none). The real kit
+  puts `surface__root` and `surface__root--variant-<name>` first and our classes after them. `ListGroup` is a Surface
+  too and takes the same `variant`.
+- **Input, Label, FieldError, Description**: the input draws `ios:outline` / `ios:focus:outline-accent` and, on Android,
+  `android:border-transparent` until focus, which is why `Field` keeps the focus state itself. `Label.Text` takes
+  `className`; `FieldError` and `Label` render a child that is an element as written (`childrenToString` answers `null`
+  for an element), so an alert may hold an icon and its words.
+- **Skeleton and SkeletonGroup**: the root fill is a 30 percent mix of `muted` (replaced by `bg-skeleton`); shimmer
+  defaults to 1500 ms and takes `animation.shimmer.{duration, highlightColor}`; `variant="none"` is a static bone;
+  a Bone outside a `SkeletonGroup` throws (the group's context is strict); the animation reads `ReduceMotion.System` and
+  the provider's `animation: 'disable-all'` through the kit's context.
+- **Toast**: the root is a `View` with `role="status"`, `aria-live="polite"` and `aria-atomic`; the provider's default
+  duration is 4000 ms and an explicit `id` is shown once; the root renders its children twice (the second, invisible
+  copy measures the height); the provider's `toast` object changes with its stack; `Toast.Action` is a `Button`
+  (`sm` 40 dp, `md` 48 dp); `.toast__root` is `bg-overlay`, 16 dp padding, radius 3xl, `overflow: hidden`.
+
+### API as built
+
+| Adapter                                                                                          | Public API as built                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Card`                                                                                           | `variant: 'lift' \| 'tile' \| 'flat'` (default `lift`; the 004 `raised` is `lift`), `overMap?`, `pending?`, `radius?: 'md' \| 'lg' \| 'xl' \| 'sheet'` (default 24 dp for `lift`, 16 dp for `tile` and `flat`), `onPress?`, `cue?`, `innerClassName?`, `innerStyle?` (the surface inside a pressable card), the rest as 004; `cardClasses(look)` exported |
+| `useLiftStyle`, `lift.ts`                                                                        | `useLiftStyle(name \| null)` and the pure `liftStyle(scheme, name, platform)`: `boxShadow` from the `Lift` token of the device scheme, `elevation` on Android below API 28; the only shadow an adapter draws                                                                                                                                              |
+| `ListGroup`, `ListRow`                                                                           | as 004; the group is a cream `tile` (24 dp, hairline, no shadow); `ROW_MIN_HEIGHT` 60 dp, scaled by the font scale; `ROW_PRESSED_CLASS` kept                                                                                                                                                                                                              |
+| `StatTile`                                                                                       | `value: string \| number \| ReactElement`, `of?`, `unit?`, `label`, `icon?`, `onPress?`, `disabled?`, `busy?`, `accessibilityLabel?`, `testID?`, `valueTestID?`; `statTileName()` exported                                                                                                                                                                |
+| `AreaPill`                                                                                       | `icon`, `label`, `count: number \| string`, `private?`, `warn?`, `onPress`, `disabled?`, `busy?`, `testID?`; `areaPillName()`, `AREA_MIN_HEIGHT` exported                                                                                                                                                                                                 |
+| `reflow.ts`                                                                                      | `REFLOW_FONT_SCALE` (1.15), `isLargeText(fontScale)`, `areaColumns(fontScale)` (4, or 2 from 1.15)                                                                                                                                                                                                                                                        |
+| `Field`                                                                                          | the 004 props unchanged; `FIELD_MIN_HEIGHT` 56 dp; `fieldMinHeight(fontScale, lines?)` exported                                                                                                                                                                                                                                                           |
+| `FormActions`                                                                                    | as 004 (ids `<prefix>-cancel`, `<prefix>-save`); Save `grow`s, Cancel keeps to its label                                                                                                                                                                                                                                                                  |
+| `InlineError`                                                                                    | as 004                                                                                                                                                                                                                                                                                                                                                    |
+| `ShimmerGroup`, `Bone`, `PhotoBone`, `useSkeletonMotion`, `wholeCount`                           | `skeleton.tsx`: the kit's group with the 1.4 s shimmer (`variant="none"` and `animation="disable-all"` under reduced motion), one placeholder box (`bg-skeleton`), a photograph's placeholder with a pin glyph                                                                                                                                            |
+| `TripListSkeleton`, `TripDetailSkeleton`, `AreaSkeleton`, `HomeSkeleton`                         | `screen-skeletons.tsx`; `SkeletonRegionProps` (`label`, `testID`) plus `rows?` (list, area), `hero?` (detail), `discRadius?`, `discCentreY?`, `greetingName?` (home); defaults `trips-skeleton` / "Loading trips", `trip-skeleton` / "Loading trip", `area-skeleton` / "Loading", `home-skeleton` / "Loading your globe"                                  |
+| `EmptyState`                                                                                     | the 004 props plus `variant?: 'plain' \| 'ghost-stamp' \| 'frames' \| 'filtered'` (default `plain`: what every call site had) and `action.primary?`; `StateBox`, `Detail` exported                                                                                                                                                                        |
+| `ErrorState`, `LoadingState`, `LoadingRegion`, `ListSkeleton`, `TripCardSkeleton`, `RowSkeleton` | as 004 (`LoadingRegion` gains `className`); shapes now `ShimmerGroup` and `Bone`                                                                                                                                                                                                                                                                          |
+| `Banner`                                                                                         | `tone: 'offline' \| 'error'`, `message`, `action?: { label, onPress, testID?, busy? }`, `testID?`; ids `<testID>`, `<testID>-message`                                                                                                                                                                                                                     |
+| `Toast`, `useToast`                                                                              | `useToast()` returns a stable `{ show({ message, action?: { label, onPress, testID? }, id?, durationMs? }): string, hide(id?) }`; `Toast` is the body the kit renders; `TOAST_DURATION_MS` 5000; ids `toast-<id>`, `toast-<id>-countdown`                                                                                                                 |
+| `PermissionState`                                                                                | `icon`, `title`, `detail?`, `onOpenSettings`, `settingsLabel?` ("Open Settings"), `settingsTestID?`, `alternative?: StateAction`, `testID?`, `accessibilityLiveRegion?`                                                                                                                                                                                   |
+
+### Where the build differs from the contract text above
+
+1. **`ListGroup` is cream, not `surface`**: the prototype's settings groups are `surfaceSecondary` with a hairline, and a
+   white group on the white canvas of the light themes would have only its edge to stand on. The contract's "rows on
+   `surface`" is read as "rows on the group's own fill".
+2. **`Card` `flat` draws no fill** (the contract's "none"; 004's flat kept the surface fill). `overMap` is the opaque
+   `surface` with the hairline (`border-separator`) and the second lift, whatever the variant; the 004 `border-border`
+   and "no shadow over the map" are gone (C5-18). `pending` is `border-amber-line`, dashed.
+3. **A pressable card's children keep their own tones while held**, so a `muted` line on the pressed fill is 6.68:1 in
+   `light-contrast` (the pair `test/ui-kit/pressed-fills-chip-row-card.test.ts` already pins). `ListRow`, whose text the
+   adapter owns, turns its description to the ink while held, as review rule 7 asks.
+4. **`StatTile`**: `accessibilityLabel` is optional (composed as "14 of 195 countries"; required when `value` is an
+   element, such as `AnimatedNumber`); `valueTestID` lands on the numeral because `globe-stat-countries` is "the plain
+   number"; a pressable tile defaults its glyph to the chevron; the `duotone` weight waits for the Icon registry (T518).
+5. **`AreaPill` is a `Card variant="tile"`** (so its pressed fill and focus ring are the card's) named with the lock and
+   the warning in words ("Expenses, 842 EUR, only you can see this"). The lock draws in the default ink on the aqua tint
+   until `Icon` has an `aquaInk` tone (T518); `PrivacyChip` (T520) replaces it when it lands.
+6. **`Field`** draws its focus ring, fill and invalid boundary from state in the style (outline width 0 at rest) and does
+   not rely on the kit's platform-specific `focus:` classes; the label stays in the ink while invalid; the multiline
+   padding is 12 dp (`py-3`, 24 dp of a floor) and the floor 56 dp.
+7. **`HomeSkeleton` takes the disc as props** (`discRadius`, `discCentreY`) because `globeFit()` (T531) does not exist yet;
+   the screen passes `globeFit('half')`. The sky behind it is the screen's `Scrim`.
+8. **`EmptyState` art is drawn in `state-art.tsx` with plain views** (a dashed circle for `ghost-stamp`), not the SVG
+   `GhostStamp` (T523): an empty state does not wait for the SVG layer, and swapping it is one component.
+9. **`Toast` is 5 seconds** (the contract), not the prototype's 10; `durationMs` overrides it. How far it sits above the
+   pill is the provider's `toast.insets.bottom` in the root layout, set once, not each toast's. The action is the kit's
+   `Toast.Action` (a 48 dp ghost `Button`) with an `accent-press` label, not a `Tappable`, because a pressed fill from
+   `Tappable` would be a light patch on the navy toast.
+10. The kit stand-in (`test/mocks/heroui-native.tsx`): `Label` is a pressable root with a `Label.Text` part; `Toast` mirrors
+    the kit's `status` role and polite live region (it was `alert`); `mockToast.show` and `hide` accept arguments.
+
+### Not done here, and why
+
+- No screen was migrated: `Banner`, `Toast`, `PermissionState`, the screen skeletons, `StatTile` and `AreaPill` have no call
+  site yet (T529, T536 to T548, T553 to T559). `components/globe/**` and `components/trip/**` are untouched except three
+  test files of the globe cards that pinned the 004 classes.
+- `Toast` still needs the provider's `insets.bottom` and the one-line `GestureHandlerRootView` check on a device.
+
+### Device-only checks
+
+- A `boxShadow` on a kit Surface that has `overflow: hidden` (the lift) is drawn outside the card on iOS and on Android
+  9 and later; the `elevation` fallback below Android 9.
+- `border-separator`, `shadow-none` and our other utilities beat the kit's component classes (`surface__root`,
+  `list-group__item`, `label__text`) in Uniwind, as `bg-surface` did in 004 (the real-render tests prove the order of the
+  strings, not the cascade).
+- The Field focus ring (2.5 dp, 2 dp gap) on both platforms, with the sheet's keyboard up; the invalid boundary and the
+  ring together.
+- The skeleton shimmer at 1.4 s in `skeletonHighlight`, still under reduced motion and under the provider's
+  `animation: 'disable-all'`; the hero pin glyph.
+- The toast: announced once by VoiceOver and TalkBack (the kit renders the root twice, the second copy invisible and
+  `pointerEvents="none"`), the countdown bar shrinking toward the start edge in a right-to-left layout, the Undo target.
+- `StatTile` at font scales 1, 1.15, 1.5 and 2 in four themes (the row layout), `AreaPill` four across at 390 dp.

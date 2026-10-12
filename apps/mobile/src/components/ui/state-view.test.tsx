@@ -1,18 +1,20 @@
 /**
- * T069 / T422 - FR-021, FR-025, FR-035, contract C4-8. Empty, loading and error states
- * are designed states, held to the same standard as populated screens.
+ * T069 / T422 / T522 - FR-021, FR-025, FR-035, FR-064, contracts C4-8 and C5-28. Empty,
+ * loading and error states are designed states, held to the same standard as populated
+ * screens.
  *
  * Jest renders the kit as plain host nodes that forward every prop
  * (test/mocks/heroui-native.tsx), so what is asserted is the accessibility contract on
  * the host node and the SEMANTIC classes the adapter asks for, never real styling.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import type { JsonElement, JsonNode } from 'test-renderer';
 
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
-import { EmptyState, ErrorState, LoadingState } from './state-view';
+import { EmptyState, ErrorState, LoadingRegion, LoadingState } from './state-view';
 
 jest.mock('expo-symbols', () => {
   const { View } = require('react-native');
@@ -140,6 +142,144 @@ describe('<EmptyState> - FR-035', () => {
     const symbol = screen.getByTestId('symbol', hidden);
     expect(symbol.props.name).toEqual(icon);
     expect(screen.queryByTestId('symbol')).toBeNull();
+  });
+});
+
+describe('<EmptyState> text roles - C5-28', () => {
+  test('the title is a centred callout and the detail a centred muted body', async () => {
+    await render(<EmptyState title="No trips yet" detail="Plan one." />);
+    expect(classesIn(screen.getByText('No trips yet').props.className)).toEqual(
+      expect.arrayContaining(['text-[17px]', 'font-display', 'text-center']),
+    );
+    expect(classesIn(screen.getByText('Plan one.').props.className)).toEqual(
+      expect.arrayContaining(['text-[16px]', 'font-body', 'text-muted', 'text-center']),
+    );
+  });
+});
+
+describe('<EmptyState variant> - the art above the words (C5-28)', () => {
+  const art = () => screen.getByTestId('empty-art', hidden);
+
+  test('plain is the default: no art, and an icon only when asked', async () => {
+    await render(<EmptyState title="Nothing" testID="empty" />);
+    expect(screen.queryByTestId('empty-art', hidden)).toBeNull();
+    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+  });
+
+  test('ghost-stamp is a dashed 96 dp circle, decorative', async () => {
+    await render(
+      <EmptyState variant="ghost-stamp" title="No stops yet" testID="empty" />,
+    );
+    expect(classesIn(art().props.className)).toEqual(
+      expect.arrayContaining([
+        'size-24',
+        'rounded-full',
+        'border-2',
+        'border-dashed',
+        'border-field-border',
+      ]),
+    );
+    expect(art().props.accessibilityElementsHidden).toBe(true);
+    expect(art().props.importantForAccessibility).toBe('no-hide-descendants');
+    expect(screen.queryByTestId('empty-art')).toBeNull();
+  });
+
+  test('frames is three tilted empty photo frames with a pin each, the middle one raised', async () => {
+    await render(<EmptyState variant="frames" title="No photos yet" testID="empty" />);
+    const frames = [0, 1, 2].map((index) =>
+      screen.getByTestId(`empty-art-frame-${index}`, hidden),
+    );
+    for (const frame of frames) {
+      expect(classesIn(frame.props.className)).toEqual(
+        expect.arrayContaining([
+          'absolute',
+          'bg-skeleton',
+          'border-surface',
+          'rounded-2xl',
+        ]),
+      );
+    }
+    const style = (node: (typeof frames)[number]) => StyleSheet.flatten(node.props.style);
+    expect(style(frames[0]).transform).toEqual([{ rotate: '-9deg' }]);
+    expect(style(frames[1]).transform).toBeUndefined();
+    expect(style(frames[1]).top).toBeLessThan(style(frames[0]).top as number);
+    expect(style(frames[2]).transform).toEqual([{ rotate: '8deg' }]);
+    for (const frame of frames) expect(style(frame).boxShadow).toBeDefined();
+    const pins = screen.getAllByTestId('symbol', hidden).map((node) => node.props.name);
+    expect(pins).toEqual(Array(3).fill({ ios: 'mappin', android: 'location_on' }));
+    expect(art().props.accessibilityElementsHidden).toBe(true);
+  });
+
+  test('filtered is a magnifier in a cream roundel', async () => {
+    await render(<EmptyState variant="filtered" title="No results" testID="empty" />);
+    expect(classesIn(art().props.className)).toEqual(
+      expect.arrayContaining(['size-16', 'rounded-full', 'bg-surface-secondary']),
+    );
+    expect(screen.getByTestId('symbol', hidden).props.name).toEqual({
+      ios: 'magnifyingglass',
+      android: 'search',
+    });
+  });
+
+  test('the art comes before the words', async () => {
+    await render(
+      <EmptyState variant="ghost-stamp" title="No stops yet" testID="empty" />,
+    );
+    const tree = JSON.stringify(screen.toJSON());
+    expect(tree.indexOf('empty-art')).toBeLessThan(tree.indexOf('No stops yet'));
+  });
+
+  test('a variant keeps the title, the detail and the secondary action', async () => {
+    const onPress = jest.fn();
+    await render(
+      <EmptyState
+        variant="filtered"
+        title="No results for lisb0n"
+        detail="Check the spelling."
+        action={{ label: 'Clear search', onPress, testID: 'clear' }}
+        testID="empty"
+      />,
+    );
+    expect(screen.getByLabelText('Clear search').props.variant).toBe('secondary');
+    await fireEvent.press(screen.getByTestId('clear'));
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  test('the action is secondary unless the screen has no primary and says so', async () => {
+    await render(
+      <EmptyState
+        title="No photos yet"
+        action={{ label: 'Add photos', onPress: jest.fn(), primary: true }}
+      />,
+    );
+    expect(screen.getByLabelText('Add photos').props.variant).toBe('primary');
+  });
+});
+
+describe('<ErrorState> text roles - C5-28', () => {
+  test('the title is a centred danger callout and the detail a muted body', async () => {
+    await render(<ErrorState title="Could not load" detail="Try again." />);
+    expect(classesIn(screen.getByText('Could not load').props.className)).toEqual(
+      expect.arrayContaining(['text-[17px]', 'text-danger', 'text-center']),
+    );
+    expect(classesIn(screen.getByText('Try again.').props.className)).toEqual(
+      expect.arrayContaining(['text-[16px]', 'text-muted']),
+    );
+  });
+});
+
+describe('<LoadingRegion> - the one region of every skeleton', () => {
+  test('takes layout classes for the region and for the hidden wrapper', async () => {
+    await render(
+      <LoadingRegion testID="region" className="flex-1" gap="gap-4">
+        <></>
+      </LoadingRegion>,
+    );
+    const region = screen.getByTestId('region');
+    expect(classesIn(region.props.className)).toContain('flex-1');
+    expect(region.props.accessibilityRole).toBe('progressbar');
+    const wrapper = region.children[0] as unknown as { props: Record<string, unknown> };
+    expect(classesIn(wrapper.props.className)).toContain('gap-4');
   });
 });
 

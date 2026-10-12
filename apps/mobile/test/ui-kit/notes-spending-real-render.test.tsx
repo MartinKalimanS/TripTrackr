@@ -218,7 +218,7 @@ describe('the notes screen over the real kit', () => {
     await inKit(<NotesScreen />);
 
     expect(classesOf(screen.getByTestId('note-surface-n1'))).toEqual(
-      expect.arrayContaining(['bg-surface', 'border-dashed', 'border-pending']),
+      expect.arrayContaining(['bg-surface', 'border-dashed', 'border-amber-line']),
     );
     expect(classesOf(screen.getByTestId('note-surface-n2'))).not.toContain(
       'border-dashed',

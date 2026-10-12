@@ -153,15 +153,15 @@ describe('the trip screen over the real kit', () => {
       }
     }
     expect(classesOf(screen.getByTestId('stop-card-s1'))).toEqual(
-      expect.arrayContaining(['bg-surface', 'shadow-none']),
+      expect.arrayContaining(['surface__root--variant-transparent', 'shadow-none']),
     );
     expect(classesOf(screen.getByTestId('stop-card-s1'))).not.toContain('border-dashed');
     expect(classesOf(screen.getByTestId('stop-card-s2'))).toEqual(
       expect.arrayContaining([
-        'bg-surface',
+        'surface__root--variant-transparent',
         'shadow-none',
         'border-dashed',
-        'border-pending',
+        'border-amber-line',
       ]),
     );
   });
