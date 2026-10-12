@@ -78,46 +78,90 @@ describe('src/global.css — nothing hand-written but wiring (contract C4-5)', (
   });
 });
 
-describe('src/global.css — the display face (research D4-07)', () => {
-  test('defines --font-display and --font-display-bold in @theme static', () => {
+/**
+ * The six faces the app embeds (feature 005, research D5-06, contract C5-7), by the CSS
+ * variable that names each one. The pairing is what a person decides; every family name
+ * is READ from the font file, so a package upgrade that renames either spelling fails here.
+ */
+const FACES = {
+  '--font-display': 'BricolageGrotesque_600SemiBold.ttf',
+  '--font-display-bold': 'BricolageGrotesque_700Bold.ttf',
+  '--font-body': 'DMSans_400Regular.ttf',
+  '--font-body-semibold': 'DMSans_600SemiBold.ttf',
+  '--font-body-bold': 'DMSans_700Bold.ttf',
+  '--font-serif': 'InstrumentSerif_400Regular_Italic.ttf',
+} as const;
+const VARIABLES = Object.keys(FACES) as (keyof typeof FACES)[];
+
+/** The embedded file a face is, found by its file name in the `expo-font` entry. */
+function fileOf(variable: keyof typeof FACES): string {
+  const entry = embeddedFontPaths().find(
+    (file) => path.basename(file) === FACES[variable],
+  );
+  if (!entry) throw new Error(`${FACES[variable]} is not embedded by app.config.ts`);
+  return resolveEmbeddedFont(entry);
+}
+
+describe('src/global.css — the type faces (004 D4-07, extended by 005 D5-06)', () => {
+  test('defines the six family variables in @theme static, and no other --font-*', () => {
     // `static` emits them although no class uses them yet: a native header cannot take a
     // className, so it reads the family with `useCSSVariable('--font-display')`.
-    expect(declared('@theme static {', '--font-display')).toBeDefined();
-    expect(declared('@theme static {', '--font-display-bold')).toBeDefined();
+    const start = css.indexOf('@theme static {');
+    const block = css.slice(start, css.indexOf('}', start));
+    const names = [...block.matchAll(/(--font-[a-z0-9-]+)\s*:/g)].map((m) => m[1]);
+    expect(names.sort()).toEqual([...VARIABLES].sort());
   });
 
-  test('leaves the kit body families alone: the interface stays in the system face', () => {
+  test('embeds six files in all, one per variable, and no third Bricolage weight', () => {
+    const files = embeddedFontPaths().map((file) => path.basename(file));
+    expect(files.slice().sort()).toEqual(Object.values(FACES).slice().sort());
+    expect(files.filter((file) => file.startsWith('BricolageGrotesque_'))).toEqual([
+      'BricolageGrotesque_600SemiBold.ttf',
+      'BricolageGrotesque_700Bold.ttf',
+    ]);
+  });
+
+  test('leaves the kit body families alone: mapping them is the adapters job, not the embed', () => {
     for (const weight of ['normal', 'medium', 'semibold', 'bold']) {
-      expect(css).not.toMatch(new RegExp(`--font-${weight}\\s*:`));
+      expect(css).not.toMatch(new RegExp(`--font-${weight}\s*:`));
     }
   });
 
-  describe('each family name is the one the platform registers for the embedded file', () => {
-    const [semibold, bold] = embeddedFontPaths().map(resolveEmbeddedFont);
+  describe.each(VARIABLES)(
+    '%s answers to the name the platform registers',
+    (variable) => {
+      test('Android answers to the file name without its extension', () => {
+        expect(declared('@theme static {', variable)).toBe(
+          `'${androidFamilyName(fileOf(variable))}'`,
+        );
+      });
 
-    test('Android answers to the file name without its extension', () => {
-      expect(declared('@theme static {', '--font-display')).toBe(
-        `'${androidFamilyName(semibold)}'`,
-      );
-      expect(declared('@theme static {', '--font-display-bold')).toBe(
-        `'${androidFamilyName(bold)}'`,
-      );
-    });
+      test('iOS answers to the name inside the file, which is its PostScript name', () => {
+        // `@variant ios` inside `@layer theme { :root { } }` is Uniwind's documented
+        // platform override (https://docs.uniwind.dev/faq.md, "Platform-Specific Fonts").
+        expect(declared('@variant ios {', variable)).toBe(
+          `'${fontNames(fileOf(variable)).postScript}'`,
+        );
+      });
 
-    test('iOS answers to the name inside the file, which is its PostScript name', () => {
-      // `@variant ios` inside `@layer theme { :root { } }` is Uniwind's documented
-      // platform override (https://docs.uniwind.dev/faq.md, "Platform-Specific Fonts").
-      expect(declared('@variant ios {', '--font-display')).toBe(
-        `'${fontNames(semibold).postScript}'`,
-      );
-      expect(declared('@variant ios {', '--font-display-bold')).toBe(
-        `'${fontNames(bold).postScript}'`,
-      );
-    });
+      test('the two platforms really do differ, which is why the override exists', () => {
+        const file = fileOf(variable);
+        expect(fontNames(file).postScript).not.toBe(androidFamilyName(file));
+      });
+    },
+  );
 
-    test('the two platforms really do differ, which is why the override exists', () => {
-      expect(fontNames(semibold).postScript).not.toBe(androidFamilyName(semibold));
-      expect(fontNames(bold).postScript).not.toBe(androidFamilyName(bold));
-    });
+  test('the iOS block names exactly the six variables too, so none falls back to Android', () => {
+    const start = css.indexOf('@variant ios {');
+    const block = css.slice(start, css.indexOf('}', start));
+    const names = [...block.matchAll(/(--font-[a-z0-9-]+)\s*:/g)].map((m) => m[1]);
+    expect(names.sort()).toEqual([...VARIABLES].sort());
+  });
+
+  test('the six names are six different families on each platform', () => {
+    const android = VARIABLES.map((variable) => androidFamilyName(fileOf(variable)));
+    const ios = VARIABLES.map((variable) => fontNames(fileOf(variable)).postScript);
+    expect(new Set(android).size).toBe(6);
+    expect(new Set(ios).size).toBe(6);
   });
 });

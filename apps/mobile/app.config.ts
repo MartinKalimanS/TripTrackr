@@ -234,23 +234,30 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // from RNMAPBOX_MAPS_DOWNLOAD_TOKEN at build time (see STORE_COMPLIANCE.md).
     '@rnmapbox/maps',
     [
-      // The display face (feature 004, research D4-07): two weights, embedded at build
-      // time so they are there on the first frame, with no run-time load
-      // (https://docs.expo.dev/versions/v57.0.0/sdk/font.md, "Configuration in app
-      // config"). PROVISIONAL: the final pick is made on a device in T408. The entries
-      // are package specifiers, not paths: the plugin tries an entry as a path under this
-      // project and, when nothing is there, resolves it as a module from here
-      // (`createRequire(projectRoot)`, expo-font/plugin/build/utils.js), so the entry does
-      // not depend on where npm hoists the package. The v57 page documents paths relative
-      // to the project root; the module fallback is in the plugin's source, and
-      // test/config/app-config.test.ts runs the plugin's own resolver on these entries,
-      // so a plugin that drops it fails there. The family names the two platforms
-      // register are in src/global.css.
+      // The type faces (feature 004 research D4-07, extended by feature 005 research
+      // D5-06): six files, embedded at build time so they are there on the first frame,
+      // with no run-time load (https://docs.expo.dev/versions/v57.0.0/sdk/font.md,
+      // "Configuration in app config"). Bricolage Grotesque 600 and 700 (display), DM Sans
+      // 400, 600 and 700 (body), Instrument Serif Italic 400 (the one accent word); no
+      // third Bricolage weight, every extra file is app size (SC-011). Adding a face needs
+      // a new dev-client build (the plugin is native), which is why they landed in the one
+      // native batch (SC-017). The entries are package specifiers, not paths: the plugin
+      // tries an entry as a path under this project and, when nothing is there, resolves
+      // it as a module from here (`createRequire(projectRoot)`,
+      // expo-font/plugin/build/utils.js), so the entry does not depend on where npm
+      // hoists the package. The v57 page documents paths relative to the project root; the
+      // module fallback is in the plugin's source, and test/config/app-config.test.ts runs
+      // the plugin's own resolver on these entries, so a plugin that drops it fails
+      // there. The family names the two platforms register are in src/global.css.
       'expo-font',
       {
         fonts: [
           '@expo-google-fonts/bricolage-grotesque/600SemiBold/BricolageGrotesque_600SemiBold.ttf',
           '@expo-google-fonts/bricolage-grotesque/700Bold/BricolageGrotesque_700Bold.ttf',
+          '@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf',
+          '@expo-google-fonts/dm-sans/600SemiBold/DMSans_600SemiBold.ttf',
+          '@expo-google-fonts/dm-sans/700Bold/DMSans_700Bold.ttf',
+          '@expo-google-fonts/instrument-serif/400Regular_Italic/InstrumentSerif_400Regular_Italic.ttf',
         ],
       },
     ],

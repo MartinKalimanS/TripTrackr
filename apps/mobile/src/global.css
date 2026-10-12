@@ -16,11 +16,23 @@
  * overridden variable by variable. `@import` is only honoured ahead of every other rule,
  * so the four imports stay together at the top.
  *
- * What is written by hand below is the display face (research D4-07, PROVISIONAL until
- * the device pick in T408): two weights of Bricolage Grotesque, embedded at build time by
- * the `expo-font` config plugin (`app.config.ts`). The kit's own `--font-normal`,
- * `--font-medium`, `--font-semibold` and `--font-bold` are deliberately NOT set: body text
- * stays in the platform face, so Dynamic Type and font scaling work unchanged.
+ * What is written by hand below is the type faces (feature 005, research D5-06, contract
+ * C5-7, which supersede 004 D4-07): six files embedded at build time by the `expo-font`
+ * config plugin (`app.config.ts`), one variable each, named by role and weight:
+ *
+ *   --font-display, --font-display-bold         Bricolage Grotesque 600, 700
+ *   --font-body, --font-body-semibold,
+ *   --font-body-bold                            DM Sans 400, 600, 700
+ *   --font-serif                                Instrument Serif Italic 400
+ *
+ * There is no third Bricolage weight. Each weight is its own family, so a text style sets
+ * `fontWeight: 'normal'` beside it (a weight on top of a weight-named family emboldens
+ * twice) and, for the italic, sets no `fontStyle` (the file is the italic). The kit's own
+ * `--font-normal`, `--font-medium`, `--font-semibold` and `--font-bold` are deliberately
+ * NOT set here: mapping the kit's text onto these faces is the adapters' decision. React
+ * Native scales any custom face by the user's text size, so Dynamic Type and Android font
+ * scaling work unchanged. DM Sans has no tabular figures: figures that align are set in
+ * Bricolage (research D5-06).
  *
  * A custom family is one name per weight, and the name is not the same on both platforms
  * (https://docs.expo.dev/versions/v57.0.0/sdk/font.md, "Configurable properties"): on
@@ -35,6 +47,10 @@
 @theme static {
   --font-display: 'BricolageGrotesque_600SemiBold';
   --font-display-bold: 'BricolageGrotesque_700Bold';
+  --font-body: 'DMSans_400Regular';
+  --font-body-semibold: 'DMSans_600SemiBold';
+  --font-body-bold: 'DMSans_700Bold';
+  --font-serif: 'InstrumentSerif_400Regular_Italic';
 }
 
 @layer theme {
@@ -42,6 +58,10 @@
     @variant ios {
       --font-display: 'BricolageGrotesque-SemiBold';
       --font-display-bold: 'BricolageGrotesque-Bold';
+      --font-body: 'DMSans-Regular';
+      --font-body-semibold: 'DMSans-SemiBold';
+      --font-body-bold: 'DMSans-Bold';
+      --font-serif: 'InstrumentSerif-Italic';
     }
   }
 }
