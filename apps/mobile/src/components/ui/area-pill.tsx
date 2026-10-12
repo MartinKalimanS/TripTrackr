@@ -52,7 +52,7 @@ export interface AreaPillProps {
 /** The pill is at least this tall; the platform target, scaled, may ask for more. */
 export const AREA_MIN_HEIGHT = 72;
 
-const LOCK: IconName = { ios: 'lock', android: 'lock' };
+const LOCK: IconName = 'lock';
 const WARN_RING = 1.5;
 
 /** "Photos, 128, only you can see this, needs attention". */
@@ -80,7 +80,7 @@ function Lock({ testID }: { testID?: string }) {
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
       className="absolute right-1.5 top-1.5 size-5 items-center justify-center rounded-full bg-aqua-tint">
-      <Icon name={LOCK} size={16} tone="default" />
+      <Icon name={LOCK} size={16} tone="aquaInk" />
     </View>
   );
 }

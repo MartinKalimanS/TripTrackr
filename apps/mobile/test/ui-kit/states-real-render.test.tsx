@@ -13,6 +13,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import type * as HeroUI from 'heroui-native';
 import { StyleSheet } from 'react-native';
 
+import { anyGlyph, glyphNamesIn } from '../helpers/icons';
 import { Banner } from '@/components/ui/banner';
 import { Bone, ShimmerGroup } from '@/components/ui/skeleton';
 import { TripDetailSkeleton, TripListSkeleton } from '@/components/ui/screen-skeletons';
@@ -35,12 +36,6 @@ jest.mock('react-native-gesture-handler', () => {
 });
 jest.mock('@/hooks/use-appearance');
 jest.mock('heroui-native', () => jest.requireActual('heroui-native'));
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 const { HeroUINativeProvider } = jest.requireActual<typeof HeroUI>('heroui-native');
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
@@ -96,8 +91,8 @@ describe('skeletons over the real kit', () => {
     expect(screen.getAllByRole('progressbar')).toHaveLength(1);
     const region = screen.getByTestId('trips-skeleton');
     expect(region.props.accessibilityLabel).toBe('Loading trips');
-    expect(screen.queryByTestId('symbol')).toBeNull();
-    expect(screen.getByTestId('symbol', hidden)).toBeTruthy();
+    expect(screen.queryByTestId(anyGlyph)).toBeNull();
+    expect(glyphNamesIn()).toEqual(['map-pin']);
   });
 
   test('the trip detail skeleton renders its tiles and stops over the real kit', async () => {

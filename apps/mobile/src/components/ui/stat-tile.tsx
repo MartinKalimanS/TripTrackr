@@ -19,8 +19,9 @@
  *   name. The tile is one accessibility element; its numeral and label are not read apart.
  * - With `onPress` it is ONE control (`Tappable`: role `button`, `busy` and `disabled`
  *   announced and inert, the scaled platform target, the focus ring) and names its cue (FR-024):
- *   a 16 dp chevron after the label, or the caller's own `icon`. Without it nothing opens,
- *   so no chevron is drawn unless the caller names a glyph. `<testID>-cue` is the glyph.
+ *   a 16 dp duotone chevron after the label (`chevron-right`), or the caller's own `icon`
+ *   key. Without it nothing opens, so no chevron is drawn unless the caller names a glyph.
+ *   `<testID>-cue` is the glyph.
  * - At a font scale of 1.15 and above (`reflow.ts`) the tile is a row: the label on the
  *   left, the figure on the right (the prototype's `data-bigtext`), so three tiles stack
  *   instead of squeezing a 36 dp numeral into a third of the width.
@@ -48,7 +49,7 @@ interface StatTileBaseProps {
   /** A unit, shown beside the figure (`km`). */
   unit?: string;
   label: string;
-  /** The glyph after the label, 16 dp. A pressable tile defaults to a chevron. */
+  /** The registry key of the glyph after the label (16 dp, duotone); default `chevron-right`. */
   icon?: IconName;
   /** What a screen reader says. Composed from the parts unless given; required for an element value. */
   accessibilityLabel?: string;
@@ -120,6 +121,7 @@ function Caption({
         <Icon
           name={icon}
           size={16}
+          weight="duotone"
           tone="muted"
           testID={testID ? `${testID}-cue` : undefined}
         />

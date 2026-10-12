@@ -11,18 +11,14 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';
 import { StyleSheet } from 'react-native';
 
+import { anyGlyph, glyphsIn } from '../../../test/helpers/icons';
+
 import { Colors, MinTouchTarget } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
 import { Banner } from './banner';
 
 jest.mock('@/hooks/use-appearance');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
@@ -40,7 +36,6 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-const hidden = { includeHiddenElements: true };
 const OFFLINE = "Offline. 3 changes will sync when you're back online.";
 const ERROR = "Couldn't sync 2 changes. Your trips are safe on this phone.";
 const tokens = (className: unknown) =>
@@ -73,10 +68,10 @@ describe('<Banner tone="offline"> - amber, words and an icon', () => {
 
   test('is not colour alone: a decorative 20 dp wifi-off icon leads the words', async () => {
     await render(offline());
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual({ ios: 'wifi.slash', android: 'wifi_off' });
-    expect(symbol.props.size).toBe(20);
-    expect(screen.queryByTestId('symbol')).toBeNull();
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: 'wifi-off', size: 20, weight: 'regular' }),
+    ]);
+    expect(screen.queryByTestId(anyGlyph)).toBeNull();
   });
 
   test('the words are one element, announced politely and not as an alert', async () => {
@@ -117,13 +112,10 @@ describe('<Banner tone="error"> - danger, an alert and a way out', () => {
 
   test('is not colour alone: a decorative cloud alert icon leads the words', async () => {
     await render(failed());
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual({
-      ios: 'exclamationmark.icloud',
-      android: 'cloud_off',
-    });
-    expect(symbol.props.size).toBe(20);
-    expect(screen.queryByTestId('symbol')).toBeNull();
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: 'cloud-off', size: 20, weight: 'regular' }),
+    ]);
+    expect(screen.queryByTestId(anyGlyph)).toBeNull();
   });
 
   test('the action is an underlined button named by its label, beside the words not inside them', async () => {
@@ -176,13 +168,14 @@ describe('<Banner> colour and ids', () => {
     }
   });
 
-  test('asks the theme for the ink of its icon: pending for offline, danger for an error', async () => {
-    const useThemeColor = jest.spyOn(HeroUI, 'useThemeColor');
-    useThemeColor.mockReturnValue('themed' as never);
+  test('the icon is in the ink of the words: amber ink for offline, danger for an error', async () => {
+    jest
+      .spyOn(HeroUI, 'useThemeColor')
+      .mockImplementation(((token: string) => `colour:${token}`) as never);
     await render(<Banner tone="offline" message={OFFLINE} />);
-    expect(useThemeColor).toHaveBeenCalledWith('pending');
+    expect(glyphsIn().map((glyph) => glyph.color)).toEqual(['colour:amber-ink']);
     await render(<Banner tone="error" message={ERROR} />);
-    expect(useThemeColor).toHaveBeenCalledWith('danger');
+    expect(glyphsIn().map((glyph) => glyph.color)).toEqual(['colour:danger']);
   });
 
   test('without a testID the nodes carry none', async () => {

@@ -14,17 +14,10 @@ import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 import { Motion } from '@/theme';
 
+import { anyGlyph, glyphsIn } from '../../../test/helpers/icons';
 import { Bone, PhotoBone, ShimmerGroup, useSkeletonMotion } from './skeleton';
 
 jest.mock('@/hooks/use-appearance');
-jest.mock('expo-symbols', () => {
-  const { View: MockView } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => (
-      <MockView testID="symbol" {...props} />
-    ),
-  };
-});
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
@@ -150,10 +143,10 @@ describe('<PhotoBone> - a photograph skeleton carries a pin glyph (C5-28)', () =
     expect(tokens(screen.getByTestId('photo').props.className)).toEqual(
       expect.arrayContaining(['bg-skeleton', 'aspect-[16/10]', 'rounded-3xl']),
     );
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual({ ios: 'mappin', android: 'location_on' });
-    expect(symbol.props.size).toBe(24);
-    expect(screen.queryByTestId('symbol')).toBeNull();
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: 'map-pin', size: 24, weight: 'regular' }),
+    ]);
+    expect(screen.queryByTestId(anyGlyph)).toBeNull();
     const glyph = screen.getByTestId('photo-glyph', hidden);
     expect(tokens(glyph.props.className)).toEqual(
       expect.arrayContaining(['absolute', 'items-center', 'justify-center']),

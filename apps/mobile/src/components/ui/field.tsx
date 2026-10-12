@@ -67,7 +67,7 @@ import {
   useThemeColor,
 } from 'heroui-native';
 import { useState } from 'react';
-import { View, type TextInputProps, type ViewStyle } from 'react-native';
+import { View, type TextInputProps, type TextStyle } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -106,7 +106,7 @@ const INVALID_BORDER = 1.5;
 const BODY_LINE_HEIGHT = TypeRoles.body.lineHeight ?? 24;
 const LABEL_CLASSES = typeClasses('label', 'default', true);
 const HELPER_CLASSES = 'flex-1 text-[13px] leading-[18px] font-body text-muted';
-const INFO: IconName = { ios: 'info.circle', android: 'info' };
+const INFO: IconName = 'info';
 
 /**
  * The input's minimum height: 56 dp, scaled by the font scale and never below the
@@ -136,8 +136,8 @@ interface FieldColours {
 function inputStyle(
   state: { focused: boolean; invalid: boolean; minHeight: number },
   { focus, surface, danger }: FieldColours,
-): ViewStyle[] {
-  const ring: ViewStyle = state.focused
+): TextStyle[] {
+  const ring: TextStyle = state.focused
     ? {
         backgroundColor: surface,
         outlineWidth: FocusRing.width,
@@ -146,7 +146,7 @@ function inputStyle(
         outlineStyle: 'solid',
       }
     : { outlineWidth: 0 };
-  const boundary: ViewStyle = state.invalid
+  const boundary: TextStyle = state.invalid
     ? { borderColor: danger, borderWidth: INVALID_BORDER }
     : {};
   return [cornerOf('md'), { minHeight: state.minHeight }, ring, boundary];
