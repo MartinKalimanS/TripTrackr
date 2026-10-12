@@ -36,8 +36,8 @@ const HIDDEN = {
   pointerEvents: 'none',
 } as const;
 
-const PIN: IconName = { ios: 'mappin', android: 'location_on' };
-const MAGNIFIER: IconName = { ios: 'magnifyingglass', android: 'search' };
+const PIN: IconName = 'map-pin';
+const MAGNIFIER: IconName = 'search';
 
 /** Position, tilt and stacking of the three frames, in dp. */
 const FRAMES: readonly ViewStyle[] = [

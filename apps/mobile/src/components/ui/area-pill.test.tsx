@@ -12,18 +12,14 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';
 import { StyleSheet } from 'react-native';
 
+import { anyGlyph, glyphNamesIn, glyphsIn } from '../../../test/helpers/icons';
+
 import { Colors, MinTouchTarget } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
 import { AreaPill } from './area-pill';
 
 jest.mock('@/hooks/use-appearance');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
@@ -42,7 +38,7 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 const hidden = { includeHiddenElements: true };
-const PHOTOS = { ios: 'photo.on.rectangle', android: 'photo_library' } as const;
+const PHOTOS = 'images';
 const tokens = (className: unknown) =>
   String(className ?? '')
     .split(/\s+/)
@@ -87,11 +83,10 @@ describe('<AreaPill> is ONE control - C5-18', () => {
     await render(photos());
     expect(screen.getByText('128')).toBeTruthy();
     expect(screen.getByText('Photos')).toBeTruthy();
-    const symbols = screen.getAllByTestId('symbol', hidden);
-    expect(symbols).toHaveLength(1);
-    expect(symbols[0].props.name).toEqual(PHOTOS);
-    expect(symbols[0].props.size).toBe(24);
-    expect(screen.queryByTestId('symbol')).toBeNull();
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: PHOTOS, size: 24, weight: 'regular' }),
+    ]);
+    expect(screen.queryByTestId(anyGlyph)).toBeNull();
   });
 
   test('busy and disabled are announced and ignore presses', async () => {
@@ -154,8 +149,16 @@ describe('<AreaPill private> - the "only you" lock', () => {
     expect(
       tokens(screen.getByTestId('trip-open-photos-lock', hidden).props.className),
     ).toEqual(expect.arrayContaining(['absolute', 'bg-aqua-tint', 'rounded-full']));
-    const names = screen.getAllByTestId('symbol', hidden).map((node) => node.props.name);
-    expect(names).toContainEqual({ ios: 'lock', android: 'lock' });
+    expect(glyphNamesIn()).toEqual([PHOTOS, 'lock']);
+  });
+
+  test('the lock is 16 dp in the aqua ink, on the aqua tint', async () => {
+    jest
+      .spyOn(HeroUI, 'useThemeColor')
+      .mockImplementation(((token: string) => `colour:${token}`) as never);
+    await render(photos({ private: true }));
+    const [, lock] = glyphsIn();
+    expect(lock).toMatchObject({ name: 'lock', size: 16, color: 'colour:aqua-ink' });
   });
 
   test('the lock is decorative: the name already carries it', async () => {

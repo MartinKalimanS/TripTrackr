@@ -15,6 +15,7 @@ import type { JsonElement, JsonNode } from 'test-renderer';
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
+import { anyGlyph, glyphNamesIn } from '../../../test/helpers/icons';
 import {
   AreaSkeleton,
   HomeSkeleton,
@@ -24,12 +25,6 @@ import {
 
 jest.mock('@/hooks/use-appearance');
 jest.mock('@/hooks/use-color-scheme');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
@@ -56,7 +51,6 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-const hidden = { includeHiddenElements: true };
 const classesIn = (node: JsonElement) =>
   String(node.props.className ?? '')
     .split(/\s+/)
@@ -160,9 +154,8 @@ describe('<TripListSkeleton> - a hero, a ticket and rows (screens.md Trips)', ()
     const [hero] = withClasses('aspect-[16/10]', 'rounded-3xl');
     expect(hero).toBeDefined();
     expect(classesIn(hero)).toContain('w-full');
-    const symbols = screen.getAllByTestId('symbol', hidden);
-    expect(symbols).toHaveLength(1);
-    expect(symbols[0].props.name).toEqual({ ios: 'mappin', android: 'location_on' });
+    expect(glyphNamesIn()).toEqual(['map-pin']);
+    expect(screen.queryByTestId(anyGlyph)).toBeNull();
   });
 
   test('the ticket is 96 dp tall with a 24 dp corner', async () => {

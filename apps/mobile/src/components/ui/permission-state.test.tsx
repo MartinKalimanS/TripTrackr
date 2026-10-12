@@ -11,15 +11,10 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
+import { anyGlyph, glyphsIn } from '../../../test/helpers/icons';
 import { PermissionState } from './permission-state';
 
 jest.mock('@/hooks/use-appearance');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
@@ -38,7 +33,7 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 const hidden = { includeHiddenElements: true };
-const CAMERA_OFF = { ios: 'camera.fill', android: 'no_photography' } as const;
+const CAMERA_OFF = 'camera';
 const tokens = (className: unknown) =>
   String(className ?? '')
     .split(/\s+/)
@@ -71,10 +66,10 @@ describe('<PermissionState> - words, an icon and a way forward', () => {
 
   test('the icon is decorative and sits in a cream roundel', async () => {
     await render(photos());
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual(CAMERA_OFF);
-    expect(symbol.props.size).toBe(24);
-    expect(screen.queryByTestId('symbol')).toBeNull();
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: CAMERA_OFF, size: 24, weight: 'regular' }),
+    ]);
+    expect(screen.queryByTestId(anyGlyph)).toBeNull();
     expect(tokens(screen.getByTestId('permission-icon', hidden).props.className)).toEqual(
       expect.arrayContaining(['bg-surface-secondary', 'rounded-full']),
     );

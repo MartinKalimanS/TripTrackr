@@ -74,7 +74,7 @@ export function Bone({ className, ...rest }: ItemProps) {
   );
 }
 
-const PIN: IconName = { ios: 'mappin', android: 'location_on' };
+const PIN: IconName = 'map-pin';
 
 export type PhotoBoneProps = ItemProps & {
   /** Layout classes for the box that holds the bone and its glyph (a `flex-1`). */

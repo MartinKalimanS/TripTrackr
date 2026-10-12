@@ -50,8 +50,8 @@ export interface BannerProps {
   testID?: string;
 }
 
-const WIFI_OFF: IconName = { ios: 'wifi.slash', android: 'wifi_off' };
-const CLOUD_ALERT: IconName = { ios: 'exclamationmark.icloud', android: 'cloud_off' };
+const WIFI_OFF: IconName = 'wifi-off';
+const CLOUD_OFF: IconName = 'cloud-off';
 
 interface ToneLook {
   box: string;
@@ -62,8 +62,8 @@ interface ToneLook {
 
 /** Written out in full so Tailwind finds each class by scanning the source. */
 const LOOKS: Record<BannerTone, ToneLook> = {
-  offline: { box: 'bg-amber-tint', ink: 'amber', icon: WIFI_OFF, iconTone: 'pending' },
-  error: { box: 'bg-danger-tint', ink: 'danger', icon: CLOUD_ALERT, iconTone: 'danger' },
+  offline: { box: 'bg-amber-tint', ink: 'amber', icon: WIFI_OFF, iconTone: 'amberInk' },
+  error: { box: 'bg-danger-tint', ink: 'danger', icon: CLOUD_OFF, iconTone: 'danger' },
 };
 
 function Words({

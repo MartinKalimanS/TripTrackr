@@ -8,20 +8,16 @@
  * text props the adapter asked for, never real styling.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import * as HeroUI from 'heroui-native';
 import { StyleSheet, Text as NativeText } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
+import { anyGlyph, glyphNamesIn, glyphsIn } from '../../../test/helpers/icons';
 import { StatTile } from './stat-tile';
 
 jest.mock('@/hooks/use-appearance');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
@@ -50,8 +46,6 @@ const tokens = (className: unknown) =>
 const classesOf = (testID: string) => tokens(screen.getByTestId(testID).props.className);
 const styleOf = (testID: string) =>
   StyleSheet.flatten(screen.getByTestId(testID).props.style) as Record<string, unknown>;
-
-const CHEVRON = { ios: 'chevron.forward', android: 'chevron_right' };
 
 const countries = (props: Record<string, unknown> = {}) => (
   <StatTile value={14} of={195} label="Countries" testID="stat" {...props} />
@@ -158,16 +152,23 @@ describe('<StatTile> read-only - the figure is announced once, in words', () => 
 
   test('draws no glyph unless asked, because nothing here opens', async () => {
     await render(countries());
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
   });
 
-  test('a glyph the caller names is 16 dp, muted and decorative', async () => {
-    const icon = { ios: 'globe', android: 'public' } as const;
-    await render(countries({ icon }));
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual(icon);
-    expect(symbol.props.size).toBe(16);
-    expect(screen.queryByTestId('symbol')).toBeNull();
+  test('a glyph the caller names is 16 dp, duotone, muted and decorative', async () => {
+    jest
+      .spyOn(HeroUI, 'useThemeColor')
+      .mockImplementation(((token: string) => `colour:${token}`) as never);
+    await render(countries({ icon: 'globe' }));
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({
+        name: 'globe',
+        size: 16,
+        weight: 'duotone',
+        color: 'colour:muted',
+      }),
+    ]);
+    expect(screen.queryByTestId(anyGlyph)).toBeNull();
   });
 
   test('an element value needs a name of its own', async () => {
@@ -193,17 +194,16 @@ describe('<StatTile onPress> is one control with a cue', () => {
 
   test('names its cue: a 16 dp chevron after the label, decorative', async () => {
     await render(countries({ onPress: jest.fn() }));
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual(CHEVRON);
-    expect(symbol.props.size).toBe(16);
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: 'chevron-right', size: 16, weight: 'duotone' }),
+    ]);
+    expect(screen.queryByTestId(anyGlyph)).toBeNull();
     expect(screen.getByTestId('stat-cue', hidden).props.accessible).toBe(false);
   });
 
   test('a glyph of its own replaces the chevron', async () => {
-    const icon = { ios: 'arrow.up.right', android: 'north_east' } as const;
-    await render(countries({ onPress: jest.fn(), icon }));
-    expect(screen.getAllByTestId('symbol', hidden)).toHaveLength(1);
-    expect(screen.getByTestId('symbol', hidden).props.name).toEqual(icon);
+    await render(countries({ onPress: jest.fn(), icon: 'arrow-right' }));
+    expect(glyphNamesIn()).toEqual(['arrow-right']);
   });
 
   test('refuses a blank name from the caller', async () => {

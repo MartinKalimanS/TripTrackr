@@ -5,7 +5,7 @@
  * hand, so a refusal looks the same wherever it appears.
  *
  *   <PermissionState
- *     icon={{ ios: 'camera.fill', android: 'no_photography' }}
+ *     icon="camera"
  *     title="Photos access is off"
  *     detail="Turn it on in Settings to add photos from your library."
  *     onOpenSettings={openSettings}

@@ -16,15 +16,10 @@ import { Colors, MinTouchTarget } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 import { FocusRing, Radii, TypeRoles } from '@/theme';
 
+import { anyGlyph, glyphNamesIn, glyphsIn } from '../../../test/helpers/icons';
 import { Field, fieldMinHeight } from './field';
 
 jest.mock('@/hooks/use-appearance');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
@@ -44,13 +39,10 @@ function mockAppearance(overrides: Partial<AppearanceContext> = {}) {
 
 beforeEach(() => mockAppearance());
 
-const hidden = { includeHiddenElements: true };
 const tokens = (className: unknown) =>
   String(className ?? '')
     .split(/\s+/)
     .filter(Boolean);
-const ALERT_ICON = { ios: 'exclamationmark.triangle', android: 'warning' };
-const INFO_ICON = { ios: 'info.circle', android: 'info' };
 
 const input = () => screen.getByLabelText('Destination');
 const classesOf = (element: { props: { className?: unknown } }) =>
@@ -395,11 +387,10 @@ describe('<Field> look - C5-17', () => {
     await renderField({ error: 'Enter a destination', testID: 'destination' });
     const alert = screen.getByRole('alert');
     expect(alert.props.accessible).toBe(true);
-    const symbols = screen.getAllByTestId('symbol', hidden);
-    expect(symbols).toHaveLength(1);
-    expect(symbols[0].props.name).toEqual(ALERT_ICON);
-    expect(symbols[0].props.size).toBe(16);
-    expect(screen.queryByTestId('symbol')).toBeNull();
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: 'alert', size: 16, weight: 'regular' }),
+    ]);
+    expect(screen.queryByTestId(anyGlyph)).toBeNull();
     expect(tokens(screen.getByText('Enter a destination').props.className)).toEqual(
       expect.arrayContaining(['text-[14px]', 'text-danger']),
     );
@@ -407,10 +398,9 @@ describe('<Field> look - C5-17', () => {
 
   test('the helper text has a leading info icon and the muted ink, and no alert role', async () => {
     await renderField({ description: 'A city or a country' });
-    const symbols = screen.getAllByTestId('symbol', hidden);
-    expect(symbols).toHaveLength(1);
-    expect(symbols[0].props.name).toEqual(INFO_ICON);
-    expect(symbols[0].props.size).toBe(16);
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: 'info', size: 16, weight: 'regular' }),
+    ]);
     expect(tokens(screen.getByText('A city or a country').props.className)).toEqual(
       expect.arrayContaining(['text-[13px]', 'text-muted']),
     );
@@ -419,13 +409,19 @@ describe('<Field> look - C5-17', () => {
 
   test('an error and a helper show both icons, the error first', async () => {
     await renderField({ error: 'Enter one', description: 'A city or a country' });
-    const names = screen.getAllByTestId('symbol', hidden).map((node) => node.props.name);
-    expect(names).toEqual([ALERT_ICON, INFO_ICON]);
+    expect(glyphNamesIn()).toEqual(['alert', 'info']);
   });
 
   test('no icon is drawn for a plain field', async () => {
     await renderField();
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
+  });
+
+  test('the error icon is in the danger ink and the helper icon in the muted ink', async () => {
+    await renderField({ error: 'Enter one', description: 'A city or a country' });
+    const [error, helper] = glyphsIn();
+    expect(error.color).toBe('colour:danger');
+    expect(helper.color).toBe('colour:muted');
   });
 });
 

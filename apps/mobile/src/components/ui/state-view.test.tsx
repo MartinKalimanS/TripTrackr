@@ -45,6 +45,7 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
+const hidden = { includeHiddenElements: true };
 const classesIn = (className: unknown) => String(className ?? '').split(/\s+/);
 const root = () => screen.toJSON() as JsonElement;
 const elementsOf = (nodes: JsonNode[] | undefined) =>
@@ -156,7 +157,7 @@ describe('<EmptyState variant> - the art above the words (C5-28)', () => {
   test('plain is the default: no art, and an icon only when asked', async () => {
     await render(<EmptyState title="Nothing" testID="empty" />);
     expect(screen.queryByTestId('empty-art', hidden)).toBeNull();
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
   });
 
   test('ghost-stamp is a dashed 96 dp circle, decorative', async () => {
@@ -198,8 +199,7 @@ describe('<EmptyState variant> - the art above the words (C5-28)', () => {
     expect(style(frames[1]).top).toBeLessThan(style(frames[0]).top as number);
     expect(style(frames[2]).transform).toEqual([{ rotate: '8deg' }]);
     for (const frame of frames) expect(style(frame).boxShadow).toBeDefined();
-    const pins = screen.getAllByTestId('symbol', hidden).map((node) => node.props.name);
-    expect(pins).toEqual(Array(3).fill({ ios: 'mappin', android: 'location_on' }));
+    expect(glyphNamesIn()).toEqual(['map-pin', 'map-pin', 'map-pin']);
     expect(art().props.accessibilityElementsHidden).toBe(true);
   });
 
@@ -208,10 +208,9 @@ describe('<EmptyState variant> - the art above the words (C5-28)', () => {
     expect(classesIn(art().props.className)).toEqual(
       expect.arrayContaining(['size-16', 'rounded-full', 'bg-surface-secondary']),
     );
-    expect(screen.getByTestId('symbol', hidden).props.name).toEqual({
-      ios: 'magnifyingglass',
-      android: 'search',
-    });
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: 'search', size: 24, weight: 'regular' }),
+    ]);
   });
 
   test('the art comes before the words', async () => {
