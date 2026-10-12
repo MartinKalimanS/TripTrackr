@@ -435,6 +435,13 @@ describe('geographyRepository', () => {
     expect(geographyRepository.searchCities(sqlite.db, 1, '')).toHaveLength(1);
   });
 
+  test('countriesQuery is the cached countries by name, as a select a screen can watch live', () => {
+    geographyRepository.cacheCountries(sqlite.db, [spain, italy]);
+    const rows = geographyRepository.countriesQuery(sqlite.db).all();
+    expect(rows.map((row) => row.name)).toEqual(['Italy', 'Spain']);
+    expect(Object.keys(rows[0]!).sort()).toEqual(['continent', 'id', 'iso_code', 'name']);
+  });
+
   test('caching an empty list is a no-op, not an invalid statement', () => {
     expect(() => geographyRepository.cacheCountries(sqlite.db, [])).not.toThrow();
     expect(() => geographyRepository.cacheCities(sqlite.db, [])).not.toThrow();
