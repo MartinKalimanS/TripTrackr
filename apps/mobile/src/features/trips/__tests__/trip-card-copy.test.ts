@@ -3,7 +3,8 @@
  * Pure over a card model: what the hero, the ticket, the row and the year header SAY, and what a
  * screen reader says for the card. The device locale is en-GB (`jest.setup.ts`).
  *
- * The accessible name of a card is the 004 one, word for word (FR-075): "title, status, N stops".
+ * The accessible name of a card is the 004 one, word for word (FR-075): "title, status, N stops",
+ * pinned on each card (`trip-hero-card.test.tsx` and its siblings); here, how it ends.
  */
 import type { TripCardModel } from '@/features/trips/trip-card-model';
 import {
@@ -12,7 +13,6 @@ import {
   eyebrowOf,
   heroDates,
   rowMeta,
-  tripCardLabel,
   tripsCountLine,
   ticketMeta,
   yearHeaderCopy,
@@ -37,7 +37,7 @@ function words(overrides: Partial<Words> = {}): Words {
   };
 }
 
-describe('describeStopCount and tripCardLabel: the 004 name, word for word', () => {
+describe('describeStopCount: the last words of the 004 name', () => {
   test.each([
     [0, 'No stops yet'],
     [1, '1 stop'],
@@ -45,18 +45,6 @@ describe('describeStopCount and tripCardLabel: the 004 name, word for word', () 
     [12, '12 stops'],
   ])('%i stops are "%s"', (count, text) => {
     expect(describeStopCount(count)).toBe(text);
-  });
-
-  test('the label is "title, status, stops"', () => {
-    expect(
-      tripCardLabel(words({ title: 'Italy, spring 2026', status: 'planning' })),
-    ).toBe('Italy, spring 2026, planning, 3 stops');
-    expect(tripCardLabel(words({ status: 'past', stopCount: 0 }))).toBe(
-      'Portugal Road Trip, past, No stops yet',
-    );
-    expect(tripCardLabel(words({ status: 'active', stopCount: 1 }))).toBe(
-      'Portugal Road Trip, active, 1 stop',
-    );
   });
 });
 
@@ -172,7 +160,7 @@ describe('yearHeaderCopy', () => {
       title: '2026',
       count: '1 trip',
       distance: '9,380 km',
-      label: '2026, 1 trip, 9,380 kilometres',
+      spoken: '9,380 kilometres',
     });
   });
 
@@ -181,7 +169,7 @@ describe('yearHeaderCopy', () => {
       title: '2025',
       count: '2 trips',
       distance: null,
-      label: '2025, 2 trips',
+      spoken: null,
     });
   });
 
@@ -190,7 +178,7 @@ describe('yearHeaderCopy', () => {
       title: 'No dates yet',
       count: '3 trips',
       distance: null,
-      label: 'No dates yet, 3 trips',
+      spoken: null,
     });
   });
 });

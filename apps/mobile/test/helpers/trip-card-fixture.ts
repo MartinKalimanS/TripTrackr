@@ -49,3 +49,40 @@ export function withPhoto(
 ): TripCardModel {
   return cardModel({ ...overrides, cover: { kind: 'photo', ...photo } });
 }
+
+/**
+ * `count` trips as a long journal: the first is active, the second planned (a ticket), the
+ * rest past, one by one through the years from 2025 back to 2009, 100 km each.
+ */
+export function manyTrips(count: number): TripCardModel[] {
+  return Array.from({ length: count }, (_, index) => {
+    const id = `trip-${index}`;
+    if (index === 0) return cardModel({ id, title: 'Now', status: 'active' });
+    if (index === 1) {
+      return cardModel({
+        id,
+        title: 'Next',
+        status: 'planning',
+        dateRange: { start: '2027-01-16', end: '2027-01-20' },
+        lengthDays: 5,
+        daysToGo: 94,
+        dayOf: null,
+        strip: ['next'],
+        stripLabels: ['REY'],
+      });
+    }
+    const year = 2025 - ((index - 2) % 17);
+    const day = String(1 + ((index - 2) % 28)).padStart(2, '0');
+    return cardModel({
+      id,
+      title: `Past ${index}`,
+      status: 'past',
+      dateRange: { start: `${year}-03-${day}`, end: `${year}-03-${day}` },
+      lengthDays: 1,
+      dayOf: null,
+      strip: ['done'],
+      stripLabels: ['PAS'],
+      distanceKm: 100,
+    });
+  });
+}

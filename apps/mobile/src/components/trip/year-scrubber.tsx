@@ -49,6 +49,17 @@ const NEWEST_KEPT = MAX_ENTRIES - 2;
 /** 28 dp visible, 44 dp by hit area: the strip is one control as tall as its years. */
 const HIT_SLOP = { left: 16, right: 4, top: 4, bottom: 4 } as const;
 
+/** What makes the strip ONE adjustable control for a screen reader (the value is the year). */
+const ADJUSTABLE = {
+  accessible: true,
+  accessibilityRole: 'adjustable',
+  accessibilityLabel: 'Jump to year',
+  accessibilityActions: [
+    { name: 'increment', label: 'Later year' },
+    { name: 'decrement', label: 'Earlier year' },
+  ],
+} as const;
+
 type Entry = { kind: 'year'; year: number } | { kind: 'gap' };
 
 /** The labels to draw for `years`: all of them, or the newest, a gap and the oldest. */
@@ -124,14 +135,8 @@ function useScrubberControl(
   };
 
   return {
-    accessible: true,
-    accessibilityRole: 'adjustable',
-    accessibilityLabel: 'Jump to year',
+    ...ADJUSTABLE,
     accessibilityValue: { text: String(shown) },
-    accessibilityActions: [
-      { name: 'increment', label: 'Later year' },
-      { name: 'decrement', label: 'Earlier year' },
-    ],
     onAccessibilityAction: adjust,
     hitSlop: HIT_SLOP,
     onLayout: (event: LayoutChangeEvent) => setHeight(event.nativeEvent.layout.height),

@@ -1,6 +1,7 @@
 /**
- * The small trip components: `<DateField>`, `<TripCard>`, `<StopRow>`, and
- * `<RequireLocalStore>`. (The status chip has its own suite, `ui/chip.test.tsx`.)
+ * The small trip components: `<DateField>`, `<StopRow>`, and `<RequireLocalStore>`. (The status
+ * chip has its own suite, `ui/chip.test.tsx`; the trip cards of the list have theirs beside them
+ * in `components/trip/`, from feature 005.)
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -9,7 +10,6 @@ import { Platform, StyleSheet, Text } from 'react-native';
 import { RequireLocalStore } from '@/components/require-local-store';
 import { DateField } from '@/components/trip/date-field';
 import { StopRow, describePlace } from '@/components/trip/stop-row';
-import { TripCard, describeStopCount } from '@/components/trip/trip-card';
 import { MinTouchTarget } from '@/constants/theme';
 import { LocalStoreProvider, type AppDatabase } from '@/db/client';
 import type { StopWithPlace } from '@/db/repositories/stops';
@@ -108,51 +108,6 @@ describe('<DateField>', () => {
       />,
     );
     expect(screen.getByText('Departure can’t be before arrival.')).toBeTruthy();
-  });
-});
-
-describe('<TripCard>', () => {
-  test('describes the stop count in words', () => {
-    expect(describeStopCount(0)).toBe('No stops yet');
-    expect(describeStopCount(1)).toBe('1 stop');
-    expect(describeStopCount(3)).toBe('3 stops');
-  });
-
-  test('is one labelled control that opens the trip', async () => {
-    const onPress = jest.fn();
-    await render(
-      <TripCard
-        summary={{
-          trip: {
-            id: 't1',
-            title: 'Italy',
-            home_currency: 'EUR',
-            is_public: false,
-            cover_photo_id: null,
-            status: 'planning',
-            created_at: 'x',
-            updated_at: 'x',
-            deleted_at: null,
-            is_dirty: false,
-            synced_at: 'x',
-          },
-          stopCount: 2,
-          status: 'active',
-          cover: { kind: 'typographic', initial: 'I', status: 'active' },
-          dateRange: { start: '2026-05-10', end: '2026-05-12' },
-        }}
-        onPress={onPress}
-      />,
-    );
-    const card = screen.getByLabelText('Italy, active, 2 stops');
-    // The announcement is exactly what the card made before Atlas (FR-030): the name, the
-    // hint, one button. The rest of the card is `test/components/trip-card.test.tsx`.
-    expect(card.props.accessibilityHint).toBe('Opens the trip');
-    expect(card.props.accessibilityRole).toBe('button');
-    expect(card.props.testID).toBe('trip-card-t1');
-    await fireEvent.press(card);
-    expect(onPress).toHaveBeenCalled();
-    expect(screen.queryByLabelText('Sync pending')).toBeNull();
   });
 });
 

@@ -30,7 +30,7 @@ export function YearHeader({ year, tripCount, distanceKm }: YearHeaderProps) {
       testID={`year-header-${year}`}
       accessible
       accessibilityRole="header"
-      accessibilityLabel={copy.label}
+      accessibilityLabel={`${copy.title}, ${copy.count}${copy.spoken === null ? '' : `, ${copy.spoken}`}`}
       className="flex-row items-baseline justify-between gap-3 border-b border-separator bg-background pb-2 pt-3">
       <View className="shrink flex-row items-baseline gap-2">
         <Text variant="headline" accessibilityRole="text" className="shrink">

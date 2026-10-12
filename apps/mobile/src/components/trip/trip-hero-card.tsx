@@ -37,7 +37,7 @@ import { Scrim } from '@/components/ui/scrim';
 import { SyncBadge } from '@/components/ui/sync-badge';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
-import { eyebrowOf, heroDates, tripCardLabel } from '@/features/trips/trip-card-copy';
+import { describeStopCount, eyebrowOf, heroDates } from '@/features/trips/trip-card-copy';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
 import { cornerOf } from '@/theme';
 
@@ -90,7 +90,7 @@ export function TripHeroCard({ trip, onPress }: TripHeroCardProps) {
   return (
     <Tappable
       testID={`trip-card-${id}`}
-      accessibilityLabel={tripCardLabel(trip)}
+      accessibilityLabel={`${trip.title}, ${trip.status}, ${describeStopCount(trip.stopCount)}`}
       accessibilityHint="Opens the trip"
       accessibilityValue={dayOf ? { text: `Day ${dayOf.day} of ${dayOf.of}` } : undefined}
       feedback="ring"

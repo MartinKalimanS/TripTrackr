@@ -5,8 +5,10 @@
  * device's language and measurement system (`Intl`, `formatDistance`); only the plural of an
  * English noun is written here, as everywhere else in the app.
  *
- * The accessible name of a card is the one feature 004 gave it, word for word:
- * "title, status, N stops" (`tripCardLabel`). The rest is additive and visible only.
+ * The accessible name of a card is the one feature 004 gave it, word for word: "title, status,
+ * N stops", which `describeStopCount` ends. Each card writes the template out where it sets
+ * `accessibilityLabel`, so the id parity guard still reads it (`<param>, <param>, <param>`).
+ * The rest is additive and visible only.
  */
 import { deviceLocale, formatDistance } from '@/lib/locale';
 
@@ -26,13 +28,6 @@ const counted = (count: number, noun: string): string =>
 /** "No stops yet", "1 stop", "N stops": the last words of a card's accessible name. */
 export function describeStopCount(count: number): string {
   return count === 0 ? 'No stops yet' : counted(count, 'stop');
-}
-
-/** What a screen reader says for a whole card: "title, status, N stops" (FR-030, FR-075). */
-export function tripCardLabel(
-  card: Pick<TripCardModel, 'title' | 'status' | 'stopCount'>,
-): string {
-  return `${card.title}, ${card.status}, ${describeStopCount(card.stopCount)}`;
 }
 
 /** The country over a hero's title, then its stops: "Portugal · 3 stops". */
@@ -102,7 +97,8 @@ export interface YearHeaderCopy {
   count: string;
   /** `null` when the trips under it have no distance to say. */
   distance: string | null;
-  label: string;
+  /** The distance spelled out for a screen reader ("9,380 kilometres"), or `null`. */
+  spoken: string | null;
 }
 
 /** A year header: "2026", "1 trip", "9,380 km"; trips with no stops are "No dates yet". */
@@ -118,7 +114,7 @@ export function yearHeaderCopy(
     title,
     count,
     distance: distance?.text ?? null,
-    label: [title, count, distance?.spoken].filter(Boolean).join(', '),
+    spoken: distance?.spoken ?? null,
   };
 }
 

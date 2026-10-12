@@ -32,7 +32,7 @@ import { isLargeText } from '@/components/ui/reflow';
 import { SyncBadge } from '@/components/ui/sync-badge';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
-import { rowMeta, tripCardLabel } from '@/features/trips/trip-card-copy';
+import { describeStopCount, rowMeta } from '@/features/trips/trip-card-copy';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
 import { cornerOf } from '@/theme';
 
@@ -83,7 +83,7 @@ export function TripRow({ trip, onPress }: TripRowProps) {
   return (
     <Tappable
       testID={`trip-card-${id}`}
-      accessibilityLabel={tripCardLabel(trip)}
+      accessibilityLabel={`${trip.title}, ${trip.status}, ${describeStopCount(trip.stopCount)}`}
       accessibilityHint="Opens the trip"
       onPress={onPress}
       style={[cornerOf('md'), { minHeight: MIN_HEIGHT }]}>

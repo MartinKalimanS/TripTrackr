@@ -16,7 +16,9 @@ import TripsScreen from '@/app/(tabs)/trips';
 import { useSessionStore } from '@/features/auth/session-store';
 import type { GlobeTrip } from '@/features/globe/globe-data';
 import type { GlobeData } from '@/features/globe/use-globe';
-import type { TripSummary } from '@/features/trips/use-trips';
+import type { TripCardModel } from '@/features/trips/trip-card-model';
+
+import { cardModel } from '../helpers/trip-card-fixture';
 
 // `mock`-prefixed so Jest's hoisted factory may reference it.
 const mockPush = jest.fn();
@@ -104,7 +106,7 @@ jest.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }));
 
-const mockTrips: { data: TripSummary[]; loading: boolean; error: Error | null } = {
+const mockTrips: { data: TripCardModel[]; loading: boolean; error: Error | null } = {
   data: [],
   loading: false,
   error: null,
@@ -112,6 +114,15 @@ const mockTrips: { data: TripSummary[]; loading: boolean; error: Error | null } 
 
 jest.mock('@/features/trips/use-trips', () => ({
   useTrips: () => mockTrips,
+}));
+
+// The tab bar's zone comes from React Navigation through expo-router/js-tabs, which loads the
+// whole router and needs the real expo-constants this suite replaces: no bar here, no zone.
+jest.mock('@/components/trip/use-tab-zone', () => ({ useTabZone: () => 0 }));
+
+// The sync chip and banner of the Trips screen have their own suites (use-trips-sync).
+jest.mock('@/features/trips/use-trips-sync', () => ({
+  useTripsSync: () => ({ chip: { kind: 'synced' }, banner: null, retry: jest.fn() }),
 }));
 
 const mockSignOut = { mutate: jest.fn(), isPending: false, error: null as unknown };
@@ -140,32 +151,25 @@ const profile = {
 };
 
 function summary(
-  overrides: Partial<TripSummary['trip']> & {
+  overrides: {
+    id?: string;
+    title?: string;
+    is_dirty?: boolean;
     stopCount?: number;
-    status?: TripSummary['status'];
+    status?: TripCardModel['status'];
   } = {},
-): TripSummary {
-  const { stopCount = 0, status = 'planning', ...trip } = overrides;
-  return {
-    trip: {
-      id: 'trip-1',
-      title: 'Italy, spring 2026',
-      home_currency: 'EUR',
-      is_public: false,
-      cover_photo_id: null,
-      status: 'planning',
-      created_at: '2026-09-01T10:00:00.000Z',
-      updated_at: '2026-09-01T10:00:00.000Z',
-      deleted_at: null,
-      is_dirty: true,
-      synced_at: null,
-      ...trip,
-    },
-    stopCount,
+): TripCardModel {
+  const { id = 'trip-1', title = 'Italy, spring 2026', stopCount = 0 } = overrides;
+  const { status = 'planning', is_dirty: pending = true } = overrides;
+  return cardModel({
+    id,
+    title,
     status,
-    cover: { kind: 'typographic', initial: 'I', status },
-    dateRange: null,
-  };
+    stopCount,
+    pending,
+    dayOf: status === 'active' ? { day: 3, of: 8 } : null,
+    daysToGo: status === 'planning' ? 94 : null,
+  });
 }
 
 function globeTrip(id: string, placed: boolean): GlobeTrip {
@@ -434,14 +438,17 @@ describe('<TripsScreen> — the local trip list (T066)', () => {
 
     expect(screen.getByTestId('trips-list')).toBeTruthy();
     expect(screen.getByText('Italy, spring 2026')).toBeTruthy();
-    expect(screen.getByText('2 stops · EUR')).toBeTruthy();
-    expect(screen.getByText('1 stop · EUR')).toBeTruthy();
-    expect(screen.getByText('No stops yet · EUR')).toBeTruthy();
+    // An active trip is the hero, a planned one the ticket: each says its status in a chip.
     expect(screen.getByLabelText('Status: Planning')).toBeTruthy();
-    expect(screen.getByLabelText('Status: Active')).toBeTruthy();
-    expect(screen.getByLabelText('Status: Past')).toBeTruthy();
-    // Exactly one row is dirty, so exactly one pending badge.
-    expect(screen.getAllByLabelText('Sync pending')).toHaveLength(1);
+    expect(screen.getByLabelText('Status: Active, day 3 of 8')).toBeTruthy();
+    // A past trip is a row, and says so (and its stops) in its name.
+    expect(screen.getByLabelText('Old trip, past, No stops yet')).toBeTruthy();
+    expect(screen.getByLabelText('Lisbon weekend, active, 1 stop')).toBeTruthy();
+    expect(screen.getByLabelText('Italy, spring 2026, planning, 2 stops')).toBeTruthy();
+    // Only the planned trip is dirty (the default), so exactly one pending marker.
+    expect(
+      screen.getAllByLabelText('Sync pending', { includeHiddenElements: true }),
+    ).toHaveLength(1);
   });
 
   test('opens a trip when its card is pressed', async () => {

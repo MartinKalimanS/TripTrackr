@@ -38,7 +38,7 @@ import { useColors } from '@/components/ui/theme-tokens';
 import {
   countdownOf,
   ticketMeta,
-  tripCardLabel,
+  describeStopCount,
   type Countdown,
 } from '@/features/trips/trip-card-copy';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
@@ -164,7 +164,7 @@ export function TicketCard({ trip, onPress }: TicketCardProps) {
   return (
     <Tappable
       testID={`trip-card-${id}`}
-      accessibilityLabel={tripCardLabel(trip)}
+      accessibilityLabel={`${trip.title}, ${trip.status}, ${describeStopCount(trip.stopCount)}`}
       accessibilityHint="Opens the trip"
       accessibilityValue={countdown ? { text: countdown.spoken } : undefined}
       onPress={onPress}
