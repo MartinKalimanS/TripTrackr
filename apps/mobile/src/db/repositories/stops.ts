@@ -169,6 +169,37 @@ function allWithPlaceQuery(db: AppDatabase) {
     );
 }
 
+/**
+ * Every live stop with the name of its cached city and the code of that city's country, in
+ * trip order then stop order: what the Home sheet names the live trip's place and flag from
+ * (feature 005, T535). Null names mean the city is not cached on this device. It reads
+ * `trip_stops` live; a change to the geography cache is the caller's to key on, as the
+ * globe's query is (`use-globe.ts`).
+ */
+function allWithNamesQuery(db: AppDatabase) {
+  return db
+    .select({
+      id: tripStops.id,
+      trip_id: tripStops.trip_id,
+      sort_order: tripStops.sort_order,
+      arrive_date: tripStops.arrive_date,
+      depart_date: tripStops.depart_date,
+      city_name: cities.name,
+      country_id: cities.country_id,
+      iso_code: countries.iso_code,
+    })
+    .from(tripStops)
+    .leftJoin(cities, eq(cities.id, tripStops.city_id))
+    .leftJoin(countries, eq(countries.id, cities.country_id))
+    .where(isNull(tripStops.deleted_at))
+    .orderBy(
+      asc(tripStops.trip_id),
+      asc(tripStops.sort_order),
+      asc(tripStops.created_at),
+      asc(tripStops.id),
+    );
+}
+
 function liveStopsOf(db: AppDatabase, tripId: string): TripStopRow[] {
   return db
     .select()
@@ -257,6 +288,7 @@ export const stopsRepository = {
   forTripQuery,
   allActiveQuery,
   allWithPlaceQuery,
+  allWithNamesQuery,
   add,
   updateDates,
   move,
