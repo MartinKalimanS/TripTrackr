@@ -149,7 +149,8 @@ function inputStyle(
   const boundary: TextStyle = state.invalid
     ? { borderColor: danger, borderWidth: INVALID_BORDER }
     : {};
-  return [cornerOf('md'), { minHeight: state.minHeight }, ring, boundary];
+  // `cornerOf` is typed for views; a TextInput's style is the same shape for the keys it carries.
+  return [cornerOf('md') as TextStyle, { minHeight: state.minHeight }, ring, boundary];
 }
 
 function ErrorLine({ message }: { message?: string }) {
