@@ -9,7 +9,11 @@
  * - ONE control: a pressable cream `tile` `Card` (so the held fill, the focus ring that
  *   follows the corner, the scaled target and `busy` / `disabled` are the card's), named
  *   "Photos, 128". A private area adds ", only you can see this" and one that needs
- *   attention ", needs attention", so what the lock and the dot draw is also said.
+ *   attention ", needs attention", so what the lock and the dot draw is also said. A screen
+ *   whose control already had a name (the trip's "Photos for this trip") passes it as
+ *   `accessibilityLabel`: it replaces the composed name, and the count, the lock and the
+ *   warning are then said as the accessibility VALUE after it, so the name does not change
+ *   and nothing the tile draws goes unsaid.
  * - Look: 16 dp corners, the cream fill and a hairline, no lift; at least 72 dp tall (a
  *   minimum, so it grows with the text and the icon never clips); the icon (24 dp), the
  *   count (`callout`, one line, shrinking before it clips an amount) and the label (the
@@ -44,6 +48,8 @@ export interface AreaPillProps {
   /** The area needs attention (an upload failed): draws the danger ring and dot. */
   warn?: boolean;
   onPress: (event: GestureResponderEvent) => void;
+  /** The control's name where one already exists; the default is composed from the rest. */
+  accessibilityLabel?: string;
   disabled?: boolean;
   busy?: boolean;
   testID?: string;
@@ -55,21 +61,22 @@ export const AREA_MIN_HEIGHT = 72;
 const LOCK: IconName = 'lock';
 const WARN_RING = 1.5;
 
-/** "Photos, 128, only you can see this, needs attention". */
-export function areaPillName({
-  label,
-  count,
-  private: isPrivate,
-  warn,
-}: Pick<AreaPillProps, 'label' | 'count' | 'private' | 'warn'>): string {
+type NameParts = Pick<AreaPillProps, 'label' | 'count' | 'private' | 'warn'>;
+
+/** "128, only you can see this, needs attention": what the tile draws, in words. */
+function valueOf({ count, private: isPrivate, warn }: Omit<NameParts, 'label'>): string {
   return [
-    label,
     String(count),
     isPrivate ? 'only you can see this' : '',
     warn ? 'needs attention' : '',
   ]
     .filter(Boolean)
     .join(', ');
+}
+
+/** "Photos, 128, only you can see this, needs attention". */
+export function areaPillName(parts: NameParts): string {
+  return `${parts.label}, ${valueOf(parts)}`;
 }
 
 function Lock({ testID }: { testID?: string }) {
@@ -133,11 +140,12 @@ export function AreaPill({
   private: isPrivate = false,
   warn = false,
   onPress,
+  accessibilityLabel,
   disabled,
   busy,
   testID,
 }: AreaPillProps) {
-  assertAccessibleName('AreaPill', label);
+  assertAccessibleName('AreaPill', accessibilityLabel ?? label);
   const { fontScale } = useWindowDimensions();
   const danger = useThemeColor('danger');
   const minHeight = Math.max(AREA_MIN_HEIGHT, MinTouchTarget * Math.max(1, fontScale));
@@ -147,7 +155,14 @@ export function AreaPill({
       radius="lg"
       cue={false}
       testID={testID}
-      accessibilityLabel={areaPillName({ label, count, private: isPrivate, warn })}
+      accessibilityLabel={
+        accessibilityLabel ?? areaPillName({ label, count, private: isPrivate, warn })
+      }
+      accessibilityValue={
+        accessibilityLabel
+          ? { text: valueOf({ count, private: isPrivate, warn }) }
+          : undefined
+      }
       onPress={onPress}
       disabled={disabled}
       busy={busy}
