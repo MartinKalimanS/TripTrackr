@@ -1,6 +1,7 @@
 /**
- * `ListGroup` and `ListRow` - grouped rows of Atlas (feature 004; contract C4-8; FR-013,
- * FR-024, FR-025, FR-029, FR-030), over the kit's ListGroup.
+ * `ListGroup` and `ListRow` - grouped rows (feature 004; contract C4-8; FR-013, FR-024,
+ * FR-025, FR-029, FR-030), in the Sunrise look of feature 005 (contract C5-18; FR-055,
+ * FR-069), over the kit's ListGroup.
  *
  *   <ListGroup header="Account">
  *     <ListRow title="Notes" description="4 notes" onPress={openNotes} testID="open-notes" />
@@ -8,21 +9,25 @@
  *     <ListRow title="Delete account" tone="destructive" onPress={confirmDelete} />
  *   </ListGroup>
  *
- * `ListGroup` is one raised surface (the kit's, in a continuous `lg` corner) that holds
- * its rows and draws an inset kit `Separator` BETWEEN them (after none, before none): pass
- * the rows themselves, or arrays of them; a row wrapped in a Fragment counts as one child.
- * An optional `header` is a muted caption above the group, announced as a heading. A
- * group is a raised container like a `Card`, so the two share the nesting rule
- * (`surface-nesting.tsx`, FR-006): one inside the other is a development error.
+ * `ListGroup` is a tile: the kit's surface in the cream `secondary` fill, a hairline edge,
+ * no shadow and a continuous 24 dp corner (the prototype's settings groups; a white group
+ * on a white canvas would have only its edge to stand on). It holds its rows and draws an
+ * inset kit `Separator` BETWEEN them (after none, before none): pass the rows themselves,
+ * or arrays of them; a row wrapped in a Fragment counts as one child. An optional `header`
+ * is a muted label above the group, announced as a heading. A group is a surface like a
+ * `Card`, so the two share the nesting rule (`surface-nesting.tsx`, FR-006): one inside
+ * the other is a development error.
  *
- * `ListRow` is the title (`headline`, wraps, no line limit, no fixed height), an optional
- * `description` (`callout`, muted), an optional `leading` node and an optional `trailing`
- * node. What the kit's Item leaves out, the adapter supplies:
+ * `ListRow` is the title (`callout`, wraps, no line limit, no fixed height), an optional
+ * `description` (`label`, muted), an optional `leading` node and an optional `trailing`
+ * node, in a row at least 60 dp tall (scaled by the font scale: a minimum, never a height).
+ * What the kit's Item leaves out, the adapter supplies:
  * - With `onPress` the row is ONE control: role `button`, `disabled` announced and inert
- *   (dimmed with `opacity-disabled`), a minimum height of the platform floor (44 dp iOS,
- *   48 dp Android) scaled by the font scale like `Tappable`, a held press that swaps the
- *   fill to `surface-tertiary` at once (FR-019), and a 2 dp focus ring in the `focus`
- *   token. The ring is drawn INSIDE the row: the group clips its rows to its rounded
+ *   (dimmed with `opacity-disabled`), the 60 dp minimum height (above the platform floor)
+ *   scaled by the font scale like `Tappable`, a held press that swaps the fill to the
+ *   `pressed` fill (`surface-tertiary`) at once (FR-019) and the description to the default
+ *   ink while it is held (only `ink` text sits on a pressed fill, review rule 7), and a 2 dp
+ *   focus ring in the `focus` token. The ring is drawn INSIDE the row: the group clips its rows to its rounded
  *   corners, which would cut off a ring drawn outside, and inside it still only touches
  *   the row's own neutral fill (review rule 6).
  * - It names its cue (FR-024): the default trailing chevron in the muted ink, unless the
@@ -62,9 +67,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { MinTouchTarget } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
-import { FocusRing, cornerStyle } from '@/theme';
+import { FocusRing, cornerOf } from '@/theme';
 
 import { Icon, type IconName } from './icon';
 import { PressCue } from './press-cue';
@@ -81,6 +85,9 @@ export interface ListGroupProps {
   /** The rows. A separator is drawn between each pair. */
   children?: ReactNode;
 }
+
+/** The cream fill, the hairline, and the kit's own surface shadow cancelled. */
+const GROUP_CLASSES = 'bg-surface-secondary border border-separator shadow-none';
 
 /** The separator starts where the row's content does: the row's 16 dp padding. */
 const SEPARATOR_INSET = 'ms-4';
@@ -111,8 +118,9 @@ export function ListGroup({
   useSurfaceNestingGuard('ListGroup');
   const group = (
     <KitListGroup
-      className={className}
-      style={[cornerStyle('lg'), style]}
+      variant="secondary"
+      className={className ? `${GROUP_CLASSES} ${className}` : GROUP_CLASSES}
+      style={[cornerOf('xl'), style]}
       testID={testID}>
       <SurfaceBoundary>{withSeparators(children, testID)}</SurfaceBoundary>
     </KitListGroup>
@@ -120,7 +128,7 @@ export function ListGroup({
   if (!header) return group;
   return (
     <View className="gap-2">
-      <Text type="caption" tone="muted" accessibilityRole="header">
+      <Text variant="label" strong tone="muted" accessibilityRole="header">
         {header}
       </Text>
       {group}
@@ -156,8 +164,12 @@ const CAUTION: IconName = { ios: 'exclamationmark.triangle', android: 'warning' 
 /** A pressed row swaps its fill at once; the class is literal so Tailwind finds it. */
 export const ROW_PRESSED_CLASS = 'active:bg-surface-tertiary';
 
+/** The row is at least 60 dp tall; the kit's 16 dp padding is tightened to 8 above and below. */
+export const ROW_MIN_HEIGHT = 60;
+
 function rowClasses(pressable: boolean, disabled: boolean): string | undefined {
   const classes = [
+    'py-2',
     pressable ? ROW_PRESSED_CLASS : '',
     disabled ? 'opacity-disabled' : '',
   ];
@@ -244,6 +256,7 @@ export function ListRow({
   const { fontScale } = useAppearance();
   const focusColor = useThemeColor('focus');
   const [focused, setFocused] = useState(false);
+  const [held, setHeld] = useState(false);
   const pressable = onPress !== undefined;
   const grouped =
     pressable || accessibilityLabel !== undefined || accessibilityActions !== undefined;
@@ -266,18 +279,20 @@ export function ListRow({
       onPress={inert || working ? undefined : onPress}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
+      onPressIn={pressable ? () => setHeld(true) : undefined}
+      onPressOut={pressable ? () => setHeld(false) : undefined}
       className={rowClasses(pressable, inert)}
       style={[
-        pressable ? { minHeight: MinTouchTarget * Math.max(1, fontScale) } : null,
+        { minHeight: ROW_MIN_HEIGHT * Math.max(1, fontScale) },
         pressable && focused ? focusRing(focusColor) : null,
       ]}>
       <Leading leading={leading} destructive={destructive} testID={testID} />
       <KitListGroup.ItemContent>
-        <Text type="headline" tone={destructive ? 'danger' : 'default'}>
+        <Text variant="callout" tone={destructive ? 'danger' : 'default'}>
           {title}
         </Text>
         {description ? (
-          <Text type="callout" tone="muted">
+          <Text variant="label" tone={held && pressable ? 'default' : 'muted'}>
             {description}
           </Text>
         ) : null}

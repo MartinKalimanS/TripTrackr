@@ -18,7 +18,6 @@ import { StyleSheet } from 'react-native';
 
 import { CITY_QUERY_DEBOUNCE_MS, CityPicker } from '@/components/trip/city-picker';
 import { StopEditor } from '@/components/trip/stop-editor';
-import { MinTouchTarget } from '@/constants/theme';
 
 import { scrollers } from '../helpers/host-nodes';
 import {
@@ -368,7 +367,7 @@ describe('<CityPicker> - on the Atlas adapters (T437; FR-024, FR-025, FR-029, FR
 
     const row = screen.getByTestId('city-picker-country-IT');
     const style = StyleSheet.flatten(row.props.style) as Record<string, unknown>;
-    expect(style.minHeight).toBe(MinTouchTarget * 3);
+    expect(style.minHeight).toBe(60 * 3);
     expect(style.height).toBeUndefined();
     expect(within(row).getByText('Italy').props.numberOfLines).toBeUndefined();
     expect(within(row).getByText('Europe').props.numberOfLines).toBeUndefined();

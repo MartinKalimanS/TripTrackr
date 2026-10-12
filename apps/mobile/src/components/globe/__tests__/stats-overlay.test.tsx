@@ -15,6 +15,7 @@ import { StyleSheet } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
+import { liftOf } from '@/theme';
 
 import { StatsOverlay } from '../stats-overlay';
 
@@ -97,14 +98,14 @@ describe('<StatsOverlay> — an opaque card over the globe (FR-018, FR-033)', ()
   const renderOverlay = () =>
     render(<StatsOverlay summary={{ countriesVisited: 3, distanceKm: 10 }} />);
 
-  test('is the opaque surface with a hairline: bg-surface, border, border-border', async () => {
+  test('is the opaque surface with a hairline: bg-surface, border, border-separator', async () => {
     await renderOverlay();
     expect(classesOf('globe-stats-card')).toEqual(
-      expect.arrayContaining(['bg-surface', 'border', 'border-border']),
+      expect.arrayContaining(['bg-surface', 'border', 'border-separator']),
     );
   });
 
-  test('casts no shadow onto the map', async () => {
+  test('carries only the second lift over the map', async () => {
     await renderOverlay();
     const classes = classesOf('globe-stats-card');
     expect(classes).toContain('shadow-none');
@@ -112,7 +113,7 @@ describe('<StatsOverlay> — an opaque card over the globe (FR-018, FR-033)', ()
       'shadow-none',
     ]);
     const style = styleOf('globe-stats-card');
-    expect(style.boxShadow).toBeUndefined();
+    expect(style.boxShadow).toEqual(liftOf('light', 'lift2'));
     expect(style.elevation).toBeUndefined();
     expect(style.shadowColor).toBeUndefined();
   });

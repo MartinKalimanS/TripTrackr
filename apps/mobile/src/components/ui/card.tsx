@@ -1,48 +1,54 @@
 /**
- * `Card` and `Panel` - the containers of Atlas (feature 004; contract C4-8; FR-002,
- * FR-006, FR-018, FR-024, FR-033, FR-034), over the kit's Card (a Surface).
+ * `Card` and `Panel` - the containers of Sunrise Passport (feature 005; contract C5-18;
+ * FR-003, FR-006, FR-018, FR-024, FR-033, FR-034, FR-055, FR-069), over the kit's Card
+ * (a Surface). Feature 004 introduced them; the API is the same, the look is new.
  *
- *   <Card>...</Card>                                       raised, on the canvas
- *   <Card variant="flat">...</Card>                        same fill, no shadow
- *   <Card overMap>...</Card>                               over the globe: opaque, hairline
- *   <Card pending>...</Card>                               not yet synchronised: dashed edge
+ *   <Card>...</Card>                                       lift: surface, hairline, lift1
+ *   <Card variant="tile">...</Card>                        cream, hairline, no shadow
+ *   <Card variant="flat">...</Card>                        no fill, no edge, no shadow
+ *   <Card overMap>...</Card>                               over the globe: opaque, hairline, lift2
+ *   <Card pending>...</Card>                               not yet synchronised: dashed amber edge
  *   <Card accessibilityLabel="Lisbon, planning, 3 stops" onPress={open}>...</Card>
  *   <Panel title="Spending">...</Panel>                    a titled group, no fill
  *
- * Depth (FR-002). Two levels only: the canvas and a card above it. `raised` is the kit's
- * own surface: the `surface` fill and its soft shadow (`--surface-shadow`, which the
- * theme sets to nothing in the dark and increased-contrast themes). `flat` is the same
- * fill with the shadow cancelled by `shadow-none`: the kit's Surface carries
- * `box-shadow: var(--shadow-surface)` in its own stylesheet, so a card that must have no
- * shadow has to say so. Boundaries appear only where one is needed (FR-006): cards are
- * told apart by tone and spacing, so neither `raised` nor `flat` draws an edge.
+ * Depth (FR-003). Two lifts and nothing else (`lift.ts`): `lift1` is the card, `lift2` is a
+ * card over the map. The kit's Surface carries `box-shadow: var(--shadow-surface)` in its own
+ * stylesheet, so every card says `shadow-none` and takes its lift in `style`: a card never
+ * stacks two shadows. A hairline edge (`border-separator`, the palette's `hairline`, which
+ * the two contrast themes make explicit at 3:1) is always drawn with a lift or a tile; a
+ * `flat` card draws none.
  *
- * Over the globe (FR-018, FR-033). `overMap` is the opaque `bg-surface` with a hairline
- * `border-border` (3:1 against the surface and against light and dark map areas) and
- * `shadow-none`, whatever the variant: no shadow, tint, scrim or translucency crosses
- * the map. A test pins that no class carries an opacity suffix or a shadow.
+ * Corners. `lift` is 24 dp (a card), `tile` and `flat` 16 dp (a tile), `radius` asks for
+ * `md` (12), `lg` (16), `xl` (24) or `sheet` (28); all on the continuous curve.
  *
- * Pending (FR-034). `pending` swaps the edge for a dashed `border-pending`. It is only
- * the edge: the text-and-icon marker is `SyncBadge`, which a pending card still shows,
- * so the state never rests on a dashed line alone (FR-025).
+ * Over the globe (FR-018, FR-033). `overMap` is the opaque `surface` fill with the hairline
+ * and `lift2`, whatever the variant: nothing translucent, tinted or scrimmed crosses the
+ * map. A test pins that no class carries an opacity suffix.
+ *
+ * Pending (FR-034). `pending` swaps the hairline for a dashed `amber-line` edge (3:1 on the
+ * surface and on cream). It is only the edge: the text-and-icon marker is `SyncBadge`, which
+ * a pending card still shows, so the state never rests on a dashed line alone (FR-025).
  *
  * One card in another is a development error (`surface-nesting.tsx`, FR-006): a `Card`
  * never contains a card, however many `Panel`s sit between them.
  *
  * With `onPress` the card is ONE control: a `Tappable` (role `button`, `disabled` and
- * `busy` announced and inert, the scaled platform minimum target, a focus ring that
- * follows the card's corner) wrapping the surface, so there is one node to name, focus
- * and press, and `testID` lands on it (the surface inside it is `<testID>-surface`).
- * `accessibilityLabel` is then required, by the type and, in development, at run time.
- * A tappable card names its cue (FR-024): a trailing chevron in the muted ink
- * (`<testID>-cue`), unless `cue={false}` because the card supplies its own trailing
- * cue (a labelled control, an icon). A card with no `onPress` is a plain container and
- * announces nothing of its own; a notice may pass `accessibilityRole="alert"` and a
- * name. A held press swaps the card's fill to `surface-tertiary` at once, with no
- * transition (FR-019).
+ * `busy` announced and inert, the scaled platform minimum target, a focus ring that follows
+ * the card's corner) wrapping the surface, so there is one node to name, focus and press,
+ * and `testID` lands on it (the surface inside it is `<testID>-surface`). `accessibilityLabel`
+ * is then required, by the type and, in development, at run time. A tappable card names its
+ * cue (FR-024): a trailing chevron in the muted ink (`<testID>-cue`), unless `cue={false}`
+ * because the card supplies its own trailing cue. A card with no `onPress` is a plain
+ * container and announces nothing of its own; a notice may pass `accessibilityRole="alert"`
+ * and a name. A held press swaps the card's fill to the `pressed` fill
+ * (`surface-tertiary`) at once, with no transition (FR-019). The card's own children keep the
+ * tones they were given, so a `muted` line on a pressed card is the one pair the contrast
+ * themes measure short (6.68:1 on the pressed sand, `test/ui-kit/pressed-fills-chip-row-card`).
  *
  * `className` and `style` are layout (margin, position, size) and go on the outermost
- * node; never a colour. Colours here are semantic classes, never a literal.
+ * node (the control, for a pressable card); never a colour. `innerClassName` and
+ * `innerStyle` go on the surface inside it, for what only the surface can take: the
+ * kit's 16 dp padding (`p-0`), a ring. Colours here are semantic classes, never a literal.
  */
 import { Card as KitCard } from 'heroui-native';
 import type { ReactNode } from 'react';
@@ -54,30 +60,34 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { cornerStyle } from '@/theme';
+import { cornerOf, type LiftName, type RadiiName } from '@/theme';
 
 import { assertAccessibleName } from './adapter-guards';
+import { useLiftStyle } from './lift';
 import { PressCue } from './press-cue';
 import { SurfaceBoundary, useSurfaceNestingGuard } from './surface-nesting';
 import { Tappable } from './tappable';
 import { Text } from './text';
 
-export type CardVariant = 'raised' | 'flat';
-export type CardRadius = 'md' | 'lg' | 'xl';
+export type CardVariant = 'lift' | 'tile' | 'flat';
+export type CardRadius = Extract<RadiiName, 'md' | 'lg' | 'xl' | 'sheet'>;
 
 interface CardBaseProps {
-  /** `raised` (default) carries the kit's soft shadow where the theme has one. */
+  /** `lift` (default), `tile` (cream, no shadow) or `flat` (no fill, edge or shadow). */
   variant?: CardVariant;
-  /** Floating over the globe or a map: opaque, hairline, never a shadow. */
+  /** Floating over the globe or a map: opaque, hairline, the second lift. */
   overMap?: boolean;
-  /** Recorded on the device, not yet synchronised: a dashed edge. */
+  /** Recorded on the device, not yet synchronised: a dashed amber edge. */
   pending?: boolean;
-  /** Default `lg` (16 dp). */
+  /** Default 24 dp for `lift`, 16 dp for `tile` and `flat`. */
   radius?: CardRadius;
   testID?: string;
   /** Layout classes only (`self-stretch`): never colour. */
   className?: string;
   style?: StyleProp<ViewStyle>;
+  /** On the surface itself, inside the control of a pressable card (`p-0`). Never colour. */
+  innerClassName?: string;
+  innerStyle?: StyleProp<ViewStyle>;
   children?: ReactNode;
 }
 
@@ -115,19 +125,49 @@ export interface CardLook {
   pressed: boolean;
 }
 
+const RADIUS_OF_VARIANT: Record<CardVariant, CardRadius> = {
+  lift: 'xl',
+  tile: 'lg',
+  flat: 'lg',
+};
+
+const FILL_OF_VARIANT: Record<CardVariant, string> = {
+  lift: 'bg-surface',
+  tile: 'bg-surface-secondary',
+  flat: '',
+};
+
+/** The kit Surface variant that matches the fill, so the kit paints nothing else. */
+function kitVariantOf({ variant, overMap, pressed }: CardLook) {
+  if (pressed) return 'tertiary';
+  if (overMap) return 'default';
+  return { lift: 'default', tile: 'secondary', flat: 'transparent' }[variant] as
+    'default' | 'secondary' | 'transparent';
+}
+
+/** The lift a card carries: the first for a card, the second over the map, none otherwise. */
+function liftNameOf({ variant, overMap }: CardLook): LiftName | null {
+  if (overMap) return 'lift2';
+  return variant === 'lift' ? 'lift1' : null;
+}
+
 /**
  * The semantic classes of a card, written out in full so Tailwind finds each one by
  * scanning the source. Exported so the mapping is asserted directly.
  */
-export function cardClasses({ variant, overMap, pending, pressed }: CardLook): string {
-  const fill = pressed ? 'bg-surface-tertiary' : 'bg-surface';
-  const shadow = overMap || variant === 'flat' ? 'shadow-none' : '';
-  const edge = pending
-    ? 'border border-dashed border-pending'
+export function cardClasses(look: CardLook): string {
+  const { variant, overMap, pending, pressed } = look;
+  const fill = pressed
+    ? 'bg-surface-tertiary'
     : overMap
-      ? 'border border-border'
-      : '';
-  return [fill, shadow, edge].filter(Boolean).join(' ');
+      ? 'bg-surface'
+      : FILL_OF_VARIANT[variant];
+  const edge = pending
+    ? 'border border-dashed border-amber-line'
+    : variant === 'flat' && !overMap
+      ? ''
+      : 'border border-separator';
+  return [fill, 'shadow-none', edge].filter(Boolean).join(' ');
 }
 
 /** The pressed fill belongs to the card, so the control behind it paints nothing. */
@@ -164,15 +204,21 @@ function CardSurface({
   cueTestID,
   className,
   style,
+  innerClassName,
+  innerStyle,
   children,
   ...host
 }: SurfaceProps) {
-  const classes = cardClasses({ variant, overMap, pending, pressed });
+  const look = { variant, overMap, pending, pressed };
+  const classes = [cardClasses(look), innerClassName, className]
+    .filter(Boolean)
+    .join(' ');
+  const lift = useLiftStyle(liftNameOf(look));
   return (
     <KitCard
-      variant={pressed ? 'tertiary' : 'default'}
-      className={className ? `${classes} ${className}` : classes}
-      style={[cornerStyle(radius), style]}
+      variant={kitVariantOf(look)}
+      className={classes}
+      style={[cornerOf(radius), lift, innerStyle, style]}
       {...host}>
       <SurfaceBoundary>
         {showCue ? <WithCue testID={cueTestID}>{children}</WithCue> : children}
@@ -191,10 +237,12 @@ function PressableCard({
   testID,
   className,
   style,
-  variant = 'raised',
+  innerClassName,
+  innerStyle,
+  variant = 'lift',
   overMap = false,
   pending = false,
-  radius = 'lg',
+  radius = RADIUS_OF_VARIANT[variant],
   children,
 }: PressableCardProps) {
   assertAccessibleName('Card', accessibilityLabel);
@@ -207,7 +255,7 @@ function PressableCard({
       busy={busy}
       testID={testID}
       className={className}
-      style={[cornerStyle(radius), NO_CONTROL_FILL, style]}>
+      style={[cornerOf(radius), NO_CONTROL_FILL, style]}>
       {({ pressed }) => (
         <CardSurface
           variant={variant}
@@ -217,6 +265,8 @@ function PressableCard({
           pressed={pressed}
           showCue={cue}
           cueTestID={testID ? `${testID}-cue` : undefined}
+          innerClassName={innerClassName}
+          innerStyle={innerStyle}
           testID={testID ? `${testID}-surface` : undefined}>
           {children}
         </CardSurface>
@@ -227,16 +277,18 @@ function PressableCard({
 
 /** A card with nothing to press: a plain container. */
 function StaticCard({
-  variant = 'raised',
+  variant = 'lift',
   overMap = false,
   pending = false,
-  radius = 'lg',
+  radius = RADIUS_OF_VARIANT[variant],
   accessibilityLabel,
   accessibilityHint,
   accessibilityRole,
   testID,
   className,
   style,
+  innerClassName,
+  innerStyle,
   children,
 }: StaticCardProps) {
   return (
@@ -250,7 +302,9 @@ function StaticCard({
       accessibilityRole={accessibilityRole}
       testID={testID}
       className={className}
-      style={style}>
+      style={style}
+      innerClassName={innerClassName}
+      innerStyle={innerStyle}>
       {children}
     </CardSurface>
   );
@@ -285,7 +339,7 @@ export function Panel({ title, className, style, testID, children }: PanelProps)
       style={style}
       testID={testID}>
       {title ? (
-        <Text type="headline" accessibilityRole="header">
+        <Text variant="headline" accessibilityRole="header">
           {title}
         </Text>
       ) : null}
