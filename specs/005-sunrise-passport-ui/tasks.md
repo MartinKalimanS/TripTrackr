@@ -197,17 +197,32 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 ### Adapters (each: failing test first in `apps/mobile/src/components/ui/*.test.tsx`)
 
-- [ ] T518 [P] Branch `feat/005-adapters-core`. `Icon` registry over Phosphor (`icon-registry.ts`, about 60 deep
+- [x] T518 [P] Branch `feat/005-adapters-core`. `Icon` registry over Phosphor (`icon-registry.ts`, about 60 deep
       imports, `regular`, `fill`, `duotone`, sizes 16, 20, 24, decorative by default, mirrored direction glyphs);
       a codemod from `{ ios, android }` names to registry keys at every call site; update `icon.test.tsx` and the
       tab-bar tests (FR-005; D5-07)
-- [ ] T519 [P] `Button` (five variants, the primary edge ring, pressed fills, scale .97), `Tappable`, icon
+      _As built:_ 63 keys in `icon-registry.ts` (deep imports, never the barrel); `Icon` takes `name`, `size`,
+      `weight`, `tone` (palette names; the 004 names stay as aliases on tokens that pass, so `accent` is
+      `accentText`) and mirrors six direction glyphs in a reversed layout; the codemod moved every call site (47
+      files) and the tab bar draws `regular` and `fill`; tests read glyphs by registry key
+      (`test/helpers/icons.ts`); nothing in `src/` imports `expo-symbols` (the dependency stays). See
+      `contracts/components.md`, "As built (T518 to T520)".
+- [x] T519 [P] `Button` (five variants, the primary edge ring, pressed fills, scale .97), `Tappable`, icon
       buttons (`default`, `tonal`, `ghost`, `glass`, `onSky`), the focus ring 2.5 dp with a 2 dp gap, busy and
       disabled semantics, haptics by variant; failing tests for labels, targets scaled by font scale, ring token,
       only `ink` on a pressed fill (FR-006, FR-063, FR-069, FR-071; D5-14; SC-005)
-- [ ] T520 [P] `Chip`, `ChipGroup`, `SegmentedPill`, `StatusChip` (words Planning, Active, Past kept), `SyncChip`,
+      _As built:_ `Button` is a `Pressable` painted from palette keys (`button-look.ts`, `theme-tokens.ts`), not
+      a wrapper over the kit's Button; variants `primary | secondary | tonal | text | destructive` (`text` is the
+      contract's `ghost`); `IconButton`, `focus-ring.ts` and `useAccessibilityFlags` are new; `Tappable` holds on
+      the `pressed` key. `adapter-pressed-fills` has no exception list any more (the five 004 gaps are deleted; the
+      row and card gap stays for T521). The primary press plays `selection` until T523 adds `impact`.
+- [x] T520 [P] `Chip`, `ChipGroup`, `SegmentedPill`, `StatusChip` (words Planning, Active, Past kept), `SyncChip`,
       `SyncBadge`, `FlagChip` (glyph in a clipped box, letters fallback), `PrivacyChip`; every existing id and
       text equivalent preserved (FR-055, FR-065, FR-070; D5-16; Q-3)
+      _As built:_ `chip-look.ts` (the keys), `soft-label.tsx`, `chip.tsx` (adds `dashed`; `StatusChip` adds
+      `dayOf`), `segmented-pill.tsx`, `sync-chip.tsx`, `sync-badge.tsx` (adds `glyphOnly`), `flag-chip.tsx`,
+      `privacy-chip.tsx`; every pair measured with no exception list (`test/theme/chip-contrast.test.ts`). Not
+      built: the fade at the clipped edge of a sideways chip row (a gradient, `Scrim`'s, T523).
 - [ ] T521 [P] Branch `feat/005-adapters-surfaces`. `Card` (`lift`, `tile`, `flat`, `overMap`, `pending`),
       `ListGroup`, `ListRow`, `StatTile`, `AreaPill`, `Field` (56 dp, cream, 3:1 border, words and icon errors),
       `FormActions`, `InlineError`; nesting guard kept (FR-055, FR-069; D5-02)

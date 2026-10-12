@@ -90,6 +90,122 @@ the globe).
 | `FlagChip`      | `iso2`, `size?: 'md' \| 'lg'`                                                            | 20 by 14 (28 by 20) rounded 3 (4) box with a hairline; flag glyph, else the two letters                                                                                                                       | decorative; hidden from assistive technology (the country name is beside it)                                                       |
 | `PrivacyChip`   | `label?: 'Only you'`                                                                     | lock icon, `aquaTint`, `aquaInk`                                                                                                                                                                              | announced "Only you can see this"; id `privacy-chip`                                                                               |
 
+### As built (T518 to T520)
+
+What the code does where it differs from, or adds to, C5-14 to C5-16. The three tasks are one branch,
+`feat/005-adapters-core`; the files are under `apps/mobile/src/components/ui/`.
+
+**`Icon` (C5-14, T518).** `icon-registry.ts` imports 63 icons by deep path (`phosphor-react-native/src/icons/<Name>`,
+the only subpath the package's `exports` map serves; the bare package is refused under Jest and the registry source
+is read by `icon-registry.test.tsx` to prove it never appears) and names them with app words: `ICONS`, `ICON_KEYS`,
+`IconKey`, `isIconKey`, `DIRECTIONAL_ICONS`. The keys, by group:
+
+| Group                    | Keys                                                                                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tab bar, headers, cues   | `globe`, `suitcase`, `user`, `user-circle`, `chevron-left`, `chevron-right`, `chevron-up`, `chevron-down`, `arrow-left`, `arrow-right`                                     |
+| Actions                  | `plus`, `minus`, `x`, `check`, `search`, `pencil`, `trash`, `share`, `ellipsis`, `refresh`, `undo`, `download`, `locate`, `log-out`, `settings`, `grip`, `stop-circle`     |
+| Status and feedback      | `check-circle`, `alert` (a circle, the one "something is wrong" glyph), `warning` (a triangle), `info`, `question`, `clock`, `calendar`, `lock`, `shield-check`, `eye-off` |
+| Sync and network         | `cloud-upload`, `cloud-check`, `cloud-off`, `sync`, `wifi`, `wifi-off`                                                                                                     |
+| Content                  | `image`, `images`, `camera`, `note`, `file-text`, `wallet`, `map`, `map-pin`, `route`, `stamp`, `tag`, `mail`, `sparkle`                                                   |
+| Categories and transport | `plane`, `car`, `tram`, `bed`, `fork-knife`, `ticket`, `shopping-bag`                                                                                                      |
+
+- `DIRECTIONAL_ICONS` (mirrored when `I18nManager.isRTL`, through Phosphor's own `mirrored` prop, which is a
+  `scaleX: -1` transform): `chevron-left`, `chevron-right`, `arrow-left`, `arrow-right`, `log-out`, `undo`.
+- `IconName` is `IconKey`; `IconSize` is `16 | 20 | 24` (the values of `IconSize` in `shape.ts`); `weight` is
+  `regular` (default), `fill` or `duotone`. `tone` names a palette key (`ink` default, `muted`, `subtle`, `onInk`,
+  `onPhoto`, `accentInk`, `accentText`, `accentLine`, `aquaInk`, `aquaLine`, `amberInk`, `amberLine`, `danger`,
+  `dangerInk`, `success`). The 004 names stay as aliases until Phase 10, each on a token that passes: `default` is
+  `ink`, **`accent` is `accentText`** (never the coral fill, 2.82:1 on paper in `light`: the gap the tokens
+  task left), `onAccent` is `accentInk`, `statusActive` is `accentLine`, `statusPlanning` and `pending` are
+  `amberInk`, `statusPast` is `muted`. `icon.test.tsx` reads the generated stylesheet in all four themes and asserts
+  every tone paints its palette key and that none resolves to the coral fill.
+- **The codemod** (a one-shot node script, not committed) rewrote every `{ ios, android }` literal at 47 files to a key.
+  The mapping, for the record: `suitcase` and `luggage` to `suitcase`; `chevron.backward` and `.left` to `chevron-left`;
+  `.forward` to `chevron-right`; `.up` and `.down` to `chevron-up` and `chevron-down`; `photo`, `photo.on.rectangle` and
+  `photo.badge.plus` to `images`; `creditcard` to `wallet`; `note.text` to `note`; `doc.text` to `file-text`;
+  `rectangle.portrait.and.arrow.right` to `log-out`; `globe.europe.africa` (and `.fill`) to `globe`;
+  `person.crop.circle` (and `.fill`) to `user-circle`; `wifi.slash` to `wifi-off`; `fork.knife`, `bed.double`, `tram`,
+  `ticket`, `bag` to `fork-knife`, `bed`, `tram`, `ticket`, `shopping-bag`; `airplane` to `plane`; `icloud.slash` to
+  `cloud-off`; `arrow.down.circle` to `download`; `checkmark.circle` to `check-circle`; `arrow.clockwise` to `refresh`;
+  `icloud.and.arrow.up` to `cloud-upload`; **`exclamationmark.triangle` to `alert`** (so `ALERT_ICON` is `alert`, the
+  circle of the prototype); `xmark` to `x`; `line.3.horizontal` to `grip`; `location.fill` to `map-pin`;
+  `arrow.triangle.2.circlepath` to `sync`; `clock` to `clock`. The tab bar draws `regular` at rest and `fill` when
+  selected, and its profile tab is `user` (the signed-out card of the first-sync gate is `user-circle`).
+- Tests read a glyph by registry key, never by Phosphor name: `test/helpers/icons.ts` (`glyphsIn`, `glyphNamesIn`,
+  `glyphId`, `anyGlyph`) over `screen.toJSON()`, because RNTL 14 queries host nodes only. No source file imports
+  `expo-symbols` any more (a test scans `src/`); the dependency stays installed as the fallback of D5-07.
+
+**`Button`, `Tappable`, `IconButton` (C5-15, T519).**
+
+- `Button` is a React Native `Pressable` painted from tokens, not a wrapper over the kit's Button: the kit's variants
+  mix the coral into their labels (the five gaps of the 004 gate), fix a height per size and animate through
+  Reanimated, none of which the Sunrise variants want. The kit still supplies `Spinner`, `Text` and the theme colours.
+  `variant` is `primary | secondary | tonal | text | destructive` (**`text` is the contract's `ghost`**: the call sites
+  already say `text`); `size` `sm | md | lg` is 44, 52 and 56 dp as MINIMUMS, raised to the platform floor and scaled by
+  the font scale; the label is `callout` (`sm` is the semibold `label`).
+- `button-look.ts` is the table of palette KEYS (fill, label, edge) for each variant and state, so "only ink on a
+  pressed fill" is a property of data: `primary` rests on `accent` with `accentInk` and the `accentLine` ring (1.5 dp,
+  2 dp in the contrast themes, `PrimaryEdgeRing`) and is held on `accentPress` with `accentInk`; `secondary` is a 1.5 dp
+  `ink` outline, held on `surfaceSecondary`; `tonal` is `surfaceSecondary` with a hairline, held on `pressed`; `text`
+  and `destructive` are held on `pressed`. A held `destructive` label turns to `ink` (P6 gates `ink` on `pressed` and
+  nothing else). Busy is the pressed coral for a primary and the resting look otherwise, with the spinner; disabled is
+  flat `sand` with a `subtle` label (primary) or a `border` outline (secondary, tonal). The edge keeps its width in
+  every state (the colour goes transparent), so a press or a disabled state moves no pixel.
+- Press: the fill swaps at once and the button scales to .97 through `pressScaleOf`; reduced motion keeps the fill. The
+  scale is a transform on touch-down, not an animation (like `Tappable`'s fill): inside the 100 ms budget with nothing
+  for reduced motion to remove.
+- **Haptics.** `useHaptics` has `selection`, `success` and `warning` on this branch (T523 adds the semantic map with
+  `impact`). A `primary` press therefore plays `selection`, a `destructive` one `warning`, in one table
+  (`PRESS_HAPTIC` in `button.tsx`); switching the primary to `impact('light')` is that table's one line.
+- The host node still carries `variant`, `size` and `isIconOnly` as marks, under the kit's old names (`primary`,
+  `secondary`, `tertiary` for tonal, `ghost` for text, `danger-soft` for destructive), because some twenty screen suites
+  count a screen state's primaries by reading `button.props.variant` (review rule 2). Native ignores props a view does
+  not know.
+- Cost in a list: the font scale is `useWindowDimensions`, the two accessibility flags (reduced motion, increased
+  contrast) come from `useAccessibilityFlags` (the shared store alone, no colour-scheme subscription), and the colours are
+  ONE `useThemeColor` call by palette key: `theme-tokens.ts` (`TOKEN_OF`, `useColors`) is the table from a key to the
+  kit or app variable generated from it, read against the stylesheet in all four themes by `theme-tokens.test.tsx`.
+- `Tappable` keeps its API; its held fill is `surface-tertiary` (the palette key `pressed`) instead of the kit's 15
+  percent mix, and its ring is the shared `focus-ring.ts` (`focusRingStyle`, `useFocusRing`: 2.5 dp, 2 dp outside).
+- `IconButton` (`icon-button.tsx`, new): `variant` `default` (paper, `lift1`), `tonal` (cream, hairline), `ghost`,
+  `glass` (`scrimButton` disc, `scrimButtonLine`, `onPhoto` icon: a held press draws the focus ring and keeps the disc,
+  the `feedback="ring"` rule of 004 T442) and `onSky` (92 percent paper, `lift1`). A 44 dp circle, a fixed size, with
+  slop to the platform floor; `busy`, `disabled`, `testID`, `<testID>-icon` and `<testID>-spinner` as `Button`. `liftStyle`
+  (`lift-style.ts`) is `boxShadow` from `Lift` with the `elevation` fallback below Android 9.
+- Gate: `test/theme/adapter-pressed-fills.test.ts` now measures `Button`, `IconButton`, `Tappable`, `Chip` and
+  `SegmentedPill` in all four themes with **no exception list** (the five `LEGACY_LABEL_GAPS` and the selected-chip gap are
+  deleted); `test/ui-kit/pressed-fills-chip-row-card.test.ts` keeps only the row and the card, whose `muted on pressed`
+  gap in `light-contrast` stays enumerated for T521. `button-class-merge.test.ts` pinned kit facts the adapter no longer
+  relies on and is deleted; `button-busy.test.tsx` keeps the real-kit `Spinner` check.
+
+**Chips (C5-16, T520).** `chip-look.ts` is the table of keys (`chipLook`, `segmentLook`, `STATUS_LOOKS`,
+`SYNC_BADGE_LOOKS`, `PRIVACY_LOOK`); `soft-label.tsx` is the shared tinted capsule (internal); the pairs are measured by
+`test/theme/chip-contrast.test.ts`.
+
+| Adapter         | As built                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Chip`          | Adds `dashed` (the "add" chip: no fill, a 1.5 dp dashed `border`). 40 dp visible, slop to the floor (vertical) and 4 dp (sideways). Unselected `surfaceSecondary` and a hairline; selected `ink`, `onInk`, and a check in place of the leading glyph; held, the `pressed` fill with an `ink` label whatever the state. A chip without `onPress` is a `View` role `text`. Label `label` semibold, capped at 1.3.                                                                                                                                   |
+| `ChipGroup`     | As 004: `radiogroup`, `radio`, `{ selected, checked }`, selection haptic on a change. **Not built: the fade at the clipped edge** (it is a gradient, and only `Scrim`, T523, may draw one).                                                                                                                                                                                                                                                                                                                                                       |
+| `SegmentedPill` | `options[{ key, label, count?, testID, accessibilityLabel }]`, `selectedKey`, `onSelect`, `role` `tablist` (default) or `radiogroup`, `size` `md` (36 dp) or `sm` (32), `accessibilityLabel`, `testID`. A capsule track (padding 4, cream, hairline) of capsule segments; selected `ink` and `onInk`, unselected `muted`, held `pressed` and `ink`; counts tabular. No sliding thumb (the thumb is the selected segment's fill; an animation is T523 or later).                                                                                   |
+| `StatusChip`    | `status`, `dayOf?: { day, of }` ("Active · Day 3 of 8", announced "Status: Active, day 3 of 8"). `planning` is `amberTint`, a calendar and `amberInk`; `active` is cream with a hairline and the coral live dot (`status-pill-active-dot`, 8 dp with a 3 dp halo), `ink`; `past` is cream, a check and `muted`. Ids, role, "Status: ..." and the words kept; three shapes, not three hues.                                                                                                                                                        |
+| `SyncChip`      | `state: SyncChipState` (exported from `sync-chip.tsx` until T529's `use-sync-chip-state` takes the type), `onRetry?`. 36 dp, 92 percent `surface` with `lift1`, `failed` lays `dangerTint` over the paper (`sync-chip-tint`) with a `danger` edge. Announced "3 changes waiting to sync", "Syncing 3 changes", "Offline, 3 changes waiting to sync" or "Sync failed, retry"; `synced` renders nothing; only `failed` with `onRetry` is a button (4 dp slop, ring).                                                                                |
+| `SyncBadge`     | Keeps `SyncBadge`, `SyncBadgeProps`, `SyncState`, `sync-badge-icon`, the three announcements and the three phrases. Pending and syncing are `amberInk` on `amberTint` with a dashed `amberLine` edge, failed `danger` on `dangerTint`, dashed `danger`; the icons are `clock`, `sync`, `alert`. **`glyphOnly`** is the form for a photograph: a 24 dp disc, `scrimButton` with an `onPhoto` glyph, and for failed a `danger` disc with the `dangerInk` glyph (P5; the contract's "white and `danger`" would be white on pink in the dark themes). |
+| `FlagChip`      | `iso2`, `size` `md` (20 by 14, radius 3) or `lg` (28 by 20, radius 4), `testID`; `flagGlyph(iso2)` is the regional-indicator pair, `null` for anything that is not two letters, and the box then shows the letters (or `?`) on cream. The box is fixed (`allowFontScaling={false}`), clipped, hairline-edged and hidden from assistive technology. Whether a country's glyph exists on a device is V6 (T512).                                                                                                                                     |
+| `PrivacyChip`   | `label?: 'Only you'`; a lock on `aquaTint` in `aquaInk`; announced "Only you can see this"; ids `privacy-chip` and `privacy-chip-icon`.                                                                                                                                                                                                                                                                                                                                                                                                           |
+
+**Kit facts read from source** (`heroui-native` 1.0.10 under `node_modules`): the kit's `Button` root fixes `height` per size
+in its stylesheet (10, 12 and 14 spacing steps: 40, 48 and 56 dp), sets `border-width: 0`, and wraps a Reanimated `PressableFeedback` with a
+highlight overlay coloured from `accent-hover`, `default-hover`, `danger-hover` and `danger-soft-hover` (read with four
+`useThemeColor` calls per button); its `secondary` variant is `bg-default` with an `accent-soft-foreground` label, a mix
+of the coral. `useThemeColor` accepts an array and answers an array; Phosphor's `IconBase` takes `mirrored` and puts
+`scaleX: -1` on the `Svg`, and tags it `phosphor-react-native-<name>-<weight>`. None of this needed a device.
+
+**Device-only checks left open** (none new beyond the existing V1 to V7; each is a line in T507 to T512 and T547):
+the emoji flag glyphs at 20 by 14 dp on both platforms (V6; `flagGlyph`'s size and line height are starting values), the
+`outline` focus ring of every control at the clipped edge of a sideways chip row (V7), `boxShadow` lifts below Android 9
+(`LiftElevation`), the 44 dp icon button reaching 48 dp on Android through slop, and that the `selection` haptic reads as the
+primary press until T523 maps `impact`.
+
 ---
 
 ## C5-17. Fields and pickers
