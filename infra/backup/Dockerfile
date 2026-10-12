@@ -9,7 +9,7 @@
 # `rclone` (a static binary) is copied in for the optional off-box upload to
 # any S3-compatible bucket (Backblaze B2, Cloudflare R2, ...).
 
-FROM rclone/rclone:1.75.1@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5 AS rclone
+FROM rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5 AS rclone
 
 FROM postgis/postgis:17-3.5
 
