@@ -23,10 +23,14 @@
  *   (the gate measures `danger` on `dangerTint` over `surface`, P4).
  *
  * It reads the state it is given and writes nothing, queries nothing (Constitution I and II).
+ * The state is `SyncChipState` of `features/sync/use-sync-chip-state.ts`, which derives it from
+ * the local store, the network and the sync runtime (T529); the type is imported, not owned
+ * here, so the adapter stays ignorant of where it comes from.
  */
 import { Spinner } from 'heroui-native';
 import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
+import type { SyncChipState } from '@/features/sync/use-sync-chip-state';
 import { useAppearance } from '@/hooks/use-appearance';
 import { Radii, withAlpha, type PaletteName } from '@/theme';
 
@@ -35,14 +39,6 @@ import { Icon, type IconName, type IconTone } from './icon';
 import { liftStyle } from './lift-style';
 import { Text, type TextTone } from './text';
 import { useColors } from './theme-tokens';
-
-/** The synchronisation of the whole screen (data-model section 8), derived by the caller. */
-export type SyncChipState =
-  | { kind: 'synced' }
-  | { kind: 'waiting'; count: number }
-  | { kind: 'syncing'; count: number }
-  | { kind: 'offline'; count: number }
-  | { kind: 'failed'; count: number };
 
 export interface SyncChipProps {
   state: SyncChipState;

@@ -39,6 +39,28 @@ export const FIRST_SYNC_COPY = {
   ready: 'Your trips are ready.',
 } as const;
 
+/** "1 change", "3 changes". */
+export function describeChanges(count: number): string {
+  return count === 1 ? '1 change' : `${count} changes`;
+}
+
+/**
+ * The sync banner (feature 005, FR-065): offline is calm and has no action; a failed sync says
+ * the data is safe on the phone and offers Retry. Without a count the line speaks of changes in
+ * general.
+ */
+export const SYNC_BANNER_COPY = {
+  offline: (count: number): string =>
+    count > 0
+      ? `Offline. ${describeChanges(count)} will sync when you're back online.`
+      : "Offline. Changes will sync when you're back online.",
+  failed: (count: number): string =>
+    count > 0
+      ? `Couldn't sync ${describeChanges(count)}. Your trips are safe on this phone.`
+      : "Couldn't sync. Your trips are safe on this phone.",
+  retry: 'Retry',
+} as const;
+
 export const CONFLICT_COPY = {
   /** Shown above the sentence, so a notice never reads as an unexplained change. */
   heading: 'Updated from another device',
