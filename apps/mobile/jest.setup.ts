@@ -203,6 +203,16 @@ jest.mock('react-native-sortables', () => {
   };
 });
 
+// Feature 005 (research D5-19, T503): the native batch. One stand-in file each under
+// test/mocks/, held to the real package's contract by test/mocks/native-batch.test.tsx.
+// Phosphor needs none: its icons are plain SVG trees (`transformIgnorePatterns`), and the
+// bare package, the 1,500-icon barrel, is refused in jest.config.js (D5-07).
+jest.mock('expo-glass-effect', () => require('./test/mocks/expo-glass-effect'));
+jest.mock('react-native-view-shot', () => require('./test/mocks/react-native-view-shot'));
+jest.mock('react-native-zoom-toolkit', () =>
+  require('./test/mocks/react-native-zoom-toolkit'),
+);
+
 // react-native-keyboard-controller reads keyboard frames natively; the library
 // ships its own Jest double in which `KeyboardAwareScrollView` is a ScrollView.
 jest.mock('react-native-keyboard-controller', () =>
