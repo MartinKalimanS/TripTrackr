@@ -44,6 +44,7 @@ describe('TOKEN_OF - C5-6', () => {
         'aquaTint',
         'border',
         'danger',
+        'dangerInk',
         'dangerTint',
         'focus',
         'hairline',

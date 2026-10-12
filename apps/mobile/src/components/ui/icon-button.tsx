@@ -27,7 +27,6 @@
  */
 import { Spinner } from 'heroui-native';
 import {
-  Platform,
   Pressable,
   type PressableProps,
   type StyleProp,
@@ -36,18 +35,12 @@ import {
 
 import { MinTouchTarget } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
-import {
-  LiftElevation,
-  cornerOf,
-  liftOf,
-  pressScaleOf,
-  withAlpha,
-  type PaletteName,
-} from '@/theme';
+import { cornerOf, pressScaleOf, withAlpha, type PaletteName } from '@/theme';
 
 import { assertAccessibleName, assertNotBusyAndDisabled } from './adapter-guards';
 import { focusRingStyle, useFocusRing } from './focus-ring';
 import { Icon, type IconName, type IconSize, type IconTone } from './icon';
+import { liftStyle } from './lift-style';
 import { useColors, type PaletteKey } from './theme-tokens';
 
 export const ICON_BUTTON_VARIANTS = [
@@ -153,14 +146,6 @@ export type IconButtonProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** `boxShadow` where the platform has it, else the `elevation` fallback (Android below 9). */
-function liftStyle(theme: PaletteName): ViewStyle {
-  const legacyAndroid = Platform.OS === 'android' && Number(Platform.Version) < 28;
-  return legacyAndroid
-    ? { elevation: LiftElevation.lift1 }
-    : { boxShadow: liftOf(theme, 'lift1') };
-}
-
 interface StyleInput {
   variant: IconButtonVariant;
   look: IconButtonLook;
@@ -229,6 +214,37 @@ function useDisc(
   };
 }
 
+interface BodyProps {
+  busy: boolean;
+  icon: IconName;
+  variant: IconButtonVariant;
+  inkColor: string;
+  testID?: string;
+}
+
+/** The glyph, or the spinner that replaces it while busy. */
+function IconButtonBody({ busy, icon, variant, inkColor, testID }: BodyProps) {
+  if (busy) {
+    return (
+      <Spinner
+        size="sm"
+        color={inkColor}
+        testID={testID ? `${testID}-spinner` : undefined}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
+    );
+  }
+  return (
+    <Icon
+      name={icon}
+      size={ICON}
+      tone={REST[variant].icon}
+      testID={testID ? `${testID}-icon` : undefined}
+    />
+  );
+}
+
 export function IconButton({
   icon,
   accessibilityLabel,
@@ -268,22 +284,13 @@ export function IconButton({
       testID={testID}
       style={({ pressed }) => [disc.styleFor(pressed), style]}
       {...rest}>
-      {busy ? (
-        <Spinner
-          size="sm"
-          color={disc.inkColor}
-          testID={testID ? `${testID}-spinner` : undefined}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        />
-      ) : (
-        <Icon
-          name={icon}
-          size={ICON}
-          tone={REST[variant].icon}
-          testID={testID ? `${testID}-icon` : undefined}
-        />
-      )}
+      <IconButtonBody
+        busy={busy}
+        icon={icon}
+        variant={variant}
+        inkColor={disc.inkColor}
+        testID={testID}
+      />
     </Pressable>
   );
 }

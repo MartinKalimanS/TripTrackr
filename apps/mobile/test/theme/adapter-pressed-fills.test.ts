@@ -25,6 +25,7 @@
  * the mixes and the gaps are gone.
  */
 import { BUTTON_VARIANTS, buttonLook } from '@/components/ui/button-look';
+import { chipLook, segmentLook } from '@/components/ui/chip-look';
 import { ICON_BUTTON_VARIANTS, iconButtonLook } from '@/components/ui/icon-button';
 import { TAPPABLE_PRESSED_TOKEN } from '@/components/ui/tappable';
 import { TOKEN_OF } from '@/components/ui/theme-tokens';
@@ -52,7 +53,30 @@ const BUSY = { ...SHOWN, busy: true };
 const colourOf = (palette: Palette, key: keyof Palette | null, ground: string) =>
   key === null ? ground : flatten(palette[key] as string, ground);
 
+const CHIP_STATES = [
+  ['unselected', { selected: false, dashed: false }],
+  ['selected', { selected: true, dashed: false }],
+  ['dashed', { selected: false, dashed: true }],
+] as const;
+
 describe('the rule: only ink on a pressed fill', () => {
+  test.each(CHIP_STATES)(
+    'Chip %s: held, the label is ink on the pressed fill',
+    (_name, state) => {
+      expect(chipLook({ ...state, pressed: true })).toMatchObject({
+        fill: 'pressed',
+        label: 'ink',
+      });
+    },
+  );
+
+  test('SegmentedPill: a held unselected segment is ink on the pressed fill', () => {
+    expect(segmentLook({ selected: false, pressed: true })).toEqual({
+      fill: 'pressed',
+      label: 'ink',
+    });
+  });
+
   test.each(BUTTON_VARIANTS)(
     'Button %s: the label on a pressed fill is ink, or navy on the coral press',
     (variant) => {
@@ -131,6 +155,39 @@ describe.each(PaletteNames)('Button in %s', (theme) => {
         3,
       );
     }
+  });
+});
+
+/** A chip sits on canvas, paper or cream (review rule 7: never on a pressed or tertiary fill). */
+const CHIP_GROUNDS = ['canvas', 'surface', 'surfaceSecondary'] as const;
+
+describe.each(PaletteNames)('Chip and SegmentedPill in %s', (theme) => {
+  const palette = Palettes[theme];
+
+  test.each(
+    CHIP_STATES.flatMap(([name, state]) =>
+      CHIP_GROUNDS.map((ground) => [name, state, ground] as const),
+    ),
+  )(
+    'a %s chip on %s: a press is a visible step, and ink reads on it',
+    (_name, state, ground) => {
+      const base = palette[ground];
+      const rest = colourOf(palette, chipLook({ ...state, pressed: false }).fill, base);
+      const held = colourOf(palette, chipLook({ ...state, pressed: true }).fill, base);
+      expect(contrastRatio(rest, held)).toBeGreaterThanOrEqual(MIN_STEP);
+      expect(contrastRatio(palette.ink, held)).toBeGreaterThanOrEqual(textFloor(theme));
+    },
+  );
+
+  test('an unselected segment on its cream track: a press is a visible step, and ink reads on it', () => {
+    const track = palette.surfaceSecondary;
+    const held = colourOf(
+      palette,
+      segmentLook({ selected: false, pressed: true }).fill,
+      track,
+    );
+    expect(contrastRatio(track, held)).toBeGreaterThanOrEqual(MIN_STEP);
+    expect(contrastRatio(palette.ink, held)).toBeGreaterThanOrEqual(textFloor(theme));
   });
 });
 

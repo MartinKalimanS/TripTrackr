@@ -48,6 +48,7 @@ export const TOKEN_OF = {
   amberLine: 'amber-line',
   amberTint: 'amber-tint',
   danger: 'danger',
+  dangerInk: 'danger-foreground',
   dangerTint: 'danger-tint',
   success: 'success',
   successTint: 'success-tint',

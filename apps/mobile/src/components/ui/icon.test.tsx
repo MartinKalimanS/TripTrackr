@@ -108,6 +108,7 @@ const TONES: [IconTone, string, keyof (typeof Palettes)['light']][] = [
   ['amberInk', 'amber-ink', 'amberInk'],
   ['amberLine', 'amber-line', 'amberLine'],
   ['danger', 'danger', 'danger'],
+  ['dangerInk', 'danger-foreground', 'dangerInk'],
   ['success', 'success', 'success'],
   // The feature 004 names, kept for the call sites that have not moved. Each reads a token
   // that passes: coral as ink is `accentText`, never the coral fill (D5-22, M-1).
@@ -143,7 +144,8 @@ describe('<Icon> tone - FR-023, C5-14', () => {
     // Tones the screens draw on paper or cream: a graphic needs 3:1 (FR-069). The three
     // left out sit on their own grounds: onInk on ink, onPhoto on a scrim, accentInk on coral.
     const ON_PAPER = TONES.filter(
-      ([tone]) => !['onInk', 'onPhoto', 'accentInk', 'onAccent'].includes(tone),
+      ([tone]) =>
+        !['onInk', 'onPhoto', 'accentInk', 'onAccent', 'dangerInk'].includes(tone),
     );
 
     test.each(ON_PAPER)('%s reads on paper and on cream', (_t, token) => {

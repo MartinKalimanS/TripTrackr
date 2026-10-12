@@ -1,90 +1,87 @@
 /**
- * `Chip`, `ChipGroup` and `StatusChip` - the small labelled things of Atlas (feature 004;
- * contract C4-8; FR-019, FR-020, FR-025, FR-026, FR-029, FR-030; 003 FR-017; review rules
- * 2, 3, 5 and 7), over the kit's Chip. They are the pill choices and the status label of
- * every screen.
+ * `Chip`, `ChipGroup` and `StatusChip` - the small labelled things of Sunrise Passport
+ * (features 004 and 005; contract C5-16; FR-025, FR-026, FR-029, FR-030, FR-055, FR-063,
+ * FR-065, FR-070, FR-074; 003 FR-017; review rules 2, 3, 5, 6 and 7). Feature 004 wrapped
+ * the kit's Chip; the Sunrise chip is a React Native `Pressable` painted from tokens
+ * (`chip-look.ts` decides which keys), because its look (an ink selection, a dashed "add",
+ * the pressed fill) is not the kit's.
  *
  *   <Chip label="EUR" accessibilityLabel="Euro" selected onPress={pick} testID="currency-EUR" />
- *   <Chip label="Food" leading={FOOD_ICON} accessibilityLabel="Food" onPress={pick} />
+ *   <Chip label="Food" leading="fork-knife" accessibilityLabel="Food" onPress={pick} />
+ *   <Chip label="Add" dashed leading="plus" accessibilityLabel="Add a city" onPress={add} />
  *   <ChipGroup options={OPTIONS} selectedKey={code} onSelect={setCode} scroll />
- *   <StatusChip status="active" />
+ *   <StatusChip status="active" dayOf={{ day: 3, of: 8 }} />
  *
  * `Chip` (an action or a choice)
- * - Selected is NOT colour alone (FR-025): a filled accent chip, a heavier label
- *   (`font-semibold`) and a check glyph that takes the place of the leading glyph, as a
- *   Material filter chip does. Unselected is outlined in `border`, which the gate measures
- *   at 3:1 on canvas, surface and field fill (FR-024; a tone-on-tone chip would not reach
- *   it). Both carry a border, so selecting never moves a pixel. Neither is a soft chip:
- *   those have a 15% fill, belong on canvas, surface or overlay only, and are not used for
- *   a chip that can sit on a field (review rule 7).
+ * - Unselected is cream with a hairline; selected is an `ink` fill with an `onInk` label and
+ *   a check that takes the place of the leading glyph (as a Material filter chip does):
+ *   NOT colour alone (FR-025). Both carry a border of the same width, so selecting never
+ *   moves a pixel. The `dashed` chip (an "add") has no fill and a 1.5 dp dashed `border`.
  * - Name and role: `accessibilityLabel` is required (an error in development when blank);
- *   the role is `button`, or what the caller says (`radio`, `checkbox`), and without a
- *   press handler it is `text`, because a button that does nothing is a lie. State
- *   carries `selected` (and `checked` for a radio) next to `disabled`. The kit's chip sets
- *   no role at all, and `testID` reaches the pressable.
- * - Touch target (FR-026): the kit chip has NO height, only padding around a line of text
- *   (about 28 dp), so an interactive chip asks for a MINIMUM of the platform floor (44 iOS,
- *   48 Android) each way, plus 4 dp of slop on every side. At large text the label grows
- *   the chip and wraps (`shrink`); the minimum is not scaled, because the content already
- *   is. The chip is the Pressable itself, so it is the node that gets the floor.
- * - Feedback (FR-019): a press swaps to a fixed fill at once (`accent-hover` on the accent
- *   fill, `surface-tertiary` on the outline; both are gated for their text), never the
- *   kit's 20% soft hover (review rule 5). A focused chip draws a ring `FocusRing.width`
- *   thick, `FocusRing.offset` OUTSIDE it, like `Tappable` (`overflow-visible` undoes the
- *   kit's clipping of its root, which would cut the ring off). Disabled is `opacity-disabled`,
- *   announced unavailable, and the press is dropped.
- * - `leading` is an `IconName` (drawn by `Icon`, in the ink that reads on the chip's
- *   fill) or any node.
+ *   the role is `button`, or what the caller says (`radio`, `checkbox`), and without a press
+ *   handler it is `text`, a label, because a button that does nothing is a lie. State carries
+ *   `selected` (and `checked` for a radio) next to `disabled`. `testID` reaches the node.
+ * - Touch target (FR-026): 40 dp visible, and slop around it up to the platform floor (44 iOS,
+ *   48 Android) vertically and 4 dp (half the gap between chips) sideways; at large text the
+ *   label wraps and the chip grows, the minimum is not scaled. Capped at 1.3 (FR-074).
+ * - Pressed (FR-063): the `pressed` fill with an INK label, a selected chip included (only
+ *   ink is gated on it), and the press scale .97 (the fill alone under reduced motion). Focus
+ *   draws the ring of `focus-ring.ts`. Disabled is `opacity-disabled`, announced
+ *   unavailable, and the press is dropped.
+ * - `leading` is an `IconName` (drawn by `Icon`, in the ink of the chip) or any node.
  *
- * `ChipGroup` is a `radiogroup` container, each chip a `radio`
- * announced `{ selected, checked }`, the options' own ids and names, `onSelect(key)` on
- * every press. A CHANGE (not a re-press of the selected one) plays the selection haptic
- * (FR-020; silent under reduced motion, through `useHaptics`). It wraps onto further
- * lines, or with `scroll` it is one sideways row without a scroll bar and with
- * `keyboardShouldPersistTaps="handled"`, so a tap with the keyboard up is not swallowed.
+ * `ChipGroup` is a `radiogroup` container, each chip a `radio` announced
+ * `{ selected, checked }`, the options' own ids and names, `onSelect(key)` on every press. A
+ * CHANGE (not a re-press of the selected one) plays the selection haptic (FR-020; silent
+ * under reduced motion, through `useHaptics`). It wraps onto further lines, or with
+ * `scroll` it is one sideways row without a scroll bar and with
+ * `keyboardShouldPersistTaps="handled"`, so a tap with the keyboard up is not swallowed. (The
+ * fade at the clipped edge of C5-16 needs a gradient, which only `Scrim` may draw; T523.)
  *
  * `StatusChip` carries `testID="status-pill-<status>"` (the id the e2e flows have always
- * used), role `text`, the name "Status: <label>", an icon and the word. It is a label, not
- * a control, so it has no floor. The tint is the status ink on its 15% soft fill, exactly
- * the pairs the contrast gate measures on every neutral fill (C4-3): `status-active`,
- * `status-past`, and for planning the INK variant (`status-planning-ink`), never the mark
- * colour.
+ * used), role `text`, the name "Status: <label>" ("Status: Active, day 3 of 8" with
+ * `dayOf`), a mark and the word: a calendar for planning, the coral live dot for active, a
+ * check for past (three shapes, FR-025). It is a label, not a control, so it has no floor.
  *
- * Colours come from semantic classes and `Icon` tones; there is no literal here.
+ * There is no colour literal here: every colour is a palette key (`useColors`).
  */
-import { Chip as KitChip } from 'heroui-native';
-import { useState, type ReactNode } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  View,
-  type AccessibilityRole,
-  type AccessibilityState,
-  type PressableProps,
-  type ViewStyle,
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import type {
+  AccessibilityRole,
+  AccessibilityState,
+  PressableProps,
+  ViewStyle,
 } from 'react-native';
+import type { ReactNode } from 'react';
 
 import { MinTouchTarget } from '@/constants/theme';
 import { STATUS_PRESENTATION, type TripStatus } from '@/features/trips/trip-status';
+import { useAccessibilityFlags } from '@/hooks/use-accessibility-flags';
 import { useHaptics } from '@/hooks/use-haptics';
-import { AtlasSpacing, FocusRing } from '@/theme';
+import { Space, cornerOf, pressScaleOf } from '@/theme';
 
 import { assertAccessibleName } from './adapter-guards';
-import { Icon, type IconName, type IconTone } from './icon';
+import { chipLook, STATUS_LOOKS, type ChipLook } from './chip-look';
+import { focusRingStyle, useFocusRing, type FocusHandlers } from './focus-ring';
+import { Icon, type IconName } from './icon';
 import { isIconKey } from './icon-registry';
-import { Text } from './text';
+import { SoftLabel } from './soft-label';
+import { Text, type TextTone } from './text';
+import { useColors } from './theme-tokens';
 
 export interface ChipProps {
   label: string;
   selected?: boolean;
   onPress?: PressableProps['onPress'];
-  /** An icon (both platforms) or any node, shown before the label. */
+  /** An icon name or any node, shown before the label. */
   leading?: IconName | ReactNode;
   /** Required: what a screen reader says. Usually the visible label, or more. */
   accessibilityLabel: string;
   /** Default `button`, or `text` without `onPress`. */
   accessibilityRole?: AccessibilityRole;
   disabled?: boolean;
+  /** The "add" chip: no fill, a dashed border. */
+  dashed?: boolean;
   testID?: string;
   /** Layout classes only (`self-stretch`): never colour. */
   className?: string;
@@ -110,59 +107,67 @@ export interface ChipGroupProps {
 
 export interface StatusChipProps {
   status: TripStatus;
+  /** "Day 3 of 8", for an active trip in the hero. */
+  dayOf?: { day: number; of: number };
 }
 
-const CHECK: IconName = 'check';
-
+/** The visible height of a chip; the rest of the target is slop around it (C5-16). */
+const CHIP_HEIGHT = 40;
 /** Half the 8 dp gap between chips: neighbours' slop never overlaps. */
-const SLOP = 4;
-const HIT_SLOP = { top: SLOP, bottom: SLOP, left: SLOP, right: SLOP } as const;
+const SLOP_X = 4;
+const SLOP_Y = (MinTouchTarget - CHIP_HEIGHT) / 2;
+const HIT_SLOP = { top: SLOP_Y, bottom: SLOP_Y, left: SLOP_X, right: SLOP_X } as const;
 
-/**
- * Literal strings, so Tailwind finds each class; the pressed fills are gated for their
- * text, and measured for a visible step (`test/ui-kit/pressed-fills-chip-row-card.test.ts`). `overflow-visible` undoes the kit's `overflow: hidden` (it only clips a theme
- * background layer we never use) so the focus ring drawn outside the chip is not clipped.
- */
-const OUTLINE = {
-  selected: 'overflow-visible border border-accent',
-  unselected: 'overflow-visible border border-border',
-};
-export const CHIP_PRESSED_CLASS = {
-  selected: 'active:bg-accent-hover',
-  unselected: 'active:bg-surface-tertiary',
-};
+/** Every palette key a chip can paint with, asked of the kit in one call. */
+const COLOR_KEYS = [
+  'ink',
+  'onInk',
+  'surfaceSecondary',
+  'hairline',
+  'border',
+  'pressed',
+  'focus',
+] as const;
 
-/**
- * The frame of a chip: the platform floor for an interactive one, nothing for a label,
- * and the focus ring while it is focused. Exported so the mapping is asserted directly.
- */
-export function chipFrame(interactive: boolean): ViewStyle {
-  return interactive ? { minHeight: MinTouchTarget, minWidth: MinTouchTarget } : {};
-}
+type Colors = Record<(typeof COLOR_KEYS)[number], string>;
 
-const FOCUS_STYLE: ViewStyle = {
-  outlineWidth: FocusRing.width,
-  outlineOffset: FocusRing.offset,
-  outlineStyle: 'solid',
+const LABEL_TONE: Record<ChipLook['label'], TextTone> = {
+  ink: 'default',
+  onInk: 'onInk',
 };
 
-interface ChipLook {
-  selected: boolean;
+interface ChipStyleInput {
+  look: ChipLook;
+  colors: Colors;
   interactive: boolean;
-  disabled: boolean;
-  className?: string;
+  scale: number;
+  focused: boolean;
 }
 
-function chipClasses({ selected, interactive, disabled, className }: ChipLook): string {
-  const key = selected ? 'selected' : 'unselected';
-  return [
-    OUTLINE[key],
-    interactive ? CHIP_PRESSED_CLASS[key] : '',
-    disabled ? 'opacity-disabled' : '',
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+/** What the host node carries now. Exported so the mapping is asserted directly. */
+export function chipStyle({
+  look,
+  colors,
+  interactive,
+  scale,
+  focused,
+}: ChipStyleInput): ViewStyle {
+  return {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: CHIP_HEIGHT,
+    ...(interactive ? { minWidth: MinTouchTarget } : null),
+    paddingVertical: Space[2],
+    paddingHorizontal: Space[4],
+    ...cornerOf('full'),
+    borderWidth: look.edgeWidth,
+    borderColor: colors[look.edge as keyof Colors],
+    ...(look.dashed ? { borderStyle: 'dashed' } : null),
+    ...(look.fill ? { backgroundColor: colors[look.fill as keyof Colors] } : null),
+    ...(scale === 1 ? null : { transform: [{ scale }] }),
+    ...(focused ? focusRingStyle(colors.focus) : null),
+  };
 }
 
 function chipState(
@@ -180,17 +185,18 @@ function chipState(
 interface LeadingProps {
   selected: boolean;
   leading: IconName | ReactNode;
+  look: ChipLook;
   testID?: string;
 }
 
 /** The check while selected, else the caller's glyph: an icon name or a node. */
-function Leading({ selected, leading, testID }: LeadingProps) {
+function Leading({ selected, leading, look, testID }: LeadingProps) {
   if (selected) {
     return (
       <Icon
-        name={CHECK}
+        name="check"
         size={16}
-        tone="onAccent"
+        tone={look.label}
         testID={testID ? `${testID}-check` : undefined}
       />
     );
@@ -200,7 +206,7 @@ function Leading({ selected, leading, testID }: LeadingProps) {
       <Icon
         name={leading}
         size={16}
-        tone="default"
+        tone={look.label}
         testID={testID ? `${testID}-icon` : undefined}
       />
     );
@@ -208,44 +214,149 @@ function Leading({ selected, leading, testID }: LeadingProps) {
   return <>{leading}</>;
 }
 
-export function Chip({
-  label,
+interface BodyProps extends LeadingProps {
+  label: string;
+}
+
+function ChipBody({ label, ...leading }: BodyProps) {
+  return (
+    <>
+      <Leading {...leading} />
+      <Text
+        variant="label"
+        strong
+        capped
+        tone={LABEL_TONE[leading.look.label]}
+        className="shrink">
+        {label}
+      </Text>
+    </>
+  );
+}
+
+interface Surface {
+  lookOf: (pressed: boolean) => ChipLook;
+  styleOf: (pressed: boolean) => ViewStyle;
+  focus: FocusHandlers;
+}
+
+interface SurfaceInput {
+  selected: boolean;
+  dashed: boolean;
+  interactive: boolean;
+  disabled: boolean;
+}
+
+/** Look and style of a chip for a held or resting press, from the active theme. */
+function useChipSurface({
+  selected,
+  dashed,
+  interactive,
+  disabled,
+}: SurfaceInput): Surface {
+  const { prefersLessMotion } = useAccessibilityFlags();
+  const colors = useColors(COLOR_KEYS);
+  const focus = useFocusRing();
+  const live = interactive && !disabled;
+  const lookOf = (pressed: boolean) =>
+    chipLook({ selected, dashed, pressed: pressed && live });
+  const styleOf = (pressed: boolean) =>
+    chipStyle({
+      look: lookOf(pressed),
+      colors,
+      interactive,
+      scale: pressed && live ? pressScaleOf(prefersLessMotion) : 1,
+      focused: interactive && focus.focused,
+    });
+  return { lookOf, styleOf, focus };
+}
+
+type HostInput = Pick<
+  ChipProps,
+  'selected' | 'disabled' | 'accessibilityLabel' | 'testID' | 'className'
+> & { role: AccessibilityRole };
+
+/** The props both forms of a chip put on their host node. */
+function hostProps({
+  role,
   selected = false,
-  onPress,
-  leading,
-  accessibilityLabel,
-  accessibilityRole,
   disabled = false,
+  accessibilityLabel,
   testID,
   className,
-}: ChipProps) {
-  assertAccessibleName('Chip', accessibilityLabel);
+}: HostInput) {
+  const classes = [disabled ? 'opacity-disabled' : '', className ?? '']
+    .filter(Boolean)
+    .join(' ');
+  return {
+    testID,
+    accessibilityRole: role,
+    accessibilityLabel,
+    accessibilityState: chipState(role, selected, disabled),
+    className: classes || undefined,
+  };
+}
 
-  const [focused, setFocused] = useState(false);
-  const interactive = onPress !== undefined;
-  const role = accessibilityRole ?? (interactive ? 'button' : 'text');
-
+/** A chip with no press handler: a label, not a button that does nothing. */
+function LabelChip(props: ChipProps) {
+  const { label, selected = false, dashed = false, leading, testID } = props;
+  const { lookOf, styleOf } = useChipSurface({
+    selected,
+    dashed,
+    interactive: false,
+    disabled: false,
+  });
+  const role = props.accessibilityRole ?? 'text';
   return (
-    <KitChip
-      variant={selected ? 'primary' : 'tertiary'}
-      color={selected ? 'accent' : 'default'}
-      size="md"
-      accessibilityRole={role}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={chipState(role, selected, disabled)}
+    <View {...hostProps({ ...props, role })} accessible style={styleOf(false)}>
+      <ChipBody
+        label={label}
+        selected={selected}
+        leading={leading}
+        look={lookOf(false)}
+        testID={testID}
+      />
+    </View>
+  );
+}
+
+function PressableChip(props: ChipProps & Required<Pick<ChipProps, 'onPress'>>) {
+  const { label, selected = false, dashed = false, disabled = false, leading } = props;
+  const { lookOf, styleOf, focus } = useChipSurface({
+    selected,
+    dashed,
+    interactive: true,
+    disabled,
+  });
+  const role = props.accessibilityRole ?? 'button';
+  return (
+    <Pressable
+      {...hostProps({ ...props, role })}
       disabled={disabled ? true : undefined}
-      onPress={disabled ? undefined : onPress}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      hitSlop={interactive ? HIT_SLOP : undefined}
-      className={chipClasses({ selected, interactive, disabled, className })}
-      style={[chipFrame(interactive), focused && interactive ? FOCUS_STYLE : null]}
-      testID={testID}>
-      <Leading selected={selected} leading={leading} testID={testID} />
-      <KitChip.Label className={selected ? 'shrink font-semibold' : 'shrink'}>
-        {label}
-      </KitChip.Label>
-    </KitChip>
+      onPress={disabled ? undefined : props.onPress}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
+      hitSlop={HIT_SLOP}
+      style={({ pressed }) => styleOf(pressed)}>
+      {({ pressed }) => (
+        <ChipBody
+          label={label}
+          selected={selected}
+          leading={leading}
+          look={lookOf(pressed)}
+          testID={props.testID}
+        />
+      )}
+    </Pressable>
+  );
+}
+
+export function Chip(props: ChipProps) {
+  assertAccessibleName('Chip', props.accessibilityLabel);
+  return props.onPress === undefined ? (
+    <LabelChip {...props} />
+  ) : (
+    <PressableChip {...props} onPress={props.onPress} />
   );
 }
 
@@ -296,55 +407,51 @@ export function ChipGroup({
   );
 }
 
-interface StatusLook {
-  icon: IconName;
-  tone: IconTone;
-  /** The soft fill (15%) and the ink, as literal classes for Tailwind to find. */
-  fill: string;
-  ink: string;
-}
+const DOT = 8;
+const HALO = 3;
+const COLOR_KEYS_DOT = ['accentLine', 'accentTint'] as const;
 
-const STATUS_LOOK: Record<TripStatus, StatusLook> = {
-  planning: {
-    icon: 'calendar',
-    tone: 'statusPlanning',
-    fill: 'bg-status-planning-ink/15',
-    ink: 'text-status-planning-ink',
-  },
-  active: {
-    icon: 'map-pin',
-    tone: 'statusActive',
-    fill: 'bg-status-active/15',
-    ink: 'text-status-active',
-  },
-  past: {
-    icon: 'check-circle',
-    tone: 'statusPast',
-    fill: 'bg-status-past/15',
-    ink: 'text-status-past',
-  },
-};
-
-const BADGE = 'flex-row items-center self-start gap-1 rounded-full px-2 py-0.5';
-
-export function StatusChip({ status }: StatusChipProps) {
-  const { label } = STATUS_PRESENTATION[status];
-  const look = STATUS_LOOK[status];
+/** The coral live dot of an active trip: 8 dp with a 3 dp halo (decorative). */
+function LiveDot() {
+  const colors = useColors(COLOR_KEYS_DOT);
   return (
     <View
+      testID="status-pill-active-dot"
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        width: DOT + 2 * HALO,
+        height: DOT + 2 * HALO,
+        ...cornerOf('full'),
+        backgroundColor: colors.accentLine,
+        borderWidth: HALO,
+        borderColor: colors.accentTint,
+      }}
+    />
+  );
+}
+
+export function StatusChip({ status, dayOf }: StatusChipProps) {
+  const { label } = STATUS_PRESENTATION[status];
+  const look = STATUS_LOOKS[status];
+  const day = status === 'active' ? dayOf : undefined;
+  const words = day ? `${label} · Day ${day.day} of ${day.of}` : label;
+  const spoken = day ? `${label}, day ${day.day} of ${day.of}` : label;
+  return (
+    <SoftLabel
+      look={look}
+      label={words}
+      accessibilityLabel={`Status: ${spoken}`}
       testID={`status-pill-${status}`}
-      accessibilityRole="text"
-      accessibilityLabel={`Status: ${label}`}
-      className={`${BADGE} ${look.fill}`}>
-      <Icon name={look.icon} size={16} tone={look.tone} />
-      <Text type="caption" className={look.ink}>
-        {label}
-      </Text>
-    </View>
+      leading={
+        look.icon ? <Icon name={look.icon} size={16} tone={look.ink} /> : <LiveDot />
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: AtlasSpacing.two },
-  row: { flexDirection: 'row', gap: AtlasSpacing.two },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Space[2] },
+  row: { flexDirection: 'row', gap: Space[2] },
 });

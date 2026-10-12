@@ -51,6 +51,7 @@ export type IconTone =
   | 'amberInk'
   | 'amberLine'
   | 'danger'
+  | 'dangerInk'
   | 'success'
   // The feature 004 names, kept for the call sites that have not moved (Phase 10).
   | 'default'
@@ -105,6 +106,7 @@ const TONE_TOKENS: Record<IconTone, ThemeColor | AppColor> = {
   amberInk: 'amber-ink',
   amberLine: 'amber-line',
   danger: 'danger',
+  dangerInk: 'danger-foreground',
   success: 'success',
   default: 'foreground',
   accent: 'accent-text',

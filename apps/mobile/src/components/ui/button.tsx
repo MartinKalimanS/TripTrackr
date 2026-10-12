@@ -299,10 +299,25 @@ function useButtonSurface(input: SurfaceInput): Surface {
   return { lookFor, styleFor, colors };
 }
 
-export function Button({
+/** The press of a button: its haptic first (by variant), then the caller's handler. */
+function usePressHandler(variant: ButtonVariant, onPress: ButtonProps['onPress']) {
+  const haptics = useHaptics();
+  return (event: GestureResponderEvent) => {
+    const kind = PRESS_HAPTIC[variant];
+    if (kind) haptics[kind]();
+    onPress?.(event);
+  };
+}
+
+export function Button(props: ButtonProps) {
+  assertAccessibleName('Button', props.accessibilityLabel);
+  assertNotBusyAndDisabled('Button', props.busy, props.disabled);
+  return <ButtonControl {...props} />;
+}
+
+function ButtonControl({
   variant = 'primary',
   size = 'md',
-  accessibilityLabel,
   busy = false,
   disabled = false,
   icon,
@@ -311,50 +326,32 @@ export function Button({
   onFocus,
   onBlur,
   children,
-  className,
   style,
   testID,
   ...rest
 }: ButtonProps) {
-  assertAccessibleName('Button', accessibilityLabel);
-  assertNotBusyAndDisabled('Button', busy, disabled);
-
-  const haptics = useHaptics();
+  const press = usePressHandler(variant, onPress);
   const focus = useFocusRing(onFocus, onBlur);
-  const surface = useButtonSurface({
-    variant,
-    size,
-    iconOnly,
-    busy,
-    disabled,
-    focused: focus.focused,
-  });
+  const shape = { variant, size, iconOnly, busy, disabled };
+  const surface = useButtonSurface({ ...shape, focused: focus.focused });
   const inert = busy || disabled;
-
-  const handlePress = (event: GestureResponderEvent) => {
-    const kind = PRESS_HAPTIC[variant];
-    if (kind) haptics[kind]();
-    onPress?.(event);
-  };
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ busy, disabled: inert }}
       disabled={inert}
-      onPress={inert ? undefined : handlePress}
+      onPress={inert ? undefined : press}
       onFocus={focus.onFocus}
       onBlur={focus.onBlur}
-      className={className}
       testID={testID}
       style={({ pressed }) => [surface.styleFor(pressed), style]}
       {...emphasisMarks(variant, size, iconOnly)}
       {...rest}>
       {({ pressed }) => (
         <ButtonBody
-          look={surface.lookFor(pressed)}
-          spinnerColor={surface.colors[surface.lookFor(pressed).label]}
+          surface={surface}
+          pressed={pressed}
           busy={busy}
           icon={icon}
           iconOnly={iconOnly}
@@ -367,15 +364,27 @@ export function Button({
   );
 }
 
-interface BodyProps extends LeadingProps {
+interface BodyProps {
+  surface: Surface;
+  pressed: boolean;
+  busy: boolean;
+  icon?: IconName;
   iconOnly: boolean;
+  size: ButtonSize;
+  testID?: string;
   children?: string;
 }
 
-function ButtonBody({ iconOnly, size, look, children, ...leading }: BodyProps) {
+function ButtonBody({ surface, pressed, iconOnly, size, children, ...rest }: BodyProps) {
+  const look = surface.lookFor(pressed);
   return (
     <>
-      <Leading size={size} look={look} {...leading} />
+      <Leading
+        size={size}
+        look={look}
+        spinnerColor={surface.colors[look.label]}
+        {...rest}
+      />
       {iconOnly ? null : (
         <Text
           variant={size === 'sm' ? 'label' : 'callout'}
