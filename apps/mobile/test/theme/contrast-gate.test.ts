@@ -141,11 +141,17 @@ describe('contrast gate — contract C5-4, pair classes P1 to P23', () => {
       const floor = isContrastTheme(name)
         ? ContrastFloor.increasedContrast
         : ContrastFloor.normalText;
+      // The accent word on the sky is DISPLAY-size text: the large-text floor (3:1, and
+      // 7:1 in the contrast themes), see DISPLAY_SIZE_ONLY.
+      const large = isContrastTheme(name)
+        ? ContrastFloor.increasedContrast
+        : ContrastFloor.largeText;
       const text = pairs.filter((pair) => TEXT_CLASSES.includes(pair.cls));
       expect(text.length).toBeGreaterThan(0);
-      expect(
-        text.filter((pair) => pair.floor !== floor).map((pair) => pair.label),
-      ).toEqual([]);
+      const wrong = text.filter(
+        (pair) => pair.floor !== (pair.label.includes('display size') ? large : floor),
+      );
+      expect(wrong.map((pair) => pair.label)).toEqual([]);
     });
 
     test('graphic classes are held to 3:1 in every theme (FR-069)', () => {

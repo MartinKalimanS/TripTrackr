@@ -1,7 +1,8 @@
 'use strict';
 
 /**
- * The pure half of the theme generator (feature 004, contract C4-5, research D4-04).
+ * The pure half of the theme generator (feature 004, contract C4-5, research D4-04; the
+ * Sunrise variable map of feature 005, contract C5-6, research D5-02).
  *
  * `buildThemeCss(palettes)` turns the palette into the stylesheet the UI kit reads: a
  * pure function of its argument and of the variable map below. No I/O lives here, so the
@@ -24,6 +25,13 @@
  * neutral `--default` fill, `overlay` as the selected segment, `border` as the field
  * border (see the `Palette` interface in `src/theme/palette.ts`).
  *
+ * Sunrise (C5-6): the kit's `--surface-tertiary` (the pressed fill) reads `pressed`, its
+ * `--separator` reads `hairline`, its `--link` reads `ink` (coral is never a link) and
+ * `--accent` and `--accent-foreground` read the coral fill and its navy label. The kit
+ * variables the palette has no key for take the closest measured one: `--success-foreground`
+ * and `--warning-foreground` read `onInk` and `--warning` reads `amberInk` (all three
+ * measured by the gate, class P5), so a kit component that uses them stays on tokens.
+ *
  * @type {ReadonlyArray<readonly [string, string]>}
  */
 const KIT_VARIABLES = [
@@ -33,7 +41,7 @@ const KIT_VARIABLES = [
   ['--surface-foreground', 'ink'],
   ['--surface-secondary', 'surfaceSecondary'],
   ['--surface-secondary-foreground', 'ink'],
-  ['--surface-tertiary', 'surfaceTertiary'],
+  ['--surface-tertiary', 'pressed'],
   ['--surface-tertiary-foreground', 'ink'],
   ['--overlay', 'overlay'],
   ['--overlay-foreground', 'ink'],
@@ -48,24 +56,27 @@ const KIT_VARIABLES = [
   ['--field-placeholder', 'placeholder'],
   ['--field-border', 'border'],
   ['--success', 'success'],
-  ['--success-foreground', 'successInk'],
-  ['--warning', 'warning'],
-  ['--warning-foreground', 'warningInk'],
+  ['--success-foreground', 'onInk'],
+  ['--warning', 'amberInk'],
+  ['--warning-foreground', 'onInk'],
   ['--danger', 'danger'],
   ['--danger-foreground', 'dangerInk'],
   ['--segment', 'overlay'],
   ['--segment-foreground', 'ink'],
   ['--border', 'border'],
-  ['--separator', 'separator'],
+  ['--separator', 'hairline'],
   ['--focus', 'focus'],
   ['--link', 'link'],
 ];
 
 /**
- * The app's own variables (trip status, pending marker). Each is also exposed to
- * Tailwind as `--color-<name>` in an `@theme inline static` block (the kit's own form,
- * `heroui-native/src/styles/theme.css`) so `bg-status-active`, `text-pending` and
- * friends work.
+ * The app's own variables: trip status and the pending marker (feature 004), then one for
+ * every Sunrise key the kit has no variable for (C5-6). Each is also exposed to Tailwind as
+ * `--color-<name>` in an `@theme inline static` block (the kit's own form,
+ * `heroui-native/src/styles/theme.css`) so `bg-status-active`, `text-accent-text`,
+ * `bg-cover1-start` and friends work. None may collide with a name the kit declares
+ * (`test/theme/kit-variables.test.ts` reads the kit to check). The roundel ring is
+ * `--photo-ring`: a bare `--ring` is a name the kit may claim.
  *
  * @type {ReadonlyArray<readonly [string, string]>}
  */
@@ -75,6 +86,42 @@ const APP_VARIABLES = [
   ['--status-active', 'statusActive'],
   ['--status-past', 'statusPast'],
   ['--pending', 'pending'],
+  ['--subtle', 'subtle'],
+  ['--on-ink', 'onInk'],
+  ['--sand', 'sand'],
+  ['--accent-press', 'accentPress'],
+  ['--accent-line', 'accentLine'],
+  ['--accent-text', 'accentText'],
+  ['--accent-tint', 'accentTint'],
+  ['--aqua', 'aqua'],
+  ['--aqua-line', 'aquaLine'],
+  ['--aqua-ink', 'aquaInk'],
+  ['--aqua-tint', 'aquaTint'],
+  ['--amber', 'amber'],
+  ['--amber-line', 'amberLine'],
+  ['--amber-ink', 'amberInk'],
+  ['--amber-tint', 'amberTint'],
+  ['--danger-tint', 'dangerTint'],
+  ['--success-tint', 'successTint'],
+  ['--grab', 'grab'],
+  ['--on-photo', 'onPhoto'],
+  ['--scrim-button', 'scrimButton'],
+  ['--scrim-button-line', 'scrimButtonLine'],
+  ['--photo-ring', 'ring'],
+  ['--skeleton', 'skeleton'],
+  ['--skeleton-highlight', 'skeletonHighlight'],
+  ['--toast-surface', 'toastSurface'],
+  ['--toast-ink', 'toastInk'],
+  ['--stamp-coral', 'stampCoral'],
+  ['--stamp-navy', 'stampNavy'],
+  ['--stamp-teal', 'stampTeal'],
+  ['--stamp-green', 'stampGreen'],
+  ['--cover1-start', 'cover1Start'],
+  ['--cover1-end', 'cover1End'],
+  ['--cover2-start', 'cover2Start'],
+  ['--cover2-end', 'cover2End'],
+  ['--cover3-start', 'cover3Start'],
+  ['--cover3-end', 'cover3End'],
 ];
 
 /**
@@ -83,7 +130,7 @@ const APP_VARIABLES = [
  *
  * The kit ships `--field-border-width: 0px` (its fields are borderless) and reads it in
  * `@theme inline static` as `--border-width-field-width: var(--field-border-width, ...)`.
- * Atlas draws the field boundary FR-024 requires (`--field-border` is the 3:1 `border`
+ * Sunrise draws the field boundary FR-069 requires (`--field-border` is the 3:1 `border`
  * colour), so the width is overridden here; a later `@theme` declaration wins.
  *
  * @type {ReadonlyArray<readonly [string, string]>}
@@ -96,10 +143,27 @@ const SHADOWED_THEMES = ['light'];
 /** A zero shadow that still lets the kit's ring utilities work (HeroUI docs). */
 const NO_SHADOW = '0 0 0 0 transparent inset';
 
-/** Every colour is `#RRGGBB`; only the `backdrop` scrim may also be `#RRGGBBAA`. */
+/**
+ * Every colour is `#RRGGBB`; only tints, scrims and alpha lines (C5-1) may also be
+ * `#RRGGBBAA`. An alpha channel on any other key (an `ink` at 80 percent) is refused, so
+ * no text colour can lose contrast silently. A light tint is an opaque colour, so a
+ * translucent key may be either form.
+ */
 const HEX_OPAQUE = /^#[0-9A-Fa-f]{6}$/;
 const HEX_TRANSLUCENT = /^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$/;
-const TRANSLUCENT_KEYS = ['backdrop'];
+const TRANSLUCENT_KEYS = Object.freeze([
+  'hairline',
+  'grab',
+  'backdrop',
+  'accentTint',
+  'aquaTint',
+  'amberTint',
+  'dangerTint',
+  'successTint',
+  'scrimButton',
+  'scrimButtonLine',
+  'skeletonHighlight',
+]);
 
 /** A theme name becomes a CSS identifier, so it is checked rather than trusted. */
 const THEME_NAME = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
@@ -224,8 +288,8 @@ function sharedBlock() {
     ([variable, value]) => `  ${variable}: ${value};`,
   );
   return [
-    '/* The kit ships --field-border-width: 0px (borderless fields); Atlas draws the',
-    ' * field boundary that FR-024 requires. */',
+    '/* The kit ships --field-border-width: 0px (borderless fields); Sunrise draws the',
+    ' * field boundary that FR-069 requires. */',
     '@theme {',
     ...declarations,
     '}',
@@ -279,4 +343,4 @@ function buildThemeCss(palettes) {
   return css;
 }
 
-module.exports = { buildThemeCss };
+module.exports = { buildThemeCss, TRANSLUCENT_KEYS };

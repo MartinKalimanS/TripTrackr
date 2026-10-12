@@ -49,10 +49,13 @@ describe('theme switching — FR-022, FR-023', () => {
   );
 
   test.each(['light', 'dark'] as const)(
-    'increased contrast changes the %s canvas, and the tokens follow the palette',
+    'increased contrast changes the %s ink, and the tokens follow the palette',
     (scheme) => {
+      // Sunrise keeps the paper and raises the ink (the contrast themes share the canvas of
+      // their base, C5-3), so the token that must change is the text, not the canvas.
       const contrast: PaletteName = `${scheme}-contrast`;
-      expect(Colors[contrast].canvas).not.toBe(Colors[scheme].canvas);
+      expect(Colors[contrast].textPrimary).not.toBe(Colors[scheme].textPrimary);
+      expect(Colors[contrast].textPrimary).toBe(Palettes[contrast].ink);
       expect(Colors[contrast].canvas).toBe(Palettes[contrast].canvas);
     },
   );

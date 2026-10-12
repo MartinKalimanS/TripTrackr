@@ -394,7 +394,7 @@ function p20(gate: Gate): Pair[] {
 export function skyGrounds(name: PaletteName): { label: string; colour: string }[] {
   const sky = Sky[name.startsWith('dark') ? 'dark' : 'light'];
   const glows = sky.glows.map((glow) => {
-    const under = colourAt(sky.stops, Math.min(Math.max(glow.cy, 0), 1));
+    const under = colourAt(sky.stops, glow.centre[1]);
     return {
       label: `glow ${glow.colour}`,
       colour: blend(glow.colour, under, glow.alpha),

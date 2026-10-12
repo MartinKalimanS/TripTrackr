@@ -1,5 +1,6 @@
 /**
- * The Atlas palette — data-model section 1, contract C4-1 and C4-4.
+ * The Sunrise Passport palette — feature 005 data-model section 1, contracts C5-1, C5-3
+ * and C5-5 (the resolver is unchanged from 004 C4-4).
  *
  * The values live in `palette.data.js` (plain data, so the theme generator can read them
  * under plain Node; see that file for why). This module gives them their types and the
@@ -25,65 +26,124 @@ export const PaletteNames: readonly PaletteName[] = Object.freeze([
 ]);
 
 /**
- * One theme's colours. Hex strings; `backdrop` alone is `#RRGGBBAA` (a scrim).
+ * One theme's colours. Hex strings: `#RRGGBB`, except tints, scrims and alpha lines, which
+ * may be `#RRGGBBAA` (C5-1). The gate (`test/theme/contrast-gate.test.ts`) measures every
+ * pair class of C5-4 over these in all four themes.
  *
- * `surfaceSecondary` is the field fill, the segment track and the neutral `--default`
- * fill, and `border` is the field border: the kit's `--field-background` and
- * `--field-border` are mapped from them, so the palette needs no separate keys.
+ * Kit variable mapping (C5-6): `surfaceSecondary` is the field fill, the segment track and
+ * the neutral `--default` fill; `border` is the field border; `pressed` is the kit's
+ * `--surface-tertiary`; `hairline` is its `--separator`.
  */
 export interface Palette {
-  // Neutral ramp
-  /** App background (grouped-list ground). */
+  // Surfaces
+  /** Behind sheets. */
   canvas: string;
-  /** Cards and rows. */
+  /** "Paper": screens, sheets, cards. */
   surface: string;
-  /** Field fill, segment track, neutral buttons. */
+  /** "Cream": tiles, fields, raised rows (needs a hairline). */
   surfaceSecondary: string;
-  /** Pressed fill, skeleton base. */
-  surfaceTertiary: string;
-  /** Sheets, menus; also the selected segment. */
+  /** Decorative only: dashes, perforation, tracks. Gate-exempt as a boundary. */
+  sand: string;
+  /** Sheets and menus (= `surface`). */
   overlay: string;
-  /** Decorative hairline. Gate-exempt. */
-  separator: string;
-  /** Scrim behind sheets (translucent). Gate-exempt. */
-  backdrop: string;
-  // Ink
-  /** Primary text. */
-  ink: string;
-  /** Secondary text, chevrons. */
-  muted: string;
-  /** Field placeholder. */
-  placeholder: string;
-  // Accent and states
-  accent: string;
-  /** Label on an accent fill. */
-  accentInk: string;
-  link: string;
-  /** 3:1 boundary for fields and outlined controls. */
+  /** Pressed fill. Only `ink` text sits on it (finding M-4). */
+  pressed: string;
+  // Lines
+  /** Decorative divider and card edge; an explicit boundary in the contrast themes. */
+  hairline: string;
+  /** Sheet handle, a graphic at 3:1. */
+  grab: string;
+  /** Field boundary, 3:1. */
   border: string;
   /**
-   * Focus ring colour. Drawn `FocusRing.offset` dp off the control, so it needs 3:1 on
-   * the neutral fills it touches (canvas, surface, field fill), not on an accent fill.
+   * Focus ring colour. Drawn 2.5 dp wide, `FocusRing.offset` dp off the control, so it
+   * needs 3:1 on the neutral fills it touches (canvas, surface, cream), not on an accent fill.
    */
   focus: string;
+  /** Scrim behind form sheets (translucent). Gate-exempt. */
+  backdrop: string;
+  // Ink
+  ink: string;
+  /** Secondary text ("ink-2"). */
+  muted: string;
+  /** Tertiary text and the placeholder ("ink-3"). */
+  subtle: string;
+  /** Label on an `ink` fill (a selected chip, segment or day). */
+  onInk: string;
+  // Coral: the one thing to do, and "now"
+  /** Primary fill. Below 3:1 on white in `light` and `light-contrast`: pinned, with an edge ring. */
+  accent: string;
+  /** Label on the accent fill: navy, never white. */
+  accentInk: string;
+  accentPress: string;
+  /** Graphic at 3:1: the edge ring, the active node, bars, arcs. */
+  accentLine: string;
+  /** Coral as text or an icon. */
+  accentText: string;
+  /** Soft chip fill. */
+  accentTint: string;
+  // Aqua: water and "only you"
+  /** Fills only (2.0:1 on white: never text or a line). */
+  aqua: string;
+  aquaLine: string;
+  aquaInk: string;
+  aquaTint: string;
+  // Amber: planned
+  /** Fill or ring on photographs. */
+  amber: string;
+  /** Planned graphic on paper. */
+  amberLine: string;
+  /** Planned text on its tint. */
+  amberInk: string;
+  amberTint: string;
+  // States
+  /** Text, an icon, or a fill under `dangerInk`. */
   danger: string;
-  /** Label on a danger fill. */
   dangerInk: string;
+  dangerTint: string;
+  /** Text and icon ("success ink"). */
   success: string;
-  /** Label on a success fill. */
-  successInk: string;
-  warning: string;
-  /** Label on a warning fill. */
-  warningInk: string;
-  // Trip status (shared with the globe's connection hues)
-  statusPlanning: string;
-  /** Chip label; darker than the arc in light themes. */
-  statusPlanningInk: string;
+  successTint: string;
+  // Trip status and sync (kept keys, new values; aliases of C5-3)
+  /** = `accentLine`. */
   statusActive: string;
+  /** = `amberLine`. */
+  statusPlanning: string;
+  /** = `amberInk`. */
+  statusPlanningInk: string;
+  /** = `muted`. */
   statusPast: string;
-  // Sync
-  /** Pending-synchronisation marker (icon and text). */
+  /** Pending-synchronisation marker ink (= `amberInk`). */
   pending: string;
+  /** = `ink`, underlined; coral is never a link. */
+  link: string;
+  /** = `subtle`. */
+  placeholder: string;
+  // Over photographs (theme-aware where the prototype is)
+  /** Always `#FFFFFF`, opaque. */
+  onPhoto: string;
+  /** The floating icon button's disc. */
+  scrimButton: string;
+  scrimButtonLine: string;
+  /** Roundel and avatar ring. */
+  ring: string;
+  // Skeleton and toast
+  skeleton: string;
+  skeletonHighlight: string;
+  /** Dark in every theme; its action is `accentPress`. */
+  toastSurface: string;
+  toastInk: string;
+  // Stamp inks and generated-cover stops (theme-aware, C5-3)
+  stampCoral: string;
+  stampNavy: string;
+  stampTeal: string;
+  stampGreen: string;
+  cover1Start: string;
+  cover1End: string;
+  cover2Start: string;
+  cover2End: string;
+  cover3Start: string;
+  cover3End: string;
 }
 
 /**
@@ -101,8 +161,9 @@ export const PaletteKeys: readonly (keyof Palette)[] = Object.freeze(
 export const Palettes: Readonly<Record<PaletteName, Readonly<Palette>>> = data;
 
 /**
- * Contract C4-4: the device scheme plus the increased-contrast preference selects the
- * theme. The root layout hands this to `Uniwind.setTheme`; nothing else sets the theme.
+ * Contract C4-4 (inherited by C5-5): the device scheme plus the increased-contrast
+ * preference selects the theme. The root layout hands this to `Uniwind.setTheme`; nothing
+ * else sets the theme.
  */
 export function resolvePaletteName(
   scheme: ThemeName,

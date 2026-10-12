@@ -3,8 +3,9 @@
  * contract C4-1).
  *
  * Every colour used anywhere in `src/` originates in `src/theme/palette.data.js` (the
- * Atlas palette). Screens and components import tokens or use semantic classes; they never
- * write a literal, and an ESLint rule (eslint.config.js) rejects one that tries.
+ * Sunrise Passport palette, feature 005). Screens and components import tokens or use
+ * semantic classes; they never write a literal, and an ESLint rule (eslint.config.js)
+ * rejects one that tries.
  */
 
 import { Platform, StyleSheet } from 'react-native';
@@ -104,27 +105,55 @@ export const SplashBackground = '#208AEF';
 export const MinTouchTarget = Platform.select({ ios: 44, android: 48 }) ?? 44;
 
 /**
- * The globe palette — feature 001 User Story 3, research D-30.
+ * The globe palette — feature 001 User Story 3, research D-30; the Sunrise values and
+ * stops of feature 005 contract C5-11.
  *
  * A separate group from `Colors` because these tones sit on map imagery, not
  * on the canvas, and imagery has no single colour to measure against. Every
  * connection is therefore drawn over a `casing` line, and the gate
- * (test/theme/globe-contrast-gate.test.ts) measures each status colour against
- * that casing: 3:1 for a graphical object (WCAG 1.4.11), whatever lies beneath.
- * Keys match the trip statuses so a layer can index by status directly.
+ * (test/theme/globe-contrast-gate.test.ts; class P22 of the palette gate) measures each arc
+ * stop against that casing: 3:1 for a graphical object (WCAG 1.4.11), whatever lies
+ * beneath. A country keyline is measured against both land colours instead.
+ * Keys match the trip statuses so a layer can index by status directly; `*End` is the
+ * far stop of the gradient arc.
+ *
+ * Past and active share a hue in the light theme (and a start stop in both): they are told
+ * apart by width (`GlobeGeometry.arcWidth`), by the pulse and by the live pin, never by
+ * colour alone. `active` and `planning` equal the palette's `statusActive` and
+ * `statusPlanning` (the palette test asserts it), so a status reads the same on a card and
+ * on the globe. The prototype's bright light arc ends (#FF9A45, #FFB547) are 2.11:1 and
+ * 1.76:1 on white (finding M-3), so light ends at the amber line; dark keeps bright ends
+ * because its casing is dark. The visited fill is a fill only (1.37:1 on light land): the
+ * keyline carries the meaning. The basemap style group (water, atmosphere) is T532.
  */
 export const GlobeColors = {
   light: {
     casing: '#FFFFFF',
-    active: '#2456C7', //  6.50:1 vs casing
-    planning: '#9A5B00', //  5.43:1 vs casing
-    past: '#6B7482', //  4.72:1 vs casing
+    active: '#E04A33', // 4.04:1 vs casing
+    activeEnd: '#B86E00', // 3.99:1
+    planning: '#B86E00', // 3.99:1
+    past: '#E04A33', // 4.04:1
+    pastEnd: '#B86E00', // 3.99:1
+    visitedFill: '#FFCFBF',
+    visitedKeyline: '#E04A33', // 3.94:1 vs land, 3.37:1 vs the shaded land
+    plannedKeyline: '#B86E00', // 3.89:1 vs land
+    land: '#FFFCF5',
+    landShade: '#F6E9D2',
   },
   dark: {
     casing: '#101318',
-    active: '#7FA8FF', //  7.93:1 vs casing
-    planning: '#F2B45C', // 10.15:1 vs casing
-    past: '#8C96A5', //  6.22:1 vs casing
+    // Contract C5-11 had #FFA08C here; equal to the palette's dark `statusActive`
+    // (`accentLine`) so the status reads the same on a card and on the globe.
+    active: '#FF8266',
+    activeEnd: '#FFE0A0',
+    planning: '#FFC25E',
+    past: '#FF8266',
+    pastEnd: '#FFC25E',
+    visitedFill: '#FFA48E',
+    visitedKeyline: '#FFC4B4',
+    plannedKeyline: '#FFE3A8',
+    land: '#3C6E99',
+    landShade: '#2A557E',
   },
 } as const;
 

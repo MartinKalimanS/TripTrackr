@@ -168,7 +168,7 @@ describe('palette names and keys', () => {
     // DATA_MODEL_KEYS is the independent oracle: PaletteKeys is derived from the data, so
     // this is what catches a key added to (or dropped from) the data without the spec.
     expect([...PaletteKeys].sort()).toEqual([...DATA_MODEL_KEYS].sort());
-    expect(DATA_MODEL_KEYS).toHaveLength(61);
+    expect(DATA_MODEL_KEYS).toHaveLength(59);
   });
 
   test.each(REMOVED_KEYS)('the 004 key %s is gone (data-model section 1)', (key) => {

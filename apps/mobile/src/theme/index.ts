@@ -48,6 +48,7 @@ export {
   AtlasRadius,
   AtlasSpacing,
   FocusRing,
+  PrimaryEdgeRing,
   cornerStyle,
   type AtlasRadiusName,
   type AtlasSpacingName,

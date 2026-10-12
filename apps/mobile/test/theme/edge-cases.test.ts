@@ -18,10 +18,8 @@ describe('meetsFloor — contract C3 helper', () => {
   });
 
   test('rejects a pair that does not', () => {
-    // The separator is a decorative hairline and cannot reach the non-text floor.
-    expect(meetsFloor(Palettes.light.separator, Palettes.light.canvas, 'nonText')).toBe(
-      false,
-    );
+    // The sand is a decorative track and cannot reach the non-text floor.
+    expect(meetsFloor(Palettes.light.sand, Palettes.light.canvas, 'nonText')).toBe(false);
   });
 
   test('applies the stricter floor when increased contrast is requested', () => {

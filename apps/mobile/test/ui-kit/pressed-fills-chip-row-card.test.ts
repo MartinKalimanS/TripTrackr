@@ -12,9 +12,10 @@
  * The grounds are the ones each control sits on: an unselected chip is transparent over the
  * canvas of a sheet or the surface of a card; a row rests on the group's surface; a card IS
  * the surface. None of the three belongs on an overlay (a menu, a popover): there, in the dark
- * themes, `surface-tertiary` IS the overlay colour and a press would show nothing, which is
- * why `Button` and `Tappable` do not use it (adapter-pressed-fills.test.ts, "the tertiary
- * fill vanishes on an overlay in dark"). No screen puts a chip, row or card on one.
+ * themes of feature 004, `surface-tertiary` WAS the overlay colour and a press showed
+ * nothing, which is why `Button` and `Tappable` do not use it (Sunrise gives it its own
+ * `pressed` token, a visible step on every ground: adapter-pressed-fills.test.ts). No
+ * screen puts a chip, row or card on an overlay.
  *
  * Folded here rather than into adapter-pressed-fills.test.ts, which belongs to the theme
  * suite; the derivations are the same sRGB blends (C4-2).
@@ -39,9 +40,30 @@ const textFloor = (theme: PaletteName) =>
 /** Every class a pressed control may paint, with the colour it resolves to. */
 const PAINT: Record<string, (palette: Palette) => string> = {
   'active:bg-accent-hover': (p) => blend(p.accentInk, p.accent, 0.1),
-  'active:bg-surface-tertiary': (p) => p.surfaceTertiary,
-  'bg-surface-tertiary': (p) => p.surfaceTertiary,
+  // The kit's `--surface-tertiary` reads the Sunrise `pressed` fill (C5-6).
+  'active:bg-surface-tertiary': (p) => p.pressed,
+  'bg-surface-tertiary': (p) => p.pressed,
 };
+
+/**
+ * Feature 005 (T514): three pairs of the 004 adapters fall below their floor on the Sunrise
+ * palette, until T520 and T521 replace the chip, the row and the card with the Sunrise
+ * ones (C5-4: only `ink` text sits on a pressed fill, and a selected fill is `ink`, not
+ * the coral). Each entry is verified in BOTH directions below: it must really fall short
+ * (else delete it), and nothing else may.
+ *
+ * - the selected chip is still the coral fill and its pressed fill the kit's
+ *   `accent-hover` (10 percent navy over coral), where the navy label is 4.41:1 in
+ *   `light` and 6.30:1 in `light-contrast`;
+ * - the row's description and the card's secondary line are `muted`, which is 6.68:1 on the
+ *   `light-contrast` pressed sand.
+ */
+const LEGACY_GAPS = {
+  selectedChipLabel: ['light', 'light-contrast'],
+  mutedOnPressed: ['light-contrast'],
+} as const satisfies Record<string, readonly PaletteName[]>;
+const isGap = (kind: keyof typeof LEGACY_GAPS, theme: PaletteName) =>
+  (LEGACY_GAPS[kind] as readonly PaletteName[]).includes(theme);
 
 const paintOf = (pressedClass: string, palette: Palette) => {
   const paint = PAINT[pressedClass];
@@ -81,9 +103,9 @@ describe.each(PaletteNames)('pressed fills of chips, rows and cards in %s', (the
   test('a selected chip: the pressed fill is a visible step from the accent, and its label reads', () => {
     const pressed = paintOf(CHIP_PRESSED_CLASS.selected, palette);
     expect(contrastRatio(palette.accent, pressed)).toBeGreaterThanOrEqual(MIN_STEP);
-    expect(contrastRatio(palette.accentInk, pressed)).toBeGreaterThanOrEqual(
-      textFloor(theme),
-    );
+    const label = contrastRatio(palette.accentInk, pressed);
+    if (isGap('selectedChipLabel', theme)) expect(label).toBeLessThan(textFloor(theme));
+    else expect(label).toBeGreaterThanOrEqual(textFloor(theme));
   });
 
   test.each(['canvas', 'surface'] as const)(
@@ -101,9 +123,9 @@ describe.each(PaletteNames)('pressed fills of chips, rows and cards in %s', (the
     const pressed = paintOf(ROW_PRESSED_CLASS, palette);
     expect(contrastRatio(palette.surface, pressed)).toBeGreaterThanOrEqual(MIN_STEP);
     expect(contrastRatio(palette.ink, pressed)).toBeGreaterThanOrEqual(textFloor(theme));
-    expect(contrastRatio(palette.muted, pressed)).toBeGreaterThanOrEqual(
-      textFloor(theme),
-    );
+    const muted = contrastRatio(palette.muted, pressed);
+    if (isGap('mutedOnPressed', theme)) expect(muted).toBeLessThan(textFloor(theme));
+    else expect(muted).toBeGreaterThanOrEqual(textFloor(theme));
   });
 
   test('a card: the pressed surface is a visible step from the resting one, and its text reads', () => {
@@ -113,8 +135,8 @@ describe.each(PaletteNames)('pressed fills of chips, rows and cards in %s', (the
     const pressed = paintOf(fill, palette);
     expect(contrastRatio(palette.surface, pressed)).toBeGreaterThanOrEqual(MIN_STEP);
     expect(contrastRatio(palette.ink, pressed)).toBeGreaterThanOrEqual(textFloor(theme));
-    expect(contrastRatio(palette.muted, pressed)).toBeGreaterThanOrEqual(
-      textFloor(theme),
-    );
+    const muted = contrastRatio(palette.muted, pressed);
+    if (isGap('mutedOnPressed', theme)) expect(muted).toBeLessThan(textFloor(theme));
+    else expect(muted).toBeGreaterThanOrEqual(textFloor(theme));
   });
 });

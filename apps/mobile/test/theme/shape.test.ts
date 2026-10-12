@@ -80,9 +80,9 @@ describe('AtlasSpacing — contract C4-6', () => {
   });
 });
 
-describe('FocusRing — contract C4-3', () => {
-  test('is a 2 dp ring drawn 2 dp off the control', () => {
-    expect(FocusRing).toEqual({ width: 2, offset: 2 });
+describe('FocusRing — contracts C4-3 and C5-4 P13', () => {
+  test('is a 2.5 dp ring drawn 2 dp off the control', () => {
+    expect(FocusRing).toEqual({ width: 2.5, offset: 2 });
   });
 
   test('keeps a gap, so the ring never touches an accent fill', () => {
@@ -93,7 +93,7 @@ describe('FocusRing — contract C4-3', () => {
   });
 
   test('the ring is at least as thick as a hairline boundary', () => {
-    expect(FocusRing.width).toBeGreaterThanOrEqual(2);
+    expect(FocusRing.width).toBeGreaterThanOrEqual(2.5);
   });
 
   test('is deeply frozen', () => {

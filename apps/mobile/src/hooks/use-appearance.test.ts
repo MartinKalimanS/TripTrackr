@@ -183,19 +183,19 @@ describe('useAppearance tokens - the palette of themeName, increased contrast in
     },
   );
 
-  test('the contrast canvases are not the base canvases, so the switch is not vacuous', () => {
-    expect(Palettes['light-contrast'].canvas).not.toBe(Palettes.light.canvas);
-    expect(Palettes['dark-contrast'].canvas).not.toBe(Palettes.dark.canvas);
+  test('the contrast inks are not the base inks, so the switch is not vacuous (Sunrise keeps the paper)', () => {
+    expect(Palettes['light-contrast'].ink).not.toBe(Palettes.light.ink);
+    expect(Palettes['dark-contrast'].ink).not.toBe(Palettes.dark.ink);
   });
 
-  test('the canvas follows the increased-contrast setting live, in both directions', async () => {
+  test('the ink follows the increased-contrast setting live, in both directions', async () => {
     const setting = { darker: false };
     Object.assign(AccessibilityInfo, {
       isDarkerSystemColorsEnabled: jest.fn(async () => setting.darker),
     });
     const { result } = await renderHook(() => useAppearance());
     await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.tokens.canvas).toBe(Palettes.light.canvas);
+    expect(result.current.tokens.textPrimary).toBe(Palettes.light.ink);
 
     const handlers = (AccessibilityInfo.addEventListener as jest.Mock).mock.calls.map(
       ([, handler]) => handler as () => void,
@@ -205,14 +205,14 @@ describe('useAppearance tokens - the palette of themeName, increased contrast in
       handlers.forEach((handler) => handler());
     });
     await waitFor(() => expect(result.current.themeName).toBe('light-contrast'));
-    expect(result.current.tokens.canvas).toBe(Palettes['light-contrast'].canvas);
+    expect(result.current.tokens.textPrimary).toBe(Palettes['light-contrast'].ink);
 
     setting.darker = false;
     await act(async () => {
       handlers.forEach((handler) => handler());
     });
     await waitFor(() => expect(result.current.themeName).toBe('light'));
-    expect(result.current.tokens.canvas).toBe(Palettes.light.canvas);
+    expect(result.current.tokens.textPrimary).toBe(Palettes.light.ink);
   });
 });
 
