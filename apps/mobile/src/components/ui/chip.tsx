@@ -71,6 +71,7 @@ import { AtlasSpacing, FocusRing } from '@/theme';
 
 import { assertAccessibleName } from './adapter-guards';
 import { Icon, type IconName, type IconTone } from './icon';
+import { isIconKey } from './icon-registry';
 import { Text } from './text';
 
 export interface ChipProps {
@@ -111,7 +112,7 @@ export interface StatusChipProps {
   status: TripStatus;
 }
 
-const CHECK: IconName = { ios: 'checkmark', android: 'check' };
+const CHECK: IconName = 'check';
 
 /** Half the 8 dp gap between chips: neighbours' slop never overlaps. */
 const SLOP = 4;
@@ -130,12 +131,6 @@ export const CHIP_PRESSED_CLASS = {
   selected: 'active:bg-accent-hover',
   unselected: 'active:bg-surface-tertiary',
 };
-
-function isIconName(value: unknown): value is IconName {
-  return (
-    typeof value === 'object' && value !== null && 'ios' in value && 'android' in value
-  );
-}
 
 /**
  * The frame of a chip: the platform floor for an interactive one, nothing for a label,
@@ -200,7 +195,7 @@ function Leading({ selected, leading, testID }: LeadingProps) {
       />
     );
   }
-  if (isIconName(leading)) {
+  if (isIconKey(leading)) {
     return (
       <Icon
         name={leading}
@@ -311,19 +306,19 @@ interface StatusLook {
 
 const STATUS_LOOK: Record<TripStatus, StatusLook> = {
   planning: {
-    icon: { ios: 'calendar', android: 'calendar_month' },
+    icon: 'calendar',
     tone: 'statusPlanning',
     fill: 'bg-status-planning-ink/15',
     ink: 'text-status-planning-ink',
   },
   active: {
-    icon: { ios: 'location.fill', android: 'location_on' },
+    icon: 'map-pin',
     tone: 'statusActive',
     fill: 'bg-status-active/15',
     ink: 'text-status-active',
   },
   past: {
-    icon: { ios: 'checkmark.circle', android: 'check_circle' },
+    icon: 'check-circle',
     tone: 'statusPast',
     fill: 'bg-status-past/15',
     ink: 'text-status-past',

@@ -118,7 +118,7 @@ type NotesEmptyProps = {
   onAdd: () => void;
 };
 
-const NOTE_ICON: IconName = { ios: 'note.text', android: 'sticky_note_2' };
+const NOTE_ICON: IconName = 'note';
 
 /** What stands in for the rows: unreadable, reading, or nothing here yet. */
 function NotesEmpty({ notes, activeTarget, onAdd }: NotesEmptyProps) {

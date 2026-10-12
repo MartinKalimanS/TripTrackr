@@ -15,13 +15,7 @@ import { AnchorPicker } from '@/components/trip/anchor-picker';
 import type { AnchorTarget } from '@/features/notes/use-move-note';
 
 import { classesOf, hostsWhere, scrollers } from '../helpers/host-nodes';
-
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
+import { anyGlyph } from '../helpers/icons';
 
 const HIDDEN = { includeHiddenElements: true } as const;
 
@@ -169,7 +163,7 @@ describe('<AnchorPicker> words (FR-025, FR-035)', () => {
     const words = screen.getByTestId('note-editor-anchor-error');
     expect(words.props.accessibilityRole).toBe('alert');
     expect(words).toHaveTextContent('Choose where this note belongs.');
-    expect(within(words).getByTestId('symbol', HIDDEN)).toBeTruthy();
+    expect(within(words).getByTestId(anyGlyph, HIDDEN)).toBeTruthy();
     const order = hostsWhere(
       (node) =>
         node.props.testID === 'anchor-city:101' ||

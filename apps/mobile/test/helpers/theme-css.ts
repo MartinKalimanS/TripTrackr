@@ -19,3 +19,21 @@ export function backgroundVariable(theme: PaletteName): string {
   const block = new RegExp(`@variant ${theme} \\{([\\s\\S]*?)\\n {4}\\}`).exec(css);
   return /--background:\s*([^;]+);/.exec(block?.[1] ?? '')?.[1]?.trim() ?? '';
 }
+
+/**
+ * Any variable of one theme, by its name with the dashes (`--accent-text`): what a class
+ * such as `text-accent-text` or `useThemeColor('accent-text')` paints. Lower-case hex, as
+ * the generator writes it; empty when the theme has no such variable.
+ */
+export function themeVariable(theme: PaletteName, name: string): string {
+  const css = readFileSync(THEME_CSS, 'utf8').replace(/\r\n/g, '\n');
+  const start = css.indexOf(`@variant ${theme} {`);
+  const block = css.slice(start, css.indexOf('\n    }', start));
+  const line = block
+    .split('\n')
+    .map((text) => text.trim())
+    .find((text) => text.startsWith(`${name}:`));
+  if (!line) return '';
+  const value = line.slice(name.length + 1);
+  return value.replace(/;$/, '').trim();
+}

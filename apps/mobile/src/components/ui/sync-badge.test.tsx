@@ -14,14 +14,8 @@
 import { render, screen } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';
 
+import { glyphNamesIn, glyphsIn } from '../../../test/helpers/icons';
 import { SyncBadge, type SyncState } from './sync-badge';
-
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 afterEach(() => jest.restoreAllMocks());
 
@@ -57,7 +51,7 @@ describe('<SyncBadge> - contract C11', () => {
   test('carries an icon as well as the message, so state survives a glance', async () => {
     await render(<SyncBadge state="pending" />);
     expect(screen.getByTestId('sync-badge-icon', hidden)).toBeTruthy();
-    expect(screen.getAllByTestId('symbol', hidden)).toHaveLength(1);
+    expect(glyphsIn()).toHaveLength(1);
   });
 
   test('keeps the icon decorative: the badge itself carries the announcement', async () => {
@@ -73,9 +67,7 @@ describe('<SyncBadge> - contract C11', () => {
         <SyncBadge state="failed" />
       </>,
     );
-    const names = screen
-      .getAllByTestId('symbol', hidden)
-      .map((node) => `${node.props.name.ios}/${node.props.name.android}`);
+    const names = glyphNamesIn();
     expect(names).toHaveLength(3);
     expect(new Set(names).size).toBe(3);
   });
@@ -92,8 +84,8 @@ describe('<SyncBadge> - contract C11', () => {
 
 describe('<SyncBadge> tint - FR-034, review rules 3 and 5', () => {
   const TINT: Record<SyncState, { ink: string; fill: string; token: string }> = {
-    pending: { ink: 'text-pending', fill: 'bg-pending/15', token: 'pending' },
-    syncing: { ink: 'text-pending', fill: 'bg-pending/15', token: 'pending' },
+    pending: { ink: 'text-pending', fill: 'bg-pending/15', token: 'amber-ink' },
+    syncing: { ink: 'text-pending', fill: 'bg-pending/15', token: 'amber-ink' },
     failed: { ink: 'text-danger', fill: 'bg-danger/15', token: 'danger' },
   };
 

@@ -151,7 +151,7 @@ export interface ListRowProps {
   testID?: string;
 }
 
-const CAUTION: IconName = { ios: 'exclamationmark.triangle', android: 'warning' };
+const CAUTION: IconName = 'alert';
 
 /** A pressed row swaps its fill at once; the class is literal so Tailwind finds it. */
 export const ROW_PRESSED_CLASS = 'active:bg-surface-tertiary';

@@ -50,7 +50,7 @@ import {
 import { useTrip, useTripStops, type LiveResult } from '@/features/trips/use-trips';
 import { useWriteAttempt } from '@/hooks/use-write-attempt';
 
-const PHOTOS: IconName = { ios: 'photo.on.rectangle', android: 'photo_library' };
+const PHOTOS: IconName = 'images';
 
 const NO_PHOTOS: readonly PhotoWithPlace[] = [];
 

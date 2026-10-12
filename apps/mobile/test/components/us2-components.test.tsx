@@ -30,15 +30,7 @@ import { formatIsoDate } from '@/features/trips/stop-dates';
 import { formatMoney } from '@/lib/locale';
 
 import { classesOf, containing, hostsWhere } from '../helpers/host-nodes';
-
-// `expo-symbols` is a view that carries the props it was given, so a test can read which glyph
-// an icon was asked for (the real one draws a native symbol and forwards only `style`).
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
+import { glyphNamesIn } from '../helpers/icons';
 
 const targets: AnchorTarget[] = [
   {
@@ -677,18 +669,14 @@ describe('<ExpenseRow> - one expense in a day group (T441; FR-014, FR-025, FR-03
     const icon = screen.getByTestId('expense-icon-e1', HIDDEN);
     expect(icon.props.accessible).toBe(false);
     expect(icon.props.importantForAccessibility).toBe('no-hide-descendants');
-    expect(
-      hostsWhere((node) => (node.props.name as { ios?: string })?.ios === 'fork.knife'),
-    ).toHaveLength(1);
+    expect(glyphNamesIn().filter((name) => name === 'fork-knife')).toHaveLength(1);
   });
 
   test('a category with no icon of its own leads with the generic glyph', async () => {
     await renderRow({}, { categoryIcon: null });
 
     expect(screen.getByTestId('expense-icon-e1', HIDDEN)).toBeTruthy();
-    expect(
-      hostsWhere((node) => (node.props.name as { ios?: string })?.ios === 'fork.knife'),
-    ).toHaveLength(0);
+    expect(glyphNamesIn().filter((name) => name === 'fork-knife')).toHaveLength(0);
   });
 
   test('puts the amount paid on the right in aligned numerals, with the home amount under it', async () => {

@@ -16,17 +16,11 @@ import type { AppearanceContext } from '@/hooks/use-appearance';
 import type { Haptics } from '@/hooks/use-haptics';
 import { FocusRing } from '@/theme';
 
+import { glyphNamesIn, glyphsIn } from '../../../test/helpers/icons';
 import { Chip, ChipGroup, StatusChip, type ChipOption } from './chip';
 
 jest.mock('@/hooks/use-appearance');
 jest.mock('@/hooks/use-haptics');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
-
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
 };
@@ -49,16 +43,13 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 const hidden = { includeHiddenElements: true };
-const CHECK = { ios: 'checkmark', android: 'check' };
+const CHECK = 'check';
 const classesOf = (element: { props: { className?: unknown } }) =>
   String(element.props.className ?? '').split(/\s+/);
 const flat = (element: { props: { style?: unknown } }) =>
   (StyleSheet.flatten(element.props.style as never) ?? {}) as Record<string, unknown>;
-/** The platform names of every symbol drawn, in order. */
-const symbols = () =>
-  screen
-    .getAllByTestId('symbol', hidden)
-    .map((node) => node.props.name as { ios: string; android: string });
+/** The registry key of every glyph drawn, in order. */
+const symbols = () => glyphNamesIn();
 
 const chip = () => screen.getByTestId('currency-eur');
 const renderChip = (props: Record<string, unknown> = {}) =>
@@ -129,7 +120,7 @@ describe('<Chip> selected is not colour alone - FR-025', () => {
       expect.arrayContaining(['border', 'border-border']),
     );
     expect(classesOf(screen.getByText('EUR'))).not.toContain('font-semibold');
-    expect(screen.queryAllByTestId('symbol', hidden)).toHaveLength(0);
+    expect(glyphsIn()).toHaveLength(0);
   });
 
   test('both keep a border, so selecting never changes the size by a pixel', async () => {
@@ -153,7 +144,7 @@ describe('<Chip> selected is not colour alone - FR-025', () => {
 });
 
 describe('<Chip> leading glyph', () => {
-  const GLYPH = { ios: 'fork.knife', android: 'restaurant' } as const;
+  const GLYPH = 'fork-knife';
 
   test('draws an icon name with the ink of the chip', async () => {
     await renderChip({ leading: GLYPH });
@@ -169,7 +160,7 @@ describe('<Chip> leading glyph', () => {
   test('renders any other node as it is', async () => {
     await renderChip({ leading: <View testID="glyph" /> });
     expect(screen.getByTestId('glyph')).toBeTruthy();
-    expect(screen.queryAllByTestId('symbol', hidden)).toHaveLength(0);
+    expect(glyphsIn()).toHaveLength(0);
   });
 });
 
@@ -411,7 +402,7 @@ describe('<StatusChip> - presentation of the trip status', () => {
         <StatusChip status="past" />
       </>,
     );
-    const names = symbols().map((name) => `${name.ios}/${name.android}`);
+    const names = symbols();
     expect(names).toHaveLength(3);
     expect(new Set(names).size).toBe(3);
   });

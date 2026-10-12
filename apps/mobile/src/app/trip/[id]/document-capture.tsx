@@ -74,8 +74,8 @@ const HINTS: Readonly<Record<DocumentType, string>> = {
   other: 'Fill the frame with the document, then take the photo.',
 };
 
-const BACK: IconName = { ios: 'chevron.backward', android: 'chevron_left' };
-const LIBRARY: IconName = { ios: 'photo.on.rectangle', android: 'photo_library' };
+const BACK: IconName = 'chevron-left';
+const LIBRARY: IconName = 'images';
 
 type CameraAreaProps = {
   permission: PermissionResponse | null;

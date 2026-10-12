@@ -29,7 +29,7 @@ import { Button, buttonFrame } from '@/components/ui/button';
 import type { IconName } from '@/components/ui/icon';
 import { Spacing } from '@/constants/theme';
 
-const PLUS: IconName = { ios: 'plus', android: 'add' };
+const PLUS: IconName = 'plus';
 
 /** The kit's `lg` button height, when the frame does not say. */
 const FAB_MIN_HEIGHT = 56;

@@ -26,15 +26,9 @@ import {
   OVERLAY_MAX_HEIGHT_SHARE,
   overlayMaxHeight,
 } from '../empty-state';
+import { glyphNamesIn } from '../../../../test/helpers/icons';
 
 jest.mock('@/hooks/use-appearance');
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
-
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock<AppearanceContext, []>;
 };
@@ -52,7 +46,6 @@ beforeEach(() => {
   });
 });
 
-const hidden = { includeHiddenElements: true };
 const tokens = (className: unknown) =>
   String(className ?? '')
     .split(/\s+/)
@@ -299,11 +292,7 @@ describe('<GlobeNotice> — a plain-words problem shown over the globe', () => {
 
   test('is not colour alone: a leading alert icon, the title in the danger ink', async () => {
     await render(<GlobeNotice title="Couldn’t read your trips" detail="Restart." />);
-    expect(screen.getAllByTestId('symbol', hidden)).toHaveLength(1);
-    expect(screen.getByTestId('symbol', hidden).props.name).toEqual({
-      ios: 'exclamationmark.triangle',
-      android: 'warning',
-    });
+    expect(glyphNamesIn()).toEqual(['alert']);
     expect(
       tokens(screen.getByText('Couldn’t read your trips').props.className),
     ).toContain('text-danger');

@@ -5,9 +5,9 @@
  *
  *   <BrandGlyph name="logo-google" />
  *
- * `Icon` is the one icon vocabulary and is made of SF Symbols and Material symbols, neither
- * of which has a brand's logo; the two glyphs Ionicons draws (through `expo-font`, so no
- * native change) stay for exactly that. This adapter is the only place that imports them,
+ * `Icon` is the one icon vocabulary and is made of Phosphor glyphs, which have no brand's
+ * logo (a registry of general pictograms); the two glyphs Ionicons draws (through
+ * `expo-font`, so no native change) stay for exactly that. This adapter is the only place that imports them,
  * so the ink follows the same rule as every other icon, and so that replacing the glyphs
  * with the providers' own artwork (Google's four-colour "G", Apple's logo in black or white;
  * `docs/release/store-readiness.md`, "Branded sign-in buttons") touches one file.

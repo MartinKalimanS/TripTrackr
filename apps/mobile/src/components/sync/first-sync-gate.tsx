@@ -115,8 +115,8 @@ function useManualRetry() {
 
 type FirstSyncScreenProps = { view: FirstSyncView; busy: boolean; onRetry: () => void };
 
-const OFFLINE: IconName = { ios: 'wifi.slash', android: 'wifi_off' };
-const SIGNED_OUT: IconName = { ios: 'person.crop.circle', android: 'account_circle' };
+const OFFLINE: IconName = 'wifi-off';
+const SIGNED_OUT: IconName = 'user-circle';
 
 /** The surface every state shares: the id a flow waits on and the polite live region. */
 const SURFACE = {

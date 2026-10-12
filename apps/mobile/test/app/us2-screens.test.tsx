@@ -34,6 +34,7 @@ import type { ExpenseRow, TripRow } from '@/db/schema';
 import { formatIsoDate } from '@/features/trips/stop-dates';
 
 import { containing, hostsWhere, scrollers } from '../helpers/host-nodes';
+import { glyphNamesIn } from '../helpers/icons';
 import {
   PHONE_360X640,
   expectActionAboveKeyboard,
@@ -41,15 +42,6 @@ import {
   setWindow,
   showKeyboard,
 } from '../helpers/keyboard';
-
-// `expo-symbols` is a view that carries the props it was given, so a test can read which glyph
-// an icon was asked for (the real one draws a native symbol and forwards only `style`).
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 const mockBack = jest.fn();
 const mockPush = jest.fn();
@@ -784,9 +776,7 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
     await render(<ExpensesScreen />);
 
     expect(screen.getByTestId('expense-icon-exp-1', HIDDEN)).toBeTruthy();
-    expect(
-      hostsWhere((node) => (node.props.name as { ios?: string })?.ios === 'fork.knife'),
-    ).toHaveLength(1);
+    expect(glyphNamesIn().filter((name) => name === 'fork-knife')).toHaveLength(1);
   });
 
   test('a category the list cannot name is "Other" and still has a glyph', async () => {

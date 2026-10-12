@@ -28,8 +28,8 @@ export type DocumentsHeaderProps = {
   onAdd: () => void;
 };
 
-const LOCK: IconName = { ios: 'lock', android: 'lock' };
-const ADD: IconName = { ios: 'plus', android: 'add' };
+const LOCK: IconName = 'lock';
+const ADD: IconName = 'plus';
 
 export function DocumentsHeader({ tripTitle, onAdd }: DocumentsHeaderProps) {
   return (

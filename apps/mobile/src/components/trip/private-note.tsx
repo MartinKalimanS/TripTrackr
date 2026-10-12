@@ -15,7 +15,7 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { PRIVATE_COPY } from '@/features/photos/photo-copy';
 
-const LOCK: IconName = { ios: 'lock', android: 'lock' };
+const LOCK: IconName = 'lock';
 
 export function PrivateNote() {
   return (

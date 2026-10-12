@@ -53,7 +53,7 @@ import { AtlasSpacing } from '@/theme';
 export const MAX_VISIBLE_NOTICES = 3;
 
 /** Something changed here because of another device. */
-const UPDATED: IconName = { ios: 'arrow.triangle.2.circlepath', android: 'sync' };
+const UPDATED: IconName = 'sync';
 
 export type ConflictNoticeBannerProps = {
   notice: ConflictNotice;

@@ -13,13 +13,8 @@ import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
 import { EmptyState, ErrorState, LoadingState } from './state-view';
+import { glyphId, glyphNamesIn, glyphsIn } from '../../../test/helpers/icons';
 
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 jest.mock('@/hooks/use-appearance');
 jest.mock('@/hooks/use-haptics');
 
@@ -48,7 +43,6 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-const hidden = { includeHiddenElements: true };
 const classesIn = (className: unknown) => String(className ?? '').split(/\s+/);
 const root = () => screen.toJSON() as JsonElement;
 const elementsOf = (nodes: JsonNode[] | undefined) =>
@@ -59,7 +53,7 @@ const flatten = (node: JsonElement): JsonElement[] => [
   ...elementsOf(node.children).flatMap(flatten),
 ];
 const rootClasses = () => classesIn(root().props.className);
-const ALERT_ICON = { ios: 'exclamationmark.triangle', android: 'warning' };
+const ALERT_ICON = 'alert';
 
 describe('state container - flat Atlas surface (FR-006, FR-035)', () => {
   test.each([
@@ -101,7 +95,7 @@ describe('<EmptyState> - FR-035', () => {
 
   test('draws no icon and no action unless asked', async () => {
     await render(<EmptyState title="No trips yet" />);
-    expect(screen.queryByTestId('symbol', hidden)).toBeNull();
+    expect(glyphsIn()).toEqual([]);
     expect(screen.queryByRole('button')).toBeNull();
   });
 
@@ -135,11 +129,10 @@ describe('<EmptyState> - FR-035', () => {
   });
 
   test('an icon is decorative: the title already says it', async () => {
-    const icon = { ios: 'map', android: 'map' } as const;
+    const icon = 'map';
     await render(<EmptyState title="No trips yet" icon={icon} />);
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual(icon);
-    expect(screen.queryByTestId('symbol')).toBeNull();
+    expect(glyphNamesIn()).toEqual([icon]);
+    expect(screen.queryByTestId(glyphId(icon))).toBeNull();
   });
 });
 
@@ -181,10 +174,9 @@ describe('<ErrorState> - words, an icon and a way out (FR-025, FR-035)', () => {
 
   test('is not colour alone: a leading alert icon accompanies the title', async () => {
     await render(<ErrorState title="Could not load trips" />);
-    const symbol = screen.getByTestId('symbol', hidden);
-    expect(symbol.props.name).toEqual(ALERT_ICON);
+    expect(glyphNamesIn()).toEqual([ALERT_ICON]);
     // Decorative: the words carry the meaning, so assistive technology skips the glyph.
-    expect(screen.queryByTestId('symbol')).toBeNull();
+    expect(screen.queryByTestId(glyphId(ALERT_ICON))).toBeNull();
 
     // Leading: the glyph is the first child, ahead of the title.
     const [first, second] = elementsOf(root().children);

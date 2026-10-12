@@ -44,7 +44,7 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-const ICON = { ios: 'plus', android: 'add' } as const;
+const ICON = 'plus';
 const hidden = { includeHiddenElements: true };
 const node = () => screen.getByLabelText('Save trip');
 const classesOf = (element: { props: { className?: unknown } }) =>
@@ -397,7 +397,7 @@ describe('<Button> cost in a list - research D4-05', () => {
 describe('<Button> icon - D4-08', () => {
   const TONE_TOKEN: Record<ButtonVariant, string> = {
     primary: 'accent-foreground',
-    secondary: 'accent',
+    secondary: 'accent-text',
     text: 'foreground',
     destructive: 'danger',
   };

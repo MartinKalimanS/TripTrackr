@@ -36,8 +36,8 @@ export type PhotosHeaderProps = {
   writeError: string | null;
 };
 
-const ADD: IconName = { ios: 'photo.badge.plus', android: 'add_photo_alternate' };
-const TAKE: IconName = { ios: 'camera', android: 'photo_camera' };
+const ADD: IconName = 'images';
+const TAKE: IconName = 'camera';
 
 type CaptureNoticeProps = { message: CaptureMessage; onDismiss: () => void };
 

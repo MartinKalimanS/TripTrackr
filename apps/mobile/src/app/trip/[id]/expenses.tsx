@@ -91,7 +91,7 @@ function useExpenseRemoval() {
   return { writeError, confirmRemove };
 }
 
-const SPENDING_ICON: IconName = { ios: 'creditcard', android: 'payments' };
+const SPENDING_ICON: IconName = 'wallet';
 
 type ExpensesEmptyProps = {
   expenses: LiveResult<ExpenseRecord[]>;

@@ -59,8 +59,8 @@ import { useWriteAttempt } from '@/hooks/use-write-attempt';
 /** The picture takes up to this share of the window's height, so the details stay in reach. */
 const IMAGE_HEIGHT_SHARE = 0.5;
 
-const CLOSE: IconName = { ios: 'xmark', android: 'close' };
-const TRASH: IconName = { ios: 'trash', android: 'delete' };
+const CLOSE: IconName = 'x';
+const TRASH: IconName = 'trash';
 
 export type PhotoViewerProps = {
   photo: PhotoWithPlace;

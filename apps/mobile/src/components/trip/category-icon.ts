@@ -8,19 +8,19 @@
  * The keys sit in a `Map`: a plain object would answer `constructor` or `__proto__` with
  * something that is not an icon.
  *
- * Each is an `IconName` (an SF Symbol and a Material symbol, both platforms); the glyph is
+ * Each is an `IconName` (a registry key of `icon-registry.ts`, one glyph on both platforms); the glyph is
  * decorative beside the category's name, never the only carrier of it.
  */
 import type { IconName } from '@/components/ui/icon';
 
-const GENERIC: IconName = { ios: 'tag', android: 'sell' };
+const GENERIC: IconName = 'tag';
 
 const CATEGORY_ICONS: ReadonlyMap<string, IconName> = new Map([
-  ['food', { ios: 'fork.knife', android: 'restaurant' }],
-  ['lodging', { ios: 'bed.double', android: 'hotel' }],
-  ['transport', { ios: 'tram', android: 'directions_transit' }],
-  ['activities', { ios: 'ticket', android: 'local_activity' }],
-  ['shopping', { ios: 'bag', android: 'shopping_bag' }],
+  ['food', 'fork-knife'],
+  ['lodging', 'bed'],
+  ['transport', 'tram'],
+  ['activities', 'ticket'],
+  ['shopping', 'shopping-bag'],
   ['other', GENERIC],
 ]);
 

@@ -50,9 +50,9 @@ const SYNC_SPOKEN: Readonly<Record<SyncState, string>> = {
 
 /** The glyph of each kind, on both platforms. */
 const KIND_ICON: Readonly<Record<DocumentType, IconName>> = {
-  boarding_pass: { ios: 'airplane', android: 'flight' },
-  booking: { ios: 'ticket', android: 'confirmation_number' },
-  other: { ios: 'doc.text', android: 'description' },
+  boarding_pass: 'plane',
+  booking: 'ticket',
+  other: 'file-text',
 };
 
 /** A row of inline items that wraps under large text instead of clipping. */

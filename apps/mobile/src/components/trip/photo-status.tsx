@@ -39,13 +39,13 @@ interface StatusLook {
 
 const LOOK: Record<PhotoStatus, StatusLook> = {
   pending: {
-    icon: { ios: 'icloud.and.arrow.up', android: 'cloud_upload' },
+    icon: 'cloud-upload',
     tone: 'pending',
     ink: 'text-pending',
     box: 'border-dashed border-pending bg-pending/15',
   },
   failed: {
-    icon: { ios: 'exclamationmark.triangle', android: 'warning' },
+    icon: 'alert',
     tone: 'danger',
     ink: 'text-danger',
     box: 'border-solid border-danger bg-danger/15',
@@ -54,7 +54,7 @@ const LOOK: Record<PhotoStatus, StatusLook> = {
 
 const CAPSULE = 'flex-row items-center self-start gap-1 rounded-full border px-2 py-0.5';
 
-const RETRY: IconName = { ios: 'arrow.clockwise', android: 'refresh' };
+const RETRY: IconName = 'refresh';
 
 export function PhotoStatusBadge({ status }: { status: PhotoStatus }) {
   const { icon, tone, ink, box } = LOOK[status];

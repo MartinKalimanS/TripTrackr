@@ -22,15 +22,7 @@ import { numericStyle } from '@/theme';
 
 import { classesOf, hostsWhere } from '../helpers/host-nodes';
 import { resetKeyboard, setWindow } from '../helpers/keyboard';
-
-// `expo-symbols` is a view that carries the props it was given, so a test can read which glyph
-// an icon was asked for (the real one draws a native symbol and forwards only `style`).
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
+import { anyGlyph, glyphId, glyphNamesIn } from '../helpers/icons';
 
 const HIDDEN = { includeHiddenElements: true } as const;
 const flat = (node: { props: { style?: unknown } }) =>
@@ -71,15 +63,12 @@ describe('<DateField> identity (FR-030, FR-037)', () => {
     expect(order).toEqual(['Arrival', day, 'Pick a day.']);
   });
 
-  test('the glyph is decorative and says "calendar" in both platforms’ names', async () => {
+  test('the glyph is decorative and is the calendar', async () => {
     await renderField();
 
     // Decorative: hidden from assistive technology, and so from a default query.
-    expect(screen.queryByTestId('symbol')).toBeNull();
-    expect(screen.getByTestId('symbol', HIDDEN).props.name).toEqual({
-      ios: 'calendar',
-      android: 'calendar_month',
-    });
+    expect(screen.queryByTestId(glyphId('calendar'))).toBeNull();
+    expect(glyphNamesIn()).toEqual(['calendar']);
   });
 
   test('is a plain press target without an id: no id on the calendar or the words either', async () => {
@@ -156,7 +145,7 @@ describe('<DateField> as a field (FR-024, FR-025, FR-029)', () => {
 
     expect(screen.getAllByRole('button')).toHaveLength(1);
     expect(
-      within(screen.getByTestId('arrive')).getByTestId('symbol', HIDDEN),
+      within(screen.getByTestId('arrive')).getByTestId(anyGlyph, HIDDEN),
     ).toBeTruthy();
   });
 });

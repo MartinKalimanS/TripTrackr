@@ -54,7 +54,7 @@ interface Presentation {
  */
 const PRESENTATION: Record<SyncState, Presentation> = {
   pending: {
-    icon: { ios: 'clock', android: 'schedule' },
+    icon: 'clock',
     label: 'Not yet synced',
     announce: 'Sync pending',
     tone: 'pending',
@@ -62,7 +62,7 @@ const PRESENTATION: Record<SyncState, Presentation> = {
     box: 'border-pending bg-pending/15',
   },
   syncing: {
-    icon: { ios: 'arrow.triangle.2.circlepath', android: 'sync' },
+    icon: 'sync',
     label: 'Syncing',
     announce: 'Sync in progress',
     tone: 'pending',
@@ -70,7 +70,7 @@ const PRESENTATION: Record<SyncState, Presentation> = {
     box: 'border-pending bg-pending/15',
   },
   failed: {
-    icon: { ios: 'exclamationmark.triangle', android: 'warning' },
+    icon: 'alert',
     label: 'Sync failed',
     announce: 'Sync failed',
     tone: 'danger',

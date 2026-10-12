@@ -48,6 +48,7 @@ import {
   styleOf,
   uploaded,
 } from './photo-screen-harness';
+import { anyGlyph } from '../helpers/icons';
 
 // The screen asks the router for its params only: the title and Back belong to the
 // navigator (`trip/[id]/_layout.tsx`), so a screen that reached for `useRouter` would fail.
@@ -55,14 +56,6 @@ const mockParams: { id: string | string[] | undefined } = { id: 'trip-42' };
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
 }));
-
-// A View that carries every prop, so a test reads an icon's `name` as the symbol gets it.
-jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
-  return {
-    SymbolView: (props: Record<string, unknown>) => <View testID="symbol" {...props} />,
-  };
-});
 
 jest.mock('expo-file-system', () =>
   jest.requireActual('../features/photo-fakes').createFileSystemMock(),
@@ -335,7 +328,7 @@ describe('<PhotosScreen> — adding photos (Acceptance 5.1, 5.2)', () => {
     const error = screen.getByTestId('photos-capture-error');
     expect(error.props.accessibilityRole).toBe('alert');
     expect(error).toHaveTextContent(/enough free space/);
-    expect(within(error).getByTestId('symbol', hidden)).toBeTruthy();
+    expect(within(error).getByTestId(anyGlyph, hidden)).toBeTruthy();
     expect(screen.queryByTestId('photos-capture-message')).toBeNull();
   });
 
@@ -544,7 +537,7 @@ describe('<PhotosScreen> — edges', () => {
     // Said as an alert with the icon, like every other failure (FR-025).
     const alert = screen.getByTestId('photos-settings-error');
     expect(alert.props.accessibilityRole).toBe('alert');
-    expect(within(alert).getByTestId('symbol', hidden)).toBeTruthy();
+    expect(within(alert).getByTestId(anyGlyph, hidden)).toBeTruthy();
   });
 
   test('the tile under a finger is ringed outside the picture and paints no fill (the held state itself is tappable.test.tsx)', async () => {
