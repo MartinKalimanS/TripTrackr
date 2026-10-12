@@ -24,16 +24,32 @@
  * image to assistive technology, and the Trips tab remains the accessible
  * path to every trip (D-30).
  *
+ * Feature 005 (T532) gives it the Sunrise look in layers, none of which changes the
+ * geometry, the connections, the statistics or the camera rules (FR-082): the basemap's
+ * colours through `basemap-config.ts`, the atmosphere, a faint graticule, the visited and
+ * planned countries, and the gradient overlay of the connections. The Home sheet drives the
+ * camera through the handle (`GlobeHandle.setCamera`, once per settle, `globe-fit.ts`) and
+ * moves the Mapbox logo and attribution above itself with `logoPosition` and
+ * `attributionPosition`; both stay on.
+ *
  * The map mounts only once Mapbox is configured — token set, telemetry off
  * (`useMapboxReady`, lib/mapbox.ts) — never on the strength of import order.
  */
-import { Camera, MapView, StyleImport } from '@rnmapbox/maps';
+import { Camera, MapView, StyleImport, type MapState } from '@rnmapbox/maps';
 import { useIsFocused } from 'expo-router';
-import { useMemo, type ReactNode } from 'react';
+import {
+  useImperativeHandle,
+  useMemo,
+  type ComponentProps,
+  type ComponentRef,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ErrorState, LoadingState } from '@/components/ui/state-view';
 import { GlobeBasemap, GlobeCamera, GlobeColors, Spacing } from '@/constants/theme';
+import { countryCodes } from '@/features/globe/country-codes';
 import type { GlobeTrip } from '@/features/globe/globe-data';
 import { todayIso } from '@/features/trips/stop-dates';
 import { useAppActive } from '@/hooks/use-app-active';
@@ -48,10 +64,27 @@ import {
   markerCollection,
 } from './arc-features';
 import { ArcSource } from './arc-source';
+import { AtmosphereLayer } from './atmosphere-layer';
+import { basemapConfig } from './basemap-config';
 import { Beacons } from './beacon';
 import { useAutoPitch, useFlyToFirstPlacement } from './camera';
+import { GradientArcLayer } from './gradient-arc-layer';
+import { GraticuleLayer } from './graticule-layer';
 import { TerrainLayers } from './terrain-layers';
 import { useArcPress } from './use-arc-press';
+import { useWorldScale } from './use-world-scale';
+import { VisitedCountriesLayer } from './visited-countries-layer';
+
+/** rnmapbox declares `CameraRef` but does not export it from the package root. */
+type CameraHandle = ComponentRef<typeof Camera>;
+
+/** Where Mapbox's logo and attribution sit: offsets from two edges, as the package types them. */
+type OrnamentPosition = ComponentProps<typeof MapView>['logoPosition'];
+
+/** What the Home sheet may ask of the globe's camera: one move per settle. */
+export type GlobeHandle = {
+  setCamera: (settings: Parameters<CameraHandle['setCamera']>[0]) => void;
+};
 
 export type GlobeViewProps = {
   trips: readonly GlobeTrip[];
@@ -61,6 +94,12 @@ export type GlobeViewProps = {
   accessibilityLabel: string;
   /** `YYYY-MM-DD`; injectable for tests, otherwise the device's local day. */
   today?: string;
+  /** Moves the Mapbox logo above the Home sheet. The logo is never hidden (Mapbox's terms). */
+  logoPosition?: OrnamentPosition;
+  /** Moves the attribution above the Home sheet. It is never hidden (Mapbox's terms). */
+  attributionPosition?: OrnamentPosition;
+  /** The camera, for the sheet: `setCamera` with `globeFitCamera` once per settle. */
+  ref?: Ref<GlobeHandle>;
 };
 
 /** Derived once per data change — never per animation frame. */
@@ -74,6 +113,7 @@ function useGlobeShapes(
       arcs: arcCollection(trips),
       journey: journeyCollection(trips, today),
       markers: markerCollection(trips),
+      countries: countryCodes(trips, today),
       beacons: beaconRoutes(trips, focus, today),
       centre: cameraCenter(trips, focus) ?? GlobeCamera.fallbackCenter,
     }),
@@ -100,13 +140,31 @@ function GlobeMap({
   focus,
   accessibilityLabel,
   today,
+  logoPosition,
+  attributionPosition,
+  ref,
 }: GlobeViewProps & { today: string }) {
   const { theme, prefersLessMotion } = useAppearance();
   const focused = useIsFocused();
   const foreground = useAppActive();
   const onPress = useArcPress();
-  const { cameraRef, onMapIdle } = useAutoPitch(!prefersLessMotion);
-  const { arcs, journey, markers, beacons, centre } = useGlobeShapes(trips, focus, today);
+  const { cameraRef, onMapIdle: tiltOnIdle } = useAutoPitch(!prefersLessMotion);
+  const { worldScale, onMapIdle: labelsOnIdle } = useWorldScale();
+  const { arcs, journey, markers, countries, beacons, centre } = useGlobeShapes(
+    trips,
+    focus,
+    today,
+  );
+  useImperativeHandle(
+    ref,
+    () => ({ setCamera: (settings) => cameraRef.current?.setCamera(settings) }),
+    [cameraRef],
+  );
+  const onMapIdle = (state: MapState) => {
+    tiltOnIdle(state);
+    labelsOnIdle(state);
+  };
+  const config = basemapConfig(theme, worldScale);
   useFlyToFirstPlacement(
     cameraRef,
     markers.features.length > 0,
@@ -122,26 +180,27 @@ function GlobeMap({
       projection="globe"
       styleURL={GlobeBasemap.styleURL}
       scaleBarEnabled={false}
+      logoPosition={logoPosition}
+      attributionPosition={attributionPosition}
       pitchEnabled
       maxPitch={GlobeCamera.maxPitch}
       onMapIdle={onMapIdle}
       accessible
       accessibilityRole="image"
       accessibilityLabel={accessibilityLabel}>
-      <StyleImport
-        id="basemap"
-        existing
-        config={{
-          theme: GlobeBasemap.theme,
-          lightPreset: GlobeBasemap.lightPreset[theme],
-          show3dObjects: true,
-        }}
-      />
+      <StyleImport id="basemap" existing config={config} />
       <Camera
         ref={cameraRef}
         minZoomLevel={GlobeCamera.minZoomLevel}
         maxZoomLevel={GlobeCamera.maxZoomLevel}
         defaultSettings={{ centerCoordinate: centre, zoomLevel: GlobeCamera.zoomLevel }}
+      />
+      <AtmosphereLayer scheme={theme} />
+      <GraticuleLayer scheme={theme} />
+      <VisitedCountriesLayer
+        scheme={theme}
+        visited={countries.visited}
+        planned={countries.planned}
       />
       <TerrainLayers />
       <ArcSource
@@ -151,6 +210,7 @@ function GlobeMap({
         palette={palette}
         onPress={onPress}
       />
+      <GradientArcLayer arcs={arcs} journey={journey} palette={palette} />
       {beacons.length > 0 ? (
         <Beacons
           routes={beacons}

@@ -265,3 +265,27 @@ describe('globeInvitation — what floats over a globe with nothing to draw (fea
     expect(globeInvitation(globeOf(stop('a', CITIES.rome, TODAY)))).toBeNull();
   });
 });
+
+describe('the country of a stop (T532)', () => {
+  test('carries the ISO code the row has, and null when it has none', () => {
+    const [only] = toGlobeTrips(
+      [trip('t')],
+      [
+        { ...stop('t', CITIES.rome, '2026-05-09'), country_iso: 'IT' },
+        stop('t', CITIES.paris, '2026-05-10'),
+        { ...stop('t', CITIES.tokyo, '2026-05-11'), country_iso: null },
+      ],
+      TODAY,
+    );
+    expect(only!.stops.map((s) => s.countryIso)).toEqual(['IT', null, null]);
+  });
+
+  test('is separate from the country id the statistics count by', () => {
+    const [only] = toGlobeTrips(
+      [trip('t')],
+      [{ ...stop('t', CITIES.rome, '2026-05-09'), country_iso: 'IT' }],
+      TODAY,
+    );
+    expect(only!.stops[0]).toMatchObject({ countryId: 10, countryIso: 'IT' });
+  });
+});

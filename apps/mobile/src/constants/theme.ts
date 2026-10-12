@@ -124,7 +124,8 @@ export const MinTouchTarget = Platform.select({ ios: 44, android: 48 }) ?? 44;
  * on the globe. The prototype's bright light arc ends (#FF9A45, #FFB547) are 2.11:1 and
  * 1.76:1 on white (finding M-3), so light ends at the amber line; dark keeps bright ends
  * because its casing is dark. The visited fill is a fill only (1.37:1 on light land): the
- * keyline carries the meaning. The basemap style group (water, atmosphere) is T532.
+ * keyline carries the meaning. The rest of the globe's look (the sea, the atmosphere, the
+ * graticule, the callout card) is `GlobeStyle` below.
  */
 export const GlobeColors = {
   light: {
@@ -155,6 +156,103 @@ export const GlobeColors = {
     land: '#3C6E99',
     landShade: '#2A557E',
   },
+} as const;
+
+/**
+ * The Sunrise globe's own look beyond the connections — feature 005, contract C5-11,
+ * research D5-04 and D5-22 (T532).
+ *
+ * The basemap colours are the configuration of Mapbox Standard (`basemap-config.ts`: the
+ * land is `GlobeColors.land`, the rest is here); `atmosphere` is the fog and sky of the
+ * `Atmosphere` layer, opaque on purpose (an alpha below 1 on `color` loads more tiles) and
+ * without stars; `graticule` is the faint grid over the planet, a colour and the opacity it
+ * is drawn at (decoration, so the gate asks only that it shows over the sea and is never a
+ * mark that could carry meaning); `callout` is the white card of the live trip, navy on
+ * white in BOTH themes as in the prototype (so it does not follow the adaptive text tones).
+ * These are STARTING values, tuned over day and night on a device (V2, T508); every one is
+ * measured in `test/theme/globe-contrast-gate.test.ts`, and the greeting text that sits over
+ * the atmosphere is measured against it in all four palettes.
+ *
+ * `greenspace` and `adminBoundaries` start at the land shade and `sand` of the palette, as
+ * C5-11 says (the "soft sage" of D5-04 is a V2 retune). Keys follow the lighting of the
+ * basemap (`GlobeBasemap.lightPreset`), as `GlobeColors` does.
+ */
+export const GlobeStyle = {
+  light: {
+    water: '#8FD6EC',
+    greenspace: '#F6E9D2',
+    adminBoundaries: '#EBDCC9',
+    graticule: '#FFFFFF',
+    graticuleOpacity: 0.34,
+    atmosphere: {
+      color: '#FFF1DF',
+      highColor: '#D7F0F6',
+      spaceColor: '#FFE6D0',
+      horizonBlend: 0.1,
+      starIntensity: 0,
+    },
+    callout: {
+      surface: '#FFFFFF',
+      title: '#0E2A47',
+      detail: '#4A5B6E',
+      liveDot: '#E04A33',
+    },
+  },
+  dark: {
+    water: '#0E3465',
+    greenspace: '#2A557E',
+    adminBoundaries: '#2B4466',
+    graticule: '#AAD7FF',
+    graticuleOpacity: 0.11,
+    atmosphere: {
+      color: '#0B1D36',
+      highColor: '#0C2442',
+      spaceColor: '#0A1626',
+      horizonBlend: 0.1,
+      starIntensity: 0,
+    },
+    callout: {
+      surface: '#F4F7FB',
+      title: '#0E2A47',
+      detail: '#4A5B6E',
+      liveDot: '#E04A33',
+    },
+  },
+} as const;
+
+/** The two lightings of the globe: `GlobeColors`, `GlobeStyle` and `GlobeBasemap` are keyed by it. */
+export type GlobeScheme = keyof typeof GlobeColors;
+
+/**
+ * What the style layers are made of, in both themes (T532): the tileset the country layers
+ * read, the widths and dashes, the graticule's step and the zoom it fades out over.
+ *
+ * `countries` is Mapbox Countries v1, a free tileset (source layer `country_boundaries`;
+ * `iso_3166_1` is the alpha-2 code; `worldview` is `all` or a comma-separated list of the
+ * audiences `AR CN IN JP MA RU TR US`). Every layer on it carries a worldview filter, `US`
+ * here, so a disputed area is not drawn twice. `worldScaleZoom` is where the basemap's
+ * point-of-interest, transit and road labels come on: below it the whole planet is in view.
+ */
+export const GlobeLayers = {
+  countries: {
+    url: 'mapbox://mapbox.country-boundaries-v1',
+    sourceLayer: 'country_boundaries',
+    isoField: 'iso_3166_1',
+    worldview: 'US',
+    keylineWidth: 1.5,
+    plannedKeylineWidth: 2,
+    /** Dash and gap, in line widths. */
+    plannedDash: [3, 2],
+  },
+  graticule: {
+    /** Degrees between lines; must divide 90. */
+    step: 30,
+    width: 0.8,
+    /** Fully drawn up to the first zoom, gone from the second. */
+    fadeStartZoom: 3,
+    fadeEndZoom: 4,
+  },
+  worldScaleZoom: 5,
 } as const;
 
 /**

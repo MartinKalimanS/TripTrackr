@@ -155,11 +155,13 @@ function allWithPlaceQuery(db: AppDatabase) {
       arrive_date: tripStops.arrive_date,
       depart_date: tripStops.depart_date,
       country_id: cities.country_id,
+      country_iso: countries.iso_code,
       lat: cities.lat,
       lng: cities.lng,
     })
     .from(tripStops)
     .leftJoin(cities, eq(cities.id, tripStops.city_id))
+    .leftJoin(countries, eq(countries.id, cities.country_id))
     .where(isNull(tripStops.deleted_at))
     .orderBy(
       asc(tripStops.trip_id),

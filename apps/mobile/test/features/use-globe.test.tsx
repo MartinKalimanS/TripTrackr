@@ -11,7 +11,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
 
 import { DatabaseProvider } from '@/db/client';
-import { cities, tripStops, trips } from '@/db/schema';
+import { cities, countries, tripStops, trips } from '@/db/schema';
 import { useGlobe } from '@/features/globe/use-globe';
 
 import { createTestDatabase, type TestSqlite } from '../db/sqlite-harness';
@@ -74,6 +74,13 @@ function cacheCity(id: number, countryId: number, lng: number, lat: number) {
       timezone: 'Europe/Rome',
       population: 1000,
     })
+    .run();
+}
+
+function cacheCountry(id: number, isoCode: string) {
+  sqlite.db
+    .insert(countries)
+    .values({ id, iso_code: isoCode, name: isoCode, continent: 'Europe' })
     .run();
 }
 
@@ -186,4 +193,23 @@ test('stops sharing a position pair in the server’s order: created, then id', 
   const { result } = await renderHook(() => useGlobe(TODAY), { wrapper });
   await waitFor(() => expect(result.current.data.trips[0]?.stops).toHaveLength(3));
   expect(result.current.data.trips[0]!.stops.map((s) => s.id)).toEqual(['z', 'a', 'b']);
+});
+
+test('a stop carries the ISO code of its city’s country, null while the country is not cached (T532)', async () => {
+  cacheCountry(39, 'IT');
+  cacheCity(1, 39, 12.4964, 41.9028);
+  cacheCity(2, 33, 2.3522, 48.8566); // France: its country row is not cached
+  insertTrip('t');
+  insertStop('a', 't', 1, 0, { arrive: TODAY });
+  insertStop('b', 't', 2, 1, { arrive: TODAY });
+
+  const { result } = await renderHook(() => useGlobe(TODAY), { wrapper });
+  await waitFor(() => expect(result.current.data.trips).toHaveLength(1));
+
+  expect(result.current.data.trips[0]!.stops.map((s) => s.countryIso)).toEqual([
+    'IT',
+    null,
+  ]);
+  // The statistics count by country id and are untouched by the join (FR-082).
+  expect(result.current.data.summary.countriesVisited).toBe(2);
 });
