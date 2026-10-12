@@ -1,5 +1,6 @@
 /**
- * T422 - FR-025, FR-030, contract C4-8 (`InlineError`). A write failure is said in words,
+ * T422 / T521 - FR-025, FR-030, contracts C4-8 and C5-18 (`InlineError`). A write failure
+ * is said in words,
  * announced as an alert, and not by colour alone: a leading alert icon accompanies the
  * danger ink. The role, the test id and the text stay exactly where the screens and the
  * Maestro flows find them.
@@ -39,9 +40,27 @@ describe('<InlineError>', () => {
     expect(screen.getByRole('alert')).toBe(alert);
   });
 
-  test('reads in the danger ink', async () => {
+  test('reads in the danger ink, as a 14 / 20 label', async () => {
     await render(<InlineError testID="e" message="Could not be saved." />);
-    expect(classesOf(screen.getByText('Could not be saved.'))).toContain('text-danger');
+    expect(classesOf(screen.getByText('Could not be saved.'))).toEqual(
+      expect.arrayContaining(['text-danger', 'text-[14px]', 'font-body-semibold']),
+    );
+  });
+
+  test('sits in a danger-tint box with a 1.5 dp danger edge, 16 dp corners and room to breathe', async () => {
+    await render(<InlineError testID="e" message="Could not be saved." />);
+    expect(classesOf(screen.getByTestId('e'))).toEqual(
+      expect.arrayContaining([
+        'bg-danger-tint',
+        'border-danger',
+        'border-[1.5px]',
+        'rounded-2xl',
+        'p-3',
+      ]),
+    );
+    expect(screen.getByTestId('e').props.style).toMatchObject({
+      borderCurve: 'continuous',
+    });
   });
 
   test('is not colour alone: a decorative alert icon leads the words', async () => {

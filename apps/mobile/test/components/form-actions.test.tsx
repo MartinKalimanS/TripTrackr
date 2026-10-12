@@ -97,7 +97,7 @@ describe('<FormActions>', () => {
     expect(labels).toEqual(['Cancel', 'Save expense']);
   });
 
-  test('the row wraps at large text, each button growing to share the line', async () => {
+  test('the row wraps at large text, Save growing to take the line Cancel leaves', async () => {
     await renderActions();
 
     const cancel = screen.getByTestId('add-expense-cancel');
@@ -107,11 +107,12 @@ describe('<FormActions>', () => {
     expect(classesOf(row!)).toEqual(
       expect.arrayContaining(['flex-row', 'flex-wrap', 'gap-3']),
     );
-    for (const button of [cancel, save]) {
-      // grow shares the line; max-w-full lets a long label wrap inside a button that
-      // already fills the row instead of overflowing it.
-      expect(classesOf(button)).toEqual(expect.arrayContaining(['grow', 'max-w-full']));
-    }
+    // Save is the primary and takes the room (grow); Cancel is a text button that keeps
+    // to its label. max-w-full lets a long label wrap inside a button that already fills
+    // the row instead of overflowing it.
+    expect(classesOf(save)).toEqual(expect.arrayContaining(['grow', 'max-w-full']));
+    expect(classesOf(cancel)).toContain('max-w-full');
+    expect(classesOf(cancel)).not.toContain('grow');
   });
 
   test('a disabled save is announced unavailable and inert, while Cancel still works', async () => {

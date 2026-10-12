@@ -155,7 +155,10 @@ const TextFieldRoot = forwardRef<unknown, StandInProps>(function TextField(props
 TextFieldRoot.displayName = 'TextField';
 export const TextField = TextFieldRoot;
 
-export const Label = text('Label');
+/** The kit's Label is a pressable root around `Label.Text`; a string child is wrapped in a Text. */
+export const Label = Object.assign(standIn(View, 'Label', { labelChildren: true }), {
+  Text: text('Label.Text'),
+});
 export const Description = text('Description');
 
 /** Like the kit: renders only while the field (or its own `isInvalid`) is invalid. */

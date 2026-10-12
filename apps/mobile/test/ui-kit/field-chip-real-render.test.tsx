@@ -14,6 +14,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type * as HeroUI from 'heroui-native';
+import { StyleSheet } from 'react-native';
 
 import { Chip, ChipGroup, StatusChip } from '@/components/ui/chip';
 import { Field } from '@/components/ui/field';
@@ -80,6 +81,39 @@ describe('Field over the real kit', () => {
     await renderKit(field({ editable: false, description: 'A city or a country' }));
     expect(screen.getByTestId('destination').props.editable).toBe(false);
     expect(screen.getByText('A city or a country')).toBeTruthy();
+  });
+
+  test('Sunrise: the label text wears our classes after the kit\u2019s, and the focus ring reaches the real input', async () => {
+    await renderKit(field({ error: 'Enter a destination', description: 'A city' }));
+    const classes = String(screen.getByText('Destination').props.className)
+      .split(/\s+/)
+      .filter(Boolean);
+    expect(classes).toEqual(
+      expect.arrayContaining(['label__text', 'text-[14px]', 'font-body-semibold']),
+    );
+    expect(classes.indexOf('text-[14px]')).toBeGreaterThan(
+      classes.indexOf('label__text'),
+    );
+    expect(classes).not.toContain('label__text--is-invalid-colour');
+
+    const input = screen.getByTestId('destination');
+    expect(StyleSheet.flatten(input.props.style)).toMatchObject({
+      borderRadius: 12,
+      borderWidth: 1.5,
+      outlineWidth: 0,
+    });
+    await fireEvent(input, 'focus');
+    expect(
+      StyleSheet.flatten(screen.getByTestId('destination').props.style),
+    ).toMatchObject({
+      outlineWidth: 2.5,
+      outlineOffset: 2,
+      outlineStyle: 'solid',
+    });
+    expect(screen.getByTestId('destination-error')).toHaveTextContent(
+      'Enter a destination',
+    );
+    expect(screen.getByText('A city')).toBeTruthy();
   });
 
   test('a required field shows the asterisk and the hint', async () => {
