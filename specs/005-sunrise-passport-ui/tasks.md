@@ -126,28 +126,51 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 ### Tokens and gate (branch `feat/005-tokens`, one agent)
 
-- [ ] T513 Failing tests first, written and observed red: `test/theme/palette.test.ts` (the new key set in all
+- [x] T513 Failing tests first, written and observed red: `test/theme/palette.test.ts` (the new key set in all
       four themes; the amended invariants: `surface` is `#FFFFFF` in the light themes, `statusActive` equals
       `GlobeColors` where both exist); `test/theme/contrast-gate.test.ts` extended with every pair class P1 to
       P23 of `design-tokens.md` C5-4, the `FILL_BELOW_FLOOR` allowlist verified in both directions, the white
       photograph fixture for P8 to P11, the enumerated exemption list; `test/theme/gate-exemptions.ts` updated
       (FR-068, FR-069, FR-072; D5-22; SC-002)
-- [ ] T514 Implement `palette.data.js` and `palette.ts` with the values of C5-3 and the new key set; re-point
+      _As built:_ the gate is `test/theme/contrast-gate.test.ts` (it replaces 004's `palette-gate.test.ts`) over
+      `palette-gate-support.ts` and `gate-exemptions.ts`: P1 to P23 per theme with their pair counts pinned, P8 to
+      P11 over `WHITE_PHOTO`, `FILL_BELOW_FLOOR` and `DISPLAY_SIZE_ONLY` verified in both directions, the C5-3
+      table reproduced; written red first (43 failing tests, two suites that could not load). See
+      `contracts/design-tokens.md`, "As built (T513, T514)".
+- [x] T514 Implement `palette.data.js` and `palette.ts` with the values of C5-3 and the new key set; re-point
       `Colors` (keys preserved) and the 004 aliases (`surfaceTertiary` to `pressed`, `separator` to `hairline`);
       extend `scripts/build-theme-css.mjs` and regenerate `generated/theme.css` (C5-6); retune any token the
       gate rejects, never a floor; update the tests that asserted Atlas values (FR-001, FR-002, FR-078, FR-079;
       D5-02, D5-22)
-- [ ] T515 [P] Type: failing `test/theme/typography.test.ts` (nine roles, three weights, every `tabularNumbers`
+      _As built:_ 59 keys (the eight aliases are resolved from the key they equal), `scrim.ts` added, `theme.css`
+      regenerated (32 kit and 41 app variables); five values retuned by the gate and recorded with their ratios
+      (`dark-contrast` `danger`, `success`, `amberInk`; `light-contrast` `accentText`; the dark globe `active`
+      start); `Colors` keeps its eight keys; five coral-derived pairs of the 004 adapters that fall short until
+      T519 to T521 are enumerated and verified in both directions.
+- [x] T515 [P] Type: failing `test/theme/typography.test.ts` (nine roles, three weights, every `tabularNumbers`
       role in a Bricolage family, the capped roles carry `maxFontSizeMultiplier` 1.3 and nothing else does, line
       heights exceed sizes) then `typography.ts`, `text.tsx` and the `ThemedText` shim (FR-004, FR-074; D5-06;
       Q-1)
-- [ ] T516 [P] Shape and motion: failing `test/theme/shape.test.ts` and `motion.test.ts` (radii, space, lifts per
+      _As built:_ `TypeRoles` is a second table beside the 004 `TextRoles` (five role names collide with different
+      sizes and 004 tests pin them); `Text variant="display|numeral|title|headline|callout|body|label|caption|eyebrow|accent"`
+      selects it, `type` keeps the 004 roles. `numeral` and `eyebrow` are always capped at 1.3, `callout`, `label` and
+      `caption` with `capped`. There is no `themed-text.tsx` (T452 retired it): the shim is `Text`'s 004 `type` path and
+      `LegacyRoleMap`. The DM Sans and Instrument Serif classes await T504 in `global.css` (a list in `text.test.tsx`).
+- [x] T516 [P] Shape and motion: failing `test/theme/shape.test.ts` and `motion.test.ts` (radii, space, lifts per
       theme, springs and durations of C5-9) then `shape.ts`, `motion.ts`, `Lift` and `IconSize` (FR-001, FR-003,
       FR-005, FR-027; D5-03)
-- [ ] T517 Failing-first guards: `test/theme/atlas-values.test.ts` (the 004 palette literals, listed in
+      _As built:_ `Space`, `ScreenMargin`, `Radii` (not `Radius`: `constants/theme.ts` owns it), `cornerOf`,
+      `innerRadius`, `Lift`, `liftOf`, `LiftElevation`, `IconSize`, `IconWeights`, and `Motion` extended with every row of
+      C5-9 and the reduced-motion twins (`motionDuration`, `pressScaleOf`, `springOf`); the 004 tables are unchanged.
+- [x] T517 Failing-first guards: `test/theme/atlas-values.test.ts` (the 004 palette literals, listed in
       `test/theme/atlas-values.ts`, found nowhere in `src/`; **stays red until T564**), the ESLint rule rejecting
       gradient strings outside `src/theme/` and `components/ui/scrim.tsx`, and the extension of
       `no-neumorphism.test.ts` for the Atlas-only treatments (FR-009, FR-083; SC-001)
+      _As built:_ `atlas-values.test.ts` is **green from T514**, not red until T564: T514 re-pointed the palette, the
+      globe colours and the comments, so no Atlas literal is left in `src/` and the guard stands as a regression test
+      (a planted `#2456C7` fails it). The Atlas-only treatments (004 shape tables, the flat tab strip mark, the two
+      004 text roles) are a ratchet in `no-neumorphism.test.ts` plus a strict zero test under `ATLAS_RETIREMENT=1`
+      (red until T564, skipped otherwise); the ESLint rule has its cases in `boundary-rules.test.ts`.
 
 ### Adapters (each: failing test first in `apps/mobile/src/components/ui/*.test.tsx`)
 
