@@ -110,7 +110,6 @@ describe('colour literals (C4-1)', () => {
     'shadow-[0_0_0_1px_#fff]',
     'shadow-[0_1px_2px_rgba(0,0,0,0.2)]',
     'border-[1px_solid_#fff]',
-    'bg-[linear-gradient(#fff,#000)]',
   ])(
     'rejects %s as a string and inside a template literal',
     async (utility) => {
@@ -270,6 +269,154 @@ describe('other imports (C4-6)', () => {
     async () => {
       const code = "import { View } from 'react-native';\nexport const x = View;";
       expect(await importMessages(code, 'src/components/trip/trip-card.tsx')).toEqual([]);
+    },
+    LINT_TIMEOUT,
+  );
+});
+
+/**
+ * Feature 005 contract C5-1 (T517): a gradient is data in `src/theme/` and is drawn by
+ * `components/ui/scrim.tsx`, the only consumer. A gradient string (`linear-gradient(`,
+ * `radial-gradient(`, `conic-gradient(`, their `repeating-` forms) anywhere else in `src/` is
+ * rejected, whichever folder it is in; tests are exempt as fixtures. `scrim.tsx` is exempt from
+ * THIS rule only: it still may not write a raw colour.
+ */
+const gradientMessages = async (code: string, file: string) =>
+  (await colourMessages(code, file)).filter((message) =>
+    /gradient/i.test(message.message),
+  );
+
+const GRADIENT_FUNCTIONS = [
+  'linear-gradient(180deg, var(--a), var(--b))',
+  'radial-gradient(120% 70% at 92% -8%, var(--glow), transparent 62%)',
+  'conic-gradient(from 0deg, var(--a), var(--b))',
+  'repeating-linear-gradient(45deg, var(--a), var(--b) 4px)',
+  'repeating-radial-gradient(circle, var(--a), var(--b) 4px)',
+];
+const GRADIENT_REJECTED_IN = [
+  'src/components/x.tsx',
+  'src/components/trip/trip-card.tsx',
+  'src/app/screen.tsx',
+  'src/features/trips/x.ts',
+  'src/hooks/use-x.ts',
+  'src/constants/x.ts',
+  'src/lib/x.ts',
+  'src/components/ui/scrim-note.tsx',
+];
+const GRADIENT_ALLOWED_IN = [
+  'src/theme/scrim.ts',
+  'src/theme/gradients.ts',
+  'src/components/ui/scrim.tsx',
+  'src/components/trip/x.test.tsx',
+  'src/theme/scrim.test.ts',
+  'test/theme/scrim.test.ts',
+];
+
+describe('gradient strings (C5-1)', () => {
+  it.each(GRADIENT_FUNCTIONS)(
+    'rejects %s as a string and inside a template literal in every folder of src/',
+    async (gradient) => {
+      for (const file of GRADIENT_REJECTED_IN) {
+        const asString = await gradientMessages(`export const a = "${gradient}";`, file);
+        const asTemplate = await gradientMessages(
+          `export const a = \`${gradient} \${size}\`;`,
+          file,
+        );
+        expect(`${file} string -> ${asString.length}`).toBe(`${file} string -> 1`);
+        expect(`${file} template -> ${asTemplate.length}`).toBe(`${file} template -> 1`);
+      }
+    },
+    LINT_TIMEOUT,
+  );
+
+  it(
+    'rejects a gradient in a className arbitrary value and in a style object',
+    async () => {
+      const file = 'src/components/x.tsx';
+      const className = await gradientMessages(
+        'export const A = () => <View className="bg-[linear-gradient(to_bottom,var(--a),var(--b))]" />;',
+        file,
+      );
+      const style = await gradientMessages(
+        "export const B = () => <View style={{ experimental_backgroundImage: 'linear-gradient(red, blue)' }} />;",
+        file,
+      );
+      expect(className).toHaveLength(1);
+      expect(style).toHaveLength(1);
+    },
+    LINT_TIMEOUT,
+  );
+
+  it(
+    'a gradient with a colour inside is reported twice: as a colour class and as a gradient',
+    async () => {
+      const code = 'export const a = "bg-[linear-gradient(#fff,#000)]";';
+      const messages = await colourMessages(code, 'src/components/x.tsx');
+      expect(messages.map((message) => message.message.split('.')[0]).sort()).toEqual([
+        'Arbitrary-value colour class',
+        'Gradient string',
+      ]);
+    },
+    LINT_TIMEOUT,
+  );
+
+  it(
+    'cites the contract and names the only consumer',
+    async () => {
+      const [message] = await gradientMessages(
+        'export const a = "linear-gradient(red, blue)";',
+        'src/components/x.tsx',
+      );
+      expect(message.message).toContain('C5-1');
+      expect(message.message).toContain(
+        'specs/005-sunrise-passport-ui/contracts/design-tokens.md',
+      );
+      expect(message.message).toContain('scrim.tsx');
+    },
+    LINT_TIMEOUT,
+  );
+
+  it.each(GRADIENT_ALLOWED_IN)(
+    'allows a gradient in %s (the token layer, the one consumer, a test)',
+    async (file) => {
+      const code = 'export const a = "linear-gradient(180deg, var(--a), var(--b))";';
+      expect(await gradientMessages(code, file)).toEqual([]);
+    },
+    LINT_TIMEOUT,
+  );
+
+  it(
+    'leaves the one consumer under the colour rule: scrim.tsx may not write a raw colour',
+    async () => {
+      const file = 'src/components/ui/scrim.tsx';
+      const messages = await colourMessages(
+        "export const a = '#ff0000'; export const b = 'linear-gradient(red, blue)';",
+        file,
+      );
+      expect(messages.map((message) => message.line)).toEqual([1]);
+      expect(messages[0].message).toContain('C4-1');
+    },
+    LINT_TIMEOUT,
+  );
+
+  it.each([
+    'a linear-gradient is drawn by Scrim',
+    'gradient',
+    'Gradient(',
+    'the radial-gradient token',
+    'bg-primary',
+  ])(
+    'leaves the prose "%s" alone',
+    async (text) => {
+      const quoted = JSON.stringify(text);
+      const code = [
+        `export const a = ${quoted};`,
+        `export const b = \`${text} \${size}\`;`,
+        `export const C = () => <Text accessibilityLabel={${quoted}}>x</Text>;`,
+      ].join('\n');
+      for (const file of ['src/components/x.tsx', 'src/features/x.ts']) {
+        expect(await gradientMessages(code, file)).toEqual([]);
+      }
     },
     LINT_TIMEOUT,
   );
