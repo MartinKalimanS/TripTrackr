@@ -248,6 +248,24 @@ are minimums. At a font scale of 1.15 and above the reflow rules of `screens.md`
 `data-bigtext` rules). A role added later is composed from this table. The `ThemedText` shim maps the 004 roles
 until Phase 10. A test asserts every `tabularNumbers` role resolves to a Bricolage family.
 
+**As built (T504): the family variables.** `src/global.css` holds six variables in `@theme static`, one per
+embedded file, each also declared under `@variant ios` with the PostScript name (Android answers to the file
+name). A text style picks its family from this table, never by a literal name:
+
+| Variable               | Class                | Face and file               | Android family                      | iOS family                    |
+| ---------------------- | -------------------- | --------------------------- | ----------------------------------- | ----------------------------- |
+| `--font-display`       | `font-display`       | Bricolage Grotesque 600     | `BricolageGrotesque_600SemiBold`    | `BricolageGrotesque-SemiBold` |
+| `--font-display-bold`  | `font-display-bold`  | Bricolage Grotesque 700     | `BricolageGrotesque_700Bold`        | `BricolageGrotesque-Bold`     |
+| `--font-body`          | `font-body`          | DM Sans 400                 | `DMSans_400Regular`                 | `DMSans-Regular`              |
+| `--font-body-semibold` | `font-body-semibold` | DM Sans 600                 | `DMSans_600SemiBold`                | `DMSans-SemiBold`             |
+| `--font-body-bold`     | `font-body-bold`     | DM Sans 700                 | `DMSans_700Bold`                    | `DMSans-Bold`                 |
+| `--font-serif`         | `font-serif`         | Instrument Serif Italic 400 | `InstrumentSerif_400Regular_Italic` | `InstrumentSerif-Italic`      |
+
+`FontFamilyRole` (`'display' | 'body' | 'serif'`, data-model) resolves a role and weight to one of these
+variables. Each weight is its own family: a text style sets `fontWeight: 'normal'` beside it, and the italic
+accent sets no `fontStyle`. There is no third Bricolage weight. `test/theme/global-css.test.ts` reads every
+name from the font files.
+
 ---
 
 ## C5-8. Space, radius, lift, icon

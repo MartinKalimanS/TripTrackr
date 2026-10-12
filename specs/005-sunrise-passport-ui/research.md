@@ -538,4 +538,57 @@ bundle) is in its task.
    sheet keyboard behaviour, the sheet bottom padding at the home indicator, the focus ring at the edges of a
    sideways chip row, continuous corners, the first frame after the splash in all four themes.
 
-**Result**: _pending; each spike writes its result here in its task._
+**Result**: _pending; each device spike writes its result here in its task._
+
+### Desk spike T506 (no device; 2026-10-12): pass
+
+Run on `feat/005-fonts-mocks` with the six packages installed (T502), the six font entries (T504), the Jest
+stand-ins (T503) and the basemap key list (T505) in place. It settles the desk half of the Batch 1 install
+(SC-012); the device halves are V1 to V6 above.
+
+1. **Bundles**: `npx expo export --platform android --no-minify` and `--platform ios --no-minify` both
+   succeed (exit 0, "Exported:", no crash at teardown, no rerun needed) and print "React Compiler enabled".
+   Android 5150 modules in 143.6 s, iOS 5063 modules in 154.1 s (a new worktree, with Jest runs alongside
+   each export); the Hermes bundles are 12.5 MB and 12 MB without minification.
+   The **Sentry Debug ID is in both** (`sentry-dbid-<uuid>` in the bytecode of each). No `Uniwind Error` line
+   is printed. All six family names are in the Uniwind variable tables of the bundles in BOTH spellings
+   (`DMSans_400Regular`, `DMSans_600SemiBold`, `DMSans_700Bold`, `InstrumentSerif_400Regular_Italic`,
+   `BricolageGrotesque_700Bold` and the iOS PostScript names `DMSans-Regular`, `DMSans-SemiBold`,
+   `DMSans-Bold`, `InstrumentSerif-Italic`, `BricolageGrotesque-Bold`), so Uniwind accepts all six
+   variables, `--font-serif` (which replaces Tailwind's default of that name) included. The six font files are NOT Metro assets (the
+   `expo-font` plugin copies them into the native projects at prebuild), so they do not appear in the export's
+   asset list; their size is measured in SC-011 on a build. Findings: (a) the Android export's 31 assets
+   include `MaterialSymbols_400Regular.ttf` (967 KB, `expo-symbols`' Android font), which the Phosphor icon
+   vocabulary (D5-07) removes: count it in the SC-011 baseline; (b) the bundle has no `phosphor-react-native`
+   barrel import yet (no screen uses an icon), so the tree-shaking claim of D5-07 is still to be measured
+   when the first registry lands (T518).
+2. **React Compiler**: compiled with `babel-plugin-react-compiler` 1.0.0 and its logger (the 004 method) on
+   a throwaway screen made of a custom hook, a tab pill and a screen, using Phosphor deep imports
+   (`GlobeIcon`, `SuitcaseIcon` by their `src/icons` path), `GlassView` and `isLiquidGlassAvailable`,
+   `captureRef`, `ResumableZoom` and `Gallery`, with state, `useRef`, `useMemo`, `useCallback` and an effect:
+   **3 functions compiled (memo caches of 4, 18 and 24 slots), 0 bail-outs, skips or pipeline errors**. The
+   compiled output rendered under Jest against the stand-ins and stayed correct: the selected icon swaps its
+   weight on press (`phosphor-react-native-suitcase-regular` to `-fill`), the pill is a plain view until
+   `isLiquidGlassAvailable()` answers `true` and then a `GlassView`, the zoom and gallery stand-ins draw, and
+   `captureRef` resolves a file URI into state. No file needs `"use no memo"`. The same limit as 004 applies:
+   Jest does not enable the compiler itself, so ordinary suites test the uncompiled source. The throwaway
+   test was deleted.
+3. **Jest**: the whole existing suite is green with the stand-ins installed for every suite: 197 suites,
+   4,397 tests (`npx jest --ci --maxWorkers=2`, 299 s while Metro was exporting).
+
+Facts learned on the way (they change the wording of D5-07 and D5-13, not their decisions):
+
+- **Phosphor's deep import path** is `phosphor-react-native/src/icons/<Name>`, the only subpath its `exports`
+  map serves (`./src/icons/*` to `./src/icons/*.tsx`, TypeScript source: `lib/module/icons/*` is NOT
+  exported). The named exports are `<Name>Icon` (and the deprecated `<Name>`). The icon renders a
+  `react-native-svg` tree whose `testID` is `phosphor-react-native-<name>-<weight>` under Jest, once
+  `phosphor-react-native` is in `transformIgnorePatterns`; the bare package is refused under Jest so the
+  1,500-icon barrel is never loaded.
+- **`react-native-zoom-toolkit` cannot be imported under Jest** (its provider calls Reanimated's `clamp`,
+  which the shared Reanimated stand-in does not have), hence the stand-in for `ResumableZoom` and `Gallery`.
+  The real `Gallery` clamps `initialIndex`, draws a window of `windowSize` (5) items and reports the start
+  index through a Reanimated reaction on mount; the stand-in does the same.
+- **Standard configuration keys**: Mapbox documents 46 properties for Standard
+  (`docs.mapbox.com/map-styles/reference/standard/`); the allow-list of T505 is a literal copy. Of the keys the
+  package types, exactly `colorBoundaries` and `colorGreenspaces` are not Mapbox's. The bundled native SDK
+  (11.23.1) is newer than every compatibility entry for the keys the globe sets (`colorLand` needs 11.17.0).
