@@ -73,42 +73,53 @@ export interface AnimatedNumberProps extends Omit<
 const TABULAR: TextStyle = { fontVariant: ['tabular-nums'] };
 const KEEPER: TextStyle = { opacity: 0 };
 
-export function AnimatedNumber({
-  value,
-  format,
-  locale,
-  delay = 0,
-  duration = Motion.countUpMs,
-  variant = 'numeral',
-  containerStyle,
+/** What the two ways of drawing a figure share: the words, and the caller's text props. */
+type FigureProps = Omit<
+  AnimatedNumberProps,
+  'value' | 'format' | 'locale' | 'delay' | 'duration' | 'accessibilityLabel' | 'variant'
+> & {
+  variant: AnimatedNumberVariant;
+  /** The final formatted value: the label, and the width the box is held to. */
+  finalText: string;
+  label: string;
+  /** The text of this frame. */
+  frameText: string;
+};
+
+/** Reduced motion: one text, the final value, on the first render. */
+function Still({
+  variant,
+  finalText,
+  label,
+  containerStyle: _box,
+  frameText: _frame,
   style,
-  accessibilityLabel,
   testID,
   ...rest
-}: AnimatedNumberProps) {
-  const { prefersLessMotion } = useAppearance();
-  const tag = locale ?? deviceLocale().languageTag;
-  const target = Number.isFinite(value) ? value : 0;
-  const drawn = useCountUp(target, {
-    enabled: !prefersLessMotion,
-    durationMs: duration,
-    delayMs: delay,
-  });
-  const finalText = formatFigure(target, tag, format);
-  const label = accessibilityLabel ?? finalText;
+}: FigureProps) {
+  return (
+    <Text
+      variant={variant}
+      testID={testID}
+      accessibilityLabel={label}
+      style={[TABULAR, style]}
+      {...rest}>
+      {finalText}
+    </Text>
+  );
+}
 
-  if (prefersLessMotion) {
-    return (
-      <Text
-        variant={variant}
-        testID={testID}
-        accessibilityLabel={label}
-        style={[TABULAR, style]}
-        {...rest}>
-        {finalText}
-      </Text>
-    );
-  }
+/** Counting: the figure lies over an invisible copy of the final text, which sizes the box. */
+function Counting({
+  variant,
+  finalText,
+  label,
+  frameText,
+  containerStyle,
+  style,
+  testID,
+  ...rest
+}: FigureProps) {
   return (
     <View
       testID={testID === undefined ? undefined : `${testID}-container`}
@@ -129,8 +140,37 @@ export function AnimatedNumber({
         accessibilityLabel={label}
         style={[TABULAR, style, StyleSheet.absoluteFill]}
         {...rest}>
-        {formatFigure(drawn, tag, format)}
+        {frameText}
       </Text>
     </View>
   );
+}
+
+export function AnimatedNumber({
+  value,
+  format,
+  locale,
+  delay = 0,
+  duration = Motion.countUpMs,
+  variant = 'numeral',
+  accessibilityLabel,
+  ...rest
+}: AnimatedNumberProps) {
+  const { prefersLessMotion } = useAppearance();
+  const tag = locale ?? deviceLocale().languageTag;
+  const target = Number.isFinite(value) ? value : 0;
+  const drawn = useCountUp(target, {
+    enabled: !prefersLessMotion,
+    durationMs: duration,
+    delayMs: delay,
+  });
+  const finalText = formatFigure(target, tag, format);
+  const figure: FigureProps = {
+    ...rest,
+    variant,
+    finalText,
+    label: accessibilityLabel ?? finalText,
+    frameText: formatFigure(drawn, tag, format),
+  };
+  return prefersLessMotion ? <Still {...figure} /> : <Counting {...figure} />;
 }
