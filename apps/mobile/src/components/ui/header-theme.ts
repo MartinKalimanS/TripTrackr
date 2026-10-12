@@ -28,6 +28,8 @@ import type { NativeStackNavigationOptions } from 'expo-router';
 import { useThemeColor } from 'heroui-native';
 import { useMemo } from 'react';
 
+import { useColors } from './theme-tokens';
+
 export type HeaderTheme = Required<
   Pick<
     NativeStackNavigationOptions,
@@ -47,5 +49,50 @@ export function useHeaderTheme(): HeaderTheme {
       contentStyle: { backgroundColor: background },
     }),
     [background, accent],
+  );
+}
+
+export type TransparentHeaderTheme = Required<
+  Pick<
+    NativeStackNavigationOptions,
+    | 'headerTransparent'
+    | 'headerStyle'
+    | 'headerTintColor'
+    | 'headerShadowVisible'
+    | 'contentStyle'
+  >
+>;
+
+const TRANSPARENT_COLORS = ['onPhoto'] as const;
+
+/**
+ * `useTransparentHeaderTheme` - the options of the header over the trip hero (feature 005,
+ * contract C5-32, research D5-12; FR-007, FR-025):
+ *
+ *   <Stack.Screen options={{ ...transparent, headerShown: true, title: '',
+ *     headerLeft: () => <HeaderBackButton variant="glass" /> }} />
+ *
+ * The trip opens on a full-bleed picture, so its native header is TRANSPARENT: no bar fill, no
+ * shadow, the picture runs under the status bar and the glass Back floats over it. What the
+ * header draws itself is white (`onPhoto`), never the accent; the scene behind it is still the
+ * canvas. Once the picture has scrolled away the screen shows its own solid 56 dp bar
+ * (`useHeroCollapse`, `CollapsedBar`); this is the option set for the picture state, spread
+ * by the trip screen together with the hero (T543), which is why the trip layout does not use
+ * it yet: a transparent header over today's page without a hero would lay the title under it.
+ * Memoised on the two colours, like `useHeaderTheme`.
+ */
+export function useTransparentHeaderTheme(): TransparentHeaderTheme {
+  const background = useThemeColor('background');
+  const { onPhoto } = useColors(TRANSPARENT_COLORS);
+
+  return useMemo(
+    () => ({
+      headerTransparent: true,
+      headerStyle: { backgroundColor: 'transparent' },
+      headerTintColor: onPhoto,
+      headerShadowVisible: false,
+      contentStyle: { backgroundColor: background },
+    }),
+    [background, onPhoto],
   );
 }

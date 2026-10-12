@@ -1,6 +1,7 @@
 /**
- * `HeaderBackButton` - the back control of a pushed screen (feature 004; contract C4-9;
- * FR-008, FR-026, FR-030; research D4-06 and "Items to verify" item 7).
+ * `HeaderBackButton` - the back control of a pushed screen (feature 004, then Sunrise
+ * Passport; contracts C4-9 and C5-15; FR-008, FR-025, FR-026, FR-030; research D4-06, D5-12 and
+ * "Items to verify" item 7).
  *
  * Native stack headers draw their own back affordance; the Maestro flows say
  * `tapOn: 'Back'` and the contract promises the accessible name "Back" on every pushed
@@ -8,35 +9,32 @@
  * screen's title, or empty), a screen uses this as its `headerLeft`:
  *
  *   <Stack.Screen options={{ headerLeft: (props) => <HeaderBackButton {...props} /> }} />
+ *   <Stack.Screen options={{ headerLeft: () => <HeaderBackButton variant="glass" /> }} />
  *
- * - A chevron `Icon` (decorative) and the word "Back", in a `Tappable` named "Back". The
- *   name is fixed: it is never the previous screen's title, which is what the native
- *   button announces and what a flow cannot rely on.
+ * - A ROUND control (an `IconButton`, 44 dp): a chevron in a cream disc with a hairline on the
+ *   canvas (`default`), or in a `scrimButton` disc with an `onPhoto` glyph over a photograph
+ *   (`glass`, the trip hero; a fixed look, because the picture does not change with the
+ *   theme and the glyph holds 3:1 over a pure white one). There is no visible word: the name
+ *   is the label, so a header of any width and any text size holds it, and it is never read
+ *   twice. The name is EXACTLY "Back": never the previous screen's title, whichever variant.
  * - `onPress` defaults to `router.back()` from `expo-router`, or to `router.replace('/')`
  *   when the router has nothing to go back to (the screen was opened by a deep link or a
  *   notification, where `back()` would do nothing). The router is asked when the button
  *   is pressed, not when it renders. `canGoBack` is also what React Navigation passes to
  *   a `headerLeft`; when it is explicitly `false` nothing is drawn, as the native
  *   affordance does. The other props a `headerLeft` receives (`tintColor`, `label`,
- *   `href`) are ignored on purpose: the colour is the accent token and the name is "Back".
- * - It has the platform's minimum touch target (44 dp iOS, 48 dp Android), but is NOT
- *   scaled with the font scale: unlike a button in a page, a header is a fixed-height
- *   bar that would clip or overflow a taller control.
- * - Above a 1.3 font scale the visible word is dropped and the chevron stands alone: the
- *   word would no longer fit the bar (FR-029 forbids clipping it), and the control keeps
- *   its name "Back" and its target. The font scale comes from `useWindowDimensions`, not
- *   `useAppearance` (tappable.tsx).
- * - The chevron is the RTL-aware `chevron.backward` on iOS, which mirrors itself in a
- *   right-to-left layout (this app ships left-to-right only today).
+ *   `href`) are ignored on purpose: the look is the variant's and the name is "Back".
+ * - The disc is 44 dp and does NOT scale with the font scale: a header is a fixed-height bar
+ *   that would clip or overflow a taller control. Its touch target reaches the platform
+ *   minimum (44 pt, 48 dp) with slop around the disc (`IconButton`).
+ * - The chevron is the RTL-aware `chevron-left`, which mirrors itself in a right-to-left
+ *   layout (this app ships left-to-right only today).
  */
 import { useRouter } from 'expo-router';
-import { useWindowDimensions } from 'react-native';
 
-import { MinTouchTarget } from '@/constants/theme';
+import { IconButton } from './icon-button';
 
-import { Icon, type IconName } from './icon';
-import { Tappable } from './tappable';
-import { Text } from './text';
+export type HeaderBackVariant = 'default' | 'glass';
 
 export interface HeaderBackButtonProps {
   /** Replaces the default `router.back()`. */
@@ -44,41 +42,28 @@ export interface HeaderBackButtonProps {
   /** From React Navigation's `headerLeft`: `false` means there is nothing to go back to. */
   canGoBack?: boolean;
   testID?: string;
+  /** `default` on the canvas; `glass` over a photograph. */
+  variant?: HeaderBackVariant;
 }
 
-const CHEVRON: IconName = 'chevron-left';
-
-/** Above this font scale the bar has no room for the word beside the chevron. */
-const HIDE_WORD_ABOVE = 1.3;
-
-/** A header is a fixed-height bar: the floor, not the floor times the font scale. */
-const HEADER_TARGET = { minHeight: MinTouchTarget } as const;
-
-export function HeaderBackButton({ onPress, canGoBack, testID }: HeaderBackButtonProps) {
+export function HeaderBackButton({
+  onPress,
+  canGoBack,
+  testID,
+  variant = 'default',
+}: HeaderBackButtonProps) {
   const router = useRouter();
-  const { fontScale } = useWindowDimensions();
   if (canGoBack === false) return null;
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   return (
-    <Tappable
+    <IconButton
+      icon="chevron-left"
       accessibilityLabel="Back"
+      variant={variant === 'glass' ? 'glass' : 'tonal'}
       onPress={onPress ?? goBack}
       testID={testID}
-      className="flex-row items-center gap-1"
-      style={HEADER_TARGET}>
-      <Icon
-        name={CHEVRON}
-        size={24}
-        tone="accent"
-        testID={testID ? `${testID}-icon` : undefined}
-      />
-      {fontScale > HIDE_WORD_ABOVE ? null : (
-        <Text type="body" tone="accent">
-          Back
-        </Text>
-      )}
-    </Tappable>
+    />
   );
 }

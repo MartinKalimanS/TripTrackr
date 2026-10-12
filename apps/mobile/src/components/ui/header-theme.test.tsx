@@ -15,7 +15,9 @@ import { PaletteNames, Palettes } from '@/theme/palette';
 
 import { backgroundVariable } from '../../../test/helpers/theme-css';
 
-import { useHeaderTheme } from './header-theme';
+import { mockThemeColors } from '../../../test/helpers/theme-colors';
+
+import { useHeaderTheme, useTransparentHeaderTheme } from './header-theme';
 
 const COLOURS: Record<string, string> = {
   background: 'themed-canvas',
@@ -93,5 +95,46 @@ describe('useHeaderTheme - one canvas for the bar and the root stack (FR-023)', 
     expect(
       (HeroUI.useThemeColor as jest.Mock).mock.calls.map(([token]) => token),
     ).toContain('background');
+  });
+});
+
+// The trip opens on a hero picture (C5-32, D5-12): its native header is transparent so the
+// picture runs under the status bar, the Back control over it is the glass one, and the scene
+// behind is still the canvas. This hook is the option set; the screen turns it on with the
+// hero (T543), which is why the trip layout does not spread it yet.
+describe('useTransparentHeaderTheme - the header over the trip hero (D5-12)', () => {
+  beforeEach(() => mockThemeColors('light'));
+
+  test('is transparent: no bar fill, no shadow, nothing between the picture and the status bar', async () => {
+    const { result } = await renderHook(() => useTransparentHeaderTheme());
+
+    expect(result.current.headerTransparent).toBe(true);
+    expect(result.current.headerStyle).toEqual({ backgroundColor: 'transparent' });
+    expect(result.current.headerShadowVisible).toBe(false);
+  });
+
+  test('tints what the header draws with the on-photo white, never the accent', async () => {
+    const { result } = await renderHook(() => useTransparentHeaderTheme());
+    expect(result.current.headerTintColor).toBe(Palettes.light.onPhoto.toLowerCase());
+  });
+
+  test('paints the scene behind it with the canvas, as every header of the app does', async () => {
+    const { result } = await renderHook(() => useTransparentHeaderTheme());
+    expect(result.current.contentStyle).toEqual({
+      backgroundColor: backgroundVariable('light').toLowerCase(),
+    });
+  });
+
+  test('keeps the same object while the colours do not change, and follows the theme', async () => {
+    const { result, rerender } = await renderHook(() => useTransparentHeaderTheme());
+    const first = result.current;
+    await rerender({});
+    expect(result.current).toBe(first);
+
+    mockThemeColors('dark');
+    await rerender({});
+    expect(result.current.contentStyle).toEqual({
+      backgroundColor: backgroundVariable('dark').toLowerCase(),
+    });
   });
 });

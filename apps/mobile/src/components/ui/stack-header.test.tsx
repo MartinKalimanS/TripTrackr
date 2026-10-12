@@ -1,5 +1,6 @@
 /**
- * T427 - contract C4-9 (headers), research D4-06, FR-007, FR-023.
+ * T427, T528 - contract C4-9 and C5-15 (headers), research D4-06 and D5-12, FR-007, FR-023,
+ * FR-025 (feature 004, restyled for Sunrise Passport).
  *
  * The header options a native stack takes, per platform: the pure builder is asserted
  * on its output, and the hook on the colours and the display face it reads (the Jest
@@ -9,6 +10,8 @@
 import { renderHook } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';
 import { Platform } from 'react-native';
+
+import { TypeRoles } from '@/theme';
 
 import {
   fontFamilyOf,
@@ -58,6 +61,13 @@ describe('stackHeaderOptions - iOS (FR-007)', () => {
     });
   });
 
+  test('sizes the large title as the `display` role (40) and the collapsed title as `callout` (17)', () => {
+    expect(TypeRoles.display.size).toBe(40);
+    expect(TypeRoles.callout.size).toBe(17);
+    expect(flat(options.headerLargeTitleStyle).fontSize).toBe(TypeRoles.display.size);
+    expect(flat(options.headerTitleStyle).fontSize).toBe(TypeRoles.callout.size);
+  });
+
   test('paints the canvas behind the content, and leaves the large-title header unpainted', () => {
     expect(flat(options.contentStyle).backgroundColor).toBe('canvas-colour');
     // A background on a large-title header hides the title on iOS 26 (the router's own
@@ -81,11 +91,20 @@ describe('stackHeaderOptions - Android (FR-007)', () => {
     expect(flat(options.contentStyle).backgroundColor).toBe('canvas-colour');
   });
 
-  test('titles are in the foreground ink and the display face', () => {
-    expect(flat(options.headerTitleStyle)).toMatchObject({
+  test('the title is the `title` role: the bold display face at 28, in the foreground ink, from the left', () => {
+    expect(TypeRoles.title.size).toBe(28);
+    expect(flat(options.headerTitleStyle)).toEqual({
       color: 'foreground-colour',
-      fontFamily: 'Display-SemiBold',
+      fontFamily: 'Display-Bold',
+      fontWeight: '700',
+      fontSize: TypeRoles.title.size,
     });
+    expect(options.headerTitleAlign).toBe('left');
+  });
+
+  test('has no large-title style: a standard header is the platform way on Android', () => {
+    expect(options).not.toHaveProperty('headerLargeTitleStyle');
+    expect(options.headerLargeTitleShadowVisible).toBe(false);
   });
 });
 
@@ -96,8 +115,15 @@ describe('stackHeaderOptions - without the display face', () => {
       { canvas: 'c', foreground: 'f', accent: 'a' },
       'ios',
     );
-    expect(flat(options.headerTitleStyle)).toEqual({ color: 'f' });
-    expect(flat(options.headerLargeTitleStyle)).toEqual({ color: 'f' });
+    // The size is a token, not a face: it stays.
+    expect(flat(options.headerTitleStyle)).toEqual({
+      color: 'f',
+      fontSize: TypeRoles.callout.size,
+    });
+    expect(flat(options.headerLargeTitleStyle)).toEqual({
+      color: 'f',
+      fontSize: TypeRoles.display.size,
+    });
   });
 });
 
@@ -150,6 +176,27 @@ describe('useStackHeaderOptions', () => {
 
     expect(flat(result.current.headerTitleStyle).fontFamily).toBe('Face-SemiBold');
     expect(flat(result.current.headerLargeTitleStyle).fontFamily).toBe('Face-Bold');
+  });
+
+  test('on Android the one title is the bold face, not the semibold', async () => {
+    jest
+      .spyOn(Uniwind, 'useCSSVariable')
+      .mockImplementation((name) =>
+        name === '--font-display'
+          ? "'Face-SemiBold'"
+          : name === '--font-display-bold'
+            ? "'Face-Bold'"
+            : undefined,
+      );
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    const { result } = await renderHook(() => useStackHeaderOptions('Trips'));
+    os.restore();
+
+    expect(flat(result.current.headerTitleStyle)).toMatchObject({
+      fontFamily: 'Face-Bold',
+      fontWeight: '700',
+      fontSize: 28,
+    });
   });
 
   test('omits the family when no stylesheet declares the variable', async () => {

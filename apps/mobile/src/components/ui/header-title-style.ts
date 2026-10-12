@@ -26,7 +26,7 @@ import { useThemeColor } from 'heroui-native';
 import { useMemo } from 'react';
 import { useCSSVariable } from 'uniwind';
 
-import { fontFamilyOf } from './stack-header';
+import { fontFamilyOf, roleSize } from './stack-header';
 
 export type HeaderTitleStyle = Required<
   Pick<NativeStackNavigationOptions, 'headerTitleStyle'>
@@ -34,6 +34,9 @@ export type HeaderTitleStyle = Required<
 
 /** The weight of the display face's SemiBold file; `stack-header.ts` uses the same. */
 const TITLE_WEIGHT = '600';
+
+/** The `callout` role's size: a sub-screen title, and the collapsed title of an iOS list header. */
+const TITLE_SIZE = roleSize('callout');
 
 export function useHeaderTitleStyle(): HeaderTitleStyle {
   const foreground = useThemeColor('foreground');
@@ -43,8 +46,13 @@ export function useHeaderTitleStyle(): HeaderTitleStyle {
     () => ({
       headerTitleStyle:
         family === undefined
-          ? { color: foreground }
-          : { color: foreground, fontFamily: family, fontWeight: TITLE_WEIGHT },
+          ? { color: foreground, fontSize: TITLE_SIZE }
+          : {
+              color: foreground,
+              fontFamily: family,
+              fontWeight: TITLE_WEIGHT,
+              fontSize: TITLE_SIZE,
+            },
     }),
     [foreground, family],
   );
