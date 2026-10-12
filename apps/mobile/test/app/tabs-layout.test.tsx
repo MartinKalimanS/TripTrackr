@@ -1,17 +1,17 @@
 /**
- * T426 - the `(tabs)` layout mounts the Atlas `TabBar` in the real navigator (feature 004,
- * contract C4-9; research D4-06).
+ * T426, T526 - the `(tabs)` layout mounts the floating tab pill in the real navigator
+ * (feature 005, contract C5-21; features 004 C4-9 and research D4-06 before it).
  *
  * `test/components/tab-bar.test.tsx` builds the navigator's props by hand; this suite lets
- * the real JS `Tabs` navigator pass them, so what is pinned is the wiring: the bar renders
- * with its ids, moves the selection and its mark when a tab is pressed, reports its height
- * to the navigator, and the scenes it sits under are the same canvas colour the bar paints
- * (`bg-background`), so there is no seam between a screen and the strip.
+ * the real JS `Tabs` navigator pass them, so what is pinned is the wiring: the pill renders
+ * with its ids, moves the selection and its capsule when a tab is pressed, reports its height
+ * to the navigator, and the scenes it floats over are painted with the canvas token.
  */
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { StyleSheet, Text } from 'react-native';
 
+import { pillBottomOffset } from '@/components/navigation/tab-metrics';
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 import { PaletteNames, type PaletteName } from '@/theme/palette';
@@ -46,6 +46,9 @@ function mockAppearance(themeName: PaletteName) {
   } as AppearanceContext);
 }
 
+/** The capsule is decoration, hidden from assistive technology: queries must ask for it. */
+const HIDDEN = { includeHiddenElements: true } as const;
+
 function Home() {
   // A screen that floats a control above the bar reads the height like this.
   const height = useBottomTabBarHeight();
@@ -72,7 +75,7 @@ function sceneBackground(testID: string): unknown {
 
 beforeEach(() => mockAppearance('light'));
 
-describe('(tabs) layout - the Atlas tab bar in the real navigator', () => {
+describe('(tabs) layout - the tab pill in the real navigator', () => {
   test('renders the bar with one tab per route, the first selected', async () => {
     await renderTabs();
 
@@ -85,8 +88,8 @@ describe('(tabs) layout - the Atlas tab bar in the real navigator', () => {
     ] as const) {
       expect(screen.getByTestId(id).props.accessibilityLabel).toBe(title);
     }
-    expect(screen.getByTestId('tab-mark-index')).toBeTruthy();
-    expect(screen.queryByTestId('tab-mark-trips')).toBeNull();
+    expect(screen.getByTestId('tab-mark-index', HIDDEN)).toBeTruthy();
+    expect(screen.queryByTestId('tab-mark-trips', HIDDEN)).toBeNull();
   });
 
   test('pressing a tab opens its screen and moves the selection and the mark', async () => {
@@ -102,34 +105,37 @@ describe('(tabs) layout - the Atlas tab bar in the real navigator', () => {
     expect(screen.getByTestId('tab-index').props.accessibilityState).toMatchObject({
       selected: false,
     });
-    expect(screen.getByTestId('tab-mark-trips')).toBeTruthy();
-    expect(screen.queryByTestId('tab-mark-index')).toBeNull();
+    expect(screen.getByTestId('tab-mark-trips', HIDDEN)).toBeTruthy();
+    expect(screen.queryByTestId('tab-mark-index', HIDDEN)).toBeNull();
   });
 
-  test('the height the bar measures reaches a screen through useBottomTabBarHeight()', async () => {
+  test('the pill reports its height plus its bottom offset to a screen through useBottomTabBarHeight()', async () => {
     await renderTabs();
     const bar = await screen.findByTestId('tab-bar');
 
+    // The test renderer has no home indicator: the pill sits 12 dp from the bottom, so a
+    // screen is told where the pill's top edge is, 64 + 12 dp from the bottom of the screen.
     await fireEvent(bar, 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 83 } },
+      nativeEvent: { layout: { x: 16, y: 0, width: 358, height: 64 } },
     });
 
-    await waitFor(() => expect(screen.getByText('bar-height:83')).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText(`bar-height:${64 + pillBottomOffset(0)}`)).toBeTruthy(),
+    );
   });
 
   test.each(PaletteNames)(
-    'the %s scenes are painted with the canvas the bar paints: no seam above the divider',
+    'the %s scenes are painted with the canvas token, under the floating pill',
     async (theme) => {
       mockAppearance(theme);
       await renderTabs();
       await screen.findByTestId('tab-bar');
 
-      // The scene gets the canvas TOKEN from the layout, the bar gets the `bg-background`
-      // CLASS. They name one colour: the stylesheet's `--background` is generated from the
-      // palette's `canvas` (and `test/theme/theme-css-sync.test.ts` fails when it is not),
-      // and `Colors[theme]` is the same palette, increased contrast included.
+      // The scene gets the canvas TOKEN from the layout. The stylesheet's `--background` is
+      // generated from the palette's `canvas` (`test/theme/theme-css-sync.test.ts` fails
+      // when it is not), and `Colors[theme]` is the same palette, increased contrast
+      // included. The pill floats over the scene: it paints its own surface, not the canvas.
       expect(sceneBackground('home-screen')).toBe(Colors[theme].canvas);
-      expect(screen.getByTestId('tab-bar').props.className).toContain('bg-background');
       expect(backgroundVariable(theme).toLowerCase()).toBe(
         Colors[theme].canvas.toLowerCase(),
       );

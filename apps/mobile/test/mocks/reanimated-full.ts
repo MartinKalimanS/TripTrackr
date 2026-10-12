@@ -10,7 +10,7 @@
  * here, answering "motion is allowed" (the app's own switch is the kit's
  * `animation: 'disable-all'`).
  */
-const Reanimated = jest.requireActual('react-native-reanimated/mock');
+const Reanimated = jest.requireActual('react-native-reanimated/mock.js');
 
 module.exports = {
   ...Reanimated,

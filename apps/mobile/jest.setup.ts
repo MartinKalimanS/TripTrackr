@@ -94,47 +94,7 @@ jest.mock('react-native-worklets', () => ({
   scheduleOnRN: (fn: (...args: unknown[]) => unknown, ...args: unknown[]) => fn(...args),
 }));
 
-jest.mock('react-native-reanimated', () => {
-  const ReactNative = require('react-native');
-
-  // Entering/exiting animations are chainable builders in the real API; here
-  // they are inert objects that accept the same calls.
-  const builder = {
-    duration: () => builder,
-    delay: () => builder,
-    springify: () => builder,
-  };
-
-  class Keyframe {
-    duration() {
-      return this;
-    }
-    delay() {
-      return this;
-    }
-  }
-
-  return {
-    __esModule: true,
-    default: {
-      View: ReactNative.View,
-      Text: ReactNative.Text,
-      ScrollView: ReactNative.ScrollView,
-      Image: ReactNative.Image,
-    },
-    FadeIn: builder,
-    FadeOut: builder,
-    // Easing functions are consumed as opaque values by the animation driver,
-    // so returning an inert object preserves every call shape the code uses.
-    Easing: new Proxy(
-      {},
-      {
-        get: () => () => ({}),
-      },
-    ),
-    Keyframe,
-  };
-});
+jest.mock('react-native-reanimated', () => require('./test/mocks/reanimated-app'));
 
 // react-native-sortables is built on reanimated worklets and gesture-handler
 // gestures, neither of which runs under Jest. The stand-in renders the items

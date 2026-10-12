@@ -1,24 +1,25 @@
 /**
- * T426 - the Atlas tab bar (feature 004, contract C4-9; FR-010, FR-025, FR-026, FR-029,
- * FR-030; research D4-06; feature 003 FR-013 to FR-016).
+ * T526 - the floating tab pill on iOS (feature 005, contract C5-21, research D5-05; FR-022,
+ * FR-023, FR-024, FR-027, FR-071; Q-1, Q-10). It replaces the flat Atlas strip of feature 004
+ * (T426) and keeps what a traveller and a test rely on: every route is a reachable, named
+ * tab inside a `tablist`; the selected one is announced as selected; the ids are the same.
  *
- * The bar is a flat strip painted with the canvas colour, one hairline divider on its top
- * edge, and one `Tappable` per route. What is asserted here is what a traveller relies on:
- * every route is a reachable, labelled tab; the selected one is announced as selected and
- * shown by more than colour (a filled icon, a heavier label and a mark that survives
- * greyscale); the touch target respects the platform minimum; the content stays inside
- * 56 dp at the default text size and is left free to grow, unclipped, at a larger one; and
- * the bar clears the home indicator.
+ * What is new, and asserted here: the geometry of the contract (absolute, 16 dp from the
+ * sides, 64 dp tall as a MINIMUM, padding 6, gap 4, a capsule, `bottom = max(inset - 10, 12)`);
+ * the one capsule that sits behind the selected tab (`tab-mark-<name>`, `translateX` by
+ * `index x tabWidth`, the sheet spring, a jump under reduced motion); the selection shown by
+ * a capsule, a FILLED glyph and a HEAVIER label, so it survives greyscale; labels that wrap
+ * and a pill that grows (the label is capped at 1.3 times, Q-1); the height the pill reports
+ * to the navigator, `height + bottomOffset` (88 dp on a 390 by 844 phone), which scenes use
+ * to keep their content clear of it; and that nothing in it animates an opacity (an opacity
+ * of 0 on the glass or an ancestor makes it vanish).
  *
- * Jest has no layout engine, so the 56 dp budget is arithmetic over the constants the bar
- * renders with (`TabMetrics`), and the rendered styles are asserted to BE those constants.
- * The kit's text is a plain node that forwards its props, and a Phosphor glyph is read back
- * by registry key (`test/helpers/icons.ts`), so colours are the semantic classes and tones the
- * bar ASKS for, never values.
- *
- * The props are the `BottomTabBarProps` shape the JS `Tabs` navigator passes to a custom
- * `tabBar`, built by hand so the component's own behaviour is tested without mounting a
- * navigator; `test/app/tabs-layout.test.tsx` mounts the real one.
+ * Jest has no layout engine, so a size is arithmetic over `PillMetrics` and the layout
+ * events a test fires. The kit's text is a plain node that forwards its props and a Phosphor
+ * glyph is read back by registry key (`test/helpers/icons.ts`), so colours are the semantic
+ * classes and tones the pill ASKS for, never values. The props are the `BottomTabBarProps`
+ * shape the JS `Tabs` navigator passes to a custom `tabBar`, built by hand;
+ * `test/app/tabs-layout.test.tsx` mounts the real navigator.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import * as fs from 'node:fs';
@@ -28,24 +29,32 @@ import {
 } from 'expo-router/js-tabs';
 import * as HeroUI from 'heroui-native';
 import { Dimensions, StyleSheet } from 'react-native';
+import { withSpring } from 'react-native-reanimated';
 
-import { TabBar, TabContentHeight, TabMetrics } from '@/components/navigation/tab-bar';
-import { BorderHairline, MinTouchTarget } from '@/constants/theme';
-import { FocusRing, TextRoles } from '@/theme';
+import { TabBar } from '@/components/navigation/tab-bar';
+import {
+  PillMetrics,
+  capsuleLayout,
+  pillBottomOffset,
+} from '@/components/navigation/tab-metrics';
+import { Motion, Radii, FocusRing } from '@/theme';
 
+import { appearanceOf } from '../helpers/appearance';
 import { glyphsIn } from '../helpers/icons';
+
+jest.mock('@/hooks/use-appearance');
+const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
+  useAppearance: jest.Mock;
+};
 
 const ROUTES = [
   { key: 'index-1', name: 'index', title: 'Globe' },
   { key: 'trips-1', name: 'trips', title: 'Trips' },
-  { key: 'profile-1', name: 'profile', title: 'Profile' },
+  { key: 'profile-1', name: 'profile', title: 'You' },
 ] as const;
 
 /** The glyph each tab asks for (a registry key): `regular` at rest, `fill` when selected. */
 const ICONS = { index: 'globe', trips: 'suitcase', profile: 'user' } as const;
-
-/** The most a bar's content may be at the default text size, above the inset. */
-const BUDGET = 56;
 
 function makeProps(focusedIndex = 0, bottomInset = 34): BottomTabBarProps {
   const emit = jest.fn(() => ({ defaultPrevented: false }));
@@ -106,44 +115,37 @@ function mockFontScale(fontScale: number) {
   });
 }
 
-/**
- * The platform minimum touch target on `os`. `MinTouchTarget` is read once, when
- * `@/constants/theme` loads, so it is loaded again under that platform in an isolated
- * module registry (`Platform.select` and `Platform.OS` both answer for `os`).
- */
-function minTouchTargetOn(os: 'ios' | 'android'): number {
-  let target = 0;
-  jest.isolateModules(() => {
-    const { Platform } = require('react-native') as typeof import('react-native');
-    jest.replaceProperty(Platform, 'OS', os);
-    jest
-      .spyOn(Platform, 'select')
-      .mockImplementation(((spec: Record<string, unknown>) => spec[os]) as never);
-    target = (require('@/constants/theme') as typeof import('@/constants/theme'))
-      .MinTouchTarget;
-  });
-  return target;
-}
-
-beforeEach(() => mockFontScale(1));
+beforeEach(() => {
+  mockFontScale(1);
+  useAppearance.mockReturnValue(appearanceOf('light'));
+  jest.mocked(withSpring).mockClear();
+});
 afterEach(() => jest.restoreAllMocks());
 
 type Node = { props: Record<string, unknown> };
 const styleOf = (node: Node) =>
-  (StyleSheet.flatten(node.props.style as never) ?? {}) as Record<
-    string,
-    number | string | boolean
-  >;
+  (StyleSheet.flatten(node.props.style as never) ?? {}) as Record<string, unknown>;
 const classesOf = (node: Node) =>
   String(node.props.className ?? '')
     .split(/\s+/)
     .filter(Boolean);
-const barStyle = () => styleOf(screen.getByTestId('tab-bar'));
-const symbols = () => glyphsIn();
+/** The pill's surface, whichever of the three it is (the tint of the blur is not one). */
+const SURFACE = /^tab-surface-(glass|blur|solid)$/;
+const bar = () => screen.getByTestId('tab-bar');
 const labelOf = (text: string) => screen.getByText(text);
+const layout = (width: number, height: number) => ({
+  nativeEvent: { layout: { x: 16, y: 0, width, height } },
+});
+/** The capsule is decoration, hidden from assistive technology: queries must ask for it. */
+const HIDDEN = { includeHiddenElements: true } as const;
+/** The capsule under the selected tab: the one node whose id starts `tab-mark-`. */
+const capsule = () =>
+  screen.getByTestId(/^tab-mark-/, HIDDEN) as unknown as Node & {
+    props: { testID: string };
+  };
 
-describe('<TabBar> identity - C4-9, FR-030', () => {
-  test('renders one tab per route, named by the route title', async () => {
+describe('<TabBar> identity - C5-21, FR-023', () => {
+  test('renders one tab per route, named by the route title (the third is "You")', async () => {
     await render(<TabBar {...makeProps()} />);
 
     expect(screen.getAllByRole('tab')).toHaveLength(ROUTES.length);
@@ -156,10 +158,11 @@ describe('<TabBar> identity - C4-9, FR-030', () => {
   test('keeps the ids the Maestro flows use, and the tablist role on the bar', async () => {
     await render(<TabBar {...makeProps()} />);
 
-    expect(screen.getByTestId('tab-bar').props.accessibilityRole).toBe('tablist');
+    expect(bar().props.accessibilityRole).toBe('tablist');
     expect(screen.getByTestId('tab-index').props.accessibilityLabel).toBe('Globe');
     expect(screen.getByTestId('tab-trips').props.accessibilityLabel).toBe('Trips');
-    expect(screen.getByTestId('tab-profile').props.accessibilityLabel).toBe('Profile');
+    // The id stays `tab-profile`; only the label became "You" (FR-023).
+    expect(screen.getByTestId('tab-profile').props.accessibilityLabel).toBe('You');
   });
 
   test('a route may name its own button id, label and accessible name', async () => {
@@ -186,7 +189,7 @@ describe('<TabBar> identity - C4-9, FR-030', () => {
     expect(screen.getByTestId('tab-extra')).toBeTruthy();
   });
 
-  test('announces the focused tab as selected and no other (FR-025)', async () => {
+  test('announces the focused tab as selected and no other (FR-022)', async () => {
     await render(<TabBar {...makeProps(1)} />);
 
     const [globe, trips, profile] = screen.getAllByRole('tab');
@@ -211,280 +214,297 @@ describe('<TabBar> identity - C4-9, FR-030', () => {
     await render(<TabBar {...withExtraRoute({ title: 'Extra' })} />);
     expect(screen.getByLabelText('Extra')).toBeTruthy();
     expect(screen.getAllByRole('tab')).toHaveLength(ROUTES.length + 1);
-    expect(symbols()).toHaveLength(ROUTES.length);
+    expect(glyphsIn()).toHaveLength(ROUTES.length);
   });
 });
 
-describe('<TabBar> the strip - feature 003 FR-014, C4-9', () => {
-  test('is painted with the canvas colour through the semantic class, not a value', async () => {
+describe('<TabBar> geometry - C5-21, FR-022', () => {
+  test('floats: absolute, 16 dp from both sides, and passes touches through around the pill', async () => {
     await render(<TabBar {...makeProps()} />);
-    const bar = screen.getByTestId('tab-bar');
-    expect(classesOf(bar)).toContain('bg-background');
-    expect(styleOf(bar).backgroundColor).toBeUndefined();
-  });
 
-  test('has ONE divider: the border token as colour, a hairline as the only width, on the top edge', async () => {
-    await render(<TabBar {...makeProps()} />);
-    const classes = classesOf(screen.getByTestId('tab-bar'));
-    const style = barStyle();
-
-    // The colour is the class; the width is the style, so the two cannot disagree.
-    expect(classes).toContain('border-border');
-    const widthClasses = classes.filter((c) =>
-      /^border(-[trblxyse])?(-\d+|-\[.*\])?$/.test(c),
-    );
-    expect(widthClasses).toEqual([]);
-    expect(style.borderTopWidth).toBe(BorderHairline);
-    expect(style.borderTopWidth).toBeGreaterThan(0);
-    for (const key of [
-      'borderWidth',
-      'borderBottomWidth',
-      'borderLeftWidth',
-      'borderRightWidth',
-    ]) {
-      expect(style[key]).toBeUndefined();
-    }
-  });
-
-  test('no tab carries a raised, recessed or bordered surface (never a fill or an edge at rest)', async () => {
-    await render(<TabBar {...makeProps(0)} />);
-
-    for (const tab of screen.getAllByRole('tab')) {
-      const style = styleOf(tab);
-      expect(style.boxShadow).toBeUndefined();
-      expect(style.borderWidth).toBeUndefined();
-      expect(style.backgroundColor).toBeUndefined();
-      expect(style.outlineWidth).toBeUndefined();
-      const surfaceClasses = classesOf(tab).filter((c) =>
-        /^(bg-|border|shadow|ring|outline)/.test(c),
-      );
-      expect(surfaceClasses).toEqual([]);
-    }
-  });
-});
-
-describe('<TabBar> selection - FR-010, FR-025', () => {
-  test.each([0, 1, 2])('only the selected tab has a mark (tab %i)', async (i) => {
-    await render(<TabBar {...makeProps(i)} />);
-    for (const [index, route] of ROUTES.entries()) {
-      const mark = screen.queryByTestId(`tab-mark-${route.name}`);
-      expect(mark === null).toBe(index !== i);
-    }
-  });
-
-  test('the mark is a short accent bar above the icon that costs the bar no height', async () => {
-    await render(<TabBar {...makeProps(0)} />);
-    const mark = screen.getByTestId('tab-mark-index');
-    const style = styleOf(mark);
-
-    expect(classesOf(mark)).toContain('bg-accent');
-    expect(style.width).toBe(TabMetrics.markWidth);
-    expect(style.height).toBe(TabMetrics.markHeight);
-    expect(TabMetrics.markHeight).toBeGreaterThanOrEqual(3);
-    expect(TabMetrics.markHeight).toBeLessThanOrEqual(4);
-    expect(TabMetrics.markWidth).toBeGreaterThanOrEqual(20);
-    expect(TabMetrics.markWidth).toBeLessThanOrEqual(28);
-    expect(style.position).toBe('absolute');
-    expect(style.top).toBe(0);
-    // Inside the selected tab, so it sits above that tab's icon and no other.
-    expect(screen.getByTestId('tab-index')).toContainElement(mark);
-  });
-
-  test('the selected label is accent ink (Sunrise: accentText) and heavier than the others, which are muted', async () => {
-    await render(<TabBar {...makeProps(1)} />);
-
-    const selected = classesOf(labelOf('Trips'));
-    expect(selected).toEqual(expect.arrayContaining(['text-accent-text', 'font-bold']));
-    for (const title of ['Globe', 'Profile']) {
-      const rest = classesOf(labelOf(title));
-      expect(rest).toContain('text-muted');
-      expect(rest).not.toContain('font-bold');
-      expect(rest).not.toContain('text-accent-text');
-    }
-  });
-
-  test.each(Object.entries(ICONS))(
-    'the %s tab shows its filled glyph only while selected',
-    async (name, glyph) => {
-      const index = ROUTES.findIndex((route) => route.name === name);
-      await render(<TabBar {...makeProps(index)} />);
-      expect(symbols()[index]).toMatchObject({ name: glyph, weight: 'fill' });
-
-      await render(<TabBar {...makeProps((index + 1) % ROUTES.length)} />);
-      expect(symbols().at(index - ROUTES.length)).toMatchObject({
-        name: glyph,
-        weight: 'regular',
-      });
-    },
-  );
-
-  test('tints the selected icon with the accent and the others with the muted ink', async () => {
-    jest
-      .spyOn(HeroUI, 'useThemeColor')
-      .mockImplementation(((token: string) =>
-        token === 'accent-text' ? '#aa0000' : '#00aa00') as never);
-    await render(<TabBar {...makeProps(2)} />);
-
-    const tints = symbols().map((symbol) => symbol.color);
-    expect(tints).toEqual(['#00aa00', '#00aa00', '#aa0000']);
-  });
-});
-
-describe('<TabBar> the 56 dp budget - feature 003 FR-013', () => {
-  test('a tab holds an icon, a gap, one caption line and its padding: the constants it renders with', async () => {
-    await render(<TabBar {...makeProps(0)} />);
-
-    expect(TabMetrics.captionLineHeight).toBe(TextRoles.caption.lineHeight);
-    expect(TabContentHeight).toBe(
-      TabMetrics.iconSize +
-        TabMetrics.gap +
-        TabMetrics.captionLineHeight +
-        2 * TabMetrics.paddingY,
-    );
-    for (const symbol of symbols()) expect(symbol.size).toBe(TabMetrics.iconSize);
-    for (const route of ROUTES) {
-      expect(classesOf(labelOf(route.title))).toContain(
-        `leading-[${TabMetrics.captionLineHeight}px]`,
-      );
-    }
-    for (const tab of screen.getAllByRole('tab')) {
-      expect(styleOf(tab)).toMatchObject({
-        gap: TabMetrics.gap,
-        paddingVertical: TabMetrics.paddingY,
-        paddingHorizontal: TabMetrics.paddingX,
-      });
-    }
-    expect(barStyle().paddingTop ?? 0).toBe(0);
-    expect(barStyle().marginTop ?? 0).toBe(0);
+    expect(styleOf(bar())).toMatchObject({
+      position: 'absolute',
+      left: PillMetrics.sideMargin,
+      right: PillMetrics.sideMargin,
+    });
+    expect(PillMetrics.sideMargin).toBe(16);
+    expect(bar().props.pointerEvents).toBe('box-none');
   });
 
   test.each([
-    ['ios', 44],
-    ['android', 48],
-  ] as const)(
-    'is at most 56 dp on %s: the divider plus the larger of the touch target and the content',
-    (os, floor) => {
-      const target = minTouchTargetOn(os);
-      expect(target).toBe(floor);
-
-      const tab = Math.max(target, TabContentHeight);
-      expect(tab + BorderHairline).toBeLessThanOrEqual(BUDGET);
-      // The content on its own fits too, so a one-line caption is never what grows it.
-      expect(TabContentHeight + BorderHairline).toBeLessThanOrEqual(BUDGET);
+    [34, 24],
+    [47, 37],
+    [20, 12],
+    [22, 12],
+    [0, 12],
+  ])(
+    'clears the home indicator: an inset of %s dp gives a bottom edge of %s dp',
+    async (inset, bottom) => {
+      expect(pillBottomOffset(inset)).toBe(bottom);
+      await render(<TabBar {...makeProps(0, inset)} />);
+      expect(styleOf(bar()).bottom).toBe(bottom);
     },
   );
 
-  test('the rendered tab is never shorter than the platform touch target, nor narrower', async () => {
+  test('is a capsule, 64 dp tall at least, padded 6 with 4 between the tabs', async () => {
+    await render(<TabBar {...makeProps()} />);
+    const surface = screen.getByTestId(SURFACE);
+
+    expect(styleOf(surface)).toMatchObject({
+      minHeight: PillMetrics.height,
+      padding: PillMetrics.padding,
+      gap: PillMetrics.gap,
+      flexDirection: 'row',
+      borderRadius: Radii.full,
+    });
+    expect([PillMetrics.height, PillMetrics.padding, PillMetrics.gap]).toEqual([
+      64, 6, 4,
+    ]);
+    // A minimum, never a height: the pill grows with the text (FR-074).
+    expect(styleOf(surface).height).toBeUndefined();
+    expect(styleOf(surface).maxHeight).toBeUndefined();
+  });
+
+  test('every tab is at least the platform touch target tall and wide', async () => {
     await render(<TabBar {...makeProps()} />);
 
+    // 64 - 2 x 6 = 52 dp inside the pill: above 44 pt and 48 dp (FR-071).
+    expect(PillMetrics.tabMinHeight).toBe(PillMetrics.height - 2 * PillMetrics.padding);
+    expect(PillMetrics.tabMinHeight).toBeGreaterThanOrEqual(48);
     for (const tab of screen.getAllByRole('tab')) {
-      expect(styleOf(tab).minHeight).toBeGreaterThanOrEqual(MinTouchTarget);
-      expect(styleOf(tab).minWidth).toBeGreaterThanOrEqual(MinTouchTarget);
+      expect(styleOf(tab).minHeight).toBe(PillMetrics.tabMinHeight);
+      expect(styleOf(tab).minWidth).toBeGreaterThanOrEqual(48);
     }
   });
 
-  test('reports its measured height to the navigator, again when it changes', async () => {
+  test('reports its height PLUS the bottom offset to the navigator, again when it changes', async () => {
     const report = jest.fn();
     await render(
       <BottomTabBarHeightCallbackContext.Provider value={report}>
-        <TabBar {...makeProps()} />
+        <TabBar {...makeProps(0, 34)} />
       </BottomTabBarHeightCallbackContext.Provider>,
     );
-    const layout = (height: number) => ({
-      nativeEvent: { layout: { x: 0, y: 0, width: 390, height } },
-    });
 
-    await fireEvent(screen.getByTestId('tab-bar'), 'layout', layout(96));
-    await fireEvent(screen.getByTestId('tab-bar'), 'layout', layout(140));
-    expect(report.mock.calls).toEqual([[96], [140]]);
+    await fireEvent(bar(), 'layout', layout(358, 64));
+    await fireEvent(bar(), 'layout', layout(358, 96));
+    // 64 + 24 = 88 dp on a 390 by 844 phone: the zone scenes keep clear.
+    expect(report.mock.calls).toEqual([[88], [120]]);
   });
 
   test('measures without a navigator to report to', async () => {
     await render(<TabBar {...makeProps()} />);
-    await fireEvent(screen.getByTestId('tab-bar'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 96 } },
-    });
-    expect(screen.getByTestId('tab-bar')).toBeTruthy();
-  });
-
-  test('clears the home indicator with the safe-area bottom inset, outside the budget', async () => {
-    await render(<TabBar {...makeProps(0, 34)} />);
-    expect(barStyle().paddingBottom).toBe(34);
-  });
-
-  test('adds no bottom padding on a device with no inset', async () => {
-    await render(<TabBar {...makeProps(0, 0)} />);
-    expect(barStyle().paddingBottom ?? 0).toBe(0);
+    await fireEvent(bar(), 'layout', layout(358, 64));
+    expect(bar()).toBeTruthy();
   });
 });
 
-describe('<TabBar> large text - feature 003 FR-016, FR-029', () => {
-  test.each([1, 1.3, 2, 3.1])(
-    'at font scale %s the tab minimum is the touch target, not the touch target times the scale',
-    async (fontScale) => {
-      mockFontScale(fontScale);
-      await render(<TabBar {...makeProps()} />);
+describe('<TabBar> the capsule - C5-21, FR-022, FR-027', () => {
+  test.each([0, 1, 2])(
+    'only the selected tab has a mark, and it is the capsule (tab %i)',
+    async (i) => {
+      await render(<TabBar {...makeProps(i)} />);
 
+      const marks = screen.queryAllByTestId(/^tab-mark-/, HIDDEN);
+      expect(marks).toHaveLength(1);
+      expect(marks[0]!.props.testID).toBe(`tab-mark-${ROUTES[i]!.name}`);
+      // It sits behind the tabs, as a sibling of them: no tab holds it.
       for (const tab of screen.getAllByRole('tab')) {
-        expect(styleOf(tab).minHeight).toBe(MinTouchTarget);
+        expect(tab).not.toContainElement(marks[0]!);
       }
     },
   );
 
-  test.each([0.5, 0.8, 1])(
-    'at font scale %s a tab never goes below the touch target',
-    async (fontScale) => {
-      mockFontScale(fontScale);
-      await render(<TabBar {...makeProps()} />);
+  test('is a tinted capsule, decorative and out of the way of touches', async () => {
+    await render(<TabBar {...makeProps(0)} />);
+    const mark = capsule();
 
-      for (const tab of screen.getAllByRole('tab')) {
-        expect(styleOf(tab).minHeight).toBeGreaterThanOrEqual(MinTouchTarget);
-        expect(styleOf(tab).minWidth).toBeGreaterThanOrEqual(MinTouchTarget);
-      }
-    },
-  );
+    expect(mark.props.pointerEvents).toBe('none');
+    expect(mark.props.accessibilityElementsHidden).toBe(true);
+    expect(mark.props.importantForAccessibility).toBe('no-hide-descendants');
+    expect(styleOf(mark)).toMatchObject({
+      position: 'absolute',
+      borderRadius: Radii.full,
+      top: PillMetrics.padding,
+      bottom: PillMetrics.padding,
+      left: PillMetrics.padding,
+    });
+  });
 
-  test('the content decides the height at a large size: the caption line grows, nothing caps or clips it', async () => {
-    mockFontScale(2);
-    await render(<TabBar {...makeProps()} />);
+  test('is one third of the pill less the padding and gaps, and sits under the selected tab', async () => {
+    await render(<TabBar {...makeProps(1)} />);
+    await fireEvent(bar(), 'layout', layout(358, 64));
 
-    // The platform scales a line height with the font, so at scale 2 the one caption
-    // line is twice as tall and the tab has to hold that: more than the touch target.
-    const grown =
-      TabMetrics.iconSize +
-      TabMetrics.gap +
-      TabMetrics.captionLineHeight * 2 +
-      2 * TabMetrics.paddingY;
-    expect(grown).toBeGreaterThan(TabContentHeight);
-    expect(grown).toBeGreaterThan(MinTouchTarget);
+    const { tabWidth, offsetOf } = capsuleLayout(358, 3);
+    expect(tabWidth).toBeCloseTo((358 - 2 * 6 - 2 * 4) / 3, 5);
+    expect(styleOf(capsule()).width).toBeCloseTo(tabWidth, 5);
+    expect(styleOf(capsule()).transform).toEqual([{ translateX: offsetOf(1) }]);
+    expect(offsetOf(1)).toBeCloseTo(tabWidth + PillMetrics.gap, 5);
+  });
 
-    for (const style of [barStyle(), ...screen.getAllByRole('tab').map(styleOf)]) {
-      expect(style.height).toBeUndefined();
-      expect(style.maxHeight).toBeUndefined();
-      expect(style.overflow).not.toBe('hidden');
+  test('moves by translateX alone, with the sheet spring, when the selection changes', async () => {
+    const { rerender } = await render(<TabBar {...makeProps(0)} />);
+    await fireEvent(bar(), 'layout', layout(358, 64));
+    jest.mocked(withSpring).mockClear();
+
+    await rerender(<TabBar {...makeProps(2)} />);
+
+    const { offsetOf } = capsuleLayout(358, 3);
+    expect(withSpring).toHaveBeenCalledWith(offsetOf(2), Motion.sheetSpring);
+    expect(styleOf(capsule()).transform).toEqual([{ translateX: offsetOf(2) }]);
+    expect(capsule().props.testID).toBe('tab-mark-profile');
+    // Movement only (FR-027): nothing else of the capsule is animated.
+    const keys = Object.keys(styleOf(capsule()));
+    expect(keys).not.toContain('opacity');
+  });
+
+  test('jumps to the destination under reduced motion: no spring is asked for', async () => {
+    useAppearance.mockReturnValue(appearanceOf('light', { prefersLessMotion: true }));
+    const { rerender } = await render(<TabBar {...makeProps(0)} />);
+    await fireEvent(bar(), 'layout', layout(358, 64));
+
+    await rerender(<TabBar {...makeProps(2)} />);
+
+    const { offsetOf } = capsuleLayout(358, 3);
+    expect(withSpring).not.toHaveBeenCalled();
+    expect(styleOf(capsule()).transform).toEqual([{ translateX: offsetOf(2) }]);
+  });
+
+  test('has a width before the first layout, so it never flashes at nothing', async () => {
+    await render(<TabBar {...makeProps(0)} />);
+    expect(styleOf(capsule()).width).toBeGreaterThan(0);
+  });
+});
+
+describe('<TabBar> selection - FR-022', () => {
+  test('the selected label is the ink and heavier; the others are muted and regular', async () => {
+    await render(<TabBar {...makeProps(1)} />);
+
+    const selected = classesOf(labelOf('Trips'));
+    expect(selected).toEqual(
+      expect.arrayContaining(['text-foreground', 'font-body-semibold']),
+    );
+    for (const title of ['Globe', 'You']) {
+      const rest = classesOf(labelOf(title));
+      expect(rest).toContain('text-muted');
+      expect(rest).toContain('font-body');
+      expect(rest).not.toContain('font-body-semibold');
     }
   });
 
-  test('a label is left to wrap: not capped to a line, shrunk to fit, clamped or pinned to a height', async () => {
+  test.each(Object.entries(ICONS))(
+    'the %s tab shows its filled glyph only while selected, at 24 dp',
+    async (name, glyph) => {
+      const index = ROUTES.findIndex((route) => route.name === name);
+      await render(<TabBar {...makeProps(index)} />);
+      expect(glyphsIn()[index]).toMatchObject({
+        name: glyph,
+        weight: 'fill',
+        size: PillMetrics.iconSize,
+      });
+
+      await render(<TabBar {...makeProps((index + 1) % ROUTES.length)} />);
+      expect(glyphsIn().at(index - ROUTES.length)).toMatchObject({
+        name: glyph,
+        weight: 'regular',
+        size: PillMetrics.iconSize,
+      });
+    },
+  );
+
+  test('tints the selected icon with the ink and the others with the muted ink', async () => {
+    jest.spyOn(HeroUI, 'useThemeColor').mockImplementation(((
+      token: string | string[],
+    ) => {
+      const ink = (name: string) => (name === 'foreground' ? '#aa0000' : '#00aa00');
+      return Array.isArray(token) ? token.map(ink) : ink(token);
+    }) as never);
+    await render(<TabBar {...makeProps(2)} />);
+
+    expect(glyphsIn().map((glyph) => glyph.color)).toEqual([
+      '#00aa00',
+      '#00aa00',
+      '#aa0000',
+    ]);
+  });
+});
+
+describe('<TabBar> large text - FR-074, Q-1', () => {
+  test.each([1, 1.3, 2, 3.1])(
+    'at font scale %s a tab is the inside of the pill at least, not scaled with the font',
+    async (fontScale) => {
+      mockFontScale(fontScale);
+      await render(<TabBar {...makeProps()} />);
+
+      for (const tab of screen.getAllByRole('tab')) {
+        expect(styleOf(tab).minHeight).toBe(PillMetrics.tabMinHeight);
+      }
+    },
+  );
+
+  test('the content decides the height at a large size: nothing caps, pins or clips it', async () => {
+    mockFontScale(2);
+    await render(<TabBar {...makeProps()} />);
+
+    const surface = screen.getByTestId(SURFACE);
+    for (const node of [bar(), surface, ...screen.getAllByRole('tab')]) {
+      expect(styleOf(node).height).toBeUndefined();
+      expect(styleOf(node).maxHeight).toBeUndefined();
+    }
+    // A clip with no fixed height cuts nothing; the tabs and the bar clip nothing at all.
+    for (const node of [bar(), ...screen.getAllByRole('tab')]) {
+      expect(styleOf(node).overflow).not.toBe('hidden');
+    }
+  });
+
+  test('a label wraps, and is capped at 1.3 times: not a line, not shrunk, not clamped', async () => {
     mockFontScale(2);
     await render(<TabBar {...makeProps()} />);
 
     for (const route of ROUTES) {
       const label = labelOf(route.title);
+      expect(label.props.maxFontSizeMultiplier).toBe(1.3);
       expect(label.props.numberOfLines).toBeUndefined();
       expect(label.props.ellipsizeMode).toBeUndefined();
       expect(label.props.adjustsFontSizeToFit).toBeUndefined();
-      expect(label.props.maxFontSizeMultiplier).toBeUndefined();
       expect(label.props.allowFontScaling).not.toBe(false);
       const style = styleOf(label);
-      for (const key of ['height', 'maxHeight', 'lineHeight', 'overflow']) {
+      for (const key of ['height', 'maxHeight', 'overflow']) {
         expect(style[key]).toBeUndefined();
       }
     }
   });
 });
 
-describe('<TabBar> press and focus - FR-026, C4-9', () => {
+describe('<TabBar> no opacity - the glass renders nothing under an opacity-0 ancestor', () => {
+  type Json = { props?: Record<string, unknown>; children?: Json[] | null } | string;
+
+  function opacities(node: Json | null | Json[]): unknown[] {
+    if (node === null || typeof node === 'string') return [];
+    if (Array.isArray(node)) return node.flatMap(opacities);
+    const own = StyleSheet.flatten(node.props?.style as never) as
+      Record<string, unknown> | undefined;
+    return [
+      ...(own && 'opacity' in own ? [own.opacity] : []),
+      ...opacities(node.children ?? []),
+    ];
+  }
+
+  test.each([0, 1, 2])(
+    'no node of the pill carries an opacity (tab %i selected)',
+    async (i) => {
+      await render(<TabBar {...makeProps(i)} />);
+      expect(opacities(screen.toJSON() as Json)).toEqual([]);
+    },
+  );
+
+  test('a selection change animates a transform, never an opacity', async () => {
+    const { rerender } = await render(<TabBar {...makeProps(0)} />);
+    await rerender(<TabBar {...makeProps(1)} />);
+    expect(opacities(screen.toJSON() as Json)).toEqual([]);
+  });
+});
+
+describe('<TabBar> press and focus - C4-9, FR-071', () => {
   test('navigates to a tab when it is pressed, after giving listeners a veto', async () => {
     const props = makeProps(0);
     await render(<TabBar {...props} />);
@@ -537,34 +557,39 @@ describe('<TabBar> press and focus - FR-026, C4-9', () => {
     await fireEvent(screen.getByLabelText('Trips'), 'blur');
     expect(styleOf(screen.getByLabelText('Trips')).outlineWidth).toBeUndefined();
   });
+
+  test('a held press is a capsule too, not the 12 dp corner of a plain control', async () => {
+    await render(<TabBar {...makeProps()} />);
+    for (const tab of screen.getAllByRole('tab')) {
+      expect(styleOf(tab).borderRadius).toBe(Radii.full);
+    }
+  });
 });
 
 describe('<TabBar> imports - review rules', () => {
-  // Colour literals and kit imports outside `components/ui/**` are lint errors
-  // (`no-restricted-syntax`, `no-restricted-imports`); what lint cannot say is which
-  // building blocks the bar is made from.
-  const imported = [
-    ...fs
-      .readFileSync(require.resolve('@/components/navigation/tab-bar'), 'utf8')
-      .matchAll(/from '([^']+)'/g),
-  ].map((match) => match[1]!);
+  const importsOf = (module: string) =>
+    [...fs.readFileSync(require.resolve(module), 'utf8').matchAll(/from '([^']+)'/g)].map(
+      (match) => match[1]!,
+    );
 
-  test('is built from the Atlas adapters', () => {
-    expect(imported).toEqual(
+  test('the pill is built from the adapters and its own surface and capsule', () => {
+    expect(importsOf('@/components/navigation/tab-pill')).toEqual(
       expect.arrayContaining([
         '@/components/ui/tappable',
         '@/components/ui/icon',
         '@/components/ui/text',
+        './tab-surface',
+        './tab-capsule',
       ]),
     );
   });
 
-  test('does not import a surface, useAppearance or the kit', () => {
-    for (const module of imported) {
-      expect(module).not.toMatch(/pressable-surface/);
-      expect(module).not.toMatch(/components\/ui\/surface/);
-      expect(module).not.toMatch(/use-appearance/);
-      expect(module).not.toMatch(/heroui-native/);
+  test('no navigation file imports the kit, a legacy surface or a gradient', () => {
+    for (const file of ['tab-pill', 'tab-surface', 'tab-capsule', 'tab-bar']) {
+      for (const module of importsOf(`@/components/navigation/${file}`)) {
+        expect(module).not.toMatch(/heroui-native|uniwind/);
+        expect(module).not.toMatch(/pressable-surface|components\/ui\/surface/);
+      }
     }
   });
 });
