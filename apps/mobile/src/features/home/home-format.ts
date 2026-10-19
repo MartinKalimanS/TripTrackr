@@ -4,9 +4,10 @@
  * a big figure.
  *
  * Everything follows the device's language (`languageTag`, from `deviceLocale()`): dates and
- * numbers come from `Intl`, plurals from `Intl.PluralRules`, and a tag the platform rejects
- * falls back to the platform's own locale, so a bad tag costs the wording and never the
- * screen. Dates are calendar days (`YYYY-MM-DD`, local; `stop-dates.ts`), never instants, so
+ * numbers come from `Intl`, and a tag the platform rejects falls back to the platform's own
+ * locale, so a bad tag costs the wording and never the screen. Plurals use `Intl.PluralRules`
+ * where the engine has it; Hermes (the app's engine) does not implement it, so there "one" is
+ * a count of exactly 1, which is right for the English nouns the sheet passes in. Dates are calendar days (`YYYY-MM-DD`, local; `stop-dates.ts`), never instants, so
  * the day over the globe is the traveller's day wherever they are.
  */
 import { differenceInCalendarDays } from 'date-fns';
@@ -54,6 +55,20 @@ export function daysUntil(from: string, to: string): number {
   return differenceInCalendarDays(fromIsoDate(to), fromIsoDate(from));
 }
 
+/**
+ * Whether `count` takes the singular noun. `Intl.PluralRules` is absent from Hermes (a
+ * constructor call on it throws "undefined cannot be used as a constructor"), so it is used only
+ * when it exists and works; otherwise, and for a tag it rejects, one is exactly 1.
+ */
+function takesSingular(count: number, languageTag: string): boolean {
+  if (typeof Intl.PluralRules !== 'function') return count === 1;
+  try {
+    return new Intl.PluralRules(languageTag).select(count) === 'one';
+  } catch {
+    return count === 1;
+  }
+}
+
 /** A number grouped by the language and its noun in the singular or the plural form, apart. */
 export function countParts(
   count: number,
@@ -61,16 +76,13 @@ export function countParts(
   plural: string,
   languageTag: string,
 ): { figure: string; noun: string } {
-  let one: boolean;
   let figure: string;
   try {
-    one = new Intl.PluralRules(languageTag).select(count) === 'one';
     figure = new Intl.NumberFormat(languageTag).format(count);
   } catch {
-    one = new Intl.PluralRules().select(count) === 'one';
     figure = new Intl.NumberFormat().format(count);
   }
-  return { figure, noun: one ? singular : plural };
+  return { figure, noun: takesSingular(count, languageTag) ? singular : plural };
 }
 
 /** "3 trips", "1 trip": a number grouped by the language, with its noun. */

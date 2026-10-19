@@ -141,6 +141,42 @@ describe('countParts: the number and its noun, apart', () => {
     });
   });
 
+  describe('on an engine without Intl.PluralRules (Hermes)', () => {
+    const real = Intl.PluralRules;
+    beforeEach(() => {
+      Object.defineProperty(Intl, 'PluralRules', {
+        value: undefined,
+        configurable: true,
+      });
+    });
+    afterEach(() => {
+      Object.defineProperty(Intl, 'PluralRules', { value: real, configurable: true });
+    });
+
+    test('still counts: one is singular, everything else plural, and nothing throws', () => {
+      expect(countParts(1, 'trip', 'trips', 'en-GB')).toEqual({
+        figure: '1',
+        noun: 'trip',
+      });
+      expect(countParts(0, 'trip', 'trips', 'en-GB')).toEqual({
+        figure: '0',
+        noun: 'trips',
+      });
+      expect(countParts(22, 'trip', 'trips', 'en-GB')).toEqual({
+        figure: '22',
+        noun: 'trips',
+      });
+      expect(countOf(1, 'day', 'days', 'en-GB')).toBe('1 day');
+      expect(inDays(94, 'en-GB')).toBe('in 94 days');
+    });
+
+    test('a rejected language tag costs the wording, not the screen', () => {
+      expect(countParts(3, 'trip', 'trips', 'not a tag!')).toMatchObject({
+        noun: 'trips',
+      });
+    });
+  });
+
   test('agrees with countOf, which is built on it', () => {
     const { figure, noun } = countParts(7, 'country', 'countries', 'en-GB');
     expect(countOf(7, 'country', 'countries', 'en-GB')).toBe(`${figure} ${noun}`);
