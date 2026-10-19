@@ -302,20 +302,37 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 - [ ] T533 [P] [US1] Pins: failing tests (status rank order, dots beyond about 60, callout side flip, still under
       reduced motion, announced once) then `RoundelLayer`, the `CircleLayer` fallback and `ActiveCallout` (ONE
       `MarkerView` with pulse rings); the shared hit source and `tripIdFromPress` unchanged (FR-011; D5-04)
-- [ ] T534 [US1] Branch `feat/005-home-sheet`. Failing `ui/sheet.test.tsx` with `fireGestureHandler` (nearest
+- [x] T534 [US1] Branch `feat/005-home-sheet`. Failing `ui/sheet.test.tsx` with `fireGestureHandler` (nearest
       detent by velocity, rubber band, body scroll hand-off, `adjustable` handle with increment and decrement and
       `accessibilityValue`, `BackHandler` stepping, one settle callback, selection haptic, no per-frame JS), then
       `components/ui/sheet.tsx` and `detentHeight()`; **[DEVICE]** 60 fps is T509 (FR-012, FR-017, FR-027; D5-03;
       SC-005)
-- [ ] T535 [US1] Failing tests then `components/home/`: `GreetingHeader` (date, "Hello, _name_", the serif
+      _As built:_ `sheet.tsx` (the component, `SheetScrollable`, `useSheetScroll`), `sheet-geometry.ts` (pure:
+      `detentHeight`, `sheetHeights`, `settleTarget`, `rubberBand`), `sheet-motion.ts` (the shared value, the spring, the
+      one settle) and `sheet-pans.ts` (the worklets); 72 tests, red first, plus `test/mocks/reanimated-live.ts`. The
+      sheet is CONTROLLED by `detent` (`peek | half | full`, not an index) with `onDetentChange` and `onSettle(detent)`.
+      See `contracts/components.md`, "As built (T534 to T536)", for the gesture design, the deviations and the
+      device-only checks.
+- [x] T535 [US1] Failing tests then `components/home/`: `GreetingHeader` (date, "Hello, _name_", the serif
       accent), `StatsRow` (three `StatTile`s, `globe-stat-countries` text is the plain number, stacked at font
       scale 1.15 and above, `AnimatedNumber` final label), `NowCard`, `NextRow`, the peek content; figures follow
       the device locale (FR-014, FR-015, FR-060, FR-077; D5-11)
-- [ ] T536 [US1] Failing `features/passport/country-summary.test.ts` (grouping by continent, trips per country, first
+      _As built:_ `greeting-header.tsx`, `stats-row.tsx`, `now-card.tsx`, `next-row.tsx`, `home-peek.tsx` and
+      `home-half.tsx` (the compositions the Home integration drops into the sheet body), with `trip-thumb.tsx` and
+      `stop-dots.tsx`; `features/home/` holds the pure `homeTrips()` model, the words and `useHomeTrips()` over the
+      new `stopsRepository.allWithNamesQuery`; `lib/locale` gains `distanceFigure()`. **Flow 03 asserts
+      `globe-stat-distance` against `[0-9,.]+ (km|mi)`: the numeral is now the plain number, so T538 edits that to
+      `[0-9,.]+`** (the unit is the label "Kilometres" or "Miles").
+- [x] T536 [US1] Failing `features/passport/country-summary.test.ts` (grouping by continent, trips per country, first
       and last visit, `isNow`, `focus` bounds, unknown continents never counted, the numerator equals
       `travelSummary`) then `country-summary.ts`, `CountriesList` (ring, search, sticky continent headers,
       FlashList, no-results), `CountryRow` (press lowers the sheet to half and flies the globe), screen-reader
       row names (FR-016, FR-017, FR-084; D5-17; Q-2)
+      _As built:_ `features/passport/country-summary.ts` (+ `useCountryOverview` over the new
+      `geographyRepository.countriesQuery`), `components/home/countries-list.tsx`, `countries-summary-card.tsx` and
+      `country-row.tsx`, and `components/ui/progress-ring.tsx`. The list is also tested INSIDE a `Sheet` (`countries-list-sheet.test.tsx`).
+      The press only calls `onSelectCountry(summary)`; lowering the sheet and the fly-to (the summary's `focus`) are
+      T537's.
 - [ ] T537 [US1] Home integration: camera padding and zoom on each settle (`globeFit`, 280 ms), logo and
       attribution offsets, `PlanTripFab` and its rules (hidden at full and with no trips), recentre control after
       the camera moved, `useIdleSpin` with every stop condition, `useGlobeActions` (next trip, previous trip,
