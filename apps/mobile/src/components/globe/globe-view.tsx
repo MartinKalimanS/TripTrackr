@@ -48,7 +48,13 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type AccessibilityActionEvent,
+  type AccessibilityActionInfo,
+} from 'react-native';
 
 import { ErrorState, LoadingState } from '@/components/ui/state-view';
 import {
@@ -61,6 +67,7 @@ import {
 } from '@/constants/theme';
 import { countryCodes } from '@/features/globe/country-codes';
 import { restingCoordinate, type GlobeTrip } from '@/features/globe/globe-data';
+import type { CameraFitSettings } from '@/features/globe/globe-fit';
 import type { LngLat } from '@/features/globe/great-circle';
 import { todayIso } from '@/features/trips/stop-dates';
 import { useAppActive } from '@/hooks/use-app-active';
@@ -126,6 +133,15 @@ export type GlobeViewProps = {
   calloutArea?: CalloutBounds;
   /** The local cover picture of each trip, by trip id, for the photo roundels (when on). */
   covers?: Readonly<Record<string, string>>;
+  /**
+   * The sheet's fit for the first frame (`globeFitCamera`): the camera's default padding and zoom, so
+   * the planet is already where the sheet wants it when the map first draws, with no animation. The
+   * flight to the first stop that appears keeps that zoom. Read once, when the camera mounts.
+   */
+  initialFit?: Pick<CameraFitSettings, 'padding' | 'zoomLevel'>;
+  /** The map's accessibility actions (next trip, previous trip, recentre, open countries; FR-017). */
+  accessibilityActions?: readonly AccessibilityActionInfo[];
+  onAccessibilityAction?: (event: AccessibilityActionEvent) => void;
   /** The camera, for the sheet: `setCamera` with `globeFitCamera` once per settle. */
   ref?: Ref<GlobeHandle>;
 };
@@ -173,6 +189,7 @@ function useGlobeCamera(
   ref: Ref<GlobeHandle> | undefined,
   shapes: Shapes,
   animated: boolean,
+  zoomLevel: number,
 ) {
   const { cameraRef, onMapIdle: tiltOnIdle } = useAutoPitch(animated);
   const { worldScale, onMapIdle: labelsOnIdle } = useWorldScale();
@@ -186,6 +203,7 @@ function useGlobeCamera(
     shapes.markers.features.length > 0,
     shapes.centre,
     animated,
+    zoomLevel,
   );
   return { cameraRef, worldScale, tiltOnIdle, labelsOnIdle };
 }
@@ -264,6 +282,9 @@ function GlobeMap({
   liveTrip,
   calloutArea,
   covers = NO_COVERS,
+  initialFit,
+  accessibilityActions,
+  onAccessibilityAction,
   ref,
 }: GlobeViewProps & { today: string }) {
   const { theme, prefersLessMotion } = useAppearance();
@@ -276,6 +297,7 @@ function GlobeMap({
     ref,
     shapes,
     !prefersLessMotion,
+    initialFit?.zoomLevel ?? GlobeCamera.zoomLevel,
   );
   const roundels = useRoundels(shapes.pins, covers, { scheme: theme });
   const running = !prefersLessMotion && focused && foreground;
@@ -311,7 +333,9 @@ function GlobeMap({
         onMapIdle={onMapIdle}
         accessible
         accessibilityRole="image"
-        accessibilityLabel={accessibilityLabel}>
+        accessibilityLabel={accessibilityLabel}
+        accessibilityActions={accessibilityActions}
+        onAccessibilityAction={onAccessibilityAction}>
         <StyleImport id="basemap" existing config={config} />
         <Camera
           ref={cameraRef}
@@ -319,7 +343,8 @@ function GlobeMap({
           maxZoomLevel={GlobeCamera.maxZoomLevel}
           defaultSettings={{
             centerCoordinate: shapes.centre,
-            zoomLevel: GlobeCamera.zoomLevel,
+            zoomLevel: initialFit?.zoomLevel ?? GlobeCamera.zoomLevel,
+            ...(initialFit ? { padding: initialFit.padding } : null),
           }}
         />
         <MapLayers

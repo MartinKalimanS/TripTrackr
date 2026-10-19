@@ -83,13 +83,16 @@ export function useAutoPitch(enabled: boolean) {
  * would otherwise land off screen. This moves the camera to it — once, on the
  * step from "nothing placed" to "something placed" — and never again: later
  * edits and syncs leave the traveller's own pan and zoom alone. Under reduced
- * motion the camera jumps instead of flying (FR-004).
+ * motion the camera jumps instead of flying (FR-004). `zoomLevel` is the zoom it arrives at: the
+ * default, or the Home's fit for the sheet (`GlobeView initialFit`), so the planet keeps the size
+ * the sheet made room for.
  */
 export function useFlyToFirstPlacement(
   cameraRef: RefObject<CameraHandle | null>,
   placed: boolean,
   centre: LngLat,
   animated: boolean,
+  zoomLevel: number = GlobeCamera.zoomLevel,
 ) {
   const wasPlaced = useRef(placed);
 
@@ -97,11 +100,11 @@ export function useFlyToFirstPlacement(
     if (placed && !wasPlaced.current) {
       cameraRef.current?.setCamera({
         centerCoordinate: centre,
-        zoomLevel: GlobeCamera.zoomLevel,
+        zoomLevel,
         animationMode: animated ? 'flyTo' : 'moveTo',
         animationDuration: animated ? GlobeCamera.flyToMs : 0,
       });
     }
     wasPlaced.current = placed;
-  }, [cameraRef, placed, centre, animated]);
+  }, [cameraRef, placed, centre, animated, zoomLevel]);
 }
