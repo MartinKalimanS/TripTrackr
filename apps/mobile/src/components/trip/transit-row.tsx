@@ -10,7 +10,7 @@
  *
  * It is omitted when `km` is `null`: a stop this device has not placed is never guessed
  * (Constitution IV), and the solid line alone joins the stops. It is decoration: the distance is
- * said in the NAME of the stop it leads to ("23 kilometres from Lisbon"), so it is hidden from
+ * said as the VALUE of the stop it leads to ("23 kilometres from Lisbon."), so it is hidden from
  * assistive technology rather than read twice.
  */
 import { View } from 'react-native';

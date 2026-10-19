@@ -29,7 +29,7 @@
  * 005 T545 draws the journey. `stopStates` says which stop is done, which one the traveller is
  * at and which come next (`today` is the device's unless a test says otherwise), and
  * `stopLegs` the great-circle distance between consecutive stops: a leg that moves the
- * traveller on is drawn beneath the stop it leaves (a dotted segment) and said in the name of the
+ * traveller on is drawn beneath the stop it leaves (a dotted segment) and said as the value of the
  * stop it leads to; two stops in one place, or an unplaced stop, have only the solid line.
  * `thumbs` is the traveller's picture of each city and `highlighted` the stops of the day they
  * chose. `onOffsets` reports where each stop starts in the list, from the heights its row laid
