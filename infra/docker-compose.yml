@@ -251,7 +251,7 @@ services:
   # Edge
   # -------------------------------------------------------------------------
   traefik:
-    image: traefik:v3.7.13
+    image: traefik:v3.7.15
     restart: unless-stopped
     logging: *default-logging
     command:
