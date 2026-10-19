@@ -1439,3 +1439,174 @@ No other flow step reads the Trips screen. Left for T538 and T546, not Trips: `'
   `'Active'` no longer matches wherever `dayOf` is passed (the trip screen's progress row, T543/T546): either keep a separate "Active" text
   there or make the assertion `'Active.*'` and record it (T538/T546).
 - The pill's merge (T526) removes the interim padding of `useTabZone`; nothing else here knows about the bar.
+
+---
+
+## As built (T524, T525): the dev gallery and the screenshot harness
+
+Branch `feat/005-gallery`, from `feat/005-sunrise-passport-ui`. The source is `apps/mobile/src/components/dev/` and
+`apps/mobile/src/app/(dev)/`; the tests are `test/dev/*` and `test/app/gallery-route.test.tsx`, plus the two suites of the
+override under `src/hooks/` and `src/components/ui/`. No screen was moved or restyled (SC-004): the only files outside the
+gallery that changed are listed under "The override" and in the gate.
+
+### Opening it
+
+- The route is **`/gallery`**. The group `(dev)` has a `Slot` layout and one route, `gallery.tsx`; the root layout admits it with
+  `<Stack.Protected guard={__DEV__}><Stack.Screen name="(dev)" /></Stack.Protected>`, one block beside `+not-found` (every
+  existing route, name and testID is untouched). It is reachable signed in or signed out. With `__DEV__` false the group does not
+  exist for the router, and a deep link is turned away exactly as for any protected group: to the tabs (signed in) or to the
+  welcome screen (signed out), not to not-found (`test/app/gallery-route.test.tsx`, through the real router).
+- Open it with the dev client running and the bundle loaded: `adb shell am start -a android.intent.action.VIEW -d
+"com.triptrackr.app.dev:///gallery"`, or `xcrun simctl openurl booted "com.triptrackr.app.dev:///gallery"` (the dev build
+  registers its package name as a scheme on both platforms). There is no button or menu item for it, because no screen was
+  touched. `apps/mobile/README.md`, "The component gallery".
+- **It is not in the release bundle.** The route loads the page with `require('@/components/dev/gallery')` inside
+  `if (__DEV__)`, not with an `import`. Read in source: `babel-preset-expo` inlines `__DEV__` as `false` in a production
+  transform (the route file transformed with `isDev: false` gives `if(false){ ... require(...) ... }`), and
+  `metro-transform-worker` runs its `constantFoldingPlugin` when `!options.dev`, before `collectDependencies`, so Metro never
+  follows the `require`. Expo Router's context still lists the two route files (a `Slot`, and a component that returns `null`).
+  The release bundle itself was not built here: searching an export for `gallery-readout` is the check (see the device-only
+  list). `test/dev/gallery-source.test.ts` holds the source side: nothing under `src/` outside `(dev)` and `components/dev`
+  imports `components/dev` (a comment may name it); the route names it only after `if (__DEV__) {`; the layout's guard is the
+  literal `__DEV__`; no dev file holds a URL, `fetch`, `uri:`, `expo-image` or a raster `require`, a `console` call, an import
+  of the kit or the native batch, or 800 lines.
+
+### The override: one device, four themes, two scales
+
+There was no override hook, so a minimal one was added. It changes no production behaviour: its context defaults to `null`, every
+hook then returns what it returned before, and every existing suite passes unchanged.
+
+- `hooks/appearance-override.ts`: `AppearanceOverrideContext` (`AppearanceOverride`: the scheme, the three flags, the font
+  scale), `useAppearanceOverride`, `overrideFlags`. It replaces the INPUTS and not the derived `AppearanceContext`, so
+  `themeName` and `tokens` stay the one resolution of `resolvePaletteName`.
+- Read from it: `use-color-scheme.ts` (now a wrapper over React Native's hook), `use-accessibility-flags.ts`, the new
+  `use-font-scale.ts` (the window's font scale, or the override's) and `use-appearance.ts` (it reads `useFontScale()` and applies
+  the override's flags; its store read is otherwise as before, because several suites mock the flags hook under the real
+  `useAppearance`). `Button`, `Tappable`, `AreaPill`, `TicketCard` and `TripRow` read `useFontScale()` where they read
+  `useWindowDimensions().fontScale`: five one-line swaps, not a restyle. `useLiftStyle` follows through `useColorScheme`.
+- `ui/appearance-scope.tsx`: `AppearanceScope({ theme?, fontScale?, reduceMotion?, reduceTransparency?, children })` provides the
+  override and wraps the subtree in Uniwind's `ScopedTheme` (1.12.0 in `node_modules`: it makes classNames and `useCSSVariable`,
+  hence the kit's `useThemeColor` and every `useColors` key, resolve in the scoped theme), so classes and hooks agree. A prop
+  that is not given is inherited from the scope above, else from the device, so a frame can change one flag and keep the
+  theme. It lives in `ui/` because only that folder imports `uniwind`. `Uniwind.setTheme` is not called: it would pin the OS
+  colour scheme for the whole app.
+- **The text scale is a layout scale.** Adapters take their minimum heights and their reflow (four areas to two columns, a stacked
+  ticket, the stat tile as a row) from `fontScale`, which the scope sets. **Glyph size follows the system text size**: React
+  Native has no per-subtree font scale. For scale 2 as a traveller sees it, set the phone's text size to the largest too; the
+  readout (`gallery-readout`) shows `theme · layout ×n · system text ×m`. Components that still read the window directly
+  (`TripHero`, `AreasStrip`, the trips FAB, `DateField`, `ProviderButton`; `FormSheet` reads its height) reflow with the system
+  size only; the swap is one line each when a screen of theirs joins the gallery. The native chrome (the keyboard, system
+  alerts) follows the device; the page sets its own `StatusBar` style.
+
+### The gallery
+
+`Gallery({ initialTheme?, initialScale? })` (`gallery.tsx`) is a canvas page with its controls pinned above one `ScrollView`: the
+theme as a `ChipGroup` (`gallery-theme-<name>`), the scale as a `SegmentedPill` (`gallery-scale-<1|2>`), the readout, then the
+fifteen sections of `SECTION_IDS` (`gallery-model.ts`), each `gallery-<id>`, registered in `gallery-sections.tsx`. The white
+photograph (`PhotoFixture`) is a view in the `onPhoto` token, white in all four themes, so there is no asset and no network;
+every cover is `GeneratedCover`.
+
+| Section (`gallery-<id>`) | Holds                                                                                                                                                                                                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`                   | the ten roles with family, weight and size (all six faces); `gallery-numerals`: four `AnimatedNumber`s right-aligned (tabular), a grouped and a money figure                                                                                                    |
+| `buttons`                | five variants by rest, held, busy and disabled; sizes; icon only; a label that wraps. "Held" is `HeldButton`, drawn from `buttonLook`, `buttonFrame`, `buttonStyle`, `buttonEdgeWidth` and `pressScaleOf`                                                       |
+| `icon-buttons`           | five variants by rest, busy and disabled over a plain surface and over the white photograph; `onSky` over the sky scrim                                                                                                                                         |
+| `chips`                  | `Chip` (rest, selected, leading, dashed, disabled, static), `ChipGroup`, `SegmentedPill` (md, sm), `StatusChip` (four), `SyncChip` (five; `synced` draws nothing), `SyncBadge` (three, and glyph-only on the photograph), `FlagChip`, `PrivacyChip`, `ToneChip` |
+| `cards`                  | lift, tile, flat, pending, pressable, overMap (over the sky); a `ListGroup` of eight rows; `StatTile` (static, pressable, counting); four `AreaPill`s in the areas strip's grid                                                                                 |
+| `trips`                  | `TripHeroCard`, `TicketCard`, `TripRow` (and a pending one), from invented `TripCardModel`s (`fixtures.ts`)                                                                                                                                                     |
+| `fields`                 | default, filled with helper text, focus, error, disabled                                                                                                                                                                                                        |
+| `skeletons`              | nine, each in `gallery-skeleton-<name>`                                                                                                                                                                                                                         |
+| `empty-states`           | the four `EmptyState` variants, `ErrorState`, `LoadingState`                                                                                                                                                                                                    |
+| `banners`                | offline, error with Retry, busy; two buttons that raise toasts (with and without Undo); the two permission states                                                                                                                                               |
+| `scrims`                 | top, bottom, caption (wrapping), sky, cover and two fades over the white photograph, each with the text it is meant for                                                                                                                                         |
+| `stamps`                 | six shapes in four inks, wear 0 to 3, perforated, the ghost, `StampIn` with a replay button                                                                                                                                                                     |
+| `covers`                 | three palettes at hero size and as 40 dp thumbs, and the letter thumb                                                                                                                                                                                           |
+| `sheet`                  | `Sheet` at peek, half and full, each in a 380 dp frame, with detents from `sheetHeights` of that frame; live (drag, tap, accessibility steps); `handleBack={false}`                                                                                             |
+| `navigation`             | `TabPill` on the surface the device gives it, the same with Reduce Transparency (opaque), `AndroidNavBar`; navigator props built by hand, a press selects the tab                                                                                               |
+
+What the tests hold (`test/dev/gallery.test.tsx`, 39 tests, over the real adapters with the stand-ins of the other suites):
+every section id in all four themes at both scales; the switchers change what the subtree reads (the readout, the chip's
+`checked`, a button's minimum height from 52 to twice the touch target, the areas from four to two across, the ticket from a row
+to a column over a window whose own scale is 2); each of the nine skeletons exposes exactly one `progressbar` (hidden
+elements included), at both scales and in a contrast theme; every variant and state of the buttons; all five icon buttons over
+the surface and the photograph; the photograph is `bg-on-photo` with no image node and no URL in the tree; the five scrim
+frames; the six stamp shapes, four wear masks, ghost and landing; the covers; three sheets whose handles say Peek, Half and
+Full and move one at a time; the pill is a blur on iOS and opaque with Reduce Transparency and in both contrast themes; a press
+selects its own bar's tab; the fields, the banners, the toast request (five seconds). `test/dev/held-button.test.tsx` presses a
+real `Button` (`touchDown`) in 5 variants by 4 themes by 2 scales and requires the style of `HeldButton` to be equal, so the
+fixture cannot drift. Jest cannot say how any of it looks: that is the phone's job.
+
+### The screenshot harness (D5-18)
+
+- `e2e/gallery.yaml` (tags `gallery` and `manual`, appId `com.triptrackr.app.dev`): `openLink` of the dev scheme, then eight
+  `runFlow`s of `e2e/gallery/pass.yaml` (one per theme by scale: tap the theme chip, tap the scale chip, assert the readout,
+  `waitForAnimationToEnd`), each ending in `e2e/gallery/assert-screenshot.yaml`, the helper: `MODE=record` runs `takeScreenshot`,
+  anything else `assertScreenshot` against `<BASELINES>/<SHOT>.png` (`gallery-<theme>-x<scale>.png`), always `cropOn` the test id
+  `gallery` so the status bar is out, at `THRESHOLD` 95 (Maestro's default; passed as a plain number because of Maestro issue
+  3337). `config.yaml` excludes `manual`, so the standing suite never runs it, and the helpers sit under `e2e/gallery/`, where
+  `e2e/*.yaml` does not reach.
+- `e2e/__baselines__/README.md` says a baseline is recorded on a device, approved by the owner and committed, never
+  generated; names the eight files; says how to record (one pinned device per platform; the system text size for scale 2) and
+  lists what only a device settles. **No image was created or invented.**
+- `test/dev/gallery-e2e.test.ts` holds the shape (eight passes covering the four themes by both scales, `manual`, ASCII, the
+  helper's two commands, every baseline named in the README); `scripts/testid-baseline.mjs --check` holds that every `id:` of the
+  flow is served by a testID in the sources.
+
+### Where the build differs from the brief or the contract
+
+1. **`assertScreenshot`, not `assertVisual`**: the command D5-18 names, and the one Maestro has (checked in its reference).
+2. **The theme is a `ScopedTheme` plus the override, not `Uniwind.setTheme`**, so the OS scheme is never pinned and the root's
+   own theme is untouched; the scale is a layout scale (above).
+3. **"Held" is a fixture for `Button` only.** A press is a state of a live `Pressable`; the fixture reuses the pure look table. A
+   held icon button, chip or row is the finger on the live one. A test ties the fixture to the real press.
+4. **The focused field is live, not held**: `Field` draws its ring from the focus event it receives, so the specimen says "tap
+   it". The ring beside the keyboard is one of the device checks.
+5. **The toast is raised by a button**, not drawn statically: it lives in the kit's portal host, above the tab bar.
+6. **Repeated ids**: `home-sheet*` (three sheets), `tab-bar`, `tab-<route>`, `tab-mark-<route>` and `scrim-*` repeat across frames,
+   because they are the adapters' fixed ids. The tests scope with `within` and a flow crops on `gallery`.
+7. **The tab pill's surface is the device's**: `TabSurface` chooses glass, blur or solid by itself, and forcing a kind would add a
+   prop to a shipped component. The frames are the pill as the device draws it, the pill with Reduce Transparency (opaque), and the
+   Android bar; the contrast themes make both pills opaque through the theme switch. Glass and blur are iOS only (V4).
+8. **A `trips` section was added** (hero, ticket, row) because the inventory names the trip and trips cards; its models are
+   invented in memory (`fixtures.ts`).
+9. **The unresolved-id count moved** (`test/fixtures/testid-unresolved-count.json`: 86 to 90 testIDs, 57 to 59 labels): new
+   forwards of a `testID` prop in `gallery-parts.tsx` (three) and `held-button.tsx`, and two labels from a table of button labels.
+   The baseline itself is untouched (it is read from the `pre-004-baseline` tag).
+
+### Gate (T525), run on the final tree
+
+All from `apps/mobile`, one process at a time (Windows):
+
+| Gate                                                                          | Result                                                                                                                                                |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npx tsc --noEmit`                                                            | 0 errors                                                                                                                                              |
+| `npx eslint . --max-warnings=0`                                               | exit 0, no warning                                                                                                                                    |
+| `npx jest --ci --maxWorkers=2`                                                | 308 suites passed, 7,893 tests passed, 3 skipped (7,896); 127 tests in 7 suites are new, all written red first                                        |
+| `npx jest --ci --coverage --maxWorkers=2` (the `test:cov` floor)              | statements 98.69 percent, branches 95.22, functions 98.51, lines 99.35 (floor 80)                                                                     |
+| `npx prettier --check` on every touched file and `specs/005-*/*.md`           | clean                                                                                                                                                 |
+| `node scripts/testid-baseline.mjs --check test/fixtures/testid-baseline.json` | "Parity holds: 205 testIDs and 64 accessibility labels, the concrete tab ids and every Maestro selector are still served" (the baseline is untouched) |
+| `node scripts/build-theme-css.mjs --check`                                    | `theme.css` is up to date                                                                                                                             |
+
+The check failed once, only on the count of ids the extractor cannot read (new forwards of a `testID` prop in the gallery's
+furniture and the held button, and two button labels from a table), so the count was regenerated with
+`--write-unresolved test/fixtures/testid-unresolved-count.json` (86 to 90 testIDs, 57 to 59 labels), as its own message and the
+procedure of `scripts/testid-baseline.mjs` allow. **No screen moved (SC-004):** outside `components/dev`, `app/(dev)`, the new
+`appearance-scope.tsx` and the new hooks, the files that changed are the root layout (the one `Stack.Protected` block), the three
+appearance hooks, and five components that read `useFontScale()` for `useWindowDimensions().fontScale` (`Button`, `Tappable`,
+`AreaPill`, `TicketCard`, `TripRow`), plus this README, the unresolved count and the specs; no file under `src/app` other than
+`_layout.tsx` changed. The branch builds on `feat/005-sunrise-passport-ui`, which already holds the merged groups A, B1, B2 and B3.
+
+### Device-only checks (add to T547)
+
+- `/gallery` on the phone, in all four themes at both scales (with the system text size at its largest for scale 2): read every
+  section and the readout; this is the first time these adapters are seen together.
+- `ScopedTheme` in a real build: the classes, the kit colours and the lifts agree below the controls in the contrast themes (the
+  lifts come from `useColorScheme`, the classes from the scope).
+- Glass on iOS 26 and the blur before it (V4); the Android bar over the sky; the sheets draggable inside their frames with the
+  page scrolling around them.
+- A release build (`eas build --profile preview`): `/gallery` is turned away to the tabs, and an export contains no
+  `gallery-readout`.
+- Maestro: that `openLink` of `com.triptrackr.app.dev:///gallery` resolves, whether `assertScreenshot` reads `path` relative to the
+  subflow or to the top-level flow (`BASELINES` says which), the first recording of the eight baselines, and whether the shimmer
+  needs Reduce Motion for them to hold at 95 percent.
+- The page is heavy by design (nine shimmers, three sheets, about twenty stamps): its scroll is not a measure of the app.
