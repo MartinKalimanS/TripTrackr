@@ -1,0 +1,47 @@
+<!--frame id=expenses no=06 title="Expenses" cap="Private by design: 'Only you' lock in the header, 56 px total, per-day chip, daily bars with a dashed budget line, one segmented category pill, rows with right-aligned tabular amounts and an FX 'as of' caption."-->
+<div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back to trip">[[i:chevron-left]]</button><h1 class="tt t-callout">Expenses</h1><div class="grp"><span class="pill p-priv">[[i16:lock]]Only you</span><button class="ibtn" aria-label="More">[[i:ellipsis]]</button></div></header>
+  <div class="scroll scroll-y pad-b" style="padding-top:var(--sp-3)">
+    <section class="xhero" aria-label="Total spent 842 euros">
+      <div class="t-label c2">Spent so far</div>
+      <div class="xnum tnum"><span class="cur">€</span>842</div>
+      <div class="xmeta"><span class="pill p-neutral">[[i16:calendar-days]]<span class="tnum" data-long="€281 per day over the first three days of eight">€281 / day</span> &middot; Day 3 of 8</span></div>
+      <p class="t-label c2 fx">[[i16:info]]Converted at today's rate &middot; as of 14 Oct, 09:00</p>
+    </section>
+
+    <section class="bars" aria-label="Spending per day, budget 300 euros">
+      <div class="bh"><h2 class="t-callout">Per day</h2><span class="t-caption c2"><i class="dsh"></i>Budget <span class="tnum">€300</span></span></div>
+      <div class="chart" role="img" aria-label="Day 1 310 euros, day 2 252 euros, day 3 280 euros, today. Days 4 to 8 not yet spent.">
+        <div class="budget" style="bottom:calc(var(--pl) * 300 / 340 + 38px)"></div>
+        <div class="bcol"><i class="bar" style="height:calc(var(--pl) * 310 / 340)"></i><span class="bl tnum">12</span><span class="bv tnum">310</span></div>
+        <div class="bcol"><i class="bar" style="height:calc(var(--pl) * 252 / 340)"></i><span class="bl tnum">13</span><span class="bv tnum">252</span></div>
+        <div class="bcol today"><i class="bar" style="height:calc(var(--pl) * 280 / 340)"></i><span class="bl tnum">14</span><span class="bv tnum">280</span></div>
+        <div class="bcol fut"><i class="bar"></i><span class="bl tnum">15</span><span class="bv">&ndash;</span></div>
+        <div class="bcol fut"><i class="bar"></i><span class="bl tnum">16</span><span class="bv">&ndash;</span></div>
+        <div class="bcol fut"><i class="bar"></i><span class="bl tnum">17</span><span class="bv">&ndash;</span></div>
+        <div class="bcol fut"><i class="bar"></i><span class="bl tnum">18</span><span class="bv">&ndash;</span></div>
+        <div class="bcol fut"><i class="bar"></i><span class="bl tnum">19</span><span class="bv">&ndash;</span></div>
+      </div>
+    </section>
+
+    <section class="cats" aria-label="By category">
+      <div class="catbar" role="img" aria-label="Food 38 percent, Stay 31 percent, Transport 15 percent, Activities 11 percent, Other 5 percent"><i style="flex:38;--cc:var(--coral-line)"></i><i style="flex:31;--cc:var(--amber-line)"></i><i style="flex:15;--cc:var(--aqua-line)"></i><i style="flex:11;--cc:var(--ink)"></i><i style="flex:5;--cc:var(--success-ink)"></i></div>
+      <ul class="legend">
+        <li style="--cc:var(--coral-line)"><i class="sw"></i>Food <b class="tnum">€320</b></li>
+        <li style="--cc:var(--amber-line)"><i class="sw"></i>Stay <b class="tnum">€260</b></li>
+        <li style="--cc:var(--aqua-line)"><i class="sw"></i>Transport <b class="tnum">€126</b></li>
+        <li style="--cc:var(--ink)"><i class="sw"></i>Activities <b class="tnum">€92</b></li>
+        <li style="--cc:var(--success-ink)"><i class="sw"></i>Other <b class="tnum">€44</b></li>
+      </ul>
+    </section>
+
+    <div class="dgh"><h2 class="t-callout">Wed 14 Oct <span class="c2" style="font-weight:400">&middot; Today</span></h2><span class="t-callout tnum">€280</span></div>
+    <ul class="xl">
+      <li class="xrow"><span class="xic" style="--cc:var(--coral-line)">[[i20:utensils]]</span><div class="tx"><div class="t-callout clamp-2" data-long="Cervejaria Ramiro, seafood dinner for the whole family on the Avenida Almirante Reis">Pastéis de Belém</div><div class="t-label c2 clamp-1">Food &middot; Lisbon</div></div><div class="amt"><span class="t-callout tnum">€14.80</span></div></li>
+      <li class="xrow"><span class="xic" style="--cc:var(--aqua-line)">[[i20:car-front]]</span><div class="tx"><div class="t-callout clamp-2">Fuel, A8 to Sintra</div><div class="t-label c2 clamp-1">Transport &middot; Loures</div></div><div class="amt"><span class="t-callout tnum">€48.20</span></div></li>
+      <li class="xrow"><span class="xic" style="--cc:var(--ink)">[[i20:ticket]]</span><div class="tx"><div class="t-callout clamp-2">Pena Palace tickets</div><div class="t-label c2 clamp-1">Activities &middot; Sintra</div></div><div class="amt"><span class="t-callout tnum">€33.00</span><span class="t-label c2 tnum">$36.12</span></div></li>
+    </ul>
+  </div>
+  <div class="fade-b" style="bottom:0;height:120px"></div>
+  <button class="btn btn-primary fab" aria-label="Add expense">[[i:plus]]Add expense</button>
+</div>

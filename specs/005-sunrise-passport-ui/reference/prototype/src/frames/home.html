@@ -1,0 +1,50 @@
+<section class="slot" data-slot="home">
+  <div class="phone" id="home" data-frame="home">
+    <div class="screen">
+      <div class="sky"></div>
+      <canvas class="globe" aria-label="Interactive globe: 14 countries visited, Portugal Road Trip active"></canvas>
+      <div class="markers"></div>
+
+      <header class="home-head">
+        <div>
+          <div class="t-micro">Wed 14 Oct</div>
+          <h1>Hello, <span class="serif">Marta</span></h1>
+        </div>
+        <div class="avatar ph" data-ph="marta:300" style="width:48px;height:48px;margin-top:2px" role="img" aria-label="Your profile"></div>
+      </header>
+
+      <div class="sheet" style="top:410px">
+        <div class="grab"></div>
+        <button class="btn btn-primary fab home-fab" style="top:-26px">[[i:plus]]New trip</button>
+        <div class="body" style="top:58px">
+          <div class="stats">
+            <div class="stat"><div class="v">14<small>/195</small></div><div class="l t-micro">Countries</div></div>
+            <div class="stat"><div class="v">22</div><div class="l t-micro">Trips</div></div>
+            <div class="stat"><div class="v">61,480</div><div class="l t-micro">Kilometres</div></div>
+          </div>
+          <div class="lap" style="margin-top:14px">
+            [[i:globe]]<span class="t-sm" style="font-weight:700;white-space:nowrap">1.5× around the Earth</span>
+            <div class="track"><i class="a"></i><i class="b"></i><i class="c"></i></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px">
+            <div class="t-micro muted">Happening now</div>
+            <span class="pill s-sync">[[i:cloud-upload]]Waiting to sync</span>
+          </div>
+          <button class="trip-now" style="width:100%;text-align:left">
+            <div class="th ph" data-ph="tram:240"></div>
+            <div class="bd">
+              <div class="ttl">Portugal Road Trip</div>
+              <div class="sub t-sm"><span style="display:inline-flex;align-items:center;gap:6px"><svg class="ic ic-16" style="color:var(--accent-text)"><use href="#i-circle-dot"/></svg>Active · Day 3 of 8</span></div>
+            </div>
+            <div class="go">[[i:arrow-right]]</div>
+          </button>
+        </div>
+        <div class="fade-b" style="--fade-from:transparent;--fade-to:var(--sheet);bottom:0;height:120px"></div>
+      </div>
+      {{TABS:globe}}
+    </div>
+    {{STATUS}}
+    {{HIND}}
+  </div>
+  <p class="cap"><b>01</b>Home · half detent<span>Globe is the hero and bleeds off the sides; the 28px sheet overlaps its lower third. Three passport numerals, one coral action.</span></p>
+</section>

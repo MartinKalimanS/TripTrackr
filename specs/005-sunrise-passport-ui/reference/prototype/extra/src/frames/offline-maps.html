@@ -1,0 +1,37 @@
+<!--frame id=offline-maps no=12 title="Offline maps" cap="Manager reached from Settings or a trip's Map link. Each trip row carries the Download pill next to 'Map'. Storage bar says what the maps cost."-->
+<div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back">[[i:chevron-left]]</button></header>
+  <div class="lt"><h1 class="t-title">Offline maps</h1><p class="t-label sub">Maps keep working with no signal.</p></div>
+  <div class="scroll scroll-y pad-b" style="padding-top:var(--sp-4)">
+    <section class="stor" aria-label="Storage: maps use 412 megabytes, 1.7 gigabytes free">
+      <div class="sthead"><div class="t-headline prop"><span class="tnum">412</span> MB <span class="c2 reg">used by maps</span></div><span class="t-label c2 tnum">1.7 GB free</span></div>
+      <div class="stbar" role="img" aria-label="Maps 412 MB, photos waiting to upload 1.1 GB, other apps, rest free"><i style="flex:4;background:var(--ink)"></i><i style="flex:11;background:var(--aqua-line)"></i><i style="flex:5;background:var(--ink-3)"></i><i style="flex:22;background:var(--sand)"></i></div>
+      <ul class="legend"><li style="--cc:var(--ink)"><i class="sw"></i>Maps</li><li style="--cc:var(--aqua-line)"><i class="sw"></i>Photos waiting</li><li style="--cc:var(--sand)"><i class="sw" style="box-shadow:inset 0 0 0 1px var(--ink-3)"></i>Free</li></ul>
+    </section>
+
+    <h2 class="t-callout sechead">For your trips</h2>
+    <ul class="mlist">
+      <li class="mrow">
+        <div class="mthumb" data-map="-9.6,38.4,-8.2,41.3" data-state="done" aria-hidden="true"></div>
+        <div class="mtx"><div class="mname"><span class="t-callout clamp-1">Portugal Road Trip</span></div><div class="t-label c2 clamp-1">Lisbon, Sintra, Porto &middot; <span class="tnum">186 MB</span></div>
+          <div class="mact"><a class="maplink">Map [[i16:chevron-right]]</a><span class="pill p-ok">[[i16:circle-check]]Downloaded</span></div></div>
+      </li>
+      <li class="mrow">
+        <div class="mthumb" data-map="-24.6,63.3,-13.4,66.6" data-pad="0.6" aria-hidden="true"></div>
+        <div class="mtx"><div class="mname"><span class="t-callout clamp-1">Iceland</span><span class="pill p-plan">[[i16:calendar]]Jan 2027</span></div><div class="t-label c2 clamp-1">Reykjavik &amp; the south coast</div>
+          <div class="mact"><a class="maplink">Map [[i16:chevron-right]]</a><button class="btn btn-secondary sm">[[i20:download]]Download <span class="tnum">240 MB</span></button></div></div>
+      </li>
+    </ul>
+
+    <h2 class="t-callout sechead">Downloaded</h2>
+    <ul class="mlist">
+      <li class="mrow">
+        <div class="mthumb" data-map="-101.5,18,-97,21" data-state="done" aria-hidden="true"></div>
+        <div class="mtx"><div class="mname"><span class="t-callout clamp-1">Mexico City</span></div><div class="t-label c2 clamp-1"><span class="tnum">96 MB</span> &middot; updated Nov 2025</div></div>
+        <button class="ibtn plain" aria-label="Remove Mexico City map">[[i:trash-2]]</button>
+      </li>
+    </ul>
+  </div>
+  <div class="fade-b" style="bottom:0;height:120px"></div>
+  <button class="btn btn-primary fab" aria-label="Download a new area">[[i:map-pin-plus]]New area</button>
+</div>

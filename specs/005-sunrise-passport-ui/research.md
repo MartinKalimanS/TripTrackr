@@ -7,7 +7,7 @@ were read from the sources named, measured with the WCAG 2.x formula (the one in
 `apps/mobile/src/theme/contrast.ts`) on 2026-10-12, or verified with `npm view` and the GitHub API on that
 date. Research notes outside the repository (kept by the author, not required to follow this document):
 `ui-refs/round2-audit-notes.md`, `round2-inspiration-notes.md`, `round2-libraries-notes.md` and the round 1
-notes. The design source is the prototype v2 (`ui-proto/sunrise-v2/`: `tokens.css`, `styles.css`, `app.js`,
+notes. The design source is the prototype v2 (now committed under `reference/prototype/`, with its pictures in `reference/screens/`; formerly `ui-proto/sunrise-v2/`: `tokens.css`, `styles.css`, `app.js`,
 `globe.js`, `extra/`). Anything that could not be confirmed from documentation is listed in
 [Items to verify empirically](#items-to-verify-empirically-device-spikes) and is the content of the spikes
 (tasks T507 to T512), not an assumption.
