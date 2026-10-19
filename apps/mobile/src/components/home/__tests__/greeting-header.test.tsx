@@ -5,7 +5,7 @@
  * that exists only when the parent says the globe was moved.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { appearance } from '../../../../test/helpers/appearance';
 import { GreetingHeader } from '../greeting-header';
@@ -107,5 +107,47 @@ describe('<GreetingHeader>', () => {
     expect(recentre.props.accessibilityLabel).toBe('Recentre the globe');
     await fireEvent.press(recentre);
     expect(onRecentre).toHaveBeenCalledTimes(1);
+  });
+
+  test('the words sit as the prototype has them: 4 dp down, 2 dp between date and greeting', async () => {
+    await render(<GreetingHeader name="Marta" today="2026-10-14" />);
+    const column = screen.getByTestId('home-greeting-date').parent!;
+    expect(tokens(column.props.className)).toEqual(
+      expect.arrayContaining(['pt-1', 'gap-0.5', 'flex-1', 'min-w-0']),
+    );
+  });
+
+  test('the serif accent word takes the accent text ink', async () => {
+    await render(<GreetingHeader name="Marta" today="2026-10-14" />);
+    expect(tokens(screen.getByText('Marta').props.className)).toContain(
+      'text-accent-text',
+    );
+  });
+
+  test('the date is the 12/16 uppercase eyebrow, the greeting the 40/44 display', async () => {
+    await render(<GreetingHeader name="Marta" today="2026-10-14" />);
+    const date = screen.getByTestId('home-greeting-date');
+    expect(tokens(date.props.className)).toContain('text-[12px]');
+    expect(StyleSheet.flatten(date.props.style)).toMatchObject({
+      textTransform: 'uppercase',
+    });
+    expect(tokens(screen.getByTestId('home-greeting').props.className)).toEqual(
+      expect.arrayContaining(['text-[40px]', 'leading-[44px]']),
+    );
+  });
+
+  test('the trailing slot is the top of the right edge and does not shrink', async () => {
+    await render(
+      <GreetingHeader
+        name="Marta"
+        today="2026-10-14"
+        trailing={<Text testID="tools">tools</Text>}
+      />,
+    );
+    const slot = screen.getByTestId('tools').parent!;
+    expect(tokens(slot.props.className)).toContain('shrink-0');
+    expect(tokens(slot.parent!.props.className)).toEqual(
+      expect.arrayContaining(['flex-row', 'items-start', 'justify-between']),
+    );
   });
 });
