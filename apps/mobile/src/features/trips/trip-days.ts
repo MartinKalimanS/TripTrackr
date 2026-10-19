@@ -79,6 +79,23 @@ export function currentDay(days: readonly TripDay[]): TripDay | null {
   return days.find((day) => day.isToday) ?? null;
 }
 
+/**
+ * The stop to bring into view when a day is chosen: that day's first, else the first of the next
+ * day that has one (the traveller is between two stops: show where they go next), else the last
+ * before it. `null` for a day that is not on the strip.
+ */
+export function stopForDay(days: readonly TripDay[], index: number): string | null {
+  const at = days.findIndex((day) => day.index === index);
+  if (at < 0) return null;
+  const following = days.slice(at).find((day) => day.stopIds.length > 0);
+  if (following) return following.stopIds[0] ?? null;
+  const before = days
+    .slice(0, at)
+    .reverse()
+    .find((day) => day.stopIds.length > 0);
+  return before?.stopIds[0] ?? null;
+}
+
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
 /** Day and month in a language, read in UTC. A tag `Intl` refuses is the platform's own. */

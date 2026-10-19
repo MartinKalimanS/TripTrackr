@@ -9,6 +9,7 @@ import {
   MAX_TRIP_DAYS,
   currentDay,
   dayChipText,
+  stopForDay,
   tripDays,
   type DayStop,
 } from '@/features/trips/trip-days';
@@ -199,5 +200,47 @@ describe('dayChipText: what a chip says, in the device language', () => {
     expect(() =>
       dayChipText({ index: 1, date: '2026-10-12' }, 'not a tag'),
     ).not.toThrow();
+  });
+});
+
+describe('stopForDay: where the strip scrolls to when a day is chosen', () => {
+  const days = tripDays([lisbon, sintra, porto], TODAY);
+
+  test('is the first stop of the day', () => {
+    expect(stopForDay(days, 1)).toBe('lisbon');
+    expect(stopForDay(days, 3)).toBe('lisbon');
+    expect(stopForDay(days, 4)).toBe('sintra');
+    expect(stopForDay(days, 8)).toBe('porto');
+  });
+
+  test('for a day with no stop is the first stop that follows it', () => {
+    const early: DayStop = {
+      id: 'a',
+      arrive_date: '2026-05-01',
+      depart_date: '2026-05-02',
+    };
+    const late: DayStop = {
+      id: 'b',
+      arrive_date: '2026-05-05',
+      depart_date: '2026-05-06',
+    };
+    const gap = tripDays([early, late], '2026-05-03');
+    expect(stopForDay(gap, 3)).toBe('b');
+    expect(stopForDay(gap, 4)).toBe('b');
+  });
+
+  test('falls back to the last stop before it when nothing follows', () => {
+    const only = tripDays([lisbon], TODAY);
+    const trailing = [
+      ...only,
+      { index: 4, date: '2026-10-15', isToday: false, stopIds: [] },
+    ];
+    expect(stopForDay(trailing, 4)).toBe('lisbon');
+  });
+
+  test('is null for a day that is not on the strip and for an empty strip', () => {
+    expect(stopForDay(days, 99)).toBeNull();
+    expect(stopForDay(days, 0)).toBeNull();
+    expect(stopForDay([], 1)).toBeNull();
   });
 });

@@ -1,12 +1,13 @@
 /**
- * 004 T431 - the trip screen over the REAL `heroui-native` under Jest (research D4-13).
+ * 004 T431, 005 T546 - the trip screen over the REAL `heroui-native` under Jest (research
+ * D4-13).
  *
- * `test/app/trip-and-modal-screens.test.tsx` renders the screen over the stand-in. This
- * file puts the kit's own Button, Chip, Card and Skeleton underneath it, so what the screen
- * relies on is checked against the real components: nothing throws (a card inside a card
- * is a development error; a kit component needs only the provider), the ids and names land
- * on the nodes a test or a Maestro flow finds them by, and our classes reach the card. How
- * a class LOOKS (the rail, the dashed edge, the chip fill) is Uniwind's, on a device.
+ * `test/app/trip-screen.test.tsx` renders the screen over the stand-in. This file puts the
+ * kit's own Button, Card, ListGroup and Skeleton underneath it, so what the screen relies on is
+ * checked against the real components: nothing throws (a card inside a card is a development
+ * error; a kit component needs only the provider), the ids and names land on the nodes a test
+ * or a Maestro flow finds them by, and our classes reach the card. How a class LOOKS (the
+ * spine, the dashed edge, the tile fill) is Uniwind's, on a device.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import type * as HeroUI from 'heroui-native';
@@ -40,6 +41,27 @@ jest.mock('@/features/trips/use-trips', () => ({
   useTrip: () => ({ data: mockTrip, loading: false, error: null }),
   useTripStops: () => mockStops,
   useTripActions: () => ({}),
+}));
+// The derived reads of this screen have their own suites; here they answer plain values.
+jest.mock('@/features/trips/trip-overview', () => ({
+  useTripOverview: () => ({
+    counts: { photos: 3, notes: 2, expenses: 1, documents: 1 },
+    spendingTotal: '12.50',
+    failedPhotos: 0,
+    failedPhotoIds: [],
+    pending: 0,
+    cityThumbs: new Map(),
+    cover: { kind: 'typographic', initial: 'I', status: 'planning' },
+    loading: false,
+  }),
+}));
+jest.mock('@/features/trips/use-trip-sync', () => ({
+  useTripSync: () => ({
+    state: { kind: 'synced' },
+    banner: null,
+    retry: jest.fn(),
+    retrySync: jest.fn(),
+  }),
 }));
 
 const mockTrip: TripRow = {
@@ -112,17 +134,18 @@ beforeEach(() => {
 });
 
 describe('the trip screen over the real kit', () => {
-  test('renders the hero, the areas, the stops header and the timeline without error', async () => {
+  test('renders the hero, the areas, the day strip, the stops header and the timeline without error', async () => {
     await renderScreen();
 
     expect(screen.getByTestId('trip-title')).toHaveTextContent('Italy, spring 2026');
     expect(within(screen.getByTestId('trip-header-row')).getByText('EUR')).toBeTruthy();
     expect(screen.getByTestId(/^status-pill-/)).toBeTruthy();
-    expect(screen.getByTestId('trip-links').props.horizontal).toBe(true);
+    expect(screen.getByTestId('trip-links')).toBeTruthy();
+    expect(screen.getByTestId('trip-days')).toBeTruthy();
     expect(screen.getByTestId('trip-stops')).toBeTruthy();
   });
 
-  test('the five areas are chips the kit names, presses and routes', async () => {
+  test('the five areas are controls the kit names, presses and routes', async () => {
     await renderScreen();
 
     const notes = screen.getByTestId('trip-open-notes');

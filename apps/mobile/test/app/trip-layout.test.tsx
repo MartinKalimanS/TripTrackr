@@ -167,12 +167,25 @@ describe('trip/[id]/_layout - the header is on for the overview and the migrated
     expect(tripHeaders().index?.hideShadow).toBe(true);
   });
 
-  test('takes its colours from the kit tokens: background for the bar and the scene, accent for the tint', async () => {
+  test('is transparent: the hero picture runs under it (005 T546; FR-025)', async () => {
     await openTrip(anchored, '/trip/abc');
     const header = tripHeaders().index;
-    expect(header?.backgroundColor).toBe(COLOURS.background);
-    expect(header?.color).toBe(COLOURS.accent);
+    expect(header?.translucent).toBe(true);
+    // The theme's background would paint over the picture, so the bar says it paints nothing.
+    expect(header?.backgroundColor).toBe('transparent');
+  });
+
+  test('takes its tint and the scene behind it from the kit tokens: accent and background', async () => {
+    await openTrip(anchored, '/trip/abc');
+    expect(tripHeaders().index?.color).toBe(COLOURS.accent);
     expect(contentBackground('index')).toBe(COLOURS.background);
+  });
+
+  test('the sub-screens keep an opaque bar of the canvas colour', async () => {
+    await openTrip(anchored, '/trip/abc/notes');
+    const header = tripHeaders().notes;
+    expect(header?.translucent).toBe(false);
+    expect(header?.backgroundColor).toBe(COLOURS.background);
   });
 
   test('every other trip screen is painted with the same background', async () => {
@@ -194,6 +207,13 @@ describe('trip/[id]/_layout - Back (FR-008, research "Items to verify" item 7)',
     // `headerLeft` replaces the native button; only `headerBackVisible` would keep both.
     expect(tripHeaders().index?.backButtonInCustomView).toBe(false);
     expect(tripHeaders().index?.hideBackButton).toBe(false);
+  });
+
+  test('is the glass control a picture needs: the one named "Back" is the hero\'s, a round disc with no word', async () => {
+    await openTrip(anchored, '/trip/abc');
+    const back = screen.getByLabelText('Back');
+    expect(screen.queryByText('Back')).toBeNull();
+    expect(StyleSheet.flatten(back.props.style).borderRadius).toBeGreaterThanOrEqual(22);
   });
 
   test('goes back to where the traveller came from', async () => {

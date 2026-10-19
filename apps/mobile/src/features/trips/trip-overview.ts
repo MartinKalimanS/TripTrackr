@@ -37,16 +37,21 @@ type PhotoFacts = Pick<
   | 'created_at'
   | 'upload_state'
   | 'local_file_uri'
->;
+> & { is_dirty?: boolean };
+
+/** A row of an area, as far as this view reads it: only whether it is still on this device. */
+interface DirtyFacts {
+  is_dirty?: boolean;
+}
 
 export interface OverviewInput {
   trip: Pick<TripRow, 'id' | 'title' | 'cover_photo_id'>;
   status: TripStatus;
   photos: readonly PhotoFacts[];
-  /** Only how many: a note's words are not this view's business. */
-  notes: readonly object[];
-  documents: readonly object[];
-  expenses: readonly Pick<ExpenseRow, 'amount_home' | 'fx_pending'>[];
+  /** Only how many and whether each is synchronised: a note's words are not this view's business. */
+  notes: readonly DirtyFacts[];
+  documents: readonly DirtyFacts[];
+  expenses: readonly (Pick<ExpenseRow, 'amount_home' | 'fx_pending'> & DirtyFacts)[];
 }
 
 export interface TripOverview {
@@ -55,6 +60,10 @@ export interface TripOverview {
   spendingTotal: string;
   /** Photos whose bytes failed to reach the object store (they are safe on the phone). */
   failedPhotos: number;
+  /** Which photos, in the order given, so each can be put back in the upload queue. */
+  failedPhotoIds: readonly string[];
+  /** Rows of the five areas not yet synchronised (`is_dirty`): changes still on this device. */
+  pending: number;
   /** City id to the thumbnail of the earliest photograph filed under it. */
   cityThumbs: ReadonlyMap<number, string>;
   cover: TripCover;
@@ -89,8 +98,11 @@ function cityThumbnails(ordered: readonly PhotoFacts[]): Map<number, string> {
   return thumbs;
 }
 
+const isPending = (row: DirtyFacts) => row.is_dirty === true;
+
 export function summariseTripOverview(input: OverviewInput): TripOverview {
   const ordered = inCoverOrder(input.photos);
+  const failed = input.photos.filter((photo) => photo.upload_state === 'failed');
   const converted = input.expenses.filter(
     (row) => !row.fx_pending && row.amount_home !== null,
   );
@@ -102,7 +114,14 @@ export function summariseTripOverview(input: OverviewInput): TripOverview {
       documents: input.documents.length,
     },
     spendingTotal: sumAmounts(converted.map((row) => row.amount_home as string)),
-    failedPhotos: input.photos.filter((photo) => photo.upload_state === 'failed').length,
+    failedPhotos: failed.length,
+    failedPhotoIds: failed.map((photo) => photo.id),
+    pending: [
+      ...input.photos,
+      ...input.notes,
+      ...input.documents,
+      ...input.expenses,
+    ].filter(isPending).length,
     cityThumbs: cityThumbnails(ordered),
     cover: resolveTripCover(input.trip, ordered as CoverCandidate[], input.status),
   };

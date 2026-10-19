@@ -55,6 +55,7 @@ function photo(n: number, overrides: Partial<Photo> = {}): Photo {
     taken_at: `2026-10-1${n}T10:00:00.000Z`,
     created_at: '2026-10-20T10:00:00.000Z',
     upload_state: 'uploaded',
+    is_dirty: false,
     local_file_uri: `photos/${TRIP_ID}/${uuid(100 + n)}.jpg`,
     ...overrides,
   };
@@ -105,6 +106,46 @@ describe('summariseTripOverview: the counts', () => {
         ],
       }),
     );
+    expect(overview.failedPhotos).toBe(2);
+  });
+});
+
+describe('summariseTripOverview: what is still on this device (T546)', () => {
+  test('counts the rows of the five areas that are not yet synchronised', () => {
+    const overview = summariseTripOverview(
+      input({
+        photos: [photo(1), photo(2, { is_dirty: true })],
+        notes: [{ is_dirty: true }, { is_dirty: false }, {}],
+        documents: [{ is_dirty: true }],
+        expenses: [
+          { amount_home: '1.00', fx_pending: false, is_dirty: true },
+          { amount_home: '2.00', fx_pending: false, is_dirty: false },
+        ],
+      }),
+    );
+    expect(overview.pending).toBe(4);
+  });
+
+  test('is zero when everything has synchronised, and for a trip with nothing', () => {
+    expect(summariseTripOverview(input()).pending).toBe(0);
+    expect(
+      summariseTripOverview(input({ photos: [photo(1)], notes: [{ is_dirty: false }] }))
+        .pending,
+    ).toBe(0);
+  });
+
+  test('names the photos that failed to upload, in the order given, so they can be tried again', () => {
+    const overview = summariseTripOverview(
+      input({
+        photos: [
+          photo(1),
+          photo(2, { upload_state: 'failed' }),
+          photo(3, { upload_state: 'pending' }),
+          photo(4, { upload_state: 'failed' }),
+        ],
+      }),
+    );
+    expect(overview.failedPhotoIds).toEqual([uuid(102), uuid(104)]);
     expect(overview.failedPhotos).toBe(2);
   });
 });
