@@ -135,10 +135,12 @@ export const GlobeColors = {
     planning: '#B86E00', // 3.99:1
     past: '#E04A33', // 4.04:1
     pastEnd: '#B86E00', // 3.99:1
-    visitedFill: '#FFCFBF',
-    visitedKeyline: '#E04A33', // 3.94:1 vs land, 3.37:1 vs the shaded land
-    plannedKeyline: '#B86E00', // 3.89:1 vs land
-    land: '#FFFCF5',
+    // The middle of the prototype's two-stop tint (#FFCFBF to #FFB29B).
+    visitedFill: '#FFC0AD',
+    visitedKeyline: '#E04A33', // 3.64:1 vs land, 3.37:1 vs the shaded land
+    plannedKeyline: '#B86E00', // 3.59:1 vs land
+    // The middle of the prototype's land gradient (#FFFCF5 to #F6E9D2): the picture's cream.
+    land: '#FBF2E3',
     landShade: '#F6E9D2',
   },
   dark: {
@@ -167,7 +169,9 @@ export const GlobeColors = {
  * `Atmosphere` layer, opaque on purpose (an alpha below 1 on `color` loads more tiles) and
  * without stars; `graticule` is the faint grid over the planet, a colour and the opacity it
  * is drawn at (decoration, so the gate asks only that it shows over the sea and is never a
- * mark that could carry meaning); `callout` is the white card of the live trip, navy on
+ * mark that could carry meaning); `visitedCasing` is the solid stroke under each country
+ * keyline (the prototype's white edge by day, a navy one by night) at `visitedCasingOpacity`
+ * (a number, so no alpha is written into a colour Mapbox may parse differently); `callout` is the white card of the live trip, navy on
  * white in BOTH themes as in the prototype (so it does not follow the adaptive text tones).
  * These are STARTING values, tuned over day and night on a device (V2, T508); every one is
  * measured in `test/theme/globe-contrast-gate.test.ts`, and the greeting text that sits over
@@ -179,18 +183,26 @@ export const GlobeColors = {
  */
 export const GlobeStyle = {
   light: {
-    water: '#8FD6EC',
+    // Mapbox paints ONE flat sea colour; the prototype's sphere runs #DDF3FA (highlight) to
+    // #2E9CC4 (limb), so this is the part of that ramp most of the disc shows in the picture.
+    water: '#74C6E4',
     greenspace: '#F6E9D2',
-    adminBoundaries: '#EBDCC9',
+    // The prototype's rgba(205,176,130,.55) hairline, flattened over the cream land.
+    adminBoundaries: '#DCC7A4',
     graticule: '#FFFFFF',
     graticuleOpacity: 0.34,
+    // The halo is the prototype's (rgba(96,196,236,.62) at the rim to rgba(190,233,247,.16)),
+    // flattened over the sky and lightened to keep the greeting readable (gate); space is
+    // fully transparent (Mapbox: "opacity 0 is a transparent background") so the sky shows.
     atmosphere: {
-      color: '#FFF1DF',
-      highColor: '#D7F0F6',
-      spaceColor: '#FFE6D0',
-      horizonBlend: 0.1,
+      color: '#9ADCF3',
+      highColor: '#BCE8F5',
+      spaceColor: '#FFE6D000',
+      horizonBlend: 0.24,
       starIntensity: 0,
     },
+    visitedCasing: '#FFFFFF',
+    visitedCasingOpacity: 0.9,
     callout: {
       surface: '#FFFFFF',
       title: '#0E2A47',
@@ -199,18 +211,24 @@ export const GlobeStyle = {
     },
   },
   dark: {
-    water: '#0E3465',
+    // The prototype's night sphere runs #2C74AE to #08224A: this is where most of it sits.
+    water: '#143F72',
     greenspace: '#2A557E',
-    adminBoundaries: '#2B4466',
+    // The prototype's rgba(170,215,245,.20) hairline, flattened over the blue land.
+    adminBoundaries: '#4F7BA3',
     graticule: '#AAD7FF',
     graticuleOpacity: 0.11,
+    // The prototype's teal halo, darkened until the greeting (muted, 7:1 in the contrast
+    // theme) reads on it: the gate, not the picture, caps its brightness.
     atmosphere: {
-      color: '#0B1D36',
-      highColor: '#0C2442',
-      spaceColor: '#0A1626',
-      horizonBlend: 0.1,
+      color: '#134760',
+      highColor: '#0F3A52',
+      spaceColor: '#0A162600',
+      horizonBlend: 0.2,
       starIntensity: 0,
     },
+    visitedCasing: '#0A1626',
+    visitedCasingOpacity: 0.55,
     callout: {
       surface: '#F4F7FB',
       title: '#0E2A47',
@@ -241,12 +259,14 @@ export const GlobeLayers = {
     worldview: 'US',
     keylineWidth: 1.5,
     plannedKeylineWidth: 2,
+    /** Dp the casing under a keyline is wider than the keyline (the prototype's 1.6). */
+    casingExtra: 1.6,
     /** Dash and gap, in line widths. */
     plannedDash: [3, 2],
   },
   graticule: {
-    /** Degrees between lines; must divide 90. */
-    step: 30,
+    /** Degrees between lines; must divide 90. The prototype's `d3.geoGraticule10`. */
+    step: 10,
     width: 0.8,
     /** Fully drawn up to the first zoom, gone from the second. */
     fadeStartZoom: 3,

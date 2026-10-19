@@ -42,6 +42,19 @@ describe('<AtmosphereLayer>', () => {
   );
 });
 
+describe('the atmosphere is the prototype halo over a see-through space', () => {
+  test.each(SCHEMES)(
+    '%s: space is fully transparent so the sky behind the map shows (documented: opacity 0 is a transparent background)',
+    (scheme) => {
+      expect(GlobeStyle[scheme].atmosphere.spaceColor).toMatch(/^#[0-9A-F]{6}00$/);
+    },
+  );
+
+  test.each(SCHEMES)('%s: the halo is wider than Standard’s default blend', (scheme) => {
+    expect(GlobeStyle[scheme].atmosphere.horizonBlend).toBeGreaterThanOrEqual(0.2);
+  });
+});
+
 describe('<GraticuleLayer>', () => {
   test.each(SCHEMES)(
     '%s: one static source of lines, one thin faint line layer',
@@ -80,7 +93,12 @@ describe('<GraticuleLayer>', () => {
 
   test('is thin: under 1.5 dp, the width of the thinnest connection', () => {
     expect(GlobeLayers.graticule.width).toBeLessThan(1.5);
-    expect(GlobeLayers.graticule.step).toBe(30);
+  });
+
+  test('is the prototype grid: a line every 10 degrees (d3.geoGraticule10), not every 30', () => {
+    expect(GlobeLayers.graticule.step).toBe(10);
+    const lines = graticule(GlobeLayers.graticule.step).features;
+    expect(lines.filter((f) => f.properties.kind === 'meridian')).toHaveLength(36);
   });
 });
 
@@ -148,22 +166,51 @@ describe('<VisitedCountriesLayer>', () => {
     },
   );
 
-  test('stacks the fill, then the visited keyline, then the planned keyline', async () => {
+  test('stacks the fill, a casing, the visited keyline, then the planned casing and keyline', async () => {
     await countries();
     const order = screen
       .getAllByTestId(/^mapbox-(FillLayer|LineLayer)-/)
       .map((node) => node.props.id);
     expect(order).toEqual([
       'globe-visited-fill',
+      'globe-visited-casing',
       'globe-visited-keyline',
+      'globe-planned-casing',
       'globe-planned-keyline',
     ]);
   });
 
+  test.each(SCHEMES)(
+    '%s: each keyline sits on a solid casing wider than itself, as the prototype strokes it',
+    async (scheme) => {
+      await countries({ scheme });
+      const { visitedCasing, visitedCasingOpacity } = GlobeStyle[scheme];
+      const { casingExtra, keylineWidth, plannedKeylineWidth } = GlobeLayers.countries;
+      const expected = [
+        ['globe-visited-casing', keylineWidth, ['PT', 'ES']],
+        ['globe-planned-casing', plannedKeylineWidth, ['IS']],
+      ] as const;
+      for (const [id, width, codes] of expected) {
+        const casing = screen.getByTestId(`mapbox-LineLayer-${id}`);
+        expect(casing.props.sourceLayerID).toBe('country_boundaries');
+        expect(casing.props.slot).toBe('bottom');
+        expect(casing.props.filter).toEqual(countryFilter([...codes]));
+        expect(casing.props.layerStyle).toMatchObject({
+          lineColor: visitedCasing,
+          lineOpacity: visitedCasingOpacity,
+          lineWidth: width + casingExtra,
+          lineEmissiveStrength: 1,
+        });
+        expect(casing.props.layerStyle).not.toHaveProperty('lineDasharray');
+      }
+      expect(casingExtra).toBeGreaterThan(0);
+    },
+  );
+
   test('EVERY layer on the tileset carries the worldview clause, or a disputed area draws twice', async () => {
     await countries();
     const layers = screen.getAllByTestId(/^mapbox-(FillLayer|LineLayer)-/);
-    expect(layers).toHaveLength(3);
+    expect(layers).toHaveLength(5);
     for (const layer of layers) {
       expect(layer.props.filter).toContainEqual(COUNTRY_WORLDVIEW_CLAUSE);
     }
@@ -172,6 +219,7 @@ describe('<VisitedCountriesLayer>', () => {
   test('draws no planned layer when nothing is planned, and no visited layer when nothing is visited', async () => {
     const view = await countries({ planned: [] });
     expect(screen.queryByTestId('mapbox-LineLayer-globe-planned-keyline')).toBeNull();
+    expect(screen.queryByTestId('mapbox-LineLayer-globe-planned-casing')).toBeNull();
     expect(screen.getByTestId('mapbox-FillLayer-globe-visited-fill')).toBeTruthy();
 
     await view.rerender(
@@ -179,6 +227,7 @@ describe('<VisitedCountriesLayer>', () => {
     );
     expect(screen.queryByTestId('mapbox-FillLayer-globe-visited-fill')).toBeNull();
     expect(screen.queryByTestId('mapbox-LineLayer-globe-visited-keyline')).toBeNull();
+    expect(screen.queryByTestId('mapbox-LineLayer-globe-visited-casing')).toBeNull();
     expect(screen.getByTestId('mapbox-LineLayer-globe-planned-keyline')).toBeTruthy();
   });
 
