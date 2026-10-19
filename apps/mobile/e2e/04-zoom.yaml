@@ -16,7 +16,8 @@
 #
 # HOW IT ZOOMS
 # ------------
-# Maestro has no pinch, so the flow double-taps the middle of the map: each
+# Maestro has no pinch, so the flow double-taps the centre of the planet (47 percent of the way
+# down the map, above the lowered Home sheet): each
 # double tap zooms in one level around the tapped point. The globe opens
 # centred on the only stop of the active trip (`cameraCenter`: a trip with no
 # route centres on its placed stop), so fifteen double taps land on Rome at
@@ -111,6 +112,13 @@ env:
     visible:
       id: 'globe-map'
     timeout: 20000
+# The Home sheet is at half and covers the middle of the map: lower it to peek (a tap on the
+# handle steps half, full, peek). The camera's padding puts the stop at the centre of the
+# planet, 47 percent of the way down a 390 by 844 phone, so that is where the taps go.
+- tapOn:
+    id: 'home-sheet-handle'
+- tapOn:
+    id: 'home-sheet-handle'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: 04-zoom-globe
@@ -121,7 +129,7 @@ env:
     commands:
       - doubleTapOn:
           id: 'globe-map'
-          point: '50%,50%'
+          point: '50%,47%'
 - assertVisible:
     id: 'globe-map'
 - waitForAnimationToEnd:
@@ -132,7 +140,7 @@ env:
     commands:
       - doubleTapOn:
           id: 'globe-map'
-          point: '50%,50%'
+          point: '50%,47%'
 - assertVisible:
     id: 'globe-map'
 - waitForAnimationToEnd:
@@ -143,7 +151,7 @@ env:
     commands:
       - doubleTapOn:
           id: 'globe-map'
-          point: '50%,50%'
+          point: '50%,47%'
 - assertVisible:
     id: 'globe-map'
 # Settling tilts the camera toward the buildings (camera.ts `nextPitch`).
