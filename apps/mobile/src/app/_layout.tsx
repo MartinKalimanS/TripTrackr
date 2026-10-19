@@ -265,6 +265,12 @@ function RootStack({
         <Stack.Screen name="modal" options={formSheetOptions} />
       </Stack.Protected>
 
+      {/* The component gallery (feature 005, T524): development builds only, signed in or
+          not. In a release build the group is unreachable, a deep link included. */}
+      <Stack.Protected guard={__DEV__}>
+        <Stack.Screen name="(dev)" />
+      </Stack.Protected>
+
       {/* Reachable in either state: a bad link is not a reason to sign in. */}
       <Stack.Screen name="+not-found" />
     </Stack>
