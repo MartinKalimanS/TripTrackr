@@ -1,0 +1,55 @@
+<section class="slot" data-slot="form">
+  <div class="phone" id="form" data-frame="form">
+    <div class="screen" style="background:var(--canvas)">
+      <div class="form-backdrop"></div>
+      <div class="form-scrim"></div>
+
+      <div class="sheet r28 form-sheet" style="top:62px;height:auto;bottom:0">
+        <div class="grab"></div>
+        <div class="form-head">
+          <button class="cancel">Cancel</button>
+          <div class="t-head" style="font-size:18px">New trip</div>
+        </div>
+
+        <div style="position:absolute;left:20px;right:20px;top:76px">
+          <div class="cover ph" data-ph="tram:700" style="background-position:50% 58%">
+            <div class="sc scrim-b"></div>
+            <span class="pill on-photo" style="position:absolute;left:12px;bottom:12px">[[i:sparkles]]Cover picked for you</span>
+            <button class="btn btn-glass btn-sm" style="position:absolute;right:12px;bottom:10px;height:44px">[[i:camera]]Change</button>
+          </div>
+
+          <label class="field" style="margin-top:22px">
+            <span class="lab">Trip name <em>Required</em></span>
+            <div class="input is-focus"><span class="val">Portugal Road Trip<i class="caret"></i></span><span class="clear">[[i:x]]</span></div>
+          </label>
+
+          <label class="field" style="margin-top:18px">
+            <span class="lab">Dates</span>
+            <div class="input">[[i:calendar-days]]<span class="val">12 Oct → 19 Oct 2026</span><span class="pill s-past" style="height:28px">8 days</span></div>
+          </label>
+
+          <div class="field" style="margin-top:18px">
+            <span class="lab">Currency <em>For expenses</em></span>
+            <div class="currency" role="radiogroup" aria-label="Currency">
+              <button class="chip is-selected" role="radio" aria-checked="true">[[i16:check]]EUR</button>
+              <button class="chip" role="radio">USD</button>
+              <button class="chip" role="radio">GBP</button>
+              <button class="chip" role="radio">JPY</button>
+              <button class="chip icon-only" role="radio" aria-label="More currencies">[[i16:plus]]</button>
+            </div>
+          </div>
+
+          <div class="privacy-note" style="margin-top:20px">[[i:lock]]<div><b>Expenses and documents are private.</b> Only you can see them, on every trip.</div></div>
+        </div>
+
+        <div class="fade-b" style="--fade-from:transparent;--fade-to:var(--sheet);height:150px"></div>
+        <div style="position:absolute;z-index:30;left:20px;right:20px;bottom:40px">
+          <button class="btn btn-primary btn-lg btn-block">Save trip</button>
+        </div>
+      </div>
+    </div>
+    {{STATUS_PHOTO}}
+    {{HIND}}
+  </div>
+  <p class="cap"><b>08</b>Forms · New trip<span>Large-detent sheet over the dimmed Trips screen. Labels above, a coral focus ring, a chip selected by fill and check, and one sticky Save.</span></p>
+</section>

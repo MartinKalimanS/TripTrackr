@@ -1,0 +1,106 @@
+{
+ "tram": {
+  "file": "img/tram.jpg",
+  "url": "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?auto=format&fit=crop&w=900&q=78"
+ },
+ "sintra": {
+  "file": "img/sintra.jpg",
+  "url": "https://images.unsplash.com/photo-1750832693915-fae6bf21d329?auto=format&fit=crop&w=900&q=78"
+ },
+ "sintraY": {
+  "file": "img/sintraY.jpg",
+  "url": "https://images.unsplash.com/photo-1697394494123-c6c1323a14f7?auto=format&fit=crop&w=900&q=78"
+ },
+ "pena": {
+  "file": "img/pena.jpg",
+  "url": "https://images.unsplash.com/photo-1744133128473-d056d93526ad?auto=format&fit=crop&w=900&q=78"
+ },
+ "porto": {
+  "file": "img/porto.jpg",
+  "url": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=900&q=78"
+ },
+ "portoBridge": {
+  "file": "img/portoBridge.jpg",
+  "url": "https://images.unsplash.com/photo-1569959220744-ff553533f492?auto=format&fit=crop&w=900&q=78"
+ },
+ "portoSunset": {
+  "file": "img/portoSunset.jpg",
+  "url": "https://images.unsplash.com/photo-1513735492246-483525079686?auto=format&fit=crop&w=900&q=78"
+ },
+ "lisbonRoofs": {
+  "file": "img/lisbonRoofs.jpg",
+  "url": "https://images.unsplash.com/photo-1536663815808-535e2280d2c2?auto=format&fit=crop&w=900&q=78"
+ },
+ "arco": {
+  "file": "img/arco.jpg",
+  "url": "https://images.unsplash.com/photo-1548707309-dcebeab9ea9b?auto=format&fit=crop&w=900&q=78"
+ },
+ "street": {
+  "file": "img/street.jpg",
+  "url": "https://images.unsplash.com/photo-1558370781-d6196949e317?auto=format&fit=crop&w=900&q=78"
+ },
+ "cafe": {
+  "file": "img/cafe.jpg",
+  "url": "https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?auto=format&fit=crop&w=900&q=78"
+ },
+ "kyoto": {
+  "file": "img/kyoto.jpg",
+  "url": "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=78"
+ },
+ "fushimi": {
+  "file": "img/fushimi.jpg",
+  "url": "https://images.unsplash.com/photo-1478436127897-769e1b3f0f36?auto=format&fit=crop&w=900&q=78"
+ },
+ "tokyo": {
+  "file": "img/tokyo.jpg",
+  "url": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=900&q=78"
+ },
+ "tokyoAlley": {
+  "file": "img/tokyoAlley.jpg",
+  "url": "https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=900&q=78"
+ },
+ "pagoda": {
+  "file": "img/pagoda.jpg",
+  "url": "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=900&q=78"
+ },
+ "iceland": {
+  "file": "img/iceland.jpg",
+  "url": "https://images.unsplash.com/photo-1476610182048-b716b8518aae?auto=format&fit=crop&w=900&q=78"
+ },
+ "mexico": {
+  "file": "img/mexico.jpg",
+  "url": "https://images.unsplash.com/photo-1518105779142-d975f22f1b0a?auto=format&fit=crop&w=900&q=78"
+ },
+ "zocalo": {
+  "file": "img/zocalo.jpg",
+  "url": "https://images.unsplash.com/photo-1585464231875-d9ef1f5ad396?auto=format&fit=crop&w=900&q=78"
+ },
+ "paris": {
+  "file": "img/paris.jpg",
+  "url": "https://images.unsplash.com/photo-1431274172761-fca41d930114?auto=format&fit=crop&w=900&q=78"
+ },
+ "rome": {
+  "file": "img/rome.jpg",
+  "url": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=900&q=78"
+ },
+ "marta": {
+  "file": "img/marta.jpg",
+  "url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=78"
+ },
+ "cinque": {
+  "file": "img/cinque.jpg",
+  "url": "https://images.unsplash.com/photo-1534445867742-43195f401b6c?auto=format&fit=crop&w=900&q=78"
+ },
+ "beach": {
+  "file": "img/beach.jpg",
+  "url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=78"
+ },
+ "fall": {
+  "file": "img/fall.jpg",
+  "url": "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=900&q=78"
+ },
+ "torii": {
+  "file": "img/torii.jpg",
+  "url": "https://images.unsplash.com/photo-1504109586057-7a2ae83d1338?auto=format&fit=crop&w=900&q=78"
+ }
+}

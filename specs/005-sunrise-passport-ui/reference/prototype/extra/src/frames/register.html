@@ -1,0 +1,27 @@
+<!--frame id=register no=14 title="Create account" cap="Same order as sign-in. Live validation uses icon + text (check / alert), password rules are a visible checklist, the privacy promise sits next to the legal line."-->
+<div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back">[[i:chevron-left]]</button><button class="link nou">Sign in</button></header>
+  <div class="scroll scroll-y" style="padding-top:var(--sp-2)">
+    <h1 class="t-title">Create your <span class="t-serif">passport</span></h1>
+    <div class="provs">
+      <button class="btn btn-apple block"><svg class="ic" style="fill:currentColor;stroke:none" aria-hidden="true"><use href="#i-apple"/></svg>Continue with Apple</button>
+      <button class="btn btn-google block"><svg class="ic" aria-hidden="true"><use href="#i-google"/></svg>Continue with Google</button>
+    </div>
+    <div class="or" role="separator"><span>or with email</span></div>
+    <div class="field">
+      <label class="lab" for="em2">Email</label>
+      <div class="input is-ok" id="em2"><span class="val">marta@example.com</span><span class="ok">[[i20:circle-check]]</span></div>
+    </div>
+    <div class="field">
+      <label class="lab" for="pw2">Password</label>
+      <div class="input is-focus" id="pw2"><span class="val">&bull;&bull;&bull;&bull;&bull;&bull;&bull;<span class="caret"></span></span><button class="ibtn plain eye" aria-label="Show password">[[i20:eye]]</button></div>
+      <ul class="rules" aria-label="Password rules">
+        <li class="met">[[i16:circle-check]]At least 8 characters</li>
+        <li class="unmet">[[i16:circle]]One number</li>
+        <li class="unmet">[[i16:circle]]Not a common password</li>
+      </ul>
+    </div>
+    <p class="t-label c2 legal">By creating an account you agree to the <a class="link" style="min-height:0">Terms</a> and <a class="link" style="min-height:0">Privacy Policy</a>. <span class="lk">[[i16:lock]]Expenses and documents stay private to you.</span></p>
+  </div>
+  <div class="afoot"><button class="btn btn-primary lg block is-disabled" aria-disabled="true">Create account</button></div>
+</div>

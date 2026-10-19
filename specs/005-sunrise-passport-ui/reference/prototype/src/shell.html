@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SUNRISE PASSPORT v2 - TripTrackr core frames</title>
+<script src="tokens.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!--SPRITE-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="grunge" x="-6%" y="-6%" width="112%" height="112%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="3" seed="11" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  8 0 0 0 -2.05" result="m"/>
+    <feComposite in="SourceGraphic" in2="m" operator="in"/>
+  </filter>
+</defs></svg>
+
+<header class="board-head">
+  <div>
+    <h1>SUNRISE <span>PASSPORT</span> v2</h1>
+    <p>Core frames rebuilt on tokens: flow layouts that survive text scale and long strings, deterministic photo scrims, one status system, three-detent Home, state frames, Nightfall, increased contrast and an Android variant. Test with <code>?scale=1.5</code> <code>?scale=2</code> <code>?long=1</code> <code>?theme=dark</code> <code>?contrast=more</code> <code>?platform=android</code> <code>?only=&lt;frame&gt;</code> <code>?fixture=white</code>.</p>
+  </div>
+  <div class="board-tools" id="tools"></div>
+</header>
+<!--FRAMES-->
+<div class="foot">Prototype only. Photos: Unsplash. Globe: d3-geo orthographic + world-atlas (the app uses Mapbox; see design-spec.md for what is faithful). Icons: Lucide, stroke 1.75. Drag any globe to rotate.</div>
+
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
+<script src="world.js"></script>
+<script src="globe.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

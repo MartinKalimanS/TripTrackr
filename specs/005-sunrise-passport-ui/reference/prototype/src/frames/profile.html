@@ -1,0 +1,55 @@
+<section class="slot" data-slot="profile">
+  <div class="phone" id="profile" data-frame="profile">
+    <div class="screen" style="background:var(--canvas)">
+      <div style="position:absolute;left:20px;right:20px;top:62px;display:flex;align-items:center;gap:16px">
+        <div class="avatar ph" data-ph="marta:300" style="width:76px;height:76px" role="img" aria-label="Marta"></div>
+        <div style="flex:1;min-width:0">
+          <h1 class="t-title1">Marta</h1>
+          <div class="t-sm muted" style="margin-top:2px">Traveller since 2021</div>
+        </div>
+        <div style="display:flex;gap:10px"><button class="icon-btn on-surface" aria-label="Share passport">[[i:share-2]]</button><button class="icon-btn on-surface" aria-label="Settings">[[i:settings]]</button></div>
+      </div>
+
+      <section class="passport" style="position:absolute;left:20px;right:20px;top:156px"><svg class="ic wm" aria-hidden="true"><use href="#i-globe"/></svg>
+        <div class="ph-top">
+          <div class="t-micro">[[i:logo]]Passport · 2026</div>
+
+        </div>
+        <div class="pgrid">
+          <div><div class="v">14<small>/195</small></div><div class="l t-micro">Countries</div></div>
+          <div><div class="v">22</div><div class="l t-micro">Trips</div></div>
+          <div><div class="v">61,480<small>km</small></div><div class="l t-micro">Distance</div></div>
+          <div><div class="v">4<small>/7</small></div><div class="l t-micro">Continents</div></div>
+        </div>
+        <div class="lapw">[[i:globe]]<span>1.5× around the Earth</span><div class="track"><i class="a"></i><i class="b"></i><i class="c"></i></div></div>
+        <div class="mrz" aria-hidden="true">P&lt;TRIPTRACKR&lt;&lt;MARTA&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</div>
+      </section>
+
+      <div class="sec-head" style="position:absolute;left:20px;right:20px;top:458px">
+        <div class="t-title3">Stamps<small>14 countries</small></div>
+        <span class="link">All [[i16:chevron-right]]</span>
+      </div>
+      <div class="stamps" style="position:absolute;left:20px;right:20px;top:496px">
+        <div class="stamp-tile"><div class="stamp" data-stamp="pt" data-bold style="--stamp-ink:var(--accent-text)"></div><span class="c">Portugal</span></div>
+        <div class="stamp-tile"><div class="stamp" data-stamp="jp" data-bold style="--stamp-ink:var(--text)"></div><span class="c">Japan</span></div>
+        <div class="stamp-tile"><div class="stamp" data-stamp="mx" data-bold style="--stamp-ink:var(--aqua-text)"></div><span class="c">Mexico</span></div>
+        <div class="stamp-tile more">+11</div>
+      </div>
+
+      <div class="group" style="position:absolute;left:20px;right:20px;top:612px">
+        <div class="lrow" style="min-height:68px">
+          <span class="ico">[[i:palette]]</span><div class="tx"><b>Appearance</b></div>
+          <div class="seg" data-theme-seg><button data-v="light" class="is-on" aria-label="Light">[[i:sun]]</button><button data-v="dark" aria-label="Dark">[[i:moon]]</button><button data-v="auto" aria-label="Match system">[[i:smartphone]]</button></div>
+        </div>
+        <div class="lrow">
+          <span class="ico">[[i:cloud-upload]]</span><div class="tx"><b>Sync</b><span>1 trip waiting · updated 2 min ago</span></div>[[i:chevron-right]]
+        </div>
+      </div>
+      <div class="fade-b" style="height:116px"></div>
+      {{TABS:profile}}
+    </div>
+    {{STATUS}}
+    {{HIND}}
+  </div>
+  <p class="cap"><b>07</b>Profile<span>The passport is the stats card: navy cover, tabular numerals, one comparison line (“1.5× around the Earth”), generated stamps below.</span></p>
+</section>

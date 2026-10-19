@@ -1,0 +1,36 @@
+<section class="slot" data-slot="home-empty">
+  <div class="phone" id="home-empty" data-frame="home-empty">
+    <div class="screen">
+      <div class="sky"></div>
+      <canvas class="globe" aria-label="Interactive globe, no trips yet"></canvas>
+      <div class="markers"></div>
+
+      <header class="home-head">
+        <div>
+          <div class="t-micro">0 of 195 countries</div>
+          <h1>Welcome, <span class="serif">Marta</span></h1>
+        </div>
+        <div class="avatar ph" data-ph="marta:300" style="width:48px;height:48px;margin-top:2px" role="img" aria-label="Your profile"></div>
+      </header>
+
+      <section class="invite" style="top:470px">
+        <div class="stamp-empty">
+          <svg viewBox="0 0 120 120" width="76" height="76" aria-hidden="true" style="color:var(--accent-text);background:var(--surface);border-radius:50%;padding:0">
+            <circle cx="60" cy="60" r="57" fill="var(--surface)"/>
+            <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/>
+            <circle cx="60" cy="60" r="40" fill="var(--accent-tint)" />
+            <g transform="translate(36 36) scale(2)" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><use href="#i-plane" width="24" height="24"/></g>
+          </svg>
+        </div>
+        <h2>Your passport is waiting</h2>
+        <p>Add your first trip and watch your world light up on the globe.</p>
+        <button class="btn btn-primary btn-lg btn-block">[[i:plus]]Add your first trip</button>
+        <button class="btn btn-ghost" style="margin-top:2px;height:48px">Import from photos</button>
+      </section>
+      {{TABS:globe}}
+    </div>
+    {{STATUS}}
+    {{HIND}}
+  </div>
+  <p class="cap"><b>03</b>Home · empty state<span>The globe is always mounted. One invitation card says what is missing, teaches what goes here and offers a single action.</span></p>
+</section>
