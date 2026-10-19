@@ -11,6 +11,8 @@
  * functions (worklets, so the UI thread can call them) so the numbers are asserted without a
  * native runtime; the hook only binds them to Reanimated styles.
  *
+ * - Under reduced motion (FR-027, FR-073) the picture does not move or stretch and the bar does
+ *   not fade: it switches on when the sheet reaches it, so every state is still shown.
  * - The picture moves down at half the speed of the content (`PARALLAX_FACTOR`) as it scrolls
  *   away, and, pulled past the top, stretches (scale about its centre) while its top edge
  *   stays on the top of the screen.
@@ -27,6 +29,8 @@ import Animated, {
   useDerivedValue,
   type SharedValue,
 } from 'react-native-reanimated';
+
+import { useAppearance } from '@/hooks/use-appearance';
 
 /** What an `Animated.View` takes as its style: plain styles and the hook's animated ones. */
 export type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style'];
@@ -48,8 +52,13 @@ export interface HeroTransform {
 }
 
 /** The picture's offset and stretch at a scroll offset: pure, no NaN for an unmeasured hero. */
-export function heroImageTransform(scrollY: number, heroHeight: number): HeroTransform {
+export function heroImageTransform(
+  scrollY: number,
+  heroHeight: number,
+  reducedMotion = false,
+): HeroTransform {
   'worklet';
+  if (reducedMotion) return { translateY: 0, scale: 1 };
   const stretch = scrollY < 0 && heroHeight > 0 ? -scrollY / heroHeight : 0;
   return { translateY: scrollY * PARALLAX_FACTOR, scale: 1 + stretch };
 }
@@ -65,8 +74,10 @@ export function collapseProgress(
   scrollY: number,
   heroHeight: number,
   topInset: number,
+  reducedMotion = false,
 ): number {
   'worklet';
+  if (reducedMotion) return scrollY >= collapseEnd(heroHeight, topInset) ? 1 : 0;
   const start = collapseEnd(heroHeight, topInset) - COLLAPSE_FADE_DISTANCE;
   const progress = (scrollY - start) / COLLAPSE_FADE_DISTANCE;
   return Math.min(1, Math.max(0, progress));
@@ -89,9 +100,9 @@ export interface HeroCollapse {
   /** 0 with the picture in view, 1 with the bar complete. */
   progress: SharedValue<number>;
   /** For the picture: the parallax and the overscroll stretch. */
-  imageStyle: ReturnType<typeof useAnimatedStyle>;
+  imageStyle: AnimatedViewStyle;
   /** For the bar: its fade in. */
-  barStyle: ReturnType<typeof useAnimatedStyle>;
+  barStyle: AnimatedViewStyle;
 }
 
 export function useHeroCollapse(
@@ -99,11 +110,16 @@ export function useHeroCollapse(
   heroHeight: SharedValue<number>,
   topInset: number,
 ): HeroCollapse {
+  const { prefersLessMotion } = useAppearance();
   const progress = useDerivedValue(() =>
-    collapseProgress(scrollY.value, heroHeight.value, topInset),
+    collapseProgress(scrollY.value, heroHeight.value, topInset, prefersLessMotion),
   );
   const imageStyle = useAnimatedStyle(() => {
-    const { translateY, scale } = heroImageTransform(scrollY.value, heroHeight.value);
+    const { translateY, scale } = heroImageTransform(
+      scrollY.value,
+      heroHeight.value,
+      prefersLessMotion,
+    );
     return { transform: [{ translateY }, { scale }] };
   });
   const barStyle = useAnimatedStyle(() => ({ opacity: progress.value }));

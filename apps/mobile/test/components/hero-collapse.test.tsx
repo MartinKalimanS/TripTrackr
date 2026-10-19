@@ -24,6 +24,10 @@ import {
 
 jest.mock('react-native-worklets', () => require('../mocks/worklets'));
 jest.mock('react-native-reanimated', () => require('../mocks/reanimated-full'));
+const mockAppearance = jest.fn();
+jest.mock('@/hooks/use-appearance', () => ({
+  useAppearance: () => mockAppearance() ?? { prefersLessMotion: false },
+}));
 
 describe('the numbers of the contract', () => {
   test('the hero is at least 236 dp, the bar 56 dp and the sheet overlaps the hero by 28 dp', () => {
@@ -95,6 +99,20 @@ describe('collapseProgress: when the picture has gone and the bar takes over', (
   });
 });
 
+describe('reduced motion (FR-027, FR-073): nothing moves and nothing fades', () => {
+  test('the picture neither shifts nor stretches', () => {
+    expect(heroImageTransform(100, 236, true)).toEqual({ translateY: 0, scale: 1 });
+    expect(heroImageTransform(-80, 236, true)).toEqual({ translateY: 0, scale: 1 });
+  });
+
+  test('the bar switches on at once when the sheet reaches it, with no fade before', () => {
+    const end = collapseEnd(236, 54);
+    expect(collapseProgress(end - 1, 236, 54, true)).toBe(0);
+    expect(collapseProgress(end - COLLAPSE_FADE_DISTANCE / 2, 236, 54, true)).toBe(0);
+    expect(collapseProgress(end, 236, 54, true)).toBe(1);
+  });
+});
+
 describe('pinnedTranslate: a strip that scrolls with the content, then stays under the bar', () => {
   test('follows the content while it is below the pin line', () => {
     expect(pinnedTranslate(500, 0, 110)).toBe(500);
@@ -112,6 +130,8 @@ describe('pinnedTranslate: a strip that scrolls with the content, then stays und
 });
 
 describe('useHeroCollapse(scrollY, heroHeight, topInset)', () => {
+  afterEach(() => mockAppearance.mockReset());
+
   const run = async (scroll: number) => {
     const { result } = await renderHook(() =>
       useHeroCollapse({ value: scroll } as never, { value: 236 } as never, 54),
@@ -139,5 +159,17 @@ describe('useHeroCollapse(scrollY, heroHeight, topInset)', () => {
     expect(imageStyle.transform).toEqual([{ translateY: 150 }, { scale: 1 }]);
     expect(barStyle.opacity).toBe(1);
     expect(progress.value).toBe(1);
+  });
+
+  test('under reduced motion the picture stays put and the bar steps in only when the hero has gone', async () => {
+    mockAppearance.mockReturnValue({ prefersLessMotion: true });
+    const early = (await run(90)) as unknown as {
+      imageStyle: { transform: Record<string, number>[] };
+      barStyle: { opacity: number };
+    };
+    expect(early.imageStyle.transform).toEqual([{ translateY: 0 }, { scale: 1 }]);
+    expect(early.barStyle.opacity).toBe(0);
+    const late = (await run(300)) as unknown as { barStyle: { opacity: number } };
+    expect(late.barStyle.opacity).toBe(1);
   });
 });
