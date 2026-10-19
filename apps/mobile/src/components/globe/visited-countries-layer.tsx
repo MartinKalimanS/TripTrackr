@@ -5,7 +5,7 @@
  * A `VectorSource` on Mapbox Countries v1 (`mapbox://mapbox.country-boundaries-v1`, source
  * layer `country_boundaries`, `iso_3166_1` the alpha-2 code) and, in the bottom slot, a
  * token `FillLayer` for the visited countries with a coral keyline over it, and an amber
- * DASHED keyline for the planned ones. The fill is a tint only (1.37:1 on light land): the
+ * DASHED keyline for the planned ones, each keyline on a wider solid casing (white by day). The fill is a tint only (1.37:1 on light land): the
  * keyline carries the meaning (the gate, C5-11). Every layer is filtered by the same
  * worldview clause as the codes (`country-filter.ts`), or a disputed area would draw twice
  * and its alpha stack. With nothing to tint nothing mounts, so no tile is loaded.
@@ -21,11 +21,16 @@ import {
 } from '@rnmapbox/maps';
 import type { ReactElement } from 'react';
 
-import { GlobeColors, GlobeLayers, type GlobeScheme } from '@/constants/theme';
+import {
+  GlobeColors,
+  GlobeLayers,
+  GlobeStyle,
+  type GlobeScheme,
+} from '@/constants/theme';
 
 import { countryFilter } from './country-filter';
 
-const { sourceLayer, keylineWidth, plannedKeylineWidth, plannedDash, url } =
+const { sourceLayer, keylineWidth, plannedKeylineWidth, plannedDash, casingExtra, url } =
   GlobeLayers.countries;
 
 const KEYLINE_BASE = {
@@ -36,6 +41,22 @@ const KEYLINE_BASE = {
 
 export function visitedFillStyle(scheme: GlobeScheme): FillLayerStyle {
   return { fillColor: GlobeColors[scheme].visitedFill, fillEmissiveStrength: 1 };
+}
+
+/**
+ * The solid stroke under a keyline, `casingExtra` wider than it: the prototype strokes every
+ * tinted country twice, a wider white (night: navy) edge and then the coloured line, which is
+ * what lifts a keyline off both the cream land and the sea next to it. Never dashed, so a
+ * planned keyline's gaps show the casing and not the land.
+ */
+export function keylineCasingStyle(scheme: GlobeScheme, keyline: number): LineLayerStyle {
+  const { visitedCasing, visitedCasingOpacity } = GlobeStyle[scheme];
+  return {
+    ...KEYLINE_BASE,
+    lineColor: visitedCasing,
+    lineOpacity: visitedCasingOpacity,
+    lineWidth: keyline + casingExtra,
+  };
 }
 
 export function visitedKeylineStyle(scheme: GlobeScheme): LineLayerStyle {
@@ -62,6 +83,48 @@ export type VisitedCountriesLayerProps = {
   planned: readonly string[];
 };
 
+type CountryFilter = NonNullable<ReturnType<typeof countryFilter>>;
+
+/** A line layer of the tileset, in the bottom slot, filtered to its countries. */
+function countryLine(id: string, filter: CountryFilter, style: LineLayerStyle) {
+  return (
+    <LineLayer
+      key={id}
+      id={id}
+      sourceLayerID={sourceLayer}
+      slot="bottom"
+      filter={filter}
+      style={style}
+    />
+  );
+}
+
+function visitedLayers(scheme: GlobeScheme, filter: CountryFilter): ReactElement[] {
+  return [
+    <FillLayer
+      key="globe-visited-fill"
+      id="globe-visited-fill"
+      sourceLayerID={sourceLayer}
+      slot="bottom"
+      filter={filter}
+      style={visitedFillStyle(scheme)}
+    />,
+    countryLine('globe-visited-casing', filter, keylineCasingStyle(scheme, keylineWidth)),
+    countryLine('globe-visited-keyline', filter, visitedKeylineStyle(scheme)),
+  ];
+}
+
+function plannedLayers(scheme: GlobeScheme, filter: CountryFilter): ReactElement[] {
+  return [
+    countryLine(
+      'globe-planned-casing',
+      filter,
+      keylineCasingStyle(scheme, plannedKeylineWidth),
+    ),
+    countryLine('globe-planned-keyline', filter, plannedKeylineStyle(scheme)),
+  ];
+}
+
 export function VisitedCountriesLayer({
   scheme,
   visited,
@@ -71,42 +134,12 @@ export function VisitedCountriesLayer({
   const plannedFilter = countryFilter(planned);
   if (!visitedFilter && !plannedFilter) return null;
 
-  const layers: ReactElement[] = [];
-  if (visitedFilter) {
-    layers.push(
-      <FillLayer
-        key="fill"
-        id="globe-visited-fill"
-        sourceLayerID={sourceLayer}
-        slot="bottom"
-        filter={visitedFilter}
-        style={visitedFillStyle(scheme)}
-      />,
-      <LineLayer
-        key="keyline"
-        id="globe-visited-keyline"
-        sourceLayerID={sourceLayer}
-        slot="bottom"
-        filter={visitedFilter}
-        style={visitedKeylineStyle(scheme)}
-      />,
-    );
-  }
-  if (plannedFilter) {
-    layers.push(
-      <LineLayer
-        key="planned"
-        id="globe-planned-keyline"
-        sourceLayerID={sourceLayer}
-        slot="bottom"
-        filter={plannedFilter}
-        style={plannedKeylineStyle(scheme)}
-      />,
-    );
-  }
   return (
     <VectorSource id="globe-countries" url={url}>
-      {layers}
+      {[
+        ...(visitedFilter ? visitedLayers(scheme, visitedFilter) : []),
+        ...(plannedFilter ? plannedLayers(scheme, plannedFilter) : []),
+      ]}
     </VectorSource>
   );
 }
