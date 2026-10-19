@@ -149,7 +149,10 @@ env:
 - assertVisible:
     id: 'trips-screen'
 - assertVisible: 'Italy, spring 2026'
-- assertVisible: '2 stops.*'
+# The stop count is in the card's accessible name ("<title>, <status>, 2 stops") and in the
+# hero's first line ("Italy - 2 stops"); the line "2 stops - EUR" of the Atlas card is the
+# country, month and length now (005 T542).
+- assertVisible: '.*2 stops.*'
 - assertVisible: 'Planning'
 - tapOn: 'Italy, spring 2026'
 - assertVisible:
