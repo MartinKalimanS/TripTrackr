@@ -23,9 +23,18 @@ jest.mock('@/features/sync/use-sync-chip-state', () => ({
   useSyncChipState: () => mockState.current,
 }));
 jest.mock('@/sync/engine', () => ({ syncNow: jest.fn() }));
+jest.mock('expo-router', () => ({
+  router: { push: jest.fn(), navigate: jest.fn(), replace: jest.fn() },
+}));
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock;
+};
+const { mockToast } = jest.requireMock('heroui-native') as {
+  mockToast: { show: jest.Mock };
+};
+const { router } = jest.requireMock('expo-router') as {
+  router: { push: jest.Mock; navigate: jest.Mock; replace: jest.Mock };
 };
 
 const INSETS = { top: 54, bottom: 34, left: 0, right: 0 };
@@ -33,6 +42,7 @@ const INSETS = { top: 54, bottom: 34, left: 0, right: 0 };
 beforeEach(() => {
   useAppearance.mockReturnValue(appearance());
   mockState.current = { kind: 'synced' };
+  mockToast.show.mockClear();
 });
 
 async function renderHeader(
@@ -139,5 +149,97 @@ describe('<HomeHeader> - recentre (FR-015)', () => {
       top: '100%',
     });
     expect(slot.parent).not.toBeNull();
+  });
+});
+
+describe('<HomeHeader> - as pictured: 54 dp inset, 20 dp margins, tools at the right', () => {
+  test('starts exactly at the status bar: the greeting adds its own 4 dp', async () => {
+    await renderHeader();
+    const style = StyleSheet.flatten(screen.getByTestId('home-header').props.style);
+    expect(style.paddingTop).toBe(INSETS.top);
+    expect(style.paddingHorizontal).toBe(20);
+  });
+
+  test('the search button is drawn at the right of the sync chip, 44 dp, over the sky', async () => {
+    mockState.current = { kind: 'waiting', count: 3 };
+    await renderHeader();
+    const search = screen.getByTestId('coming-soon-search');
+    expect(search.props.accessibilityRole).toBe('button');
+    expect(search.props.accessibilityLabel).toBe('Search');
+    expect(search.props.accessibilityHint).toBe('Not available yet');
+    expect(StyleSheet.flatten(search.props.style)).toMatchObject({
+      width: 44,
+      height: 44,
+    });
+    const tools = screen.getByTestId('home-tools');
+    expect(tools.children).toHaveLength(2);
+    expect(StyleSheet.flatten(tools.props.style)).toMatchObject({
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    });
+  });
+
+  test('the search button is there when nothing waits to sync, and the chip is not', async () => {
+    await renderHeader();
+    expect(screen.getByTestId('coming-soon-search')).toBeTruthy();
+    expect(screen.queryByTestId('sync-chip')).toBeNull();
+  });
+
+  test('the tree reads: date, greeting, sync chip, search, banner, recentre', async () => {
+    mockState.current = { kind: 'offline', count: 3 };
+    await renderHeader({ moved: true });
+    const order = [
+      'home-greeting-date',
+      'home-greeting',
+      'sync-chip',
+      'coming-soon-search',
+      'sync-banner',
+      'home-recentre',
+    ];
+    const tree = JSON.stringify(screen.toJSON());
+    const at = order.map((id) => tree.indexOf('"testID":"' + id + '"'));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+  });
+
+  test('pressing search shows ONE "Search is coming soon" toast and goes nowhere', async () => {
+    const onRecentre = jest.fn();
+    await renderHeader({ onRecentre });
+    await fireEvent.press(screen.getByTestId('coming-soon-search'));
+    expect(mockToast.show).toHaveBeenCalledTimes(1);
+    expect(mockToast.show.mock.calls[0][0].id).toBe('coming-soon');
+    Object.values(router).forEach((fn) => expect(fn).not.toHaveBeenCalled());
+    expect(onRecentre).not.toHaveBeenCalled();
+  });
+
+  test('at a text scale of 1.15 and up the tools stack in a column, right-aligned', async () => {
+    useAppearance.mockReturnValue(appearance({ fontScale: 1.15 }));
+    await renderHeader();
+    expect(
+      StyleSheet.flatten(screen.getByTestId('home-tools').props.style),
+    ).toMatchObject({ flexDirection: 'column', alignItems: 'flex-end', gap: 8 });
+    useAppearance.mockReturnValue(appearance({ fontScale: 1.14 }));
+    await screen.rerender(
+      <SafeAreaInsetsContext.Provider value={INSETS}>
+        <HomeHeader
+          name="Marta"
+          today="2026-10-14"
+          moved={false}
+          onRecentre={jest.fn()}
+          onMeasured={jest.fn()}
+        />
+      </SafeAreaInsetsContext.Provider>,
+    );
+    expect(
+      StyleSheet.flatten(screen.getByTestId('home-tools').props.style),
+    ).toMatchObject({ flexDirection: 'row' });
+  });
+
+  test('the recentre control sits 20 dp from the left, a little below the header edge', async () => {
+    await renderHeader({ moved: true });
+    expect(
+      StyleSheet.flatten(screen.getByTestId('home-recentre-slot').props.style),
+    ).toMatchObject({ left: 20, top: '100%', marginTop: 20 });
   });
 });
