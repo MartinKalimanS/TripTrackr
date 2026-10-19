@@ -5,7 +5,8 @@
  * It READS and writes nothing (Constitution I and II): the number of rows still waiting to
  * upload over the seven synchronised tables (`syncRepository.countUnsynced`, re-read whenever
  * the list or the sync runtime changes) and the sync runtime's own status (`useSyncStatus`):
- * a cycle running is `syncing`, a failure to reach the server is `offline`, any other failure is
+ * a cycle running with rows waiting is `syncing` (with none it is a pull, and nothing is
+ * said), a failure to reach the server is `offline`, any other failure is
  * `failed`, rows waiting with nothing running is `waiting`, and nothing at all is `synced`.
  * Real SQLite, and the real engine status store.
  */
@@ -92,6 +93,14 @@ describe('useTripsSync: the chip', () => {
 
     await act(async () => useSyncStatusStore.setState({ phase: 'pulling' }));
     expect(result.current.chip).toEqual({ kind: 'syncing', count: 2 });
+  });
+
+  test('says nothing while a cycle runs and no row waits: a pull alone is not news ("0" with a spinner)', async () => {
+    useSyncStatusStore.setState({ phase: 'pulling' });
+    const { result } = await renderSync();
+
+    expect(result.current.chip).toEqual({ kind: 'synced' });
+    expect(result.current.banner).toBeNull();
   });
 
   test('is offline when the last cycle could not reach the server', async () => {

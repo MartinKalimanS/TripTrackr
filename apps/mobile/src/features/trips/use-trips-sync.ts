@@ -14,11 +14,13 @@
  *   trip or a stop is written) or the runtime's phase or last success changes;
  * - the sync runtime's own status (`useSyncStatus`).
  *
- * A cycle that is running is `syncing` (it wins over the failure of the last one: a retry
- * shows it is under way); a failure to reach the server is `offline`, which is an ordinary state
- * and not an error (Constitution II); any other failure is `failed`; rows waiting with nothing
- * running is `waiting`; nothing is `synced` and the chip draws nothing. A session that has ended
- * (`unauthorized`) is not for this screen to announce: the sign-in screens speak for it.
+ * A cycle that is running with rows waiting is `syncing` (it wins over the failure of the last
+ * one: a retry shows it is under way); with nothing waiting it is a pull and the chip says
+ * nothing (it would flash "0" on every cycle). A failure to reach the server is `offline`,
+ * which is an ordinary state and not an error (Constitution II); any other failure is
+ * `failed`; rows waiting with nothing running is `waiting`; nothing is `synced` and the chip
+ * draws nothing. A session that has ended (`unauthorized`) is not for this screen to
+ * announce: the sign-in screens speak for it.
  *
  * Known limit of the seam, replaced by T529: the count is re-read when the list changes or a cycle
  * moves, not on every write to a table this screen does not read (a note edited inside a trip
@@ -52,7 +54,9 @@ const SYNCED: SyncChipState = { kind: 'synced' };
 
 function chipOf(status: SyncStatus, count: number): SyncChipState {
   if (status.failure === 'unauthorized') return SYNCED;
-  if (status.phase !== 'idle') return { kind: 'syncing', count };
+  // A cycle with nothing waiting is a pull: nothing of the traveller's is in flight, so there is
+  // nothing to count and the chip says nothing (it would otherwise flash "0" on every cycle).
+  if (status.phase !== 'idle') return count > 0 ? { kind: 'syncing', count } : SYNCED;
   if (status.failure === 'offline') return { kind: 'offline', count };
   if (status.failure !== null) return { kind: 'failed', count };
   return count > 0 ? { kind: 'waiting', count } : SYNCED;
