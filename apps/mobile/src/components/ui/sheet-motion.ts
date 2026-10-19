@@ -69,15 +69,17 @@ function useLatest<T>(value: T) {
   return ref;
 }
 
-export function useSheetMotion(input: SheetMotionInput): SheetMotion {
-  const { detents, detent } = input;
-  const { prefersLessMotion } = useAppearance();
+/**
+ * What the JS thread is told, each through a stable function a worklet can hand to
+ * `scheduleOnRN`: the traveller chose a detent (`announce`) and the sheet came to rest on one
+ * (`finish`: the `settled` state, the haptic, `onSettle`).
+ */
+function useReports(input: SheetMotionInput) {
   const haptics = useHaptics();
-  const visible = useSharedValue(detents[detent]);
-  const [settled, setSettled] = useState<SheetDetent>(detent);
-  const heading = useRef<SheetDetent>(detent);
+  // The detent the sheet is at or heading for: what a parent's change is compared with.
+  const headingRef = useRef<SheetDetent>(input.detent);
+  const [settled, setSettled] = useState<SheetDetent>(input.detent);
   const latest = useLatest({ ...input, haptics });
-  const spring = springOf('sheetSpring', prefersLessMotion);
 
   const finish = useCallback(
     (next: SheetDetent) => {
@@ -90,13 +92,27 @@ export function useSheetMotion(input: SheetMotionInput): SheetMotion {
 
   const announce = useCallback(
     (next: SheetDetent) => {
-      heading.current = next;
+      headingRef.current = next;
       latest.current.onDetentChange?.(next);
     },
     [latest],
   );
 
-  const driveTo = (next: SheetDetent, velocityUp: number) => {
+  return { settled, finish, announce, headingRef };
+}
+
+/**
+ * The worklet that moves the sheet: a spring to the detent, handed the finger's velocity, that
+ * reports the settle when it finishes (an interrupted one reports `finished: false` and says
+ * nothing); under reduced motion (`spring === null`) a jump that reports the settle at once.
+ */
+function springDriver(
+  detents: SheetHeights,
+  visible: SharedValue<number>,
+  spring: ReturnType<typeof springOf>,
+  finish: (next: SheetDetent) => void,
+) {
+  return (next: SheetDetent, velocityUp: number) => {
     'worklet';
     const to = detents[next];
     if (spring === null) {
@@ -112,17 +128,25 @@ export function useSheetMotion(input: SheetMotionInput): SheetMotion {
       }),
     );
   };
+}
 
-  const moveTo = (next: SheetDetent) => {
-    announce(next);
-    driveTo(next, 0);
-  };
+export function useSheetMotion(input: SheetMotionInput): SheetMotion {
+  const { detents, detent } = input;
+  const { prefersLessMotion } = useAppearance();
+  const visible = useSharedValue(detents[detent]);
+  const { settled, finish, announce, headingRef } = useReports(input);
+  const driveTo = springDriver(
+    detents,
+    visible,
+    springOf('sheetSpring', prefersLessMotion),
+    finish,
+  );
 
   // A parent that changes `detent` (a country was chosen) moves the sheet; one that is only
   // following a drag or a tap has already been announced, so nothing starts twice.
   useEffect(() => {
-    if (detent === heading.current) return;
-    heading.current = detent;
+    if (detent === headingRef.current) return;
+    headingRef.current = detent;
     driveTo(detent, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detent]);
@@ -133,9 +157,12 @@ export function useSheetMotion(input: SheetMotionInput): SheetMotion {
     settled,
     driveTo,
     announce,
-    moveTo,
-    step: (direction) => stepDetent(heading.current, direction),
-    current: () => heading.current,
+    moveTo: (next) => {
+      announce(next);
+      driveTo(next, 0);
+    },
+    step: (direction) => stepDetent(headingRef.current, direction),
+    current: () => headingRef.current,
   };
 }
 

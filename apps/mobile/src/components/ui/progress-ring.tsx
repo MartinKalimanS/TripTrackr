@@ -65,6 +65,13 @@ export function ProgressRing({
   const colors = useColors(COLOR_KEYS);
   const { radius, circumference, dash } = ringArc({ value, max, size, strokeWidth });
   const centre = size / 2;
+  const circle = {
+    cx: centre,
+    cy: centre,
+    r: radius,
+    fill: 'none',
+    strokeWidth,
+  } as const;
 
   return (
     <View
@@ -75,22 +82,14 @@ export function ProgressRing({
       <Svg width={size} height={size}>
         <Circle
           testID={testID === undefined ? undefined : `${testID}-track`}
-          cx={centre}
-          cy={centre}
-          r={radius}
-          fill="none"
+          {...circle}
           stroke={colors.sand}
-          strokeWidth={strokeWidth}
         />
         {dash === 0 ? null : (
           <Circle
             testID={testID === undefined ? undefined : `${testID}-arc`}
-            cx={centre}
-            cy={centre}
-            r={radius}
-            fill="none"
+            {...circle}
             stroke={colors.accentLine}
-            strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeDasharray={[circumference, circumference]}
             strokeDashoffset={circumference - dash}

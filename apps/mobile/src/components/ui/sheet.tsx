@@ -61,9 +61,10 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ScrollViewProps,
+  type ViewStyle,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue } from 'react-native-reanimated';
+import Animated, { useSharedValue, type SharedValue } from 'react-native-reanimated';
 
 import { Radii } from '@/theme';
 
@@ -205,51 +206,63 @@ function Handle({ detent, label, motion, focusColor }: HandleProps) {
   );
 }
 
-export function Sheet(props: SheetProps) {
-  const { detents, detent, handleLabel, header, renderBody, handleBack = true } = props;
-  const motion = useSheetMotion(props);
-  const state = usePanState();
-  const colors = useColors(COLORS);
-  const lift = useLiftStyle('lift2');
-  const animated = useSheetStyle(motion);
-  useSheetBack(handleBack, motion);
-
-  const ui = {
-    detents,
-    visible: motion.visible,
-    driveTo: motion.driveTo,
-    announce: motion.announce,
-  };
-  const scrollGesture = useMemo(
-    () => Gesture.Native().withTestId('home-sheet-scroll'),
-    [],
-  );
-  const scroll = useMemo<SheetScroll>(
+/**
+ * The list's side of the hand-off: its `Gesture.Native()` (one instance for the life of the
+ * sheet, which the body pan names as simultaneous) and the props that make it scroll only once
+ * the sheet has SETTLED at full, so `scrollEnabled` changes once per settle and never per frame.
+ */
+function useScrollWiring(
+  settled: SheetDetent,
+  scrollY: SharedValue<number>,
+): SheetScroll {
+  const gesture = useMemo(() => Gesture.Native().withTestId('home-sheet-scroll'), []);
+  return useMemo(
     () => ({
       scrollProps: {
-        scrollEnabled: motion.settled === 'full',
+        scrollEnabled: settled === 'full',
         onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) =>
-          state.scrollY.set(event.nativeEvent.contentOffset.y),
+          scrollY.set(event.nativeEvent.contentOffset.y),
         scrollEventThrottle: SCROLL_THROTTLE_MS,
         bounces: false,
         overScrollMode: 'never',
       },
-      gesture: scrollGesture,
+      gesture,
     }),
-    [motion.settled, scrollGesture, state.scrollY],
+    [settled, gesture, scrollY],
   );
+}
 
-  const surface = {
+/** The surface: paper, a hairline, 28 dp top corners and the second lift, `full` plus the skirt tall. */
+function paperStyle(
+  full: number,
+  colors: Record<'surface' | 'hairline', string>,
+  lift: ViewStyle | undefined,
+): ViewStyle {
+  return {
     backgroundColor: colors.surface,
     borderColor: colors.hairline,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopLeftRadius: Radii.sheet,
     borderTopRightRadius: Radii.sheet,
     borderCurve: 'continuous',
-    height: detents.full + SKIRT,
+    height: full + SKIRT,
     paddingBottom: SKIRT,
     ...lift,
-  } as const;
+  };
+}
+
+export function Sheet(props: SheetProps) {
+  const { detents, detent, handleLabel, header, renderBody, handleBack = true } = props;
+  const motion = useSheetMotion(props);
+  const state = usePanState();
+  const colors = useColors(COLORS);
+  const animated = useSheetStyle(motion);
+  const scroll = useScrollWiring(motion.settled, state.scrollY);
+  useSheetBack(handleBack, motion);
+
+  const { visible, driveTo, announce } = motion;
+  const ui = { detents, visible, driveTo, announce };
+  const surface = paperStyle(detents.full, colors, useLiftStyle('lift2'));
 
   return (
     <View testID="home-sheet-overlay" pointerEvents="box-none" style={styles.overlay}>
@@ -265,7 +278,7 @@ export function Sheet(props: SheetProps) {
         </GestureDetector>
         <SheetScrollContext.Provider value={scroll}>
           <GestureDetector
-            gesture={sheetPan('home-sheet-body-pan', ui, state, true, scrollGesture)}>
+            gesture={sheetPan('home-sheet-body-pan', ui, state, true, scroll.gesture)}>
             <View testID="home-sheet-body" collapsable={false} style={styles.body}>
               {renderBody({ detent, settled: motion.settled })}
             </View>

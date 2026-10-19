@@ -78,6 +78,54 @@ function Divider({ stacked }: { stacked: boolean }) {
   );
 }
 
+function CountriesTile({
+  countries,
+  onPress,
+}: {
+  countries: number;
+  onPress: () => void;
+}) {
+  const { languageTag } = deviceLocale();
+  const name = `${new Intl.NumberFormat(languageTag).format(countries)} of ${WORLD_COUNTRIES} countries`;
+  return (
+    <StatTile
+      testID="globe-stats-countries-tile"
+      value={<Counting value={countries} index={0} testID="globe-stat-countries" />}
+      of={WORLD_COUNTRIES}
+      label="Countries"
+      accessibilityLabel={name}
+      onPress={onPress}
+    />
+  );
+}
+
+function TripsTile({ trips, onPress }: { trips: number; onPress: () => void }) {
+  const { languageTag } = deviceLocale();
+  return (
+    <StatTile
+      testID="globe-stats-trips-tile"
+      value={<Counting value={trips} index={1} testID="globe-stat-trips" />}
+      label={trips === 1 ? 'Trip' : 'Trips'}
+      accessibilityLabel={countOf(trips, 'trip', 'trips', languageTag)}
+      onPress={onPress}
+    />
+  );
+}
+
+/** The kilometres: announced, and not a control. */
+function DistanceTile({ distanceKm }: { distanceKm: number }) {
+  const locale = deviceLocale();
+  const { value, unit } = distanceFigure(distanceKm, locale);
+  return (
+    <StatTile
+      testID="globe-stats-distance-tile"
+      value={<Counting value={value} index={2} testID="globe-stat-distance" />}
+      label={unit === 'mi' ? 'Miles' : 'Kilometres'}
+      accessibilityLabel={`${formatDistance(distanceKm, locale).spoken} travelled`}
+    />
+  );
+}
+
 export function StatsRow({
   countries,
   trips,
@@ -87,11 +135,6 @@ export function StatsRow({
 }: StatsRowProps) {
   const { fontScale } = useAppearance();
   const stacked = isLargeText(fontScale);
-  const locale = deviceLocale();
-  const distance = distanceFigure(distanceKm, locale);
-  const grouped = new Intl.NumberFormat(locale.languageTag);
-  const tripWords = countOf(trips, 'trip', 'trips', locale.languageTag);
-  const tripNoun = trips === 1 ? 'Trip' : 'Trips';
   const cells = stacked ? ['', '', ''] : ['flex-1 pr-3', 'flex-1 px-3', 'flex-1 pl-3'];
 
   return (
@@ -100,35 +143,15 @@ export function StatsRow({
       className={stacked ? 'gap-1' : 'items-stretch'}
       style={{ flexDirection: stacked ? 'column' : 'row' }}>
       <View className={cells[0]}>
-        <StatTile
-          testID="globe-stats-countries-tile"
-          value={<Counting value={countries} index={0} testID="globe-stat-countries" />}
-          of={WORLD_COUNTRIES}
-          label="Countries"
-          accessibilityLabel={`${grouped.format(countries)} of ${WORLD_COUNTRIES} countries`}
-          onPress={onOpenCountries}
-        />
+        <CountriesTile countries={countries} onPress={onOpenCountries} />
       </View>
       <Divider stacked={stacked} />
       <View className={cells[1]}>
-        <StatTile
-          testID="globe-stats-trips-tile"
-          value={<Counting value={trips} index={1} testID="globe-stat-trips" />}
-          label={tripNoun}
-          accessibilityLabel={tripWords}
-          onPress={onOpenTrips}
-        />
+        <TripsTile trips={trips} onPress={onOpenTrips} />
       </View>
       <Divider stacked={stacked} />
       <View className={cells[2]}>
-        <StatTile
-          testID="globe-stats-distance-tile"
-          value={
-            <Counting value={distance.value} index={2} testID="globe-stat-distance" />
-          }
-          label={distance.unit === 'mi' ? 'Miles' : 'Kilometres'}
-          accessibilityLabel={`${formatDistance(distanceKm, locale).spoken} travelled`}
-        />
+        <DistanceTile distanceKm={distanceKm} />
       </View>
     </View>
   );

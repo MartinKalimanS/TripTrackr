@@ -31,17 +31,13 @@ import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
-import { Card } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { IconButton } from '@/components/ui/icon-button';
-import { ProgressRing } from '@/components/ui/progress-ring';
 import { isLargeText } from '@/components/ui/reflow';
 import { SheetScrollable, useSheetScroll } from '@/components/ui/sheet';
-import { Stamp } from '@/components/ui/stamp';
-import { stampSpec } from '@/components/ui/stamp-spec';
 import { EmptyState } from '@/components/ui/state-view';
 import { Text } from '@/components/ui/text';
-import { countOf, countParts } from '@/features/home/home-format';
+import { countOf } from '@/features/home/home-format';
 import {
   filterCountries,
   groupByContinent,
@@ -54,6 +50,7 @@ import type { CountryOverview } from '@/features/passport/use-country-overview';
 import { useAppearance } from '@/hooks/use-appearance';
 import { deviceLocale } from '@/lib/locale';
 
+import { CountriesSummaryCard } from './countries-summary-card';
 import { CountryRow } from './country-row';
 
 export interface CountriesListProps {
@@ -129,64 +126,104 @@ function ContinentHeader({
   );
 }
 
-/** The ring card: the share of the world, and the stamps of the two newest visits. */
-function SummaryCard({
-  overview,
-  stamps,
-  stacked,
+/** The heading with its collapse control, and the search field once there is something to search. */
+function CountriesHeader({
+  searchable,
+  query,
+  onQueryChange,
+  onCollapse,
 }: {
-  overview: CountryOverview;
-  stamps: readonly CountrySummary[];
-  stacked: boolean;
+  searchable: boolean;
+  query: string;
+  onQueryChange: (query: string) => void;
+  onCollapse: () => void;
 }) {
-  const { languageTag } = deviceLocale();
-  const { countries, countriesOf, continents, continentsOf, trips } = overview.totals;
-  const figure = countParts(countries, 'country', 'countries', languageTag).figure;
-  const tripWords = countOf(trips, 'trip', 'trips', languageTag);
-  const headline = `${figure} of ${countriesOf}`;
-  const detail = `${continents} of ${continentsOf} continents \u00b7 ${tripWords}`;
-
   return (
-    <View
-      accessible
-      accessibilityLabel={`${headline} countries, ${continents} of ${continentsOf} continents, ${tripWords}`}
-      className="px-5 pb-2 pt-3">
-      <Card variant="tile">
-        <View className="flex-row items-center gap-4">
-          <ProgressRing
-            value={countries}
-            max={countriesOf}
-            size={72}
-            testID="countries-ring">
-            <Text variant="headline">{figure}</Text>
-          </ProgressRing>
-          <View className="min-w-0 flex-1 gap-1">
-            <Text variant="title">{headline}</Text>
-            <Text variant="label" tone="muted">
-              {detail}
-            </Text>
-          </View>
-          {stacked || stamps.length === 0 ? null : (
-            <View
-              testID="countries-stamps"
-              className="flex-row"
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants">
-              {stamps.map((country, index) => (
-                <View key={country.iso2} className={index === 0 ? '' : '-ml-7 mt-3'}>
-                  <Stamp
-                    spec={stampSpec(country.iso2, country.firstVisit, country.name)}
-                    size={64}
-                    testID={`countries-stamp-${country.iso2}`}
-                  />
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      </Card>
+    <View className="gap-3 px-5 pb-1">
+      <View className="flex-row items-center justify-between gap-3">
+        <Text variant="title">Countries</Text>
+        <IconButton
+          icon="chevron-down"
+          variant="tonal"
+          accessibilityLabel="Collapse the countries list"
+          onPress={onCollapse}
+          testID="countries-collapse"
+        />
+      </View>
+      {searchable ? (
+        <Field
+          label="Search countries"
+          value={query}
+          onChangeText={onQueryChange}
+          testID="countries-search"
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+        />
+      ) : null}
     </View>
   );
+}
+
+/** What the list says when it has no rows: no countries yet, or a search that found none. */
+function NoCountries({
+  query,
+  onClear,
+}: {
+  query: string;
+  onClear: (() => void) | null;
+}) {
+  return (
+    <View className="px-5 pt-2">
+      {onClear === null ? (
+        <EmptyState
+          variant="ghost-stamp"
+          title="No countries yet"
+          detail="Add a stop to a trip and its country appears here."
+        />
+      ) : (
+        <EmptyState
+          variant="filtered"
+          title={`No countries match \u201c${query.trim()}\u201d`}
+          detail="Try another name."
+          action={{ label: 'Clear search', onPress: onClear }}
+        />
+      )}
+    </View>
+  );
+}
+
+/** The flat list: a header and its countries, per continent, filtered by the search. */
+function useCountryItems(overview: CountryOverview, query: string) {
+  const { summaries, groups } = overview;
+  return useMemo(() => {
+    const shown = filterCountries(summaries, query);
+    const items = listItems(shown === summaries ? groups : groupByContinent(shown));
+    const sticky = items.flatMap((item, index) =>
+      item.type === 'header' ? [index] : [],
+    );
+    return { items, sticky };
+  }, [summaries, groups, query]);
+}
+
+/** How each item is drawn: a header (or its pinned copy), or a country's row. */
+function itemRenderer(
+  onSelect: (country: CountrySummary) => void,
+): ListRenderItem<ListItem> {
+  const renderItem: ListRenderItem<ListItem> = ({ item, target }) =>
+    item.type === 'header' ? (
+      <ContinentHeader
+        continent={item.continent}
+        count={item.count}
+        pinned={target === 'StickyHeader'}
+      />
+    ) : (
+      <View className="px-5">
+        <CountryRow country={item.country} onSelect={onSelect} />
+      </View>
+    );
+  return renderItem;
 }
 
 export function CountriesList({
@@ -198,89 +235,39 @@ export function CountriesList({
   const { fontScale } = useAppearance();
   const sheet = useSheetScroll();
   const [query, setQuery] = useState('');
-  const { summaries } = overview;
-
+  const { summaries, totals } = overview;
+  const { items, sticky } = useCountryItems(overview, query);
   const stamps = useMemo(() => recentVisits(summaries, 2), [summaries]);
-  const items = useMemo(() => {
-    const shown = filterCountries(summaries, query);
-    return listItems(shown === summaries ? overview.groups : groupByContinent(shown));
-  }, [summaries, overview.groups, query]);
-  const sticky = useMemo(
-    () => items.flatMap((item, index) => (item.type === 'header' ? [index] : [])),
-    [items],
-  );
-
-  const renderItem: ListRenderItem<ListItem> = ({ item, target }) =>
-    item.type === 'header' ? (
-      <ContinentHeader
-        continent={item.continent}
-        count={item.count}
-        pinned={target === 'StickyHeader'}
-      />
-    ) : (
-      <View className="px-5">
-        <CountryRow country={item.country} onSelect={onSelectCountry} />
-      </View>
-    );
-
-  const none =
-    summaries.length === 0 ? (
-      <EmptyState
-        variant="ghost-stamp"
-        title="No countries yet"
-        detail="Add a stop to a trip and its country appears here."
-      />
-    ) : (
-      <EmptyState
-        variant="filtered"
-        title={`No countries match \u201c${query.trim()}\u201d`}
-        detail="Try another name."
-        action={{ label: 'Clear search', onPress: () => setQuery('') }}
-      />
-    );
 
   return (
     <View testID="countries-list" className="flex-1">
-      <View className="gap-3 px-5 pb-1">
-        <View className="flex-row items-center justify-between gap-3">
-          <Text variant="title">Countries</Text>
-          <IconButton
-            icon="chevron-down"
-            variant="tonal"
-            accessibilityLabel="Collapse the countries list"
-            onPress={onCollapse}
-            testID="countries-collapse"
-          />
-        </View>
-        {summaries.length === 0 ? null : (
-          <Field
-            label="Search countries"
-            value={query}
-            onChangeText={setQuery}
-            testID="countries-search"
-            autoCorrect={false}
-            autoCapitalize="none"
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
-        )}
-      </View>
+      <CountriesHeader
+        searchable={summaries.length > 0}
+        query={query}
+        onQueryChange={setQuery}
+        onCollapse={onCollapse}
+      />
       <SheetScrollable>
         <FlashList
           {...sheet?.scrollProps}
           data={items}
-          renderItem={renderItem}
+          renderItem={itemRenderer(onSelectCountry)}
           keyExtractor={(item) => item.key}
           getItemType={(item) => item.type}
           stickyHeaderIndices={sticky}
           ListHeaderComponent={
-            <SummaryCard
-              overview={overview}
+            <CountriesSummaryCard
+              totals={totals}
               stamps={stamps}
               stacked={isLargeText(fontScale)}
             />
           }
-          ListEmptyComponent={<View className="px-5 pt-2">{none}</View>}
+          ListEmptyComponent={
+            <NoCountries
+              query={query}
+              onClear={summaries.length === 0 ? null : () => setQuery('')}
+            />
+          }
           contentContainerStyle={{ paddingBottom: contentInsetBottom }}
           keyboardShouldPersistTaps="handled"
         />
