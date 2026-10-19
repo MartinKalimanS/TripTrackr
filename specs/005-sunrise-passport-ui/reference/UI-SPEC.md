@@ -11,8 +11,8 @@ How to read it:
 - **Tokens** are written with the prototype's names (`paper`, `cream`, `ink`, `coral`...). Section 2.1 maps them
   to the app's names (`surface`, `surfaceSecondary`, `foreground`...). Never write a colour literal in a screen.
 - **Pictures** are named by file: `core/home.png` is `screens/core/home.png`.
-- **Not built** marks something a picture shows that this project does not build (section 10). Do not draw it and do
-  not leave a control that does nothing.
+- **Not built** marks a capability a picture shows that this project does not build (section 10). Its **control is still
+  drawn as pictured** and answers with a "coming soon" toast (owner answer Q-11, `spec.md` FR-080); never invent data.
 
 ---
 
@@ -441,10 +441,21 @@ errors say the data is safe and offer a verb. Permission-denied screens explain 
 
 ---
 
-## 10. In the pictures but not built
+## 10. In the pictures without a capability behind them ("coming soon" controls)
 
-Each of these is drawn in the pictures and must **not** be built or faked with a control that does nothing
-(`spec.md` FR-080). Doing one is a separate feature with the capability it names.
+**Owner decision Q-11 (2026-10-19): the UI is as in the pictures.** Everything below is drawn exactly as pictured, but
+the capability does not exist, so each control is a **coming-soon control**:
+
+- a real button: role button, accessible name from the picture ("Search", "Share", "More"), hint "Not available yet",
+  44 dp target, `testID` `coming-soon-<name>`;
+- its only effect is one toast, "<Thing> is coming soon" (the `Toast` adapter); no navigation, no write, no network,
+  no screen opens (so `search*.png`, `recap*.png`, `settings*.png`, `permission-primer*.png`, `trip-menu*.png`
+  and `delete-confirm*.png` are never shown, but their entry points are drawn);
+- **no invented data**: where a picture shows a number or a choice the app has no data for (the per-day budget amount,
+  drive times, transport chips as a saved choice, document kinds the data cannot store), draw the container and make it
+  the coming-soon control, or omit the figure; never show a made-up amount, distance or "saved" state;
+- the Welcome picture's three buttons keep the app's two sign-in steps working: the Apple, Google and email buttons
+  start the same flows that exist today (decided in that feature, with its Maestro flows).
 
 | In the pictures                                                                          | Why not                                                 | What it needs                                        |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------- |
