@@ -71,7 +71,7 @@ interface TabButtonProps {
 function TabButton({ route, options, focused, navigation }: TabButtonProps) {
   const label = tabLabel(options, route.name);
   const icon = TAB_ICONS[route.name];
-  const { onPress, onLongPress } = tabPressHandlers(route, navigation);
+  const { onPress, onLongPress } = tabPressHandlers(route, navigation, focused);
 
   return (
     <Tappable

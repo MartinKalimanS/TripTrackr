@@ -35,12 +35,17 @@ export interface TabPressHandlers {
 }
 
 /**
- * Mirrors React Navigation's default bar: `tabPress` first, so a listener may veto it (a
- * screen with unsaved edits, for instance), then navigate; `tabLongPress` on a long press.
+ * Mirrors React Navigation's default bar (`BottomTabBar`): `tabPress` first, so a listener may
+ * veto it (a screen with unsaved edits, for instance), then navigate unless the tab is the
+ * focused one; `tabLongPress` on a long press. The focused tab still emits `tabPress`, which a
+ * stack nested in the tab answers by popping to its root, and dispatches nothing: a
+ * `navigate` to the tab that is already there would race that pop and could re-push a deep
+ * link carried in the route's params.
  */
 export function tabPressHandlers(
   route: TabRoute,
   navigation: TabNavigation,
+  focused: boolean,
 ): TabPressHandlers {
   return {
     onPress: () => {
@@ -49,7 +54,9 @@ export function tabPressHandlers(
         target: route.key,
         canPreventDefault: true,
       });
-      if (!event.defaultPrevented) navigation.navigate(route.name, route.params);
+      if (!focused && !event.defaultPrevented) {
+        navigation.navigate(route.name, route.params);
+      }
     },
     onLongPress: () => {
       navigation.emit({ type: 'tabLongPress', target: route.key });

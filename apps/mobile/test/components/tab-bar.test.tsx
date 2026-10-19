@@ -574,6 +574,24 @@ describe('<TabBar> press and focus - C4-9, FR-071', () => {
     expect(props.navigation.navigate).not.toHaveBeenCalled();
   });
 
+  test('a press on the focused tab still emits tabPress but dispatches nothing', async () => {
+    // As the default bar: a stack nested in the tab pops to its root on that event, and a
+    // `navigate` to the tab that is already there would race it (and re-push a deep link).
+    const props = makeProps(1);
+    await render(<TabBar {...props} />);
+
+    await fireEvent.press(screen.getByLabelText('Trips'));
+
+    expect(props.navigation.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tabPress',
+        target: 'trips-1',
+        canPreventDefault: true,
+      }),
+    );
+    expect(props.navigation.navigate).not.toHaveBeenCalled();
+  });
+
   test('emits tabLongPress on a long press, as the default bar does', async () => {
     const props = makeProps();
     await render(<TabBar {...props} />);

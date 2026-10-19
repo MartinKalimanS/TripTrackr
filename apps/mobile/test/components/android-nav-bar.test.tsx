@@ -174,6 +174,21 @@ describe('<AndroidNavBar> identity - FR-023', () => {
     await fireEvent.press(screen.getByLabelText('Trips'));
     expect(props.navigation.navigate).not.toHaveBeenCalled();
   });
+
+  test('a press on the focused tab emits tabPress but dispatches nothing', async () => {
+    const props = makeProps(1);
+    await render(<AndroidNavBar {...props} />);
+
+    await fireEvent.press(screen.getByLabelText('Trips'));
+    expect(props.navigation.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tabPress',
+        target: 'trips-1',
+        canPreventDefault: true,
+      }),
+    );
+    expect(props.navigation.navigate).not.toHaveBeenCalled();
+  });
 });
 
 describe('<AndroidNavBar> geometry - FR-022, D5-21', () => {
