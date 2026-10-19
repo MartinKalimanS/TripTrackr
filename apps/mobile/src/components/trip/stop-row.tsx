@@ -23,11 +23,13 @@
  * same four actions are also `accessibilityActions` of the row, and the optional `handle` is the
  * drag affordance the list supplies (research D-22): additive, never the only way.
  *
- * What did not change for assistive technology (FR-075): the row is ONE element named
- * `Stop N: place, country. dates` with the same four actions, and the four controls keep their
- * ids and names. The name gains, at its end, what the node and the journey draw: "Now." for the
- * stop the traveller is at and "23 kilometres from Lisbon." for the journey that led here. The
- * journey beneath the row, the node and the picture are decoration and are not read twice.
+ * What did not change for assistive technology (FR-075, FR-081): the row is ONE element named
+ * exactly `Stop N: place, country. dates` (the name the 004 row and the parity guard have) with
+ * the same four actions, and the four controls keep their ids and names. What the node and the
+ * journey draw is said as the row's VALUE, read after the name: "Now." for the stop the
+ * traveller is at and "23 kilometres from Lisbon." for the journey that led here; a stop with
+ * neither has no value. The journey beneath the row, the node and the picture are decoration
+ * and are not read twice.
  */
 import type { ReactNode } from 'react';
 import { View, type AccessibilityActionEvent } from 'react-native';
@@ -200,16 +202,19 @@ function rowActionHandler({
 }
 
 /**
- * What the node and the journey draw, said at the end of the row's name: ". Now." for the stop
- * the traveller is at and ". 23 kilometres from Lisbon." for the journey that led here. Empty
- * for a stop with neither, whose name is then exactly the 004 row's.
+ * What the node and the journey draw, said as the row's value after its name: "Now." for the
+ * stop the traveller is at and "23 kilometres from Lisbon." for the journey that led here.
+ * `undefined` for a stop with neither, so its output is exactly the 004 row's.
  */
-function spokenExtras({ state, from }: Pick<StopRowProps, 'state' | 'from'>): string {
+function spokenValue({
+  state,
+  from,
+}: Pick<StopRowProps, 'state' | 'from'>): { text: string } | undefined {
   const sentences = [
     state === 'now' ? 'Now.' : null,
     from ? `${formatDistance(from.km).spoken} from ${from.place}.` : null,
   ].filter((sentence) => sentence !== null);
-  return sentences.length > 0 ? `. ${sentences.join(' ')}` : '';
+  return sentences.length > 0 ? { text: sentences.join(' ') } : undefined;
 }
 
 /** The place, with the "Now" chip beside it and the list's drag handle at the end of the line. */
@@ -272,17 +277,45 @@ function StopText(props: StopRowProps & { place: string; dates: string }) {
   );
 }
 
+/** The stop's card: its text and picture, the pending marker and the four controls. */
+function StopCard(props: StopRowProps & { place: string; dates: string }) {
+  const { stop, place, dates, isFirst, isLast, highlighted } = props;
+  return (
+    <Card
+      variant={highlighted ? 'tile' : 'flat'}
+      pending={stop.is_dirty}
+      testID={`stop-card-${stop.id}`}
+      className="p-3">
+      <View className="gap-2">
+        <View className="flex-row items-center gap-3">
+          <StopText {...props} place={place} dates={dates} />
+          <StopThumb
+            stopId={stop.id}
+            cityId={stop.city_id}
+            iso2={stop.country_iso}
+            place={place}
+            uri={props.thumb}
+          />
+        </View>
+        {stop.is_dirty ? <SyncBadge state="pending" /> : null}
+        <StopActions
+          id={stop.id}
+          place={place}
+          isFirst={isFirst}
+          isLast={isLast}
+          onMoveUp={props.onMoveUp}
+          onMoveDown={props.onMoveDown}
+          onEdit={props.onEdit}
+          onRemove={props.onRemove}
+        />
+      </View>
+    </Card>
+  );
+}
+
 export function StopRow(props: StopRowProps) {
-  const {
-    stop,
-    position,
-    isFirst,
-    isLast,
-    state,
-    transit,
-    from,
-    dragging = false,
-  } = props;
+  const { stop, position, isFirst, isLast, state, transit, from } = props;
+  const dragging = props.dragging ?? false;
   const place = describePlace(stop);
   const dates = `${formatIsoDate(stop.arrive_date)} → ${formatIsoDate(stop.depart_date)}`;
   const country = stop.country_name ? `, ${stop.country_name}` : '';
@@ -292,7 +325,8 @@ export function StopRow(props: StopRowProps) {
       <View
         testID={`stop-row-${stop.id}`}
         accessible
-        accessibilityLabel={`Stop ${position}: ${place}${country}. ${dates}${spokenExtras(props)}`}
+        accessibilityLabel={`Stop ${position}: ${place}${country}. ${dates}`}
+        accessibilityValue={spokenValue(props)}
         accessibilityActions={ROW_ACTIONS}
         onAccessibilityAction={rowActionHandler(props)}
         className="flex-row gap-3">
@@ -305,35 +339,7 @@ export function StopRow(props: StopRowProps) {
           <StopNode id={stop.id} state={state} position={position} dragging={dragging} />
         </StopRail>
         <View className="min-w-0 flex-1 pb-3 pt-2">
-          <Card
-            variant={props.highlighted ? 'tile' : 'flat'}
-            pending={stop.is_dirty}
-            testID={`stop-card-${stop.id}`}
-            className="p-3">
-            <View className="gap-2">
-              <View className="flex-row items-center gap-3">
-                <StopText {...props} place={place} dates={dates} />
-                <StopThumb
-                  stopId={stop.id}
-                  cityId={stop.city_id}
-                  iso2={stop.country_iso}
-                  place={place}
-                  uri={props.thumb}
-                />
-              </View>
-              {stop.is_dirty ? <SyncBadge state="pending" /> : null}
-              <StopActions
-                id={stop.id}
-                place={place}
-                isFirst={isFirst}
-                isLast={isLast}
-                onMoveUp={props.onMoveUp}
-                onMoveDown={props.onMoveDown}
-                onEdit={props.onEdit}
-                onRemove={props.onRemove}
-              />
-            </View>
-          </Card>
+          <StopCard {...props} place={place} dates={dates} />
         </View>
       </View>
       {dragging || !transit ? null : <TransitRow stopId={stop.id} km={transit.km} />}

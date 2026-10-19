@@ -354,14 +354,12 @@ describe('<StopList> the timeline (T545; FR-041)', () => {
 
   test('says each journey in the name of the stop it leads to, and the first stop has none', async () => {
     await renderList([lisbon, sintra, porto]);
-    expect(screen.getByTestId('stop-row-s1').props.accessibilityLabel).not.toMatch(
-      /from/,
+    expect(screen.getByTestId('stop-row-s1').props.accessibilityValue).toBeUndefined();
+    expect(screen.getByTestId('stop-row-s2').props.accessibilityValue.text).toMatch(
+      /^2\d kilometres from Lisbon\.$/,
     );
-    expect(screen.getByTestId('stop-row-s2').props.accessibilityLabel).toMatch(
-      /\. 2\d kilometres from Lisbon\.$/,
-    );
-    expect(screen.getByTestId('stop-row-s3').props.accessibilityLabel).toMatch(
-      /\. 27\d kilometres from Sintra\.$/,
+    expect(screen.getByTestId('stop-row-s3').props.accessibilityValue.text).toMatch(
+      /^27\d kilometres from Sintra\.$/,
     );
   });
 
@@ -379,9 +377,7 @@ describe('<StopList> the timeline (T545; FR-041)', () => {
     await renderList([lisbon, unplaced, porto]);
     expect(screen.queryByTestId('stop-transit-s1', hidden)).toBeNull();
     expect(screen.queryByTestId('stop-transit-s2', hidden)).toBeNull();
-    expect(screen.getByTestId('stop-row-s3').props.accessibilityLabel).not.toMatch(
-      /from/,
-    );
+    expect(screen.getByTestId('stop-row-s3').props.accessibilityValue).toBeUndefined();
   });
 
   test('marks the stop the traveller is at, ticks the ones behind it and rings the one ahead', async () => {
@@ -392,8 +388,8 @@ describe('<StopList> the timeline (T545; FR-041)', () => {
     expect(screen.getByTestId('stop-number-s2')).toHaveTextContent('2');
     expect(screen.queryByTestId('stop-now-s3')).toBeNull();
     expect(screen.getByTestId('stop-number-s3')).toHaveTextContent('3');
-    expect(screen.getByTestId('stop-row-s2').props.accessibilityLabel).toMatch(
-      /\. Now\./,
+    expect(screen.getByTestId('stop-row-s2').props.accessibilityValue.text).toMatch(
+      /^Now\./,
     );
   });
 

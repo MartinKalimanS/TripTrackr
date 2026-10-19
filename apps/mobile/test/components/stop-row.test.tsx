@@ -264,31 +264,31 @@ describe('<StopRow> the spine', () => {
 });
 
 describe('<StopRow> says what it draws (FR-075, FR-076)', () => {
-  test('the stop the traveller is at says "Now" in its name as well as in the chip', async () => {
+  const valueOf = () => screen.getByTestId('stop-row-s2').props.accessibilityValue;
+
+  test('the stop the traveller is at says "Now" as the value after its name, as well as in the chip', async () => {
     await render(row({ state: 'now' }));
     expect(screen.getByTestId('stop-now-s2')).toBeTruthy();
-    expect(screen.getByTestId('stop-row-s2').props.accessibilityLabel).toMatch(
-      /^Stop 2: Sintra, Portugal\. .* Now\./,
-    );
+    expect(valueOf()).toEqual({ text: 'Now.' });
   });
 
-  test('other stops have no "Now" chip and say nothing of it', async () => {
+  test('other stops have no "Now" chip and no value: the name is the 004 row\'s alone', async () => {
     await render(row({ state: 'next' }));
     expect(screen.queryByTestId('stop-now-s2')).toBeNull();
+    expect(valueOf()).toBeUndefined();
     expect(screen.getByTestId('stop-row-s2').props.accessibilityLabel).not.toMatch(/Now/);
   });
 
-  test('the distance from the stop before is said at the end of the name, in words', async () => {
+  test('the distance from the stop before is said as the value, in words', async () => {
     await render(row({ from: { place: 'Lisbon', km: 23.4 } }));
-    expect(screen.getByTestId('stop-row-s2').props.accessibilityLabel).toMatch(
-      /\. 23 kilometres from Lisbon\.$/,
-    );
+    expect(valueOf()).toEqual({ text: '23 kilometres from Lisbon.' });
   });
 
-  test("keeps the start of the name the 004 row had, so a flow's match still resolves", async () => {
+  test("says both, Now first, and never in the name: the name stays exactly the 004 row's (FR-081)", async () => {
     await render(row({ state: 'now', from: { place: 'Lisbon', km: 23 } }));
+    expect(valueOf()).toEqual({ text: 'Now. 23 kilometres from Lisbon.' });
     expect(screen.getByTestId('stop-row-s2').props.accessibilityLabel).toMatch(
-      /^Stop 2: Sintra, Portugal\..*/,
+      /^Stop 2: Sintra, Portugal\. 14 \S+ 2026 → 15 \S+ 2026$/,
     );
   });
 

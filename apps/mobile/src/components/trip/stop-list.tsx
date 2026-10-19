@@ -52,7 +52,13 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { MinTouchTarget } from '@/constants/theme';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import { todayIso } from '@/features/trips/stop-dates';
-import { hasTransit, stopLegs, stopStates } from '@/features/trips/stop-timeline';
+import {
+  hasTransit,
+  stopLegs,
+  stopStates,
+  type StopLeg,
+  type StopNodeState,
+} from '@/features/trips/stop-timeline';
 import { Motion, cornerStyle } from '@/theme';
 
 export type StopListProps = {
@@ -142,73 +148,110 @@ function useRowOffsets(
   );
 }
 
-export function StopList({
-  stops,
-  onMove,
-  onReorder,
-  onEdit,
-  onRemove,
-  today,
-  thumbs,
-  highlighted,
-  onOffsets,
-}: StopListProps) {
-  const last = stops.length - 1;
-  const [dragging, setDragging] = useState(false);
+/** What every row of the list needs besides its own stop. */
+interface ItemContext extends Pick<
+  StopListProps,
+  'thumbs' | 'highlighted' | 'onMove' | 'onEdit' | 'onRemove'
+> {
+  stops: readonly StopWithPlace[];
+  states: Record<string, StopNodeState>;
+  legs: readonly StopLeg[];
+  dragging: boolean;
+  measured: (id: string, height: number) => void;
+}
+
+/** One row of the list: its state, the journey beneath it and the one that led to it. */
+function StopItem({
+  item,
+  index,
+  context,
+}: {
+  item: StopWithPlace;
+  index: number;
+  context: ItemContext;
+}) {
+  const { stops, states, legs, dragging, thumbs, highlighted, measured } = context;
+  const { onMove, onEdit, onRemove } = context;
+  const next = legs[index];
+  const before = legs[index - 1];
+  const previous = stops[index - 1];
+  return (
+    <View
+      testID={`stop-item-${item.id}`}
+      onLayout={(event) => measured(item.id, event.nativeEvent.layout.height)}>
+      <StopRow
+        stop={item}
+        position={index + 1}
+        isFirst={index === 0}
+        isLast={index === stops.length - 1}
+        state={states[item.id] ?? 'next'}
+        transit={hasTransit(next) ? { km: next.km } : null}
+        from={
+          previous && hasTransit(before)
+            ? { place: describePlace(previous), km: before.km }
+            : null
+        }
+        thumb={thumbs?.get(item.city_id)}
+        highlighted={highlighted?.has(item.id)}
+        onMoveUp={() => onMove(item.id, 'up')}
+        onMoveDown={() => onMove(item.id, 'down')}
+        onEdit={() => onEdit(item)}
+        onRemove={() => onRemove(item)}
+        handle={
+          stops.length > 1 ? (
+            <GripHandle stopId={item.id} dragging={dragging} />
+          ) : undefined
+        }
+        dragging={dragging}
+      />
+    </View>
+  );
+}
+
+/** The row renderer of the grid: it changes when anything a row shows or does changes. */
+function useItemRenderer(props: StopListProps, dragging: boolean) {
+  const { stops, today, thumbs, highlighted, onOffsets, onMove, onEdit, onRemove } =
+    props;
   const { states, legs } = useTimeline(stops, today);
   const measured = useRowOffsets(stops, onOffsets);
-
-  const renderItem = useCallback(
-    ({ item, index }: { item: StopWithPlace; index: number }) => {
-      const next = legs[index];
-      const before = legs[index - 1];
-      const previous = stops[index - 1];
-      return (
-        <View
-          testID={`stop-item-${item.id}`}
-          onLayout={(event) => measured(item.id, event.nativeEvent.layout.height)}>
-          <StopRow
-            stop={item}
-            position={index + 1}
-            isFirst={index === 0}
-            isLast={index === last}
-            state={states[item.id] ?? 'next'}
-            transit={hasTransit(next) ? { km: next.km } : null}
-            from={
-              previous && hasTransit(before)
-                ? { place: describePlace(previous), km: before.km }
-                : null
-            }
-            thumb={thumbs?.get(item.city_id)}
-            highlighted={highlighted?.has(item.id)}
-            onMoveUp={() => onMove(item.id, 'up')}
-            onMoveDown={() => onMove(item.id, 'down')}
-            onEdit={() => onEdit(item)}
-            onRemove={() => onRemove(item)}
-            handle={
-              stops.length > 1 ? (
-                <GripHandle stopId={item.id} dragging={dragging} />
-              ) : undefined
-            }
-            dragging={dragging}
-          />
-        </View>
-      );
-    },
-    [
-      dragging,
-      highlighted,
-      last,
-      legs,
-      measured,
-      onEdit,
-      onMove,
-      onRemove,
-      states,
+  const context = useMemo<ItemContext>(
+    () => ({
       stops,
+      states,
+      legs,
+      dragging,
       thumbs,
+      highlighted,
+      measured,
+      onMove,
+      onEdit,
+      onRemove,
+    }),
+    [
+      stops,
+      states,
+      legs,
+      dragging,
+      thumbs,
+      highlighted,
+      measured,
+      onMove,
+      onEdit,
+      onRemove,
     ],
   );
+  return useCallback(
+    ({ item, index }: { item: StopWithPlace; index: number }) => (
+      <StopItem item={item} index={index} context={context} />
+    ),
+    [context],
+  );
+}
+
+export function StopList(props: StopListProps) {
+  const { stops, onReorder } = props;
+  const [dragging, setDragging] = useState(false);
+  const renderItem = useItemRenderer(props, dragging);
 
   return (
     <View testID="trip-stops">
