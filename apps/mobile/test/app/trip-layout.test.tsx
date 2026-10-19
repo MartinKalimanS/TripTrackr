@@ -32,12 +32,16 @@ const COLOURS: Record<string, string> = {
   background: 'rgb(11, 22, 33)',
   accent: 'rgb(44, 55, 66)',
   foreground: 'rgb(77, 88, 99)',
+  'on-photo': 'rgb(250, 251, 252)',
 };
 
 beforeEach(() => {
   jest
     .spyOn(HeroUI, 'useThemeColor')
-    .mockImplementation(((token: string) => COLOURS[token] ?? '#808080') as never);
+    .mockImplementation(((token: string | string[]) =>
+      Array.isArray(token)
+        ? token.map((name) => COLOURS[name] ?? '#808080')
+        : (COLOURS[token] ?? '#808080')) as never);
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -175,9 +179,9 @@ describe('trip/[id]/_layout - the header is on for the overview and the migrated
     expect(header?.backgroundColor).toBe('transparent');
   });
 
-  test('takes its tint and the scene behind it from the kit tokens: accent and background', async () => {
+  test('takes its tint and the scene behind it from the kit tokens: white over the picture, and the background', async () => {
     await openTrip(anchored, '/trip/abc');
-    expect(tripHeaders().index?.color).toBe(COLOURS.accent);
+    expect(tripHeaders().index?.color).toBe(COLOURS['on-photo']);
     expect(contentBackground('index')).toBe(COLOURS.background);
   });
 

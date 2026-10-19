@@ -424,7 +424,8 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
       eyebrow with `FlagChip`, `scrim.top` and the caption scrim, `trip-title` kept), `CollapsedBar`, `ProgressRow`
       with "Day N of M" and dots; the title stays visible at font scale 2 (FR-037, FR-038, FR-007; D5-10, D5-12)
       _As built:_ `trip-hero.tsx`, `collapsed-bar.tsx`, `progress-row.tsx`, `hero-collapse.ts` (the maths as worklets plus
-      the LOCAL SEAM `useHeroCollapse(scrollY, heroHeight, topInset)`, which the chrome branch's hook replaces) and
+      `useHeroCollapse(scrollY, heroHeight, topInset)`, which also stills the picture and the fade under reduced
+      motion) and
       `features/trips/trip-progress.ts`; the hero is a column of minimums that grows upward. See
       `contracts/components.md`, "As built (T543 to T546)".
 - [x] T544 [P] [US3] Failing `features/trips/trip-days.test.ts` then `trip-days.ts`, `AreasStrip` (four `AreaPill`s,
@@ -443,8 +444,8 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
       `TripDetailSkeleton`, offline and error `Banner`s with the `warn` Photos tile and Retry, generated cover;
       run `01-account-and-trip` and `03-globe` trip steps; record edits (FR-042, FR-043, FR-025, FR-081)
       _As built:_ `trip-detail.tsx` (the screen), `trip-states.tsx`, `use-stop-editing.ts`, `features/trips/use-trip-sync.ts`
-      (a LOCAL SEAM for T529's chip state), `hero-back-button.tsx` (a LOCAL SEAM for T528's glass Back) and a
-      transparent `headerLeft` in `trip/[id]/_layout.tsx`; the route is 44 lines. The Maestro flows were read, not run
+      (the global chip of T529 plus this trip's failed uploads) and a transparent header with T528's glass
+      `HeaderBackButton` in `trip/[id]/_layout.tsx`; the route is 44 lines. The Maestro flows were read, not run
       (no device): see "Maestro flow edits". Recorded in `contracts/components.md`, "As built (T543 to T546)".
 - [ ] T547 [DEVICE] **First-slice owner review (SC-013)**: build a dev client; on one iPhone and one Android phone
       walk Home (all three sheet positions, empty, loading, offline), Trips (mixed, 200+, no cover) and a trip in

@@ -251,7 +251,7 @@ export default function TripsScreen() {
   const router = useRouter();
   const [filter, setFilter] = useState<TripFilter>('all');
   const list = useTripsList(filter);
-  const sync = useTripsSync(list.data);
+  const sync = useTripsSync();
   const strip = useYearStrip(list.items);
   const tabZone = useTabZone();
   const headerOptions = useSyncHeaderOptions(sync);

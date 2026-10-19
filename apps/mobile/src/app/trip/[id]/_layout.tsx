@@ -15,19 +15,18 @@
  * the screen) takes its place once the picture has scrolled away. What the overview's
  * header carries:
  *
- * - `headerTransparent` and a transparent `headerStyle`: without the second the theme's
- *   background would paint over the picture.
- * - `headerLeft` is the `HeroBackButton`: the glass control a photograph needs (a dark
+ * - `useTransparentHeaderTheme`: `headerTransparent` and a transparent `headerStyle` (without the
+ *   second the theme's background would paint over the picture), white tint, no hairline.
+ * - `headerLeft` is the glass `HeaderBackButton`: the control a photograph needs (a dark
  *   disc, a white chevron), named "Back" on both platforms whatever the previous screen is
  *   called (the native label would be that screen's title, and Android's arrow has the
  *   platform's own description); the Maestro flows say `tapOn: 'Back'`. The props React
  *   Navigation passes to `headerLeft` are not forwarded: `canGoBack` is false for a trip
  *   opened with nothing beneath it, and the button then goes home instead of vanishing. The
- *   chrome branch's glass `HeaderBackButton` (T528) replaces it when it lands. The
  *   sub-screens keep the plain `HeaderBackButton` below.
  * - `title: ''`: the hero title is the screen's content (FR-007 exempts it) and a second
  *   copy in the bar would be read twice.
- * - The colours, and no hairline, come from `useHeaderTheme` (tokens, never a literal).
+ * - The colours of the sub-screens' bars come from `useHeaderTheme` (tokens, never a literal).
  *
  * The sub-screens that have moved to Atlas (notes T440, spending T441, offline maps T444,
  * photos T442, documents T443) have the same header with a title of their own, built by
@@ -46,19 +45,16 @@
 import { Stack } from 'expo-router';
 
 import { RequireLocalStore } from '@/components/require-local-store';
-import { HeroBackButton } from '@/components/trip/hero-back-button';
 import { HeaderBackButton } from '@/components/ui/header-back-button';
-import { useHeaderTheme } from '@/components/ui/header-theme';
+import { useHeaderTheme, useTransparentHeaderTheme } from '@/components/ui/header-theme';
 import { useHeaderTitleStyle } from '@/components/ui/header-title-style';
 
 const renderBack = () => <HeaderBackButton />;
-const renderHeroBack = () => <HeroBackButton />;
-
-/** The overview's bar paints nothing: the picture is under it. */
-const TRANSPARENT_BAR = { backgroundColor: 'transparent' } as const;
+const renderHeroBack = () => <HeaderBackButton variant="glass" />;
 
 export default function TripLayout() {
   const theme = useHeaderTheme();
+  const transparent = useTransparentHeaderTheme();
   const title = useHeaderTitleStyle();
   const titled = (text: string) => ({
     ...theme,
@@ -74,10 +70,8 @@ export default function TripLayout() {
         <Stack.Screen
           name="index"
           options={{
-            ...theme,
+            ...transparent,
             headerShown: true,
-            headerTransparent: true,
-            headerStyle: TRANSPARENT_BAR,
             title: '',
             headerLeft: renderHeroBack,
           }}

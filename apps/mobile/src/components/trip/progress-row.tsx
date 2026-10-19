@@ -21,8 +21,9 @@ import { View } from 'react-native';
 
 import { StatusChip } from '@/components/ui/chip';
 import { SyncBadge } from '@/components/ui/sync-badge';
-import { SyncChip, type SyncChipState } from '@/components/ui/sync-chip';
+import { SyncChip } from '@/components/ui/sync-chip';
 import { Text } from '@/components/ui/text';
+import type { SyncChipState } from '@/features/sync/use-sync-chip-state';
 import {
   progressDots,
   type DayProgress,

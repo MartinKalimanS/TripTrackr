@@ -242,7 +242,7 @@ function StopsSection({
 function useTripData(trip: TripRow) {
   const stops = useTripStops(trip.id);
   const overview = useTripOverview(trip, deriveTripStatus(stops.data));
-  const sync = useTripSync({ trip, stops: stops.data, overview });
+  const sync = useTripSync({ overview });
   const writes = useStopWrites(trip.id);
   const editing = useStopEditor(stops.data, writes.save);
   const days = useMemo(() => tripDays(stops.data), [stops.data]);

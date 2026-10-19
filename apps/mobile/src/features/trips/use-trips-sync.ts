@@ -1,39 +1,24 @@
 /**
- * The sync chip and the banner of the Trips screen - feature 005, T541 (FR-026, FR-065;
- * data-model section 8). A THIN SEAM: `features/sync/use-sync-chip-state.ts` (T529, the chrome
- * branch) will own this derivation for Home, Trips and a trip alike; until it lands, Trips
- * derives the same `SyncChipState` here from the same two facts, so that wiring it is one
- * import swapped (`useTripsSync` returns the chip, the banner and `retry`; the screen reads
- * nothing else).
+ * The sync chip and the banner of the Trips screen - feature 005, T541 and T529 (FR-026, FR-065;
+ * data-model section 8). The chip is the ONE global one every screen shows (`useSyncChipState`:
+ * the dirty rows of the seven synchronised tables, the network and the runtime), so a record
+ * that is not uploaded is never shown as saved; the banner is `syncBannerOf` of it, with the
+ * Retry that runs a manual cycle (`syncNow('manual')`: push, then pull; it never rejects).
  *
- * It READS and writes nothing (Constitution I and II; D5-17: private, local, never transmitted):
- *
- * - the number of rows waiting to upload over the seven synchronised tables
- *   (`syncRepository.countUnsynced`: rows with unsent changes, byte-backed rows counted once
- *   their bytes have uploaded), re-read whenever `watch` (the trip list, which changes when a
- *   trip or a stop is written) or the runtime's phase or last success changes;
- * - the sync runtime's own status (`useSyncStatus`).
- *
- * A cycle that is running with rows waiting is `syncing` (it wins over the failure of the last
- * one: a retry shows it is under way); with nothing waiting it is a pull and the chip says
- * nothing (it would flash "0" on every cycle). A failure to reach the server is `offline`,
- * which is an ordinary state and not an error (Constitution II); any other failure is
- * `failed`; rows waiting with nothing running is `waiting`; nothing is `synced` and the chip
- * draws nothing. A session that has ended (`unauthorized`) is not for this screen to
- * announce: the sign-in screens speak for it.
- *
- * Known limit of the seam, replaced by T529: the count is re-read when the list changes or a cycle
- * moves, not on every write to a table this screen does not read (a note edited inside a trip
- * is counted at the next cycle).
+ * It READS and writes nothing (Constitution I and II; D5-17: private, local, never transmitted).
+ * Waiting and syncing have no banner: the chip alone speaks, so one question gets one answer.
+ * Offline is an ordinary state and has no action; a failed sync says in words that the trips
+ * are safe on the phone and offers Retry.
  */
 import { useMemo } from 'react';
 
 import type { BannerTone } from '@/components/ui/banner';
-import type { SyncChipState } from '@/components/ui/sync-chip';
-import { useDatabase } from '@/db/client';
-import { syncRepository } from '@/db/repositories/sync';
-import { syncNow, useSyncStatus } from '@/sync/engine';
-import type { SyncStatus } from '@/sync/types';
+import { syncBannerOf } from '@/features/sync/sync-banner';
+import {
+  useSyncChipState,
+  type SyncChipState,
+} from '@/features/sync/use-sync-chip-state';
+import { syncNow } from '@/sync/engine';
 
 export interface TripsBanner {
   tone: BannerTone;
@@ -50,58 +35,22 @@ export interface TripsSync {
   retry: () => void;
 }
 
-const SYNCED: SyncChipState = { kind: 'synced' };
-
-function chipOf(status: SyncStatus, count: number): SyncChipState {
-  if (status.failure === 'unauthorized') return SYNCED;
-  // A cycle with nothing waiting is a pull: nothing of the traveller's is in flight, so there is
-  // nothing to count and the chip says nothing (it would otherwise flash "0" on every cycle).
-  if (status.phase !== 'idle') return count > 0 ? { kind: 'syncing', count } : SYNCED;
-  if (status.failure === 'offline') return { kind: 'offline', count };
-  if (status.failure !== null) return { kind: 'failed', count };
-  return count > 0 ? { kind: 'waiting', count } : SYNCED;
-}
-
-const changes = (count: number) => `${count} ${count === 1 ? 'change' : 'changes'}`;
-
-function bannerOf(chip: SyncChipState, retry: () => void): TripsBanner | null {
-  const count = 'count' in chip ? chip.count : 0;
-  if (chip.kind === 'offline') {
-    return {
-      tone: 'offline',
-      message:
-        count > 0
-          ? `Offline. ${changes(count)} will sync when you're back online.`
-          : "Offline. Changes you make will sync when you're back online.",
-    };
-  }
-  if (chip.kind === 'failed') {
-    return {
-      tone: 'error',
-      message:
-        count > 0
-          ? `Couldn't sync ${changes(count)}. Your trips are safe on this phone.`
-          : "Couldn't sync. Your trips are safe on this phone.",
-      action: { label: 'Retry', onPress: retry },
-    };
-  }
-  return null;
-}
-
 function retry(): void {
   void syncNow('manual');
 }
 
-export function useTripsSync(watch: unknown): TripsSync {
-  const db = useDatabase();
-  const status = useSyncStatus();
-  const { phase, lastSyncedAt } = status;
-  const count = useMemo(
-    () => syncRepository.countUnsynced(db),
-    // `watch`, `phase` and `lastSyncedAt` are the signals to read again, not inputs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [db, watch, phase, lastSyncedAt],
-  );
-  const chip = chipOf(status, count);
-  return { chip, banner: bannerOf(chip, retry), retry };
+function bannerOf(chip: SyncChipState): TripsBanner | null {
+  const data = syncBannerOf(chip);
+  if (data === null) return null;
+  const { tone, message, action } = data;
+  return {
+    tone,
+    message,
+    ...(action ? { action: { ...action, onPress: retry } } : null),
+  };
+}
+
+export function useTripsSync(): TripsSync {
+  const chip = useSyncChipState();
+  return useMemo(() => ({ chip, banner: bannerOf(chip), retry }), [chip]);
 }

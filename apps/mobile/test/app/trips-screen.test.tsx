@@ -23,6 +23,8 @@ import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import TripsScreen from '@/app/(tabs)/trips';
 import { Spacing } from '@/constants/theme';
+import { TabInsetContext } from '@/hooks/tab-inset-context';
+import { TAB_CLEARANCE } from '@/hooks/use-tab-inset';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
 import type { TripListItem } from '@/features/trips/trip-sections';
 import type { TripsSync } from '@/features/trips/use-trips-sync';
@@ -106,7 +108,9 @@ async function renderOn(os: 'ios' | 'android', tabZone = TAB_ZONE) {
   await render(
     <SafeAreaInsetsContext.Provider value={INSETS}>
       <BottomTabBarHeightContext.Provider value={tabZone}>
-        <TripsScreen />
+        <TabInsetContext.Provider value={tabZone}>
+          <TripsScreen />
+        </TabInsetContext.Provider>
       </BottomTabBarHeightContext.Provider>
     </SafeAreaInsetsContext.Provider>,
   );
@@ -605,13 +609,13 @@ describe('<TripsScreen> - nothing behind the pill or the button (FR-024)', () =>
     expect(flat(clearance).height).toBeGreaterThan(56 + Spacing.three);
   });
 
-  test('pads the list by the zone of the pill, whatever it is', async () => {
+  test('ends the list 16 dp above the pill, whatever its zone is (ListScreen reads the pill)', async () => {
     mockTrips.data = MIXED();
     platform = await renderOn('ios', 120);
     const content = flat({
       props: { style: screen.getByTestId('trips-list').props.contentContainerStyle },
     });
-    expect(content.paddingBottom).toBe(Spacing.four + 120);
+    expect(content.paddingBottom).toBe(120 + TAB_CLEARANCE);
   });
 
   test('draws without a tab navigator around it (a component test): no zone, no crash', async () => {
