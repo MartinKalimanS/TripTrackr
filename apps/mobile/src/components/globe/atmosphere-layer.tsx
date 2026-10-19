@@ -3,11 +3,13 @@
  *
  * `<Atmosphere style>` is the fog and the sky round the planet. Its five properties are the
  * ones the `@rnmapbox/maps` 10.3.5 typings give (`AtmosphereLayerStyle`: `color`,
- * `highColor`, `spaceColor`, `horizonBlend`, `starIntensity`): a cream-white horizon, a pale
- * aqua high colour and a warm peach space colour by day, deep navy by night, no stars. All
- * three colours are OPAQUE tokens (`GlobeStyle`): an alpha below 1 on `color` loads more
- * tiles. Whether it overrides Standard's own fog at globe zoom, and whether `spaceColor`
- * with alpha 0 would show the sky behind the map, are device checks (V2, T508).
+ * `highColor`, `spaceColor`, `horizonBlend`, `starIntensity`). `color` and `highColor` are the
+ * soft light-blue (night: teal) halo of the pictures, OPAQUE tokens (`GlobeStyle`): an alpha
+ * below 1 on `color` loads more tiles. `spaceColor` is the one transparent stop, the sky's own
+ * colour at opacity 0: Mapbox documents "the opacity can be set to 0 to have a transparent
+ * background", so the sky (`Scrim` `sky`, the prototype's `--sky`) shows behind the map. Whether
+ * it does on each platform, and whether it overrides Standard's own fog at globe zoom, are
+ * device checks (V2, T508; `as-built/f1-map-style.md`).
  */
 import { Atmosphere, type AtmosphereLayerStyle } from '@rnmapbox/maps';
 
