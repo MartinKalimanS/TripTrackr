@@ -16,3 +16,5 @@ apps/mobile/src/uniwind-types.d.ts
 # Long-form source documents are preserved verbatim.
 docs/travelappblueprint.md
 docs/travelappfullspec.md
+# The Sunrise Passport design prototype (feature 005) is kept verbatim as a visual reference.
+specs/005-sunrise-passport-ui/reference/prototype/

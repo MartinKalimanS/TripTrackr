@@ -5,7 +5,7 @@ over**: `specs/004-app-ui-redesign/contracts/screens.md` C4-10 (screen-level obl
 C4-11 (the blueprint), replaced by C5-32 here.
 
 Measurements are in dp on the prototype's reference phone, **390 by 844** (iPhone 15: top inset 54, bottom inset
-34), from `ui-proto/sunrise-v2/styles.css` and `extra/screens.css`; they are starting values, tested at
+34), from `reference/prototype/styles.css` and `reference/prototype/extra/screens.css` (the pictures are in `reference/screens/`; start at `reference/README.md`); they are starting values, tested at
 640 to 932 dp heights and every text scale. **Prototype frames** are the board numbers of `index.html` (01 to
 10, H1 to H3, T1 to T6, D1 to D6, S1) and the files in `shots/` and `extra/shots/`. **Tier** is the scope tier of
 the spec.
