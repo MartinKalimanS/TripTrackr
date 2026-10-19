@@ -76,6 +76,32 @@ export interface FormattedDistance {
   spoken: string;
 }
 
+/** A distance as the number and the unit of the device's measurement system, apart. */
+export interface DistanceFigure {
+  /** Whole units: kilometres, or miles in `us` and `uk`. */
+  value: number;
+  unit: 'km' | 'mi';
+  /** The unit spelled out, singular: "kilometre" or "mile". */
+  unitWord: 'kilometre' | 'mile';
+}
+
+/**
+ * The whole-unit figure of a travel distance and its unit, for a screen that draws the number
+ * on its own (the Home's kilometres counts up beside a lighter "km"). `formatDistance` is
+ * built on it, so the two cannot disagree.
+ */
+export function distanceFigure(
+  km: number,
+  locale: DeviceLocale = deviceLocale(),
+): DistanceFigure {
+  const miles = locale.measurementSystem !== 'metric';
+  return {
+    value: Math.round(miles ? km / KM_PER_MILE : km),
+    unit: miles ? 'mi' : 'km',
+    unitWord: miles ? 'mile' : 'kilometre',
+  };
+}
+
 /**
  * A travel distance in whole units of the device's measurement system (FR-050,
  * research D-30), grouped in its locale. The unit is appended rather than
@@ -86,14 +112,12 @@ export function formatDistance(
   km: number,
   locale: DeviceLocale = deviceLocale(),
 ): FormattedDistance {
-  const miles = locale.measurementSystem !== 'metric';
-  const value = Math.round(miles ? km / KM_PER_MILE : km);
+  const { value, unit, unitWord } = distanceFigure(km, locale);
   const figure = new Intl.NumberFormat(locale.languageTag, {
     maximumFractionDigits: 0,
   }).format(value);
-  const word = miles ? 'mile' : 'kilometre';
   return {
-    text: `${figure} ${miles ? 'mi' : 'km'}`,
-    spoken: `${figure} ${value === 1 ? word : `${word}s`}`,
+    text: `${figure} ${unit}`,
+    spoken: `${figure} ${value === 1 ? unitWord : `${unitWord}s`}`,
   };
 }

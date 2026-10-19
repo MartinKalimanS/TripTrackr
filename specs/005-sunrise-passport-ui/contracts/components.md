@@ -343,6 +343,128 @@ band / 2 + 4`, other detents radius `clamp(0.95 × band, 150, 286)` centred at `
 
 The existing `LoadingState` "Loading your globe" is kept for the wait for the local store. Home uses no header.
 
+### As built (T534 to T536)
+
+What the code does where it differs from, or adds to, C5-22 and C5-23. The three tasks are one branch,
+`feat/005-home-sheet`; the files are under `apps/mobile/src/` and the Home integration (T537) is not part of it.
+
+**`Sheet` (T534)** is `components/ui/sheet.tsx` with three helpers beside it: `sheet-geometry.ts` (pure: `SheetDetent`,
+`detentHeight`, `sheetHeights`, `settleTarget`, `rubberBand`, `stepDetent`, `cycleDetent`, `detentLabel`),
+`sheet-motion.ts` (the shared value, the spring, the one settle) and `sheet-pans.ts` (the worklets).
+
+```tsx
+<Sheet detents={sheetHeights(geometry, rowHeight)} detent={detent} onDetentChange={setDetent}
+  onSettle={fitCamera} handleLabel="Countries and trips" header? handleBack?
+  renderBody={({ detent, settled }) => ...} />
+```
+
+- **Controlled, and by name.** The contract's `index`, `onIndexChange` and `onSettle(index)` are `detent`
+  (`'peek' | 'half' | 'full'`), `onDetentChange(detent)` and `onSettle(detent)`, because `globeFit()` takes a name.
+  Every move the traveller makes (a release, a tap on the handle, an accessibility step, Android's back) is reported
+  through `onDetentChange` at once, for the parent to pass back; a parent that changes `detent` on its own (a
+  country was chosen) moves the sheet and hears no `onDetentChange`. `onSettle` runs ONCE per move, when the spring
+  has come to rest (with the `sheetSnap` selection haptic), and not on mount; a spring that a finger or another spring
+  interrupts never reaches it. **The Home calls `globeFit` for the first frame itself.**
+- **Heights.** `detentHeight(d, g, rowHeight)` is exactly data-model section 7, rounded to whole dp: 212, 439 and 780 on the
+  390 by 844 reference phone with an 80 dp peek row (a 56 dp thumbnail in a card padded 12). `half` never comes within 120
+  dp of `peek`; every height is an integer from 640 to 932 dp windows. **If the heights change under a mounted sheet** (an inset
+  that arrives late, a resized window) the sheet is re-seated on the new height of the detent it is at or heading for, with no
+  spring and no report (nothing was chosen); until then `visible` would still hold the old height and the sheet would sit that far
+  from where it belongs. Pass `detents` as often as you like: only a change of the three numbers counts.
+- **Drawn by a transform.** The sheet is as tall as `full` plus a 64 dp skirt (the surface continues below the screen edge
+  so the rubber band never opens a gap) and sits at `translateY = full - visible`. A frame of dragging is ONE transform on the
+  UI thread and no layout; `useAnimatedStyle` is the only per-frame work.
+- **Gestures** (`sheet-pans.ts`; every callback is a worklet, and a test reads the Babel plugin's mark on each). Three pans:
+  `home-sheet-drag` (the 28 dp zone and the `header`), `home-sheet-handle-drag` (the 96 by 48 handle) and
+  `home-sheet-body-pan` (the body). A pan activates after 10 dp vertical and fails after 16 dp horizontal; the sheet
+  starts moving from where the pan activated (no jump). The release picks the nearest detent of where the sheet would rest
+  `0.2 s` ahead at the release velocity (`settleTarget`: a flick carries it on to the next detent in its direction and
+  never back), springs with `Motion.sheetSpring` handed the finger's velocity, and beyond `peek` and `full` the sheet is
+  rubber-banded (the iOS curve, never more than 48 dp).
+- **Body hand-off.** The body pan runs simultaneously with the list's own `Gesture.Native()` (`SheetScrollable` wraps the
+  scroller, `useSheetScroll()` gives its props: `scrollEnabled` (true only once the sheet has SETTLED at full, so it changes
+  once per settle), `bounces: false`, `overScrollMode: 'never'`, an `onScroll` that writes a shared value). Below full the
+  sheet takes every drag; at full it takes the finger only when the list is at its top and the finger moves DOWN, decided
+  again on every update: the drag passes to the sheet in the middle of a gesture when the list reaches its top (from that
+  point), and back to the list when the sheet is at full again and the finger keeps rising. Outside a `Sheet` both are inert,
+  so a list works on its own. **A spring in flight is stopped only when the sheet takes the finger** (`take`), never by a
+  finger that goes to the list: a flick up followed at once by a scroll leaves the spring to finish, so its settle comes and
+  `scrollEnabled` turns on (cancelled, the settle would never be reported and the list would stay switched off).
+- **Handle.** `home-sheet-handle` is a `Pressable` overlay (96 by 48 dp, over the first 48 dp, last in z-order) with the 36 by 5
+  grabber (`home-sheet-grabber`; 32 by 4 on Android), role `adjustable`, `accessibilityValue` `{ text: 'Peek' | 'Half' | 'Full' }`,
+  `accessibilityActions` increment ("More") and decrement ("Less"), the focus ring, and a press that cycles peek, half, full and
+  round to peek. **Back** (Android only, `useFocusEffect` from expo-router) steps from the detent the sheet is heading for and
+  leaves peek to the route; `handleBack={false}` switches it off.
+- **Reduced motion.** A release, a tap or a parent's change jumps with no spring and the settle still reports; the drag itself
+  still follows the finger. Ids: `home-sheet`, `home-sheet-overlay` (`pointerEvents="box-none"`), `home-sheet-handle`,
+  `home-sheet-grabber`, `home-sheet-body`; the contract's `home-sheet-body` is the body View, not the scroller.
+- **Under Jest.** RNTL 14's `render`, `rerender`, `unmount` and `fireEvent` are async: await them. `fireGestureHandler` drives the real
+  `GestureDetector` (`react-native-gesture-handler/jestSetup` at the top of the file); it always appends an END event, and a relation
+  such as `simultaneousWith` is held as the other gesture's handler tag once both are attached. `test/mocks/reanimated-live.ts` is the
+  Reanimated double for gesture suites: shared values that persist, styles read live, springs that finish on `__live.finish()`.
+- **Device only (T509, V3).** 60 fps over the live globe; the 96 by 48 hit area and a touch over the handle and the first row;
+  `Gesture.Native()` on a FlashList (the pattern is Gesture Handler's, FlashList's root is a class component that takes the ref);
+  on Android a ScrollView takes its scroll from incremental deltas, so a drag that goes down (taken by the sheet) and comes back
+  up may scroll the list by the distance the sheet is still short of full; the `increment` and `decrement` names on TalkBack;
+  the Worklets runtime accepting the captured JS callbacks (`announce`, `finish`) through `scheduleOnRN`; and one known narrow gap:
+  a finger that lands in the last dp of a spring up to full, pulls the sheet down and returns within the same gesture stops that
+  spring (the sheet took it), so `scrollEnabled` stays off until the next settle (any later drag fixes it).
+
+**`GreetingHeader`, `StatsRow`, `NowCard`, `NextRow`, `HomePeek`, `HomeHalf` (T535)** are `components/home/`; the model is
+`features/home/` (`homeTrips()`, `home-format.ts`, `home-copy.ts`, `useHomeTrips()`).
+
+- `GreetingHeader({ name, today, trailing?, onRecentre? })`: the date as an `eyebrow` (`today` is a local `YYYY-MM-DD`; the order
+  and spelling are the device's), "Hello, _name_" (`display`, the name a nested `accent` span, two lines at most, a heading), a slot
+  for the sync chip, and the 44 dp recentre control (`onSky`, "Recentre the globe") only when `onRecentre` is given. It does not hide
+  itself at full: the Home leaves it out. A Search icon is drawn in the prototype and is Tier 3: not drawn.
+- `StatsRow({ countries, trips, distanceKm, onOpenCountries, onOpenTrips })`: three `StatTile`s with a hairline between them and an
+  `AnimatedNumber` each (staggered 80 ms). `globe-stat-countries` is the plain number with "/195" beside it, `globe-stat-trips` is
+  new, **`globe-stat-distance` is the plain distance and the unit is the label ("Kilometres" or "Miles"), so a 36 dp numeral has the room**
+  (it also shrinks to fit, `adjustsFontSizeToFit`); from seven digits a figure is compact ("1.26M"). The names are "14 of 195
+  countries", "22 trips" and "61,480 kilometres travelled" (final values, from the first render). Countries and trips are buttons; the
+  kilometres are not. At a font scale of 1.15 and above the row is a column with the hairlines across. **Flow 03 reads
+  `globe-stat-distance` as `[0-9,.]+ (km|mi)`: T538 changes it to `[0-9,.]+`.**
+- `NowCard({ trip, compact?, onPress })`: ONE button (`Card`, hint "Opens the trip") named "Portugal Road Trip, active, day 3 of 8, in
+  Sintra"; a 64 dp thumbnail (56 compact), the title (`callout`, two lines, one compact), "Day 3 of 8 . Sintra" with the coral live
+  dot, and a strip of the stops in four shapes (done filled, now a ring, next a thin ring, later a grey ring; at most 12 dots around
+  the traveller and "+N"). With no live trip it is the next planned trip ("Jan 2027 . in 94 days", no strip). `NextRow({ trip,
+onPress })` is a `Tappable` with a 48 dp thumbnail, the flag chip and the same planned line. The thumbnail (`trip-thumb.tsx`) is the
+  photograph's thumbnail or the generated cover (also when the file will not draw), hidden from assistive technology.
+- **Deviation, peek:** the prototype draws a chevron-up on the peek card; the card opens the trip, so it keeps the chevron-right.
+- `HomePeek({ now, onOpenTrip })` is the compact `NowCard` with `paddingEnd` 68 for the round button, or nothing (the invitation is
+  the screen's); `HomeHalf({ totals, now, next, onOpenCountries, onOpenTrips, onOpenTrip })` is the figures, the card and the row,
+  16 dp apart. `homeTrips()` picks the live trip that began first (ties by id), else the soonest planned one as `now`, and the soonest
+  planned one beside a live one as `next`; a planned trip with no stop has no date and is never shown.
+- Local and read-only. The new queries are `stopsRepository.allWithNamesQuery` (stops with the city name and the country code, null when
+  not cached) and `geographyRepository.countriesQuery`; `lib/locale` gains `distanceFigure()` (the number and the unit apart), which
+  `formatDistance` is built on.
+
+**`country-summary.ts`, `CountriesList`, `CountryRow`, `ProgressRing` (T536).**
+
+- `features/passport/country-summary.ts`: `summariseCountries(trips, countries, today)` gives one `CountrySummary` per country with a
+  placed stop (the same predicate as `travelSummary`) named from the `countries` cache; `groupByContinent`, `continentsVisited`,
+  `worldTotals`, `filterCountries` (case and accents folded), `recentVisits`, `focusOf`. Beyond the data model: **`planned`** (every stop is
+  still ahead; the row says "Planned 2027", never "First visited"). `isNow` is the active trip's current stop (the last placed stop that
+  covers today); **a day between two stops names no country**. `focus.bounds` runs the short way round across the date line (east longitude
+  past 180). **A country this device has no `countries` row for still counts in the figure (it is `travelSummary`'s) but cannot be listed.**
+  `useCountryOverview(trips, today?)` reads the cache through one live query.
+- `CountriesList({ overview, onSelectCountry, onCollapse, contentInsetBottom? })`: the heading and the collapse control
+  (`countries-collapse`), `Field` search "Search countries" (`countries-search`; a visible label, so the field is the 56 dp of the kit's
+  Field), the ring card (`countries-summary-card.tsx`: "14 of 195", "4 of 7 continents . 19 trips", read as one element; the stamps of
+  the two newest visits are decoration and are left out at large text), then a FlashList (`getItemType` is the item's type) with `stickyHeaderIndices` on the
+  continent headers ("Europe, 9 countries", a heading; FlashList pins a SECOND copy, which is hidden from assistive technology and has no
+  id). `Unknown` is shown as "Other". States: "No countries yet", and "No countries match ..." with "Clear search". Ids: `countries-list`,
+  `countries-search`, `countries-collapse`, `countries-ring`, `countries-stamps`, `countries-stamp-<iso2>`, `countries-header-<continent>`.
+- `CountryRow({ country, onSelect })`: 60 dp minimum, `country-row-<iso2>`, named "Portugal, 3 trips, first visited 2021" (", now" at the end),
+  hint "Shows it on the globe"; pressing it calls `onSelect(summary)` and nothing more: lowering the sheet to half and the fly-to are T537's.
+- `ProgressRing` (`components/ui/progress-ring.tsx`): a `sand` track and a coral arc from the top, round caps, a middle slot, decoration.
+  **It is drawn at once, not animated** (the arc is a dash with an offset, the form an animated ring needs).
+- The unresolved-id ratchet (`test/fixtures/testid-unresolved-count.json`) went from 80 to 86 test ids and from 51 to 56 accessibility
+  labels: the new helpers forward id props and the card names are composed from data. No existing id changed.
+- Tests (all red first): 72 for the sheet (19 pure, 53 against the real `GestureDetector`), 9 for the ring, 44 for the country summary
+  (including 4 against a real SQLite database), 62 for the Home content and the list (greeting, figures, cards, rows, list, list in a
+  sheet), 38 for the Home trips model, words and hook, and one each for `distanceFigure`, `countriesQuery` and `allWithNamesQuery`.
+
 ---
 
 ## C5-24. Globe layers (inside `components/globe/`)

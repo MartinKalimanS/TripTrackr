@@ -8,7 +8,12 @@
  */
 import { getLocales } from 'expo-localization';
 
-import { deviceLocale, formatDistance, type DeviceLocale } from '@/lib/locale';
+import {
+  deviceLocale,
+  distanceFigure,
+  formatDistance,
+  type DeviceLocale,
+} from '@/lib/locale';
 
 const locale = (overrides: Partial<DeviceLocale> = {}): DeviceLocale => ({
   languageTag: 'en-GB',
@@ -48,6 +53,36 @@ describe('formatDistance', () => {
 
   test('nothing travelled yet reads as zero, not as an empty string', () => {
     expect(formatDistance(0, locale())).toEqual({ text: '0 km', spoken: '0 kilometres' });
+  });
+});
+
+describe('distanceFigure: the number and the unit apart, for a figure that counts up', () => {
+  test('kilometres, rounded to whole units', () => {
+    expect(distanceFigure(12345.6, locale())).toEqual({
+      value: 12346,
+      unit: 'km',
+      unitWord: 'kilometre',
+    });
+  });
+
+  test.each(['us', 'uk'] as const)(
+    'miles where the measurement system is %s',
+    (system) => {
+      expect(distanceFigure(12345.6, locale({ measurementSystem: system }))).toEqual({
+        value: 7671,
+        unit: 'mi',
+        unitWord: 'mile',
+      });
+    },
+  );
+
+  test('agrees with formatDistance, which is built on it', () => {
+    for (const km of [0, 1.2, 999.5, 61480.4]) {
+      const { value, unit } = distanceFigure(km, locale());
+      expect(formatDistance(km, locale()).text).toBe(
+        `${new Intl.NumberFormat('en-GB').format(value)} ${unit}`,
+      );
+    }
   });
 });
 

@@ -76,6 +76,15 @@ function listCountries(db: AppDatabase): CountryRow[] {
 }
 
 /**
+ * The cached countries by name, as a select a screen can watch live (`useLiveQuery`): the
+ * Countries list names its rows from it (feature 005, T536). Read-only: the cache is written
+ * only by `cacheCountries`.
+ */
+function countriesQuery(db: AppDatabase) {
+  return db.select().from(countries).orderBy(asc(countries.name));
+}
+
+/**
  * Cached cities of one country whose name starts with — or has a word
  * starting with — the typed text, most populous first. An empty query lists
  * the country's best-known cities.
@@ -117,6 +126,7 @@ export const geographyRepository = {
   cacheCountries,
   cacheCities,
   listCountries,
+  countriesQuery,
   searchCities,
   cityCountQuery,
 };
