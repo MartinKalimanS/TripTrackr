@@ -20,6 +20,10 @@
  * flows tap) and Home's is `home-plan-trip-fab` (Home's `home-plan-trip` is the invitation card's
  * action). The ids are a table, so the id extractor reads each one and nothing is forwarded.
  *
+ * `collapsed` (Home at the peek detent) is the same button reduced to its plus: a 56 dp square with
+ * the platform's corner (a circle on iOS), still named "Plan a trip" and still `home-plan-trip-fab`,
+ * so the live trip's card beside it keeps its room (`HomePeek` leaves 56 dp and a gap for it).
+ *
  * `hidden` draws nothing at all (not an invisible button an assistive technology could still
  * find). Home hides it at the full detent and while there are no trips (the invitation card
  * carries the action then): `planTripFabHidden` is that rule. Trips never hides it, in the empty
@@ -30,6 +34,7 @@ import { Platform } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
+import { fabShapeOf } from '@/constants/platform-shapes';
 import { cornerOf } from '@/theme';
 
 import { Button } from './button';
@@ -45,6 +50,8 @@ export interface PlanTripFabProps {
   bottomInset?: number;
   /** Draws nothing at all. */
   hidden?: boolean;
+  /** Only the plus, in a 56 dp square: Home at the peek detent. */
+  collapsed?: boolean;
 }
 
 /** The id of the button on each screen. */
@@ -74,11 +81,33 @@ export function PlanTripFab({
   screen = 'trips',
   bottomInset = 0,
   hidden = false,
+  collapsed = false,
 }: PlanTripFabProps) {
   // The provider is expo-router's; outside one (a component test) there is no inset.
   const insets = useContext(SafeAreaInsetsContext) ?? NO_INSETS;
   const lift = useLiftStyle('lift2');
   if (hidden) return null;
+
+  const placement = {
+    position: 'absolute',
+    bottom: bottomInset + Spacing.three,
+    end: Spacing.three + Math.max(insets.left, insets.right),
+  } as const;
+
+  if (collapsed) {
+    return (
+      <Button
+        variant="primary"
+        size="lg"
+        iconOnly
+        icon="plus"
+        accessibilityLabel="Plan a trip"
+        testID={FAB_IDS[screen]}
+        onPress={onPress}
+        style={[placement, fabShapeOf(Platform.OS, true), lift]}
+      />
+    );
+  }
 
   return (
     <Button
@@ -89,11 +118,7 @@ export function PlanTripFab({
       testID={FAB_IDS[screen]}
       onPress={onPress}
       style={[
-        {
-          position: 'absolute',
-          bottom: bottomInset + Spacing.three,
-          end: Spacing.three + Math.max(insets.left, insets.right),
-        },
+        placement,
         // A rounded square on Android (FR-028): the button is a full pill otherwise.
         Platform.OS === 'android' ? cornerOf('lg') : null,
         lift,

@@ -10,7 +10,13 @@ import type { TripCover } from '@/features/trips/trip-cover';
 import type { TripStatus } from '@/features/trips/trip-status';
 import type { TripSummary } from '@/features/trips/use-trips';
 
-import { homeTrips, stopStrip, stripWindow, type NamedStop } from '../home-trips';
+import {
+  coversOf,
+  homeTrips,
+  stopStrip,
+  stripWindow,
+  type NamedStop,
+} from '../home-trips';
 
 const TODAY = '2026-10-14';
 
@@ -257,5 +263,26 @@ describe('stripWindow: a long trip does not overflow the card', () => {
     const windowed = stripWindow(strip, 12);
     expect(windowed.dots.at(-1)).toBe('now');
     expect(windowed.hidden).toBe(18);
+  });
+});
+
+describe('coversOf: the pictures the globe may draw as pins', () => {
+  const photo: TripCover = {
+    kind: 'photo',
+    photoId: 'p1',
+    thumbnailUri: 'file:///thumbs/p1.jpg',
+  };
+
+  test('maps each trip with a photograph to its thumbnail, by trip id', () => {
+    const covers = coversOf([
+      summary('a', 'past', { start: '2025-01-01', end: '2025-01-05' }, { cover: photo }),
+      summary('b', 'active', { start: '2026-10-12', end: '2026-10-19' }),
+    ]);
+    expect(covers).toEqual({ a: 'file:///thumbs/p1.jpg' });
+  });
+
+  test('is empty with no photograph: a typographic cover is not a picture', () => {
+    expect(coversOf([summary('b', 'active', null)])).toEqual({});
+    expect(coversOf([])).toEqual({});
   });
 });

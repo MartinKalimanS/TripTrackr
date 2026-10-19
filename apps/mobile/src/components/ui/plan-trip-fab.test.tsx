@@ -137,6 +137,37 @@ describe('<PlanTripFab> is the screen’s, by id', () => {
   });
 });
 
+describe('<PlanTripFab collapsed> is the round button of the peek sheet (contract C5-23)', () => {
+  test('keeps the name, the id and the press, and draws no words', async () => {
+    const onPress = await renderFab({ screen: 'home', collapsed: true });
+    const fab = screen.getByTestId('home-plan-trip-fab');
+    expect(fab.props.accessibilityLabel).toBe('Plan a trip');
+    expect(fab.props.accessibilityRole).toBe('button');
+    expect(fab.props.variant).toBe('primary');
+    expect(within(fab).queryByText('Plan a trip')).toBeNull();
+    await fireEvent.press(fab);
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    ['ios', 999],
+    ['android', 16],
+  ] as const)('is a 56 dp square with the platform corner on %s', async (os, radius) => {
+    await renderFab({ screen: 'home', collapsed: true }, { os });
+    const style = flat(screen.getByTestId('home-plan-trip-fab'));
+    expect(style.minWidth).toBe(56);
+    expect(style.minHeight).toBe(56);
+    expect(style.borderRadius).toBe(radius);
+  });
+
+  test('floats where the extended button does: 16 dp above the zone the pill takes', async () => {
+    await renderFab({ screen: 'home', collapsed: true, bottomInset: 88 });
+    const style = flat(screen.getByTestId('home-plan-trip-fab'));
+    expect(style.bottom).toBe(88 + Spacing.three);
+    expect(style.end).toBe(Spacing.three);
+  });
+});
+
 describe('planTripFabHidden: when Home does not show the button (FR-018)', () => {
   test('is shown with trips below the full detent', () => {
     expect(planTripFabHidden({ tripCount: 3, sheetFull: false })).toBe(false);
