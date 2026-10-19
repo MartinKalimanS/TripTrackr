@@ -104,6 +104,19 @@ describe('<ListScreen> for a mixed list', () => {
     expect(flat(props.contentContainerStyle).paddingHorizontal).toBe(20);
   });
 
+  test('can take more room at the end than at the start, for a strip along the edge', async () => {
+    const props = await renderList({ horizontalInset: 20, endInset: 44 });
+    expect(flat(props.contentContainerStyle)).toMatchObject({
+      paddingHorizontal: 20,
+      paddingEnd: 44,
+    });
+  });
+
+  test('has the same room at both ends without an end inset', async () => {
+    const props = await renderList({ horizontalInset: 20 });
+    expect(flat(props.contentContainerStyle).paddingEnd).toBeUndefined();
+  });
+
   test('draws no gap between items when the items space themselves', async () => {
     const props = await renderList({ itemGap: 0 });
     expect(props.ItemSeparatorComponent).toBeUndefined();

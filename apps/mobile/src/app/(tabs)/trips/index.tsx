@@ -42,7 +42,7 @@ import {
 } from '@/components/trip/trips-list-parts';
 import { useTabZone } from '@/components/trip/use-tab-zone';
 import { YearScrubber } from '@/components/trip/year-scrubber';
-import { ListScreen } from '@/components/ui/list-screen';
+import { ListScreen, type ListScreenProps } from '@/components/ui/list-screen';
 import { PlanTripFab } from '@/components/ui/plan-trip-fab';
 import { SyncChip } from '@/components/ui/sync-chip';
 import { Spacing } from '@/constants/theme';
@@ -61,10 +61,16 @@ import {
   type TripListItem,
 } from '@/features/trips/trip-sections';
 import { useTrips } from '@/features/trips/use-trips';
-import { useTripsSync, type TripsSync } from '@/features/trips/use-trips-sync';
+import {
+  useTripsSync,
+  type TripsBanner,
+  type TripsSync,
+} from '@/features/trips/use-trips-sync';
 import { ScreenMargin } from '@/theme';
 
 const NO_CARDS: TripCardModel[] = [];
+/** The room the list leaves at its end for the year strip: 28 dp of strip and the margins. */
+const STRIP_ROOM = 44;
 /** A row is in view as soon as a sliver of it is. */
 const VIEWABILITY = { itemVisiblePercentThreshold: 1 } as const;
 
@@ -135,68 +141,106 @@ function useSyncHeaderOptions(sync: TripsSync) {
   );
 }
 
+type TripsList = ReturnType<typeof useTripsList>;
+
 interface TripsListViewProps {
-  list: ReturnType<typeof useTripsList>;
+  list: TripsList;
   strip: ReturnType<typeof useYearStrip>;
   sync: TripsSync;
   filter: TripFilter;
   onFilter: (filter: TripFilter) => void;
   tabZone: number;
+  /** The year strip is drawn: the list leaves it room at the end. */
+  stripShown: boolean;
   onPlan: () => void;
   onOpen: (tripId: string) => void;
 }
 
-function TripsListView({
-  list,
-  strip,
-  sync,
-  filter,
-  onFilter,
-  tabZone,
-  onPlan,
-  onOpen,
-}: TripsListViewProps) {
+/** What does not change between renders: the shape of the list and how it recycles. */
+const LIST_SHAPE: Pick<
+  ListScreenProps<TripListItem>,
+  | 'underHeader'
+  | 'edges'
+  | 'itemGap'
+  | 'keyExtractor'
+  | 'getItemType'
+  | 'viewabilityConfig'
+> = {
+  underHeader: true,
+  // The tab bar below the screen (or the pill over it) is measured by `useTabZone`.
+  edges: [],
+  // Each item spaces itself: 16 dp under a card, 12 dp under a row.
+  itemGap: 0,
+  keyExtractor: tripItemKey,
+  getItemType: tripItemType,
+  viewabilityConfig: VIEWABILITY,
+};
+
+interface TripsHeaderProps {
+  cards: readonly TripCardModel[];
+  settled: boolean;
+  filter: TripFilter;
+  onFilter: (filter: TripFilter) => void;
+  banner: TripsBanner | null;
+}
+
+/** The count, the filter and the banner; the counts are read again only when the cards change. */
+function TripsHeader({ cards, settled, filter, onFilter, banner }: TripsHeaderProps) {
+  const span = useMemo(() => (settled ? tripSpan(cards) : null), [cards, settled]);
+  const counts = useMemo(
+    () => (settled ? tripFilterCounts(cards) : null),
+    [cards, settled],
+  );
+  return (
+    <TripsListHeader
+      span={span}
+      counts={counts}
+      filter={filter}
+      onFilter={onFilter}
+      banner={banner}
+    />
+  );
+}
+
+function TripsListView(props: TripsListViewProps) {
+  const { list, strip, sync, filter, onFilter, onOpen } = props;
   const { cards, items, settled, loading, error } = list;
-  const header =
-    !error && (loading || cards.length > 0) ? (
-      <TripsListHeader
-        span={settled ? tripSpan(cards) : null}
-        counts={settled ? tripFilterCounts(cards) : null}
-        filter={filter}
-        onFilter={onFilter}
-        banner={sync.banner}
-      />
-    ) : null;
+  // A failed store has no list to filter: the error stands alone.
+  const showHeader = !error && (loading || cards.length > 0);
 
   return (
     <ListScreen<TripListItem>
+      {...LIST_SHAPE}
       testID="trips-screen"
       listTestID={items.length > 0 ? 'trips-list' : undefined}
-      underHeader
-      // The tab bar below the screen (or the pill over it) is measured by `useTabZone`.
-      edges={[]}
-      bottomInset={tabZone}
+      bottomInset={props.tabZone}
       horizontalInset={
         Platform.OS === 'android' ? ScreenMargin.androidList : ScreenMargin.default
       }
-      // Each item spaces itself: 16 dp under a card, 12 dp under a row.
-      itemGap={0}
+      endInset={props.stripShown ? STRIP_ROOM : undefined}
       data={items}
-      keyExtractor={tripItemKey}
-      getItemType={tripItemType}
       stickyHeaderIndices={list.sticky}
       listRef={strip.listRef}
       onViewableItemsChanged={strip.onViewableItemsChanged}
-      viewabilityConfig={VIEWABILITY}
       renderItem={({ item }) => <TripListItemView item={item} onOpen={onOpen} />}
-      header={header}
+      header={
+        showHeader ? (
+          <TripsHeader
+            cards={cards}
+            settled={settled}
+            filter={filter}
+            onFilter={onFilter}
+            banner={sync.banner}
+          />
+        ) : null
+      }
       empty={
         <TripsEmpty
           loading={loading}
           error={error}
           tripCount={cards.length}
           filter={filter}
-          onPlan={onPlan}
+          onPlan={props.onPlan}
           onResetFilter={() => onFilter('all')}
         />
       }
@@ -230,6 +274,7 @@ export default function TripsScreen() {
         filter={filter}
         onFilter={setFilter}
         tabZone={tabZone}
+        stripShown={showStrip}
         onPlan={onPlan}
         onOpen={onOpen}
       />

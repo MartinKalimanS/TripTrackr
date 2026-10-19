@@ -26,8 +26,9 @@
  * Feature 005 (T541) adds what a MIXED list needs, all optional and additive: `getItemType`
  * (a recycler reuses a cell only for the same shape), `stickyHeaderIndices`, `listRef` and
  * `onViewableItemsChanged` (jump to a year, follow the scroll), `bottomInset` (room at the
- * foot past a floating pill and button), `horizontalInset` (a screen margin of its own) and
- * `itemGap` (0 where the items space themselves). With none of them the list is what it was.
+ * foot past a floating pill and button), `horizontalInset` (a screen margin of its own),
+ * `endInset` (more at the end, for a strip along the edge) and `itemGap` (0 where the items
+ * space themselves). With none of them the list is what it was.
  */
 import {
   FlashList,
@@ -84,6 +85,8 @@ export type ListScreenProps<Item> = {
   bottomInset?: number;
   /** The padding at each side. Default `Spacing.four`. */
   horizontalInset?: number;
+  /** More room at the END than `horizontalInset` gives, for a strip along that edge. */
+  endInset?: number;
   /** The gap between items. Default `Spacing.three`; 0 draws none (the items space themselves). */
   itemGap?: number;
 };
@@ -122,6 +125,7 @@ export function ListScreen<Item>({
   viewabilityConfig,
   bottomInset = 0,
   horizontalInset = Spacing.four,
+  endInset,
   itemGap,
   // Read after `underHeader`: a default may use only what is destructured before it.
   edges = underHeader ? UNDER_HEADER_EDGES : DEFAULT_EDGES,
@@ -165,6 +169,7 @@ export function ListScreen<Item>({
           contentContainerStyle={{
             ...styles.content,
             paddingHorizontal: horizontalInset,
+            ...(endInset === undefined ? null : { paddingEnd: endInset }),
             paddingTop,
             paddingBottom,
           }}

@@ -24,9 +24,14 @@ import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import TripsScreen from '@/app/(tabs)/trips';
 import { Spacing } from '@/constants/theme';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
+import type { TripListItem } from '@/features/trips/trip-sections';
 import type { TripsSync } from '@/features/trips/use-trips-sync';
 
 import { cardModel, manyTrips } from '../helpers/trip-card-fixture';
+
+// The first render of a suite pays for transforming every module the screen touches, and a long list
+// of cards is heavy under a loaded machine.
+jest.setTimeout(60_000);
 
 const mockPush = jest.fn();
 const mockStackScreen = jest.fn();
@@ -56,6 +61,23 @@ jest.mock('expo-image', () => {
   const { View } = require('react-native') as typeof import('react-native');
   const Host = View as unknown as React.ComponentType<Record<string, unknown>>;
   return { Image: (props: Record<string, unknown>) => React.createElement(Host, props) };
+});
+
+// `ListScreen` is the real one; the wrapper only records what the screen hands it, because the
+// list the tests run under (`RecyclerView`) does not expose `getItemType` or the sticky indices.
+const mockListProps: { current: Record<string, unknown> | null } = { current: null };
+jest.mock('@/components/ui/list-screen', () => {
+  const MockReact = require('react') as typeof import('react');
+  const actual = jest.requireActual(
+    '@/components/ui/list-screen',
+  ) as typeof import('@/components/ui/list-screen');
+  return {
+    ...actual,
+    ListScreen: (props: Record<string, unknown>) => {
+      mockListProps.current = props;
+      return MockReact.createElement(actual.ListScreen as never, props);
+    },
+  };
 });
 
 const mockTrips: { data: TripCardModel[]; loading: boolean; error: Error | null } = {
@@ -268,6 +290,68 @@ describe('<TripsScreen> - the mixed list (FR-030)', () => {
     mockTrips.data = manyTrips(214);
     platform = await renderOn('ios');
     expect(screen.getByTestId('trips-count')).toHaveTextContent('214 trips · since 2009');
+  });
+});
+
+describe('<TripsScreen> - what it hands the list (FR-030, FR-035; D5-12)', () => {
+  type SeenList = {
+    data: TripListItem[];
+    getItemType: (item: TripListItem, index: number) => string;
+    keyExtractor: (item: TripListItem, index: number) => string;
+    stickyHeaderIndices: number[];
+  };
+  const seen = () => mockListProps.current as unknown as SeenList;
+
+  test('recycles cells by shape: the type of each item is its own kind', async () => {
+    mockTrips.data = MIXED();
+    platform = await renderOn('ios');
+
+    const { data, getItemType } = seen();
+    expect(data.map((item, index) => getItemType(item, index))).toEqual([
+      'hero',
+      'ticket',
+      'yearHeader',
+      'row',
+      'yearHeader',
+      'row',
+      'row',
+    ]);
+  });
+
+  test('sticks the year headers, and only them', async () => {
+    mockTrips.data = MIXED();
+    platform = await renderOn('ios');
+
+    expect(seen().stickyHeaderIndices).toEqual([2, 4]);
+  });
+
+  test('keys every item by its own id (a header by its year), each one once', async () => {
+    mockTrips.data = MIXED();
+    platform = await renderOn('ios');
+
+    const { data, keyExtractor } = seen();
+    const keys = data.map((item, index) => keyExtractor(item, index));
+    expect(keys).toEqual([
+      'now',
+      'next',
+      'year-2026',
+      'tokyo',
+      'year-2025',
+      'mexico',
+      'lisbon',
+    ]);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  test('sticks the headers of 214 trips too: one per year, at the index it sits at', async () => {
+    mockTrips.data = manyTrips(214);
+    platform = await renderOn('ios');
+
+    const { data, stickyHeaderIndices } = seen();
+    expect(stickyHeaderIndices.length).toBe(17);
+    expect(stickyHeaderIndices.every((index) => data[index]?.type === 'yearHeader')).toBe(
+      true,
+    );
   });
 });
 
@@ -578,10 +662,26 @@ describe('<TripsScreen> - 200 trips (FR-035; SC-006)', () => {
     expect(screen.getByTestId('trips-year-scrubber-year-2025', hidden)).toBeTruthy();
   });
 
+  test('leaves the strip its own room: the list takes 44 dp at the end, so no card runs under it', async () => {
+    mockTrips.data = manyTrips(214);
+    platform = await renderOn('ios');
+
+    const content = flat({
+      props: { style: screen.getByTestId('trips-list').props.contentContainerStyle },
+    });
+    expect(content.paddingEnd).toBe(44);
+    expect(content.paddingHorizontal).toBe(20);
+  });
+
   test('shows none below 200: the headers are enough', async () => {
     mockTrips.data = manyTrips(199);
     platform = await renderOn('ios');
     expect(screen.queryByTestId('trips-year-scrubber')).toBeNull();
+    expect(
+      flat({
+        props: { style: screen.getByTestId('trips-list').props.contentContainerStyle },
+      }).paddingEnd,
+    ).toBeUndefined();
   });
 
   test('the strip follows the filter: no years in it when a filter leaves none', async () => {

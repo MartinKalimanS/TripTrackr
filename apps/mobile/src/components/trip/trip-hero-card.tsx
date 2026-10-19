@@ -7,12 +7,14 @@
  *
  * From the back: the cover (`TripCoverArt`: the trip's photograph, or the generated cover),
  * the bottom scrim, a row on top with the status chip ("Active · Day 3 of 8") and, while the
- * trip has changes the server has not confirmed, the sync marker (a glyph on a dark disc: a
- * control over a photograph sits on a disc, FR-007), and at the foot, on the CAPTION scrim, the
- * country with its flag chip and the number of stops, the title (two lines at most), the dates
- * and the nights, and the stop strip. Every line of text over the picture is the opaque on-photo
- * ink; the caption scrim's block WRAPS the text and has a minimum, never a height, so the alpha
- * under any line holds at every text size (white on a white photograph is 5.3:1 or more).
+ * trip has changes the server has not confirmed, the sync marker (an icon and the words "Not
+ * yet synced", on an opaque tint of its own, so it reads over any picture: US2 scenario 6 asks
+ * for a marker with text, and the Maestro flows wait on those words; the row wraps at large
+ * text), and at the foot, on the CAPTION scrim, the country with its flag chip and the number
+ * of stops, the title (two lines at most), the dates and the nights, and the stop strip. Every
+ * line of text over the picture is the opaque on-photo ink; the caption scrim's block WRAPS
+ * the text and has a minimum, never a height, so the alpha under any line holds at every text
+ * size (white on a white photograph is 5.3:1 or more).
  *
  * It is 24 dp round, at least 219 dp tall, with the first lift, and fixes no height: the
  * largest text size grows it and nothing clips (FR-074).
@@ -107,9 +109,9 @@ export function TripHeroCard({ trip, onPress }: TripHeroCardProps) {
         <Scrim kind="bottom" />
         <View
           testID={`trip-card-${id}-status-row`}
-          className="flex-row items-start justify-between gap-2 p-3">
+          className="flex-row flex-wrap items-start justify-between gap-2 p-3">
           <StatusChip status={trip.status} dayOf={dayOf ?? undefined} />
-          {trip.pending ? <SyncBadge state="pending" glyphOnly /> : null}
+          {trip.pending ? <SyncBadge state="pending" /> : null}
         </View>
         <Scrim kind="caption" contentStyle={CAPTION_BLOCK}>
           <Eyebrow trip={trip} />

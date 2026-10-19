@@ -154,12 +154,22 @@ describe('<TripHeroCard> the picture and the scrims (FR-007, FR-034)', () => {
 });
 
 describe('<TripHeroCard> pending changes (FR-034)', () => {
-  test('a waiting trip carries the marker, a glyph on a disc, named in words', async () => {
+  // US2 scenario 6: "a marker with text and an icon says so", and the Maestro flows wait on
+  // the words "Not yet synced": a glyph on a disc alone would be a marker without text.
+  test('a waiting trip carries the marker: an icon and the words "Not yet synced"', async () => {
     await renderHero(cardModel({ pending: true }));
 
-    const marker = screen.getByLabelText('Sync pending', hidden);
-    expect(marker).toBeTruthy();
+    expect(screen.getByText('Not yet synced')).toBeTruthy();
+    expect(screen.getByLabelText('Sync pending', hidden)).toBeTruthy();
     expect(screen.getByTestId('sync-badge-icon', hidden)).toBeTruthy();
+  });
+
+  test('the marker sits in the status row, which wraps at large text instead of clipping', async () => {
+    await renderHero(cardModel({ pending: true }));
+
+    const row = screen.getByTestId('trip-card-t1-status-row');
+    expect(within(row).getByText('Not yet synced')).toBeTruthy();
+    expect(classesOf(row)).toContain('flex-wrap');
   });
 
   test('a synced trip carries none', async () => {

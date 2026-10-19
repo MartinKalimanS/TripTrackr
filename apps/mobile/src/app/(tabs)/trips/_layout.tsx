@@ -11,9 +11,11 @@
  *
  * The header is the title: iOS asks for a large "Trips", Android shows a standard header
  * with the same word, both themed by `useStackHeaderOptions` (the canvas behind, the
- * accent on controls, the display face on titles). The trips screen then adds its
- * "Plan a trip" action to that header on iOS. The options are asserted in the tests; the
- * large title's collapse as the list scrolls is native behaviour, a device check (T408).
+ * accent on controls, the display face on titles). The trips screen adds the sync chip to
+ * that header while changes wait; "Plan a trip" is a floating button above the tab pill on both
+ * platforms (feature 005, T541), no longer a header action. The options are asserted in the
+ * tests; the large title's collapse as the list scrolls is native behaviour, a device check
+ * (T408).
  */
 import { Stack } from 'expo-router';
 
