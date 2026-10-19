@@ -7,6 +7,7 @@
  * to about sixty, and every other pin is a plain dot.
  */
 import { GlobeLayers } from '@/constants/theme';
+import { fnv1a32 } from '@/lib/fnv1a';
 import {
   toGlobeTrips,
   type GlobeStopRow,
@@ -17,6 +18,7 @@ import {
   PIN_RANK,
   ROUNDEL_LIMIT,
   pinCollection,
+  pinCountries,
   pinImageKey,
   roundelRequests,
   splitPins,
@@ -136,6 +138,35 @@ describe('pinCollection', () => {
   });
 });
 
+describe('pinImageKey for a generated cover', () => {
+  test('differs from any photograph, and follows the country and the palette', () => {
+    const photo = pinImageKey('t1', 'active', 'file:///a.jpg');
+    const generated = pinImageKey('t1', 'active', null, 'light', 'PT');
+    expect(generated).not.toBe(photo);
+    expect(pinImageKey('t1', 'active', null, 'light', 'pt')).toBe(generated);
+    expect(pinImageKey('t1', 'active', null, 'light', 'ES')).not.toBe(generated);
+    expect(pinImageKey('t1', 'active', null, 'dark', 'PT')).not.toBe(generated);
+    expect(pinImageKey('t1', 'planning', null, 'light', 'PT')).not.toBe(generated);
+  });
+});
+
+describe('pinCountries', () => {
+  test('is the country of the stop the pin rests at, null when this device has not cached it', () => {
+    const rows = [
+      { ...stop('a', 1, PAST), country_iso: 'pt' },
+      { ...stop('b', 2, PAST) },
+      { ...stop('c', 3, '2026-05-01', '2026-05-09'), country_iso: 'ES' },
+      { ...stop('c', 4, NOW, '2026-05-12'), country_iso: 'FR' },
+    ];
+    const trips = toGlobeTrips(
+      ['a', 'b', 'c'].map((id) => ({ id, title: id })),
+      rows,
+      TODAY,
+    );
+    expect(pinCountries(trips, TODAY)).toEqual({ a: 'PT', b: null, c: 'FR' });
+  });
+});
+
 describe('pinImageKey', () => {
   test('is stable, and names the trip', () => {
     expect(pinImageKey('t1', 'active', 'file:///a.jpg')).toBe(
@@ -180,10 +211,21 @@ describe('roundelRequests', () => {
     ]);
   });
 
-  test('a trip without a cover is a dot: there is no picture to crop', () => {
+  test('a trip without a cover still gets a roundel: the generated cover, not a bare dot', () => {
     const { pins, covers } = crowd(3);
     const { t1: _dropped, ...rest } = covers;
-    expect(roundelRequests(pins, rest).map((r) => r.tripId)).toEqual(['t0', 't2']);
+    const requests = roundelRequests(pins, rest, ROUNDEL_LIMIT, 'light', { t1: 'pt' });
+    expect(requests.map((r) => r.tripId)).toEqual(['t0', 't1', 't2']);
+    expect(requests[1]).toMatchObject({ cover: null, iso: 'PT' });
+    expect(requests[1]!.palette).toBe(fnv1a32('t1') % 3);
+    expect(requests[0]).toMatchObject({ cover: 'file:///t0.jpg', iso: null });
+  });
+
+  test('a generated cover without a country carries no code, and the palette follows the trip id', () => {
+    const { pins } = crowd(2);
+    const [a, b] = roundelRequests(pins, {});
+    expect(a).toMatchObject({ cover: null, iso: null, palette: fnv1a32('t0') % 3 });
+    expect(b!.palette).toBe(fnv1a32('t1') % 3);
   });
 
   test('beyond about sixty the rest are dots: sixty requests, however many pins', () => {
@@ -216,6 +258,8 @@ describe('roundelRequests', () => {
       tripId: 'live',
       status: 'active',
       cover: 'file:///live.jpg',
+      iso: null,
+      palette: fnv1a32('live') % 3,
     });
   });
 });

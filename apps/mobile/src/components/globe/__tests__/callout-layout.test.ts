@@ -125,3 +125,37 @@ describe('calloutPlacement', () => {
     expect(Number.isFinite(place(50, 20, CARD, tiny).maxWidth)).toBe(true);
   });
 });
+
+describe('calloutPlacement — the numbers of the prototype (.tag, app.js draw)', () => {
+  const { verticalMargin, ringSize } = GlobeLayers.callout;
+
+  test('the card edge is half the pin plus 14 dp from the pin middle: 42 dp for the live roundel', () => {
+    expect(ringSize.roundel).toBe(GlobeLayers.pins.roundelSize.active);
+    expect(ringSize.roundel / 2 + gap).toBe(42);
+    // Right on the margin: the card's left edge is at 12 when the pin is 42 + 163 + 12 across.
+    const x = margin + CARD.width + 42;
+    expect(
+      calloutPlacement({ x, y: 350 }, CARD, AREA, { ringSize: ringSize.roundel }).side,
+    ).toBe('left');
+    expect(
+      calloutPlacement({ x: x - 1, y: 350 }, CARD, AREA, { ringSize: ringSize.roundel })
+        .side,
+    ).toBe('above');
+  });
+
+  test('stays 6 dp clear of the header and of the sheet', () => {
+    expect(verticalMargin).toBe(6);
+    const half = CARD.height / 2;
+    expect(place(300, AREA.top + verticalMargin + half).side).toBe('left');
+    expect(place(300, AREA.top + verticalMargin + half - 1).side).not.toBe('left');
+    expect(place(300, AREA.bottom - verticalMargin - half).side).toBe('left');
+    expect(place(300, AREA.bottom - verticalMargin - half + 1).side).not.toBe('left');
+  });
+
+  test('tries left, right, above, then below, in that order', () => {
+    expect(place(300, 350).side).toBe('left');
+    expect(place(100, 350).side).toBe('right');
+    expect(place(195, 350).side).toBe('above');
+    expect(place(195, AREA.top + 20).side).toBe('below');
+  });
+});

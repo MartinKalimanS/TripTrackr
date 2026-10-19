@@ -90,7 +90,7 @@ import { useAutoPitch, useFlyToFirstPlacement } from './camera';
 import { GradientArcLayer } from './gradient-arc-layer';
 import { GraticuleLayer } from './graticule-layer';
 import { PinLayer } from './pin-layer';
-import { pinCollection } from './pin-features';
+import { pinCollection, pinCountries } from './pin-features';
 import { TerrainLayers } from './terrain-layers';
 import { useArcPress, type GlobePressEvent } from './use-arc-press';
 import { useCalloutPlacement } from './use-callout-placement';
@@ -262,6 +262,7 @@ function MapLayers({
         split={roundels.split}
         bitmaps={roundels.bitmaps}
         palette={palette}
+        scheme={theme}
         onPress={onPress}
       />
       {beacons.length > 0 ? (
@@ -299,7 +300,8 @@ function GlobeMap({
     !prefersLessMotion,
     initialFit?.zoomLevel ?? GlobeCamera.zoomLevel,
   );
-  const roundels = useRoundels(shapes.pins, covers, { scheme: theme });
+  const countries = useMemo(() => pinCountries(trips, today), [trips, today]);
+  const roundels = useRoundels(shapes.pins, covers, { scheme: theme, countries });
   const running = !prefersLessMotion && focused && foreground;
   const live = useLiveCallout({
     trips,
@@ -408,6 +410,8 @@ function useLiveCallout({
         side={placement.side}
         maxWidth={placement.maxWidth}
         ringSize={ringSize}
+        ring={!isRoundel}
+        pulseSize={isRoundel ? GlobeLayers.callout.roundelPulse : ringSize}
         running={running}
         onCardLayout={placement.onCardLayout}
       />

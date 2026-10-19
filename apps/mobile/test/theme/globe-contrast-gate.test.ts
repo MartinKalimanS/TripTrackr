@@ -310,6 +310,15 @@ describe('the callout of the live trip (FR-011)', () => {
   );
 });
 
+describe('the pins: the cluster count reads on its disc', () => {
+  test.each(THEMES)('%s: the count is text on the ink disc', (theme) => {
+    const { clusterFill, clusterLabel } = GlobeStyle[theme].pin;
+    expect(contrastRatio(clusterLabel, clusterFill)).toBeGreaterThanOrEqual(
+      ContrastFloor.normalText,
+    );
+  });
+});
+
 describe('GlobeStyle is classified, like GlobeColors', () => {
   const CLASSIFIED = new Set([
     'water',
@@ -321,6 +330,7 @@ describe('GlobeStyle is classified, like GlobeColors', () => {
     'visitedCasing',
     'visitedCasingOpacity',
     'callout',
+    'pin',
   ]);
 
   test('both themes expose the same tokens and every one is classified above', () => {
