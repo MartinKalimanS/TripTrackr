@@ -19,7 +19,7 @@
  * for the Back control.
  */
 import { useContext } from 'react';
-import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
@@ -27,12 +27,12 @@ import { Text } from '@/components/ui/text';
 import { BorderHairline, MinTouchTarget } from '@/constants/theme';
 import { Space } from '@/theme';
 
-import { COLLAPSED_BAR_HEIGHT } from './hero-collapse';
+import { COLLAPSED_BAR_HEIGHT, type AnimatedViewStyle } from './hero-collapse';
 
 export interface CollapsedBarProps {
   title: string;
   /** The scroll-driven style (the fade in). */
-  style?: StyleProp<ViewStyle>;
+  style?: AnimatedViewStyle;
 }
 
 /** Room for the native Back control at the start, mirrored at the end so the title is centred. */

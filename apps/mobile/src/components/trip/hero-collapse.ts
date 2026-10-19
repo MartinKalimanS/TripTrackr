@@ -21,11 +21,15 @@
  *   one instance of the strip (one set of ids, one reading order) laid over a placeholder of
  *   the same height, where native sticky headers cannot sit below a bar of our own.
  */
-import {
+import type { ComponentProps } from 'react';
+import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   type SharedValue,
 } from 'react-native-reanimated';
+
+/** What an `Animated.View` takes as its style: plain styles and the hook's animated ones. */
+export type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style'];
 
 /** The picture's minimum height: it grows with the title, never below this (FR-037). */
 export const HERO_MIN_HEIGHT = 236;

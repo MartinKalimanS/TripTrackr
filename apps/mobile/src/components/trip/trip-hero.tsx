@@ -29,13 +29,7 @@
  */
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  useWindowDimensions,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { FlagChip } from '@/components/ui/flag-chip';
@@ -48,7 +42,7 @@ import { formatDateRange } from '@/features/trips/trip-date-range';
 import type { TripDateRange } from '@/features/trips/trip-status';
 import { Motion, Space } from '@/theme';
 
-import { HERO_MIN_HEIGHT, SHEET_OVERLAP } from './hero-collapse';
+import { HERO_MIN_HEIGHT, SHEET_OVERLAP, type AnimatedViewStyle } from './hero-collapse';
 
 export interface TripHeroCountry {
   /** The ISO alpha-2 code for the flag, or `null` when the country has none to show. */
@@ -64,7 +58,7 @@ export interface TripHeroProps {
   country?: TripHeroCountry | null;
   dateRange?: TripDateRange | null;
   /** The parallax and stretch of `useHeroCollapse`. */
-  imageStyle?: StyleProp<ViewStyle>;
+  imageStyle?: AnimatedViewStyle;
   /** Called with the laid-out height, so the collapse knows when the hero has gone. */
   onHeight?: (height: number) => void;
 }
