@@ -1,0 +1,46 @@
+# assertScreenshot harness (feature 005, T524; research D5-18): records or compares ONE
+# screenshot, cropped on a test identifier so the status bar clock and the battery never
+# decide the result.
+#
+# Called with `runFlow` and these variables:
+#
+#   SHOT           the baseline's name, without extension: `gallery-dark-x2`
+#   CROP           the test identifier to crop on (default `gallery`, the whole page)
+#   MODE           `assert` (default) compares with `e2e/__baselines__/<SHOT>.png`;
+#                  `record` takes the screenshot to write the baseline from
+#   THRESHOLD      the percentage that must match (default 95, Maestro's own)
+#   BASELINES      where the baselines are, relative to THIS file (default
+#                  `../__baselines__`); see `e2e/__baselines__/README.md`
+#
+# A baseline is an image recorded on the pinned device and committed. This harness never
+# invents one: an assert against a baseline that does not exist FAILS, which is how a missing
+# baseline is noticed (Maestro: "the assertion will fail if the comparison image doesn't exist").
+#
+# Not a flow of its own: `config.yaml` runs `e2e/*.yaml`, and this file is under `e2e/gallery/`.
+appId: com.triptrackr.app.dev
+env:
+  CROP: 'gallery'
+  MODE: 'assert'
+  THRESHOLD: 95
+  BASELINES: '../__baselines__'
+---
+- runFlow:
+    when:
+      true: ${MODE == 'record'}
+    commands:
+      - takeScreenshot:
+          path: '${SHOT}'
+          cropOn:
+            id: '${CROP}'
+          label: 'Record ${SHOT}'
+
+- runFlow:
+    when:
+      true: ${MODE != 'record'}
+    commands:
+      - assertScreenshot:
+          path: '${BASELINES}/${SHOT}.png'
+          cropOn:
+            id: '${CROP}'
+          thresholdPercentage: ${THRESHOLD}
+          label: 'Compare ${SHOT} with its baseline'

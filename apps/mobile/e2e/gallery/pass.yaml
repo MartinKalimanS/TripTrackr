@@ -1,0 +1,35 @@
+# One pass of the dev gallery (feature 005, T524): choose a theme and a text scale with the
+# gallery's own switches, check the readout says so, and record or compare one screenshot.
+#
+# Variables: THEME (`light`, `dark`, `light-contrast`, `dark-contrast`), SCALE (`1` or `2`),
+# and the MODE, THRESHOLD and BASELINES of `assert-screenshot.yaml`, passed through.
+#
+# The scale switch is a LAYOUT scale: glyph size follows the phone's text size. For the
+# baselines at scale 2, set the phone's font size to the largest first (Android:
+# `adb shell settings put system font_scale 2.0`; iOS Simulator:
+# `xcrun simctl ui booted content_size accessibility-extra-extra-extra-large`).
+appId: com.triptrackr.app.dev
+env:
+  MODE: 'assert'
+  THRESHOLD: 95
+  BASELINES: '../__baselines__'
+---
+- tapOn:
+    id: 'gallery-theme-${THEME}'
+- tapOn:
+    id: 'gallery-scale-${SCALE}'
+# The readout reads `<theme>`, a middle dot, `layout`, a multiplication sign and the scale, and
+# so on; `.` stands for those two marks so that this file stays ASCII.
+- assertVisible:
+    id: 'gallery-readout'
+    text: '${THEME} . layout .${SCALE} .*'
+# The numerals count up for 700 ms and the skeletons shimmer; wait for the first to finish.
+- waitForAnimationToEnd
+- runFlow:
+    file: assert-screenshot.yaml
+    env:
+      SHOT: 'gallery-${THEME}-x${SCALE}'
+      CROP: 'gallery'
+      MODE: ${MODE}
+      THRESHOLD: ${THRESHOLD}
+      BASELINES: ${BASELINES}
