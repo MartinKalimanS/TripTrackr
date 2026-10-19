@@ -11,9 +11,12 @@
  * reads the store alone, through `useSyncExternalStore`, so it adds no listener, no
  * colour-scheme subscription and no allocation per component. The snapshot is the store's
  * own frozen object, stable until a flag changes.
+ *
+ * Inside a dev-gallery scope (`appearance-override.ts`, T524) the flags are the scope's.
  */
-import { useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 
+import { overrideFlags, useAppearanceOverride } from '@/hooks/appearance-override';
 import {
   getAppearanceServerSnapshot,
   getAppearanceSnapshot,
@@ -22,9 +25,11 @@ import {
 } from '@/hooks/appearance-store';
 
 export function useAccessibilityFlags(): AppearanceSnapshot {
-  return useSyncExternalStore(
+  const stored = useSyncExternalStore(
     subscribeToAppearance,
     getAppearanceSnapshot,
     getAppearanceServerSnapshot,
   );
+  const override = useAppearanceOverride();
+  return useMemo(() => (override ? overrideFlags(override) : stored), [override, stored]);
 }

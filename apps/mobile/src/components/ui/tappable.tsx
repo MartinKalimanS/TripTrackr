@@ -30,11 +30,12 @@
  *   themes (`test/theme/adapter-pressed-fills.test.ts` measures it). Only ink text is
  *   gated on it (P6: `ink` on `pressed`), so the content of a control that takes this fill
  *   carries ink while held; `muted` and `subtle` are not gated on it (finding M-4).
- * - The font scale comes from `useWindowDimensions`, not from `useAppearance`: a control
- *   repeated down a list needs nothing else from that hook, so it skips the hook's
- *   per-component colour-scheme subscription and derived object. The platform's
- *   accessibility settings are one app-wide subscription (`hooks/appearance-store.ts`),
- *   so a consumer adds no listener of its own either way (tasks.md T461).
+ * - The font scale comes from `useFontScale` (the window's, unless the dev gallery scopes
+ *   another), not from `useAppearance`: a control repeated down a list needs nothing else from
+ *   that hook, so it skips the hook's per-component colour-scheme subscription and derived
+ *   object. The platform's accessibility settings are one app-wide subscription
+ *   (`hooks/appearance-store.ts`), so a consumer adds no listener of its own either way
+ *   (tasks.md T461).
  * - A focused control draws the focus ring of `focus-ring.ts`: 2.5 dp thick, 2 dp OUTSIDE it
  *   (an `outline`, which takes no layout space), in the `focus` token. It does not depend
  *   on the pressed appearance, and the offset keeps it off any accent fill (review rule 6).
@@ -44,13 +45,13 @@
 import { useThemeColor, type ThemeColor } from 'heroui-native';
 import {
   Pressable,
-  useWindowDimensions,
   type PressableProps,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
+import { useFontScale } from '@/hooks/use-font-scale';
 import { cornerStyle } from '@/theme';
 
 import { assertAccessibleName, assertNotBusyAndDisabled } from './adapter-guards';
@@ -131,7 +132,7 @@ export function Tappable({
   assertAccessibleName('Tappable', accessibilityLabel);
   assertNotBusyAndDisabled('Tappable', busy, disabled);
 
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
   const focus = useFocusRing(onFocus, onBlur);
   const pressedColor = useThemeColor(TAPPABLE_PRESSED_TOKEN);
   const focusColor = useThemeColor('focus');

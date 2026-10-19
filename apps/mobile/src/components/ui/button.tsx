@@ -41,15 +41,14 @@
  * - The host node carries the emphasis, the size and the icon-only flag as marks (`EMPHASIS`),
  *   which the screen suites read to count a screen state's primaries (review rule 2).
  *
- * The font scale comes from `useWindowDimensions` and the two accessibility flags from the
- * shared store (`useAccessibilityFlags`), never from `useAppearance`, so a button repeated
+ * The font scale comes from `useFontScale` (the window's) and the two accessibility flags from
+ * the shared store (`useAccessibilityFlags`), never from `useAppearance`, so a button repeated
  * down a list adds no colour-scheme subscription of its own. The colours are asked of the
  * kit once, by palette key (`useColors`). There is no literal here.
  */
 import { Spinner } from 'heroui-native';
 import {
   Pressable,
-  useWindowDimensions,
   type GestureResponderEvent,
   type PressableProps,
   type StyleProp,
@@ -58,6 +57,7 @@ import {
 
 import { MinTouchTarget } from '@/constants/theme';
 import { useAccessibilityFlags } from '@/hooks/use-accessibility-flags';
+import { useFontScale } from '@/hooks/use-font-scale';
 import { useHaptics, type Haptics } from '@/hooks/use-haptics';
 import { Space, cornerOf, pressScaleOf } from '@/theme';
 
@@ -274,7 +274,7 @@ interface SurfaceInput {
 /** Look and style of a button for a held or resting press, from the active theme. */
 function useButtonSurface(input: SurfaceInput): Surface {
   const { variant, size, iconOnly, busy, disabled, focused } = input;
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
   const { prefersMoreContrast, prefersLessMotion } = useAccessibilityFlags();
   const colors = useColors(COLOR_KEYS);
   const inert = busy || disabled;
