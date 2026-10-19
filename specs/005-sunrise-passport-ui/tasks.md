@@ -387,16 +387,31 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
       `country-row.tsx`, and `components/ui/progress-ring.tsx`. The list is also tested INSIDE a `Sheet` (`countries-list-sheet.test.tsx`).
       The press only calls `onSelectCountry(summary)`; lowering the sheet and the fly-to (the summary's `focus`) are
       T537's.
-- [ ] T537 [US1] Home integration: camera padding and zoom on each settle (`globeFit`, 280 ms), logo and
+- [x] T537 [US1] Home integration: camera padding and zoom on each settle (`globeFit`, 280 ms), logo and
       attribution offsets, `PlanTripFab` and its rules (hidden at full and with no trips), recentre control after
       the camera moved, `useIdleSpin` with every stop condition, `useGlobeActions` (next trip, previous trip,
       recentre, open countries), `InvitationCard` with three empty frames, `HomeSkeleton`, offline and error
       `Banner`s, the unreadable-store notice; failing tests for each rule using the Mapbox stand-in and a spied
       `setInterval`. **[DEVICE]** visual check is T547 (FR-013, FR-017, FR-018, FR-019, FR-020, FR-021; D5-03,
       D5-04; Q-8)
-- [ ] T538 [US1] Update and run `03-globe` and `04-zoom` (and `offline/14-*`) against the new Home; record any edit in
+      _As built (branch `feat/005-home-compose`):_ `app/(tabs)/index.tsx` is 56 lines over `components/home/home-globe.tsx`,
+      `home-header.tsx`, `home-sheet.tsx`, `home-states.tsx`, `invitation-card.tsx`, `use-home-layout.ts` and `use-home-camera.ts`;
+      `components/globe/use-idle-spin.ts` and `use-globe-actions.ts` with the pure `features/globe/idle-spin.ts`, `globe-moves.ts`,
+      `globe-actions.ts` and `features/home/home-layout.ts`. The globe mounts once the header is measured and its first frame is the
+      camera's own default fit (`GlobeView initialFit`); every settle eases to `globeFitCamera` (none at full); the idle spin is ONE
+      5 s timer with every stop condition; the map offers next trip, previous trip, recentre and open countries; `PlanTripFab` gained
+      `collapsed` (the plus at peek). 172 new tests in 13 suites. **Deviations** (full list in `contracts/components.md`, "As built
+      (T537 to T538)"): the figures stay in the sheet, the banner is under the greeting, the recentre control is the Home's, no sheet
+      with no trips, the idle spin counts eight moves and stops for a live callout, the country flight replaces the next fit, no toast.
+      **[DEVICE] left for T547**: the fit and the first frame, the ornaments, touches over the native map, the spin's smoothness, the
+      map's actions under VoiceOver and TalkBack, the reading order, the country flight, the header's refit, the peek button.
+- [x] T538 [US1] Update and run `03-globe` and `04-zoom` (and `offline/14-*`) against the new Home; record any edit in
       "Maestro flow edits"; ids `globe-stats`, `globe-stat-countries`, `globe-stat-distance`, `globe-empty-state`,
       `globe-notice`, `home-plan-trip`, `home-add-stop`, `home-open-trips` unchanged (FR-081, FR-082; SC-003, SC-014)
+      _As built (read, not run: no device):_ every id and text the Home steps use resolves (audit in `contracts/components.md`,
+      "Maestro audit (T538)"); `03-globe` and `04-zoom` are edited for three legitimate changes (the distance numeral has no unit, the sheet
+      covers the middle of the map at half, so the flow lowers it and taps where the planet's centre is). `offline/*` read the figures
+      only, unchanged. See "Maestro flow edits".
 
 ---
 
@@ -609,6 +624,9 @@ filter's own "Active" segment and prove nothing).
 | Task | Flow                  | Edit                                                                                                                                                      | Reason                                                                                                                                                                                                                                                                                                                      |
 | ---- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | T542 | `01-account-and-trip` | The stop-count assertion (the line after the comment about the accessible name) became `assertVisible: '.*2 stops.*'` (was `'2 stops.*'`), with a comment | The Atlas card's text line "2 stops · EUR" is the country, month and length now, so no text starts with the stop count. "2 stops" is in the hero's eyebrow ("Italy · 2 stops") and in every card's accessible name ("Italy, spring 2026, active, 2 stops": Android content-desc, iOS label), which the leading `.*` reaches |
+| T538 | `03-globe`            | `globe-stat-distance`'s text `'[0-9,.]+ (km\|mi)'` became `'[0-9,.]+'`, with a comment                                                                    | The numeral is the plain number and the unit ("Kilometres" or "Miles") is the label under it (T535), so no text carries the unit                                                                                                                                                                                            |
+| T538 | `03-globe`            | Before the arc tap: two taps on `home-sheet-handle` and a wait; the tap is at `'50%,47%'` (was `'50%,50%'`); comments say why                             | At half the sheet covers the middle of the map and the planet's centre is not there. The handle steps half, full, peek; at peek the camera's padding puts the active route's centre 47 percent down a 390 by 844 phone (`globeFit`)                                                                                         |
+| T538 | `04-zoom`             | After the globe appears: two taps on `home-sheet-handle`; the three double taps are at `'50%,47%'` (was `'50%,50%'`); the header comment says so          | The same: a double tap zooms about the tapped point, which must be Rome, and the sheet must not be over it                                                                                                                                                                                                                  |
 
 T530 made no flow edit. The tab label "Profile" became "You" and no flow selects it by text; `test/app/tab-labels.test.ts`
 reads every flow and fails if one ever does.
