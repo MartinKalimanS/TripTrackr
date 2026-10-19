@@ -15,6 +15,18 @@ import { MinTouchTarget } from '@/constants/theme';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import { Motion } from '@/theme';
 
+const hidden = { includeHiddenElements: true };
+
+// A View that carries every prop, so a test reads what a stop's thumbnail was given.
+jest.mock('expo-image', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+  const Host = View as unknown as React.ComponentType<Record<string, unknown>>;
+  return {
+    Image: (props: Record<string, unknown>) => React.createElement(Host, props),
+  };
+});
+
 function stop(id: string, city: string, order: number): StopWithPlace {
   return {
     id,
@@ -40,14 +52,22 @@ const rome = stop('s1', 'Roma', 0);
 const florence = stop('s2', 'Firenze', 1);
 const venice = stop('s3', 'Venezia', 2);
 
-async function renderList(stops: StopWithPlace[]) {
+/** Before every stop of the fixtures: each is still to come, so each node shows its number. */
+const BEFORE = '2026-01-01';
+
+async function renderList(
+  stops: StopWithPlace[],
+  extra: Partial<React.ComponentProps<typeof StopList>> = {},
+) {
   const handlers = {
     onMove: jest.fn(),
     onReorder: jest.fn(),
     onEdit: jest.fn(),
     onRemove: jest.fn(),
   };
-  const result = await render(<StopList stops={stops} {...handlers} />);
+  const result = await render(
+    <StopList stops={stops} today={BEFORE} {...handlers} {...extra} />,
+  );
   return { result, ...handlers };
 }
 
@@ -70,17 +90,11 @@ describe('<StopList>', () => {
     expect(screen.getByTestId('stop-number-s2')).toHaveTextContent('2');
     expect(screen.getByTestId('stop-number-s3')).toHaveTextContent('3');
     // Nothing above the first dot, nothing below the last: the rail joins the stops.
-    expect(screen.getByTestId('stop-rail-top-s1').props.className).not.toContain(
-      'bg-border',
-    );
-    expect(screen.getByTestId('stop-rail-bottom-s1').props.className).toContain(
-      'bg-border',
-    );
-    expect(screen.getByTestId('stop-rail-top-s2').props.className).toContain('bg-border');
-    expect(screen.getByTestId('stop-rail-bottom-s2').props.className).toContain(
-      'bg-border',
-    );
-    expect(screen.getByTestId('stop-rail-top-s3').props.className).toContain('bg-border');
+    expect(screen.queryByTestId('stop-rail-top-s1', hidden)).toBeNull();
+    expect(screen.getByTestId('stop-rail-bottom-s1')).toBeTruthy();
+    expect(screen.getByTestId('stop-rail-top-s2', hidden)).toBeTruthy();
+    expect(screen.getByTestId('stop-rail-bottom-s2')).toBeTruthy();
+    expect(screen.getByTestId('stop-rail-top-s3', hidden)).toBeTruthy();
     expect(screen.queryByTestId('stop-rail-bottom-s3')).toBeNull();
   });
 
@@ -296,5 +310,140 @@ describe('<StopList> while a stop is being dragged', () => {
     expect(screen.queryByTestId('stop-number-s1')).toBeNull();
     await act(async () => sortables.__activeItemDropped('s2'));
     expect(screen.getByTestId('stop-number-s2')).toHaveTextContent('2');
+  });
+});
+
+// T545 - the journey between the stops, the stop the traveller is at, the picture of a city,
+// the day that was chosen and where each row sits (for the day strip to scroll to).
+describe('<StopList> the timeline (T545; FR-041)', () => {
+  const at = (
+    id: string,
+    city: string,
+    order: number,
+    lat: number | null,
+    lng: number | null,
+    arrive: string,
+    depart: string,
+  ): StopWithPlace => ({
+    ...stop(id, city, order),
+    city_id: 7 + order,
+    arrive_date: arrive,
+    depart_date: depart,
+    country_name: 'Portugal',
+    country_iso: 'PT',
+    lat,
+    lng,
+  });
+  const lisbon = at('s1', 'Lisbon', 0, 38.7223, -9.1393, '2026-10-12', '2026-10-14');
+  const sintra = at('s2', 'Sintra', 1, 38.8029, -9.3817, '2026-10-14', '2026-10-15');
+  const porto = at('s3', 'Porto', 2, 41.1579, -8.6291, '2026-10-15', '2026-10-19');
+
+  test('draws the distance beneath each stop the traveller moves on from, and none beneath the last', async () => {
+    await renderList([lisbon, sintra, porto]);
+    expect(
+      within(screen.getByTestId('stop-transit-s1', hidden)).getByText(/^2\d km$/, hidden),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId('stop-transit-s2', hidden)).getByText(
+        /^27\d km$/,
+        hidden,
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('stop-transit-s3', hidden)).toBeNull();
+  });
+
+  test('says each journey in the name of the stop it leads to, and the first stop has none', async () => {
+    await renderList([lisbon, sintra, porto]);
+    expect(screen.getByTestId('stop-row-s1').props.accessibilityValue).toBeUndefined();
+    expect(screen.getByTestId('stop-row-s2').props.accessibilityValue.text).toMatch(
+      /^2\d kilometres from Lisbon\.$/,
+    );
+    expect(screen.getByTestId('stop-row-s3').props.accessibilityValue.text).toMatch(
+      /^27\d kilometres from Sintra\.$/,
+    );
+  });
+
+  test('joins a stop after a journey by a dotted lead, and a stay in one place by a solid one', async () => {
+    const stayed = { ...sintra, lat: lisbon.lat, lng: lisbon.lng };
+    await renderList([lisbon, stayed, porto]);
+    expect(screen.queryByTestId('stop-transit-s1', hidden)).toBeNull();
+    expect(screen.getByTestId('stop-rail-top-s2', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('stop-rail-top-dotted-s2', hidden)).toBeNull();
+    expect(screen.getByTestId('stop-rail-top-dotted-s3', hidden)).toBeTruthy();
+  });
+
+  test('draws no journey to or from a stop this device has not placed, and does not bridge it', async () => {
+    const unplaced = { ...sintra, lat: null, lng: null, city_name: null };
+    await renderList([lisbon, unplaced, porto]);
+    expect(screen.queryByTestId('stop-transit-s1', hidden)).toBeNull();
+    expect(screen.queryByTestId('stop-transit-s2', hidden)).toBeNull();
+    expect(screen.getByTestId('stop-row-s3').props.accessibilityValue).toBeUndefined();
+  });
+
+  test('marks the stop the traveller is at, ticks the ones behind it and rings the one ahead', async () => {
+    await renderList([lisbon, sintra, porto], { today: '2026-10-14' });
+    expect(screen.getByTestId('stop-check-s1', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('stop-number-s1')).toBeNull();
+    expect(screen.getByTestId('stop-now-s2')).toBeTruthy();
+    expect(screen.getByTestId('stop-number-s2')).toHaveTextContent('2');
+    expect(screen.queryByTestId('stop-now-s3')).toBeNull();
+    expect(screen.getByTestId('stop-number-s3')).toHaveTextContent('3');
+    expect(screen.getByTestId('stop-row-s2').props.accessibilityValue.text).toMatch(
+      /^Now\./,
+    );
+  });
+
+  test('hands each stop the picture of its city, when the traveller has one', async () => {
+    await renderList([lisbon, sintra], {
+      thumbs: new Map([[8, 'file:///thumbs/sintra.thumb.jpg']]),
+    });
+    expect(screen.getByTestId('stop-thumb-s2-photo', hidden).props.source).toEqual({
+      uri: 'file:///thumbs/sintra.thumb.jpg',
+    });
+    expect(screen.getByTestId('stop-thumb-s1-generated', hidden)).toBeTruthy();
+  });
+
+  test('draws the stops of the chosen day as cream tiles and the rest flat', async () => {
+    await renderList([lisbon, sintra, porto], { highlighted: new Set(['s2']) });
+    expect(screen.getByTestId('stop-card-s2').props.variant).toBe('secondary');
+    expect(screen.getByTestId('stop-card-s1').props.variant).toBe('transparent');
+    expect(screen.getByTestId('stop-card-s3').props.variant).toBe('transparent');
+  });
+
+  test('draws no journey while a stop is carried: the order on screen is ahead of the data', async () => {
+    const sortables = jest.requireMock('react-native-sortables') as {
+      __dragStart: (key: string) => void;
+      __activeItemDropped: (key: string) => void;
+    };
+    await renderList([lisbon, sintra, porto]);
+    expect(screen.getByTestId('stop-transit-s1', hidden)).toBeTruthy();
+    await act(async () => sortables.__dragStart('s2'));
+    expect(screen.queryByTestId('stop-transit-s1', hidden)).toBeNull();
+    expect(screen.queryByTestId('stop-transit-s2', hidden)).toBeNull();
+    await act(async () => sortables.__activeItemDropped('s2'));
+    expect(screen.getByTestId('stop-transit-s1', hidden)).toBeTruthy();
+  });
+
+  test('reports where each stop starts, from the heights its rows laid out at, in data order', async () => {
+    const onOffsets = jest.fn();
+    await renderList([lisbon, sintra, porto], { onOffsets });
+    for (const [id, height] of [
+      ['s1', 100],
+      ['s2', 120],
+      ['s3', 90],
+    ] as const) {
+      await fireEvent(screen.getByTestId(`stop-item-${id}`), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 300, height } },
+      });
+    }
+    const last = onOffsets.mock.calls[onOffsets.mock.calls.length - 1]?.[0] as Map<
+      string,
+      number
+    >;
+    expect([...last.entries()]).toEqual([
+      ['s1', 0],
+      ['s2', 100],
+      ['s3', 220],
+    ]);
   });
 });

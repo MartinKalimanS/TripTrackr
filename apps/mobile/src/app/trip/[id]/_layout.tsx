@@ -10,14 +10,21 @@
  * The overview has a NATIVE header (feature 004, tasks.md T427; FR-007, FR-008;
  * research D4-06; https://docs.expo.dev/router/advanced/stack.md, "Available header
  * options"); every other screen of the stack keeps `headerShown: false` and draws its
- * own bar until its migration (phase 5). What the overview's header carries:
+ * own bar until its migration (phase 5). Since feature 005 (T546; FR-025; research D5-12)
+ * it is TRANSPARENT: the hero's picture runs under it and a solid bar (`CollapsedBar`, in
+ * the screen) takes its place once the picture has scrolled away. What the overview's
+ * header carries:
  *
- * - `headerLeft` is the `HeaderBackButton` adapter, so the control is named "Back" on
- *   both platforms whatever the previous screen is called (the native label would be that
- *   screen's title, and Android's arrow has the platform's own description); the Maestro
- *   flows say `tapOn: 'Back'`. The props React Navigation passes to `headerLeft` are not
- *   forwarded: `canGoBack` is false for a trip opened with nothing beneath it, and the
- *   button then goes home instead of vanishing.
+ * - `headerTransparent` and a transparent `headerStyle`: without the second the theme's
+ *   background would paint over the picture.
+ * - `headerLeft` is the `HeroBackButton`: the glass control a photograph needs (a dark
+ *   disc, a white chevron), named "Back" on both platforms whatever the previous screen is
+ *   called (the native label would be that screen's title, and Android's arrow has the
+ *   platform's own description); the Maestro flows say `tapOn: 'Back'`. The props React
+ *   Navigation passes to `headerLeft` are not forwarded: `canGoBack` is false for a trip
+ *   opened with nothing beneath it, and the button then goes home instead of vanishing. The
+ *   chrome branch's glass `HeaderBackButton` (T528) replaces it when it lands. The
+ *   sub-screens keep the plain `HeaderBackButton` below.
  * - `title: ''`: the hero title is the screen's content (FR-007 exempts it) and a second
  *   copy in the bar would be read twice.
  * - The colours, and no hairline, come from `useHeaderTheme` (tokens, never a literal).
@@ -39,11 +46,16 @@
 import { Stack } from 'expo-router';
 
 import { RequireLocalStore } from '@/components/require-local-store';
+import { HeroBackButton } from '@/components/trip/hero-back-button';
 import { HeaderBackButton } from '@/components/ui/header-back-button';
 import { useHeaderTheme } from '@/components/ui/header-theme';
 import { useHeaderTitleStyle } from '@/components/ui/header-title-style';
 
 const renderBack = () => <HeaderBackButton />;
+const renderHeroBack = () => <HeroBackButton />;
+
+/** The overview's bar paints nothing: the picture is under it. */
+const TRANSPARENT_BAR = { backgroundColor: 'transparent' } as const;
 
 export default function TripLayout() {
   const theme = useHeaderTheme();
@@ -61,7 +73,14 @@ export default function TripLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: theme.contentStyle }}>
         <Stack.Screen
           name="index"
-          options={{ ...theme, headerShown: true, title: '', headerLeft: renderBack }}
+          options={{
+            ...theme,
+            headerShown: true,
+            headerTransparent: true,
+            headerStyle: TRANSPARENT_BAR,
+            title: '',
+            headerLeft: renderHeroBack,
+          }}
         />
         <Stack.Screen name="notes" options={titled('Notes')} />
         <Stack.Screen name="expenses" options={titled('Spending')} />

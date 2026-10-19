@@ -208,3 +208,47 @@ describe('<AreaPill warn> - needs attention, not colour alone', () => {
     );
   });
 });
+
+describe('<AreaPill accessibilityLabel> - a screen that already has a name for the control (T544)', () => {
+  test('the given name replaces the composed one, so a name that existed before does not change', async () => {
+    await render(photos({ accessibilityLabel: 'Photos for this trip' }));
+    const pill = screen.getByTestId('trip-open-photos');
+    expect(pill.props.accessibilityLabel).toBe('Photos for this trip');
+    expect(screen.queryByLabelText('Photos, 128')).toBeNull();
+  });
+
+  test('the count, the lock and the warning are said as the value, after the name', async () => {
+    await render(
+      photos({
+        label: 'Expenses',
+        count: '€842',
+        private: true,
+        warn: true,
+        accessibilityLabel: 'Spending for this trip',
+      }),
+    );
+    expect(screen.getByTestId('trip-open-photos').props.accessibilityValue).toEqual({
+      text: '€842, only you can see this, needs attention',
+    });
+  });
+
+  test('a plain count is the whole value', async () => {
+    await render(photos({ accessibilityLabel: 'Photos for this trip' }));
+    expect(screen.getByTestId('trip-open-photos').props.accessibilityValue).toEqual({
+      text: '128',
+    });
+  });
+
+  test('without a given name there is no value: the composed name already says it all', async () => {
+    await render(photos({ private: true }));
+    expect(
+      screen.getByTestId('trip-open-photos').props.accessibilityValue?.text,
+    ).toBeUndefined();
+  });
+
+  test('a blank given name is refused, as a blank label is', async () => {
+    await expect(render(photos({ accessibilityLabel: ' ' }))).rejects.toThrow(
+      /accessibilityLabel/,
+    );
+  });
+});

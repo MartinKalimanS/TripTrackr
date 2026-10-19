@@ -367,6 +367,13 @@ describe('<Card onPress> is ONE control - FR-024, FR-026', () => {
     expect(node.props.accessibilityHint).toBe('Opens the trip');
   });
 
+  test('forwards an accessibility value, so a figure is said after the name (T544)', async () => {
+    await renderPressable({ accessibilityValue: { text: '128' } });
+    expect(screen.getByTestId('trip-card').props.accessibilityValue).toEqual({
+      text: '128',
+    });
+  });
+
   test('presses once through the one control', async () => {
     const onPress = jest.fn();
     await renderPressable({ onPress });

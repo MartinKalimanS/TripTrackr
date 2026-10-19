@@ -420,19 +420,32 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 ## Phase 6: Trip detail (branch `feat/005-trip-detail`) — User Story 3
 
-- [ ] T543 [P] [US3] Failing tests then `TripHero` (parallax, bottom-anchored two-line title that grows upward,
+- [x] T543 [P] [US3] Failing tests then `TripHero` (parallax, bottom-anchored two-line title that grows upward,
       eyebrow with `FlagChip`, `scrim.top` and the caption scrim, `trip-title` kept), `CollapsedBar`, `ProgressRow`
       with "Day N of M" and dots; the title stays visible at font scale 2 (FR-037, FR-038, FR-007; D5-10, D5-12)
-- [ ] T544 [P] [US3] Failing `features/trips/trip-days.test.ts` then `trip-days.ts`, `AreasStrip` (four `AreaPill`s,
+      _As built:_ `trip-hero.tsx`, `collapsed-bar.tsx`, `progress-row.tsx`, `hero-collapse.ts` (the maths as worklets plus
+      the LOCAL SEAM `useHeroCollapse(scrollY, heroHeight, topInset)`, which the chrome branch's hook replaces) and
+      `features/trips/trip-progress.ts`; the hero is a column of minimums that grows upward. See
+      `contracts/components.md`, "As built (T543 to T546)".
+- [x] T544 [P] [US3] Failing `features/trips/trip-days.test.ts` then `trip-days.ts`, `AreasStrip` (four `AreaPill`s,
       counts and spending total, lock marks, one privacy line from the existing copy, the Offline maps row,
       2 columns at scale 1.15), `DayChips` (select, pin, hidden with no stops); ids `trip-links` and
       `trip-open-*` kept (FR-039, FR-040; D5-17)
-- [ ] T545 [P] [US3] Failing tests then `StopRow` with the spine (node states, solid and dotted segments),
+      _As built:_ `trip-days.ts` (local calendar days, zone suites for Auckland and Los Angeles, `stopForDay` added by
+      T546), `areas-strip.tsx`, `day-chips.tsx` and `pinned-strip.tsx` (one strip instance that scrolls and then pins);
+      `trip-overview.ts` gained `pending` and `failedPhotoIds`.
+- [x] T545 [P] [US3] Failing tests then `StopRow` with the spine (node states, solid and dotted segments),
       `TransitRow` (great-circle km, omitted when a stop is unplaced), city thumbnails, "Now" chip,
       `AddStopRow`; per-stop controls and `accessibilityActions` kept with every id (FR-041; D5-17)
-- [ ] T546 [US3] Trip screen assembly and states: zero stops (`GhostStamp`, "No stops yet", "Add stop"), loading
+      _As built:_ `stop-timeline.ts`, `stop-row.tsx`, `stop-rail.tsx`, `spine.tsx`, `transit-row.tsx`, `now-chip.tsx`,
+      `stop-thumb.tsx`, `add-stop-row.tsx`; `stop-list.tsx` keeps the drag list and now reports row offsets.
+- [x] T546 [US3] Trip screen assembly and states: zero stops (`GhostStamp`, "No stops yet", "Add stop"), loading
       `TripDetailSkeleton`, offline and error `Banner`s with the `warn` Photos tile and Retry, generated cover;
       run `01-account-and-trip` and `03-globe` trip steps; record edits (FR-042, FR-043, FR-025, FR-081)
+      _As built:_ `trip-detail.tsx` (the screen), `trip-states.tsx`, `use-stop-editing.ts`, `features/trips/use-trip-sync.ts`
+      (a LOCAL SEAM for T529's chip state), `hero-back-button.tsx` (a LOCAL SEAM for T528's glass Back) and a
+      transparent `headerLeft` in `trip/[id]/_layout.tsx`; the route is 44 lines. The Maestro flows were read, not run
+      (no device): see "Maestro flow edits". Recorded in `contracts/components.md`, "As built (T543 to T546)".
 - [ ] T547 [DEVICE] **First-slice owner review (SC-013)**: build a dev client; on one iPhone and one Android phone
       walk Home (all three sheet positions, empty, loading, offline), Trips (mixed, 200+, no cover) and a trip in
       light, dark, increased contrast and at the largest text size, with the Android navigation bar; run the
@@ -598,6 +611,13 @@ filter's own "Active" segment and prove nothing).
 
 T530 made no flow edit. The tab label "Profile" became "You" and no flow selects it by text; `test/app/tab-labels.test.ts`
 reads every flow and fails if one ever does.
+
+**T546, read but not run.** No flow was edited: every id and text the trip steps use is unchanged (`trip-screen`,
+`trip-add-stop`, "Back", "Planning", "Active", "Past", "No stops yet", `Stop N: ...` names). One thing moved:
+"Add stop" is the dashed row at the end of the timeline (FR-041) and, with no stops, the button under the ghost stamp,
+so on a small phone it can sit below the fold after the first stop (`01-account-and-trip` second stop, `03-globe`,
+`offline/_helpers/add-stop.yaml`). If a device run (T547, T566) shows "Element not found" there, the fix is a
+`scrollUntilVisible` on `trip-add-stop` before the tap, recorded in this table.
 
 ## FR coverage
 

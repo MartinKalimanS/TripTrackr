@@ -234,6 +234,18 @@ describe('stopsRepository', () => {
     );
   });
 
+  test('forTripQuery names a stop country by its ISO code for the flag, null when uncached (T545)', () => {
+    geographyRepository.cacheCountries(sqlite.db, [italy]);
+    geographyRepository.cacheCities(sqlite.db, [rome]);
+    const trip = newTrip();
+    addStop(trip.id, rome.id, '2026-05-10', '2026-05-12');
+    addStop(trip.id, 999, '2026-05-12', '2026-05-15');
+
+    const rows = stopsRepository.forTripQuery(sqlite.db, trip.id).all();
+
+    expect(rows.map((row) => row.country_iso)).toEqual([italy.iso_code, null]);
+  });
+
   test('updateDates validates, bumps updated_at and re-dirties the row', () => {
     const trip = newTrip();
     const stop = addStop(trip.id, rome.id, '2026-05-10', '2026-05-12');

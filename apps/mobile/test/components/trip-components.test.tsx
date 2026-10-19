@@ -144,7 +144,14 @@ describe('<StopRow>', () => {
       onRemove: jest.fn(),
     };
     await render(
-      <StopRow stop={stop} position={2} isFirst={false} isLast={false} {...handlers} />,
+      <StopRow
+        stop={stop}
+        position={2}
+        isFirst={false}
+        isLast={false}
+        state="next"
+        {...handlers}
+      />,
     );
 
     await fireEvent.press(screen.getByLabelText('Move Roma up'));
@@ -173,6 +180,7 @@ describe('<StopRow>', () => {
         position={1}
         isFirst
         isLast
+        state="next"
         onMoveUp={jest.fn()}
         onMoveDown={jest.fn()}
         onEdit={jest.fn()}
@@ -198,6 +206,7 @@ describe('<StopRow>', () => {
           position={2}
           isFirst={false}
           isLast={false}
+          state="next"
           onMoveUp={noop}
           onMoveDown={noop}
           onEdit={noop}
@@ -208,11 +217,12 @@ describe('<StopRow>', () => {
     }
 
     test('numbers the stop by its place in the order, in tabular figures, on a dot', async () => {
-      await renderRow({ position: 12 });
+      await renderRow({ position: 12, state: 'now' });
 
       const number = screen.getByTestId('stop-number-s1');
       expect(number).toHaveTextContent('12');
-      // `numeric` is the role with tabular figures (text.tsx), and the dot has an ink on it.
+      // `numeric` is the role with tabular figures (text.tsx), and the coral dot has the
+      // navy `accentInk` on it, never white.
       expect(number.props.className).toContain('text-accent-foreground');
       expect(StyleSheet.flatten(number.props.style).fontVariant).toContain(
         'tabular-nums',
@@ -332,20 +342,14 @@ describe('<StopRow>', () => {
       expect(onMoveDown).not.toHaveBeenCalled();
     });
 
-    test('draws the rail: a line above every stop but the first, below every stop but the last', async () => {
+    test('draws the rail: a lead above every stop but the first, a line below every stop but the last', async () => {
       const first = await renderRow({ isFirst: true, isLast: false });
-      expect(screen.getByTestId('stop-rail-top-s1').props.className).not.toContain(
-        'bg-border',
-      );
-      expect(screen.getByTestId('stop-rail-bottom-s1').props.className).toContain(
-        'bg-border',
-      );
+      expect(screen.queryByTestId('stop-rail-top-s1', hidden)).toBeNull();
+      expect(screen.getByTestId('stop-rail-bottom-s1')).toBeTruthy();
       await first.unmount();
 
       await renderRow({ isFirst: false, isLast: true });
-      expect(screen.getByTestId('stop-rail-top-s1').props.className).toContain(
-        'bg-border',
-      );
+      expect(screen.getByTestId('stop-rail-top-s1', hidden)).toBeTruthy();
       expect(screen.queryByTestId('stop-rail-bottom-s1')).toBeNull();
     });
 
@@ -390,11 +394,13 @@ describe('<StopRow>', () => {
       const dot = screen.getByTestId('stop-dot-s1');
       expect(within(dot).queryByTestId('stop-number-s1')).toBeNull();
       expect(screen.queryByText('3')).toBeNull();
-      expect(screen.queryByTestId('stop-rail-top-s1')).toBeNull();
+      expect(screen.queryByTestId('stop-rail-top-s1', hidden)).toBeNull();
       expect(screen.queryByTestId('stop-rail-bottom-s1')).toBeNull();
-      // The box keeps its size classes, so lifting a row moves nothing.
-      expect(screen.getByTestId('stop-dot-s1').props.className).toContain('min-h-8');
-      expect(screen.getByTestId('stop-dot-s1').props.className).toContain('min-w-8');
+      // The box keeps its size, so lifting a row moves nothing.
+      expect(StyleSheet.flatten(dot.props.style)).toMatchObject({
+        width: 28,
+        height: 28,
+      });
     });
 
     test('dragging changes the dot only: the row keeps its name, actions and controls', async () => {

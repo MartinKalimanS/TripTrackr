@@ -45,6 +45,11 @@ export type StopWithPlace = TripStopRow & {
   city_name: string | null;
   country_id: number | null;
   country_name: string | null;
+  /**
+   * The country's ISO alpha-2 code, for its flag (`FlagChip`); null if never cached. Optional
+   * so a row built by hand (a test, a fixture) need not carry it.
+   */
+  country_iso?: string | null;
   lat: number | null;
   lng: number | null;
 };
@@ -134,6 +139,7 @@ function forTripQuery(db: AppDatabase, tripId: string) {
       city_name: cities.name,
       country_id: cities.country_id,
       country_name: countries.name,
+      country_iso: countries.iso_code,
       lat: cities.lat,
       lng: cities.lng,
     })

@@ -55,6 +55,7 @@ import type { ReactNode } from 'react';
 import {
   View,
   type AccessibilityRole,
+  type AccessibilityValue,
   type GestureResponderEvent,
   type StyleProp,
   type ViewStyle,
@@ -96,6 +97,8 @@ export interface PressableCardProps extends CardBaseProps {
   /** Required: what a screen reader says for the whole card. */
   accessibilityLabel: string;
   accessibilityHint?: string;
+  /** A figure said after the name ("128"), where the name itself must not change. */
+  accessibilityValue?: AccessibilityValue;
   /** Unavailable: dimmed, announced unavailable, presses are ignored. */
   disabled?: boolean;
   /** An operation is in flight: presses are ignored, announced busy. */
@@ -231,6 +234,7 @@ function PressableCard({
   onPress,
   accessibilityLabel,
   accessibilityHint,
+  accessibilityValue,
   disabled,
   busy,
   cue = true,
@@ -250,6 +254,7 @@ function PressableCard({
     <Tappable
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
+      accessibilityValue={accessibilityValue}
       onPress={onPress}
       disabled={disabled}
       busy={busy}
