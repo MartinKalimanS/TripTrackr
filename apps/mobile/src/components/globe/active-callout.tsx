@@ -183,9 +183,9 @@ function Pulse({ scheme, size, reduced, running }: PulseProps) {
           to: { transform: [{ scale: Motion.pulseScaleTo }], opacity: 0 },
         },
         animationDuration: `${Motion.pulseMs}ms`,
-        animationTimingFunction: 'ease-out',
-        animationIterationCount: 'infinite',
-        animationPlayState: running ? 'running' : 'paused',
+        animationTimingFunction: 'ease-out' as const,
+        animationIterationCount: 'infinite' as const,
+        animationPlayState: running ? ('running' as const) : ('paused' as const),
       };
   return (
     <Animated.View testID="globe-callout-pulse" pointerEvents="none" style={style} />
