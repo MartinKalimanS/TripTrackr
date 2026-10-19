@@ -31,6 +31,35 @@ labels, every Maestro selector served).
 Nothing has been judged on a phone against the pictures yet. Jest style and prop tests are **not** proof of layout,
 fonts, gestures, safe areas, glass, haptics or frame rate.
 
+### Delivery: one feature at a time, each approved before the next (owner's rule, 2026-10-19)
+
+A **feature** is one big visible piece. Work on a feature is split into short objectives on their own branches; when
+the feature is complete the work **stops and waits for the owner's approval on a phone** before the next feature
+starts. A feature lives on `feat/fN-<name>` (from `feat/005-sunrise-passport-ui`); its objectives are
+`feat/fN-<name>-<objective>` merged into it; after approval it is merged into `feat/005-sunrise-passport-ui`.
+The owner tests a feature by checking out `feat/fN-<name>`. Pictured controls with no capability behind them are
+drawn as pictured and are "coming soon" controls (`UI-SPEC.md` section 10, `spec.md` FR-080 as amended by Q-11).
+
+| #   | Feature (approval gate)                                                          | Pictures                                      | State       |
+| --- | -------------------------------------------------------------------------------- | --------------------------------------------- | ----------- |
+| F1  | **Map**: the Home globe look, pins and photo roundels, callout, header, recentre | `core/home*`                                  | In progress |
+| F2  | **Home sheet**: three positions, Now card, figures, Countries, invitation        | `core/home*`, `more/countries`                | Not started |
+| F3  | **Tab bar**: the floating pill and the Android bar                               | every frame with a bar                        | Not started |
+| F4  | **Trips cards and list**: hero, ticket, rows, filter, button, states             | `core/trips*`                                 | Not started |
+| F5  | **Trip screen**: hero, areas, day chips, stops and spine                         | `core/trip*`                                  | Not started |
+| F6  | **Forms**: New trip, stop editor, add expense                                    | `core/form`, `more/add-stop*`, `add-expense*` | Not started |
+| F7  | **Photos** and the photo viewer                                                  | `more/photos*`, `photo-viewer`                | Not started |
+| F8  | **Spending**                                                                     | `more/expenses*`                              | Not started |
+| F9  | **Notes** and the note editor                                                    | `more/notes*`, `note-editor`                  | Not started |
+| F10 | **Documents** and the document viewer                                            | `more/documents*`, `document-view`            | Not started |
+| F11 | **Offline maps**                                                                 | `more/offline-maps*`                          | Not started |
+| F12 | **Welcome, sign in, create account**                                             | `core/welcome*`, `more/auth*`, `register`     | Not started |
+| F13 | **You**: passport, stamps                                                        | `core/profile*`                               | Not started |
+| F14 | **Sweeps, retire Atlas, release gates** (Phases 9 to 11)                         | all                                           | Not started |
+
+The code of F1 to F5 exists (Phases 3 to 6) but was never compared with the pictures on a phone; each of those
+features starts with a **fidelity audit** (picture vs. code and prototype CSS), fixes the gaps, and is then approved.
+
 ## 1. Rules for every step
 
 - **Spec first, then test, then code.** If behaviour is not in `../spec.md`, specify it first. Write the failing test
@@ -42,7 +71,7 @@ fonts, gestures, safe areas, glass, haptics or frame rate.
 - **One Mapbox `MapView`**, never a second map; do not touch `features/globe/great-circle.ts`, arc or camera geometry.
 - **Local-first**: writes go to the encrypted SQLite store; a record is not "saved" until uploaded; no derived view
   transmits or stores anything new.
-- **No Tier 3 control** (`UI-SPEC.md` section 10): nothing is drawn for a capability that does not exist.
+- **Pictured controls without a capability are "coming soon" controls** (`UI-SPEC.md` section 10): drawn as pictured, one toast, nothing else, no invented data.
 - **Hermes is not Node.** Jest runs on Node, which has APIs the app's engine lacks (`Intl.PluralRules` crashed Home
   on a phone). Avoid `Intl.PluralRules`, `Intl.ListFormat`, `Intl.RelativeTimeFormat`, `Intl.Locale`,
   `Object.groupBy`, `structuredClone`, `Promise.withResolvers` and the new `Set` methods; compact number notation is
@@ -127,8 +156,8 @@ Order: **T548 first** (shared header, FAB and area states), then T549 to T553 in
 Per branch, in this order: failing tests (rules, geometry, each state, keyboard visibility for forms, a spending
 test with `decimal.js` and no `Number` on an amount) → the component → the screen → ids and names unchanged → the
 screen's four states (loading, empty, error, populated) → compare with the pictures (`UI-SPEC.md` section 12).
-Remember what is **not built**: search and "more" buttons in headers, the Budget line, "Map ›", "New area", extra
-document kinds, transport chips, the per-stop note.
+Remember which pictured controls are **coming soon** (search and "more" buttons in headers, the Budget line, "Map ›",
+"New area", extra document kinds, transport chips, the per-stop note): draw them, wire the toast, invent no data.
 
 **Done when**: all six branches are merged, the gate is green, and the areas match their pictures on the phone.
 
@@ -187,17 +216,18 @@ the libraries), `../research.md` spike results, the 003 and 004 amendments point
 
 - Every screen in `UI-SPEC.md` matches its pictures on a 390 × 844 phone within the tolerances of section 12, in
   light, dark, light-contrast and dark-contrast, on iOS and Android, at text scale 1 and at the largest size.
-- No Tier 3 control exists; no colour literal, gradient string or kit import in a screen; Atlas is gone.
+- Every pictured control exists, and each Tier 3 one is a "coming soon" control; no colour literal, gradient string or kit import in a screen; Atlas is gone.
 - All gates are green; the parity test holds with only the "Profile" to "You" change recorded.
 - Device spikes, VoiceOver and TalkBack walks, the Maestro run and the two-device offline gate are recorded.
 - The owner has approved the first slice (T547) and the final review (T570).
 
 ## 10. Open decisions for the owner
 
-1. **Pictures vs. product rules.** The pictures show features the app does not have (search, recap and share,
-   settings, trip menu and delete, per-day budget, transport chips, three-button Welcome). The plan builds the look
-   _without_ them (`UI-SPEC.md` section 10). If any should be built, each is its own specified feature with a
-   security or sync review; say which and when.
+1. **Pictures vs. product rules (decided, Q-11).** The pictures show controls for capabilities the app does not have
+   (search, recap and share, settings, trip menu and delete, per-day budget, transport chips, three-button Welcome).
+   They are **drawn as pictured** and answer with a "coming soon" toast; no capability is built and no data is
+   invented (`UI-SPEC.md` section 10). Building a capability for real is its own specified feature with a security or
+   sync review; say which and when.
 2. **Words.** The app's existing words win over the pictures' ("Plan a trip", "Planning", "Active"); only "Profile"
    becomes "You".
 3. **The globe.** The pictures draw a stylised D3 globe; the app keeps the Mapbox globe restyled to match

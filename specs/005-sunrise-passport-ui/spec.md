@@ -579,8 +579,14 @@ confirms selections and saves. All of it is off when the traveller asks for redu
 
 **Scope**
 
-- **FR-080** [Tier 1]: Tier 3 items MUST NOT be built and MUST NOT appear as controls that do nothing: no
-  share, more, search, settings or map-toggle icon stands in for a capability the product does not have.
+- **FR-080** [Tier 1] (amended by owner answer Q-11, 2026-10-19): Tier 3 capabilities MUST NOT be built, but the
+  controls the reference pictures show for them ARE drawn exactly as pictured. Each is a real, focusable button
+  (role button, accessible name from the picture, hint "Not available yet", a 44 dp target) whose only effect is one
+  toast, "<Thing> is coming soon"; it navigates nowhere, writes nothing, calls no network and opens no screen. Its
+  `testID` is `coming-soon-<name>`. The product MUST NOT display data it does not have: no placeholder amounts,
+  distances, durations or counts stand in for a missing capability (a budget line, drive times and similar are drawn
+  only as the "coming soon" control or omitted, never with invented figures), and no selection is shown as saved when
+  nothing is stored.
 - **FR-081** [Tier 1]: The feature MUST NOT add, remove or change any traveller-facing capability, stored
   record, permission, synchronisation rule or privacy behaviour. Every control present before it MUST remain
   reachable under the same accessible name and automated-test identifier, except the label changes listed in
@@ -679,7 +685,8 @@ confirms selections and saves. All of it is off when the traveller asks for redu
 
 ## Tier 3: out of scope (the owner decides later)
 
-Each item is in the prototype and is **not** built here, and no inert control stands in for it (FR-080).
+Each item is in the prototype and is **not** built here. Under owner answer Q-11 its control is drawn as pictured
+and answers with a "coming soon" toast (FR-080); nothing else about it exists.
 
 | Prototype element                                              | Why it is out of scope                                                          | What it needs                                                                                         |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |

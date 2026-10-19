@@ -36,7 +36,9 @@ Every screen, including ones added later:
    text over a hero photograph sits on the caption scrim (FR-007).
 10. **Visibility posture stated** for any screen that touches traveller data: this feature adds none; every
     derived view is private, local, never transmitted (FR-084).
-11. **No dead controls**: nothing is drawn for a Tier 3 capability (FR-080).
+11. **Pictured-only controls are "coming soon" controls** (FR-080 as amended by owner answer Q-11): a control the pictures
+    show for a Tier 3 capability is drawn as pictured, is a real button named from the picture with the hint "Not
+    available yet", and shows one "coming soon" toast; it does nothing else and shows no invented data.
 
 ---
 
