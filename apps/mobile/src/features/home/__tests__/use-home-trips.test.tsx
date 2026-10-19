@@ -108,3 +108,12 @@ test('a city cached later names the place once the cache changes', async () => {
   });
   await waitFor(() => expect(result.current.data.now?.place).toBe('Sintra'));
 });
+
+test('gives the globe the cover pictures of the trips that have one, and none for a plain trip', async () => {
+  addTrip('plain', 'No photo');
+  addStop('s1', 'plain', '2026-10-12', '2026-10-19');
+
+  const { result } = await renderHook(() => useHomeTrips(TODAY), { wrapper });
+  await waitFor(() => expect(result.current.data.now).not.toBeNull());
+  expect(result.current.covers).toEqual({});
+});

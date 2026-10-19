@@ -1,5 +1,6 @@
 /**
- * The `(tabs)` screens: home (the globe, T099), trips (T066), profile (T065).
+ * The `(tabs)` screens: trips (T066), profile (T065). The Home (the globe, T099, recomposed by
+ * T537) is `test/app/home-screen.test.tsx`.
  *
  * The live-query hooks are mocked; their own suites run them against a real
  * database, and the globe itself has its own suite
@@ -10,12 +11,9 @@
  */
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
-import HomeScreen from '@/app/(tabs)/index';
 import ProfileScreen from '@/app/(tabs)/profile';
 import TripsScreen from '@/app/(tabs)/trips';
 import { useSessionStore } from '@/features/auth/session-store';
-import type { GlobeTrip } from '@/features/globe/globe-data';
-import type { GlobeData } from '@/features/globe/use-globe';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
 
 import { cardModel } from '../helpers/trip-card-fixture';
@@ -57,27 +55,6 @@ jest.mock('expo-image', () => {
   const { View } = require('react-native') as typeof import('react-native');
   const Host = View as unknown as React.ComponentType<Record<string, unknown>>;
   return { Image: (props: Record<string, unknown>) => React.createElement(Host, props) };
-});
-
-const mockGlobe: { data: GlobeData; loading: boolean; error: Error | null } = {
-  data: { trips: [], focus: [], summary: { countriesVisited: 0, distanceKm: 0 } },
-  loading: false,
-  error: null,
-};
-
-jest.mock('@/features/globe/use-globe', () => ({
-  useGlobe: () => mockGlobe,
-}));
-
-// The map is native; its own suite asserts what it hands Mapbox. Here it is a
-// marker carrying the props the screen chose.
-jest.mock('@/components/globe/globe-view', () => {
-  const React = require('react') as typeof import('react');
-  const { View } = require('react-native') as typeof import('react-native');
-  return {
-    GlobeView: (props: Record<string, unknown>) =>
-      React.createElement(View, { testID: 'globe-view', ...props }),
-  };
 });
 
 // A mutable stand-in so one suite can cover both an embedded config and its
@@ -172,222 +149,17 @@ function summary(
   });
 }
 
-function globeTrip(id: string, placed: boolean): GlobeTrip {
-  return {
-    id,
-    title: id,
-    status: 'active',
-    stops: [
-      {
-        id: `${id}-stop`,
-        cityId: 1,
-        countryId: placed ? 39 : null,
-        arriveDate: '2026-05-10',
-        departDate: '2026-05-12',
-        coordinate: placed ? [12.4964, 41.9028] : null,
-      },
-    ],
-  };
-}
-
 beforeEach(() => {
   mockConstants.expoConfig = { version: '1.2.3', ios: { buildNumber: '45' } };
   mockTrips.data = [];
   mockTrips.loading = false;
   mockTrips.error = null;
-  mockGlobe.data = {
-    trips: [],
-    focus: [],
-    summary: { countriesVisited: 0, distanceKm: 0 },
-  };
-  mockGlobe.loading = false;
-  mockGlobe.error = null;
   mockPush.mockReset();
   mockNavigate.mockReset();
   mockSignOut.mutate.mockReset();
   mockSignOut.isPending = false;
   mockSignOut.error = null;
   useSessionStore.setState({ status: 'signed-in', user: profile });
-});
-
-describe('<HomeScreen> — the globe (T099, FR-045, FR-051)', () => {
-  test('shows a designed loading state while the store has not answered (FR-027)', async () => {
-    mockGlobe.loading = true;
-    await render(<HomeScreen />);
-    expect(screen.getByLabelText('Loading your globe')).toBeTruthy();
-    expect(screen.queryByTestId('globe-view')).toBeNull();
-  });
-
-  test('the loading state is one announced progressbar on the `home-screen` scaffold (T428)', async () => {
-    mockGlobe.loading = true;
-    await render(<HomeScreen />);
-    expect(screen.getByTestId('home-screen')).toBeTruthy();
-    expect(screen.getByRole('progressbar', { name: 'Loading your globe' })).toBeTruthy();
-    expect(screen.queryByTestId('globe-empty-state')).toBeNull();
-    expect(screen.queryByTestId('globe-notice')).toBeNull();
-  });
-
-  test('shows the globe with a plain-words notice over it, never the raw error (feature 003 FR-005)', async () => {
-    mockGlobe.error = new Error('database is locked');
-    await render(<HomeScreen />);
-    expect(screen.getByTestId('globe-view')).toBeTruthy();
-    expect(screen.getByText('Couldn’t read your trips')).toBeTruthy();
-    expect(screen.queryByText('database is locked')).toBeNull();
-  });
-
-  test('the notice over the globe is an alert and the screen keeps its `home-screen` id (T428)', async () => {
-    mockGlobe.error = new Error('database is locked');
-    await render(<HomeScreen />);
-    expect(screen.getByTestId('home-screen')).toBeTruthy();
-    expect(screen.getByTestId('globe-notice').props.accessibilityRole).toBe('alert');
-    expect(screen.queryByTestId('globe-stats')).toBeNull();
-    expect(screen.queryByTestId('globe-empty-state')).toBeNull();
-  });
-
-  test('with no trips, the globe is still there and one card invites the first trip (feature 003 FR-001, FR-002)', async () => {
-    await render(<HomeScreen />);
-    expect(screen.getByTestId('globe-view')).toBeTruthy();
-    expect(screen.getByTestId('home-screen')).toBeTruthy();
-    expect(screen.getByText('Your globe is waiting for its first trip')).toBeTruthy();
-    // Nothing to count yet: the statistics wait for the first stop.
-    expect(screen.queryByTestId('globe-stats')).toBeNull();
-    // One primary control per state (FR-005, C4-10 rule 3).
-    expect(screen.getAllByRole('button')).toHaveLength(1);
-
-    await fireEvent.press(screen.getByLabelText('Plan a trip'));
-    expect(mockPush).toHaveBeenCalledWith('/modal/add-trip');
-  });
-
-  test('hands the empty globe an announcement that does not claim trips it is not showing', async () => {
-    await render(<HomeScreen />);
-    expect(screen.getByTestId('globe-view').props.accessibilityLabel).toBe(
-      'Globe with nothing drawn yet. Your trips are listed in the Trips tab.',
-    );
-  });
-
-  test('with one trip and no stop, the card opens that trip to add the first stop', async () => {
-    mockGlobe.data = { ...mockGlobe.data, trips: [globeTrip('no-city-yet', false)] };
-    await render(<HomeScreen />);
-    expect(screen.getByTestId('globe-view')).toBeTruthy();
-    expect(screen.getByText('Your trip needs a first stop')).toBeTruthy();
-
-    await fireEvent.press(screen.getByTestId('home-add-stop'));
-    expect(mockPush).toHaveBeenCalledWith('/trip/no-city-yet');
-  });
-
-  test('with several trips and no stop, the card opens the trip list', async () => {
-    mockGlobe.data = {
-      ...mockGlobe.data,
-      trips: [globeTrip('one', false), globeTrip('two', false)],
-    };
-    await render(<HomeScreen />);
-    expect(screen.getByTestId('globe-view')).toBeTruthy();
-    expect(screen.getByText('Your trips need a first stop')).toBeTruthy();
-
-    await fireEvent.press(screen.getByTestId('home-open-trips'));
-    expect(mockNavigate).toHaveBeenCalledWith('/trips');
-  });
-
-  test('with something to place, is the globe with its statistics and no invitation (FR-045, FR-050)', async () => {
-    const trips = [globeTrip('italy', true), globeTrip('elsewhere', false)];
-    mockGlobe.data = {
-      trips,
-      focus: ['italy'],
-      summary: { countriesVisited: 1, distanceKm: 230.9 },
-    };
-    await render(<HomeScreen />);
-
-    const globe = screen.getByTestId('globe-view');
-    expect(globe.props.trips).toBe(trips);
-    expect(globe.props.focus).toEqual(['italy']);
-    // The same calendar day the statuses were derived with (useGlobe(today)).
-    expect(globe.props.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(globe.props.accessibilityLabel).toBe(
-      'Globe showing 2 trips across 1 country. Every trip is also listed in the Trips tab.',
-    );
-    expect(screen.getByTestId('globe-stat-countries')).toHaveTextContent('1');
-    expect(screen.getByTestId('globe-stat-distance')).toHaveTextContent('231 km');
-    expect(screen.queryByTestId('globe-empty-state')).toBeNull();
-    // The statistics are a summary, not a control: nothing to press over the globe.
-    expect(screen.getByTestId('globe-stats').props.accessibilityRole).toBe('summary');
-    expect(screen.queryByRole('button')).toBeNull();
-  });
-
-  // The overlay is react-native-safe-area-context's NATIVE view, laid over the whole map:
-  // a pan or a pinch that starts outside a card must reach the globe (003, FR-003).
-  describe('the overlay over the globe keeps the map interactive (T428)', () => {
-    const flat = (style: unknown) =>
-      Object.assign({}, ...[style].flat(Infinity).filter(Boolean)) as Record<
-        string,
-        unknown
-      >;
-    const states = {
-      invitation: ['globe-empty-state', () => undefined],
-      notice: [
-        'globe-notice',
-        () => {
-          mockGlobe.error = new Error('database is locked');
-        },
-      ],
-      statistics: [
-        'globe-stats',
-        () => {
-          mockGlobe.data = {
-            trips: [globeTrip('italy', true)],
-            focus: ['italy'],
-            summary: { countriesVisited: 1, distanceKm: 230.9 },
-          };
-        },
-      ],
-    } as const;
-
-    test('lets touches through to the map: box-none as a prop, and still in its style', async () => {
-      await render(<HomeScreen />);
-      const overlay = screen.getByTestId('home-overlay');
-      expect(overlay.props.pointerEvents).toBe('box-none');
-      expect(flat(overlay.props.style).pointerEvents).toBe('box-none');
-    });
-
-    test('insets the top edge only, as before: the app is portrait-locked (app.config.ts)', async () => {
-      await render(<HomeScreen />);
-      // The native view takes the edges as a map: the top added to the padding, the rest off.
-      expect(screen.getByTestId('home-overlay').props.edges).toEqual({
-        top: 'additive',
-        right: 'off',
-        bottom: 'off',
-        left: 'off',
-      });
-    });
-
-    test.each(Object.keys(states) as (keyof typeof states)[])(
-      'the %s card takes its own touches: nothing between it and the overlay is box-none or none',
-      async (name) => {
-        const [id, setup] = states[name];
-        setup();
-        await render(<HomeScreen />);
-        let node = screen.getByTestId(id) as { props: Record<string, unknown> } | null;
-        let walked = 0;
-        while (node && node.props.testID !== 'home-overlay') {
-          const own = node.props.pointerEvents ?? flat(node.props.style).pointerEvents;
-          expect([undefined, 'auto']).toContain(own);
-          node = (node as unknown as { parent: typeof node }).parent;
-          walked += 1;
-        }
-        expect(node).not.toBeNull();
-        expect(walked).toBeGreaterThan(0);
-      },
-    );
-  });
-
-  test('is built on the Atlas scaffolds: none of the retired primitives (T428)', () => {
-    const source = jest
-      .requireActual('fs')
-      .readFileSync(require.resolve('@/app/(tabs)/index'), 'utf8') as string;
-    expect(source).not.toMatch(
-      /from '@\/components\/(themed-text|themed-view|ui\/surface|ui\/pressable-surface)'/,
-    );
-    expect(source).not.toMatch(/from 'heroui-native|from 'uniwind/);
-  });
 });
 
 describe('<TripsScreen> — the local trip list (T066)', () => {

@@ -1439,3 +1439,129 @@ No other flow step reads the Trips screen. Left for T538 and T546, not Trips: `'
   `'Active'` no longer matches wherever `dayOf` is passed (the trip screen's progress row, T543/T546): either keep a separate "Active" text
   there or make the assertion `'Active.*'` and record it (T538/T546).
 - The pill's merge (T526) removes the interim padding of `useTabZone`; nothing else here knows about the bar.
+
+---
+
+## As built (T537 to T538): the Home composed
+
+Branch `feat/005-home-compose`. The building blocks of T531 to T536 (the fit, the layers, the sheet, the cards, the Countries list) and of T526
+to T530 (the chip, the banner, the tab zone) are composed into the Home route; T538 reads the Maestro flows against it. Test-first throughout:
+the red run was observed for the idle spin, the actions, the camera moves' consumers (`GlobeView`), `PlanTripFab` collapsed, the covers and the
+idle spin's no-camera tick; the Home suites were written before the components and first run once they existed, and three mutations (the
+callout stop condition, the country flight, the full-detent hiding of the button) were each caught by a test. 172 new tests in 13 suites, 7,923
+passing in the whole mobile suite. **Visibility posture: private, local, never transmitted, nothing new stored** (FR-084): the screen reads the
+signed-in traveller's own local rows and makes no request.
+
+### Files
+
+| Area                       | Files                                                                                                                                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Route                      | `app/(tabs)/index.tsx` (56 lines: the data hooks, the loading rule, `HomeGlobe`)                                                                                                                                                                         |
+| Composition                | `components/home/home-globe.tsx` (layers, FAB, motion wiring), `home-header.tsx`, `home-sheet.tsx`, `home-states.tsx` (`HomeLoading`, `BottomCard`), `invitation-card.tsx`, `use-home-layout.ts`, `use-home-camera.ts`                                   |
+| Globe                      | `components/globe/use-idle-spin.ts`, `use-globe-actions.ts`; `globe-view.tsx` gains `initialFit`, `accessibilityActions`, `onAccessibilityAction`; `camera.ts` (`useFlyToFirstPlacement` takes the zoom)                                                 |
+| Pure                       | `features/globe/idle-spin.ts` (the rule), `globe-moves.ts` (recentre, fly, country), `globe-actions.ts` (the trips to step through); `features/home/home-layout.ts`, `describe-globe.ts`; `home-trips.ts` gains `coversOf`, `use-home-trips.ts` `covers` |
+| Changed building blocks    | `ui/plan-trip-fab.tsx` (`collapsed`), `globe/empty-state.tsx` (`accent`, `topInset`)                                                                                                                                                                     |
+| Test support (not a suite) | `test/helpers/home-state.tsx` (the mocked world and its `jest.mock` factories), `home-harness.tsx` (fixtures, `renderHome`), `captured-interval.ts` (`captureIntervals(slowestMs)`)                                                                      |
+
+### How it is composed
+
+Layers, bottom up, as the contract has them: the sky `Scrim`, then `home-overlay` (the header, stacked over the globe by `zIndex` and transparent to
+every other touch), the globe (`home-globe`, the one `GlobeView`), the sheet or a card, `PlanTripFab`, and the tab pill (the navigator's). The tree
+order is header, globe, sheet, which is the reading order.
+
+- **States.** Loading (the globe, the sheet's trips and the countries have not answered, and the store has not failed) is `HomeLoading`: the sky,
+  `HomeSkeleton` with the disc of the half detent (`skeletonDisc`) and the greeting of the last session (the signed-in name, which the session store
+  holds from the keychain), ONE announced "Loading your globe" region, no globe. A failed store is the globe with ONE `globe-notice` alert in
+  `BottomCard`, no sheet, no button. No trips, or trips with no placed stop, is the globe with the `InvitationCard` in the same slot (the card has the
+  frames only for no trips, and the accent word "first"), no sheet, no button. Otherwise: the globe, the sheet and the button.
+- **The header** (`HomeHeader`): the greeting with the date, the ONE `SyncStatusChip` at the right, the ONE `SyncStatusBanner` under it, and the
+  recentre control (`home-recentre`) in a slot at `top: 100%` that takes no room, so it appearing never moves the planet. The zone reports where it
+  ends (`onMeasured`, from its own layout). It is left out at the full detent.
+- **The camera** (`useHomeCamera`, `use-home-layout.ts`). The globe mounts when the header has been measured, so its first frame is already fitted:
+  `globeFitCamera` of the current detent, without animation, is the Camera's `defaultSettings` through `GlobeView initialFit` (and the flight to the
+  first stop that appears keeps that zoom). On every settle of the sheet the camera gets `globeFitCamera` padding and zoom once (280 ms ease, a jump
+  under reduced motion; none at `full`). If the fit's inputs change under a settled sheet (the banner arrived, the window changed) the planet is
+  fitted again; the first measure is not a change. Mapbox's logo and attribution sit 8 dp above whatever covers the bottom (the sheet at its resting
+  detent, or the card of an empty state, whose height is measured), never hidden; the callout may use the space between the header and that edge.
+- **Choosing a country** lowers the sheet to half and remembers the country; when the sheet has come to rest, ONE move flies the globe there in
+  place of that settle's fit (`countryMove`: the country's `focus.center`, a zoom from its span, the padding of the free band above the sheet so it is
+  not under the sheet). The next settle fits as usual.
+- **Touches and recentre.** The globe's wrapper listens to `onTouchStart` and `onTouchMove` as they bubble from the native map: the first touch stops
+  the idle spin for good; a drag of more than 8 dp or a second finger means the globe was moved, which offers the recentre control. An action of the
+  map or a country flight counts as moved too. Recentre flies back to the globe's own centre (`cameraCenter`) with the sheet's fit, upright and flat.
+- **The idle spin** (`idleSpinAllowed`, `useIdleSpin`). ONE `setInterval` of 5 s starts the next native `linearTo` move, 20 degrees east of the last;
+  eight moves end within 45 s, and the spin never starts again after them. It stops at the first touch, with the sheet at full, under reduced motion,
+  with the app in the background, with Home not the visible screen, and while a live trip's callout is showing; being offline is no condition. The
+  count is of moves made, so time held still does not count; a tick with no camera yet spends nothing.
+- **The actions of the map** (`useGlobeActions`): "Next trip", "Previous trip" (chronological over the trips with a place, from the focus trip,
+  wrapping; they fly the camera and say the trip's name aloud), "Recentre the globe" (the Home's, announced "Globe recentred") and "Open countries"
+  (the sheet to full). The globe's one element stays "image", with the words of `describeGlobe` (unchanged), and now carries the actions.
+- **The button** is `PlanTripFab screen="home"`: `home-plan-trip-fab`, the extended button 16 dp above the tab zone, **collapsed to the plus at peek**
+  (where `HomePeek` leaves 56 dp and a gap for it), hidden at full, with no trips, and whenever a card (invitation or notice) is the screen's one
+  primary.
+
+### Where the build differs from the contract text and the brief
+
+1. **The figures are in the sheet, not in the header zone** (FR-014, C5-23; the brief's header list included the stats row): `HomeHalf` has them,
+   the header zone is the greeting, the chip and the banner.
+2. **The banner is under the greeting, over the globe** (`screens.md`), where the prototype's `home-offline.png` draws it at the top of the half
+   sheet: an empty state has no sheet, and the banner must say what is waiting in every state. The header's measured edge includes it, so the planet
+   is fitted below it.
+3. **The map mounts one frame later**, when the header has been measured (no guessed height to correct, no animation on first draw).
+4. **The recentre control is the Home's, not `GreetingHeader.onRecentre`**: that control is in the greeting's layout, so the measured edge would move
+   when it appears. `GreetingHeader.onRecentre` stays in the component and is not used by the Home.
+5. **`PlanTripFab` gained `collapsed`** (the contract draws a round button at peek and `fabShapeOf(os, true)` existed for it) and **`GlobeEmptyState`
+   gained `accent` and `topInset`** (the card is the same, the headline has its accent word, the frames hang over it).
+6. **With no trips there is no sheet**: the card takes its place (the contract's "Empty" row and the prototype), so the contract's "or the invitation
+   at peek" is the card, not a sheet position. A traveller with only past trips has a peek sheet that is the handle alone.
+7. **The idle spin counts moves** (eight) instead of time, does not run while a live trip's callout is showing (the brief), and is held until the
+   globe is mounted. It turns about the globe's centre and re-seeds from it when it changes (the first stop appearing).
+8. **The first-stop flight keeps the fit's zoom** (`useFlyToFirstPlacement` takes it), or the planet would have snapped back to the default zoom.
+9. **The flight to a country replaces the fit of the settle that follows it**, and the zoom is `countryZoom` (the span fills 70 percent of the width
+   and of the free band, at most zoom 7, a single place zoom 5): the contract says only "fly the globe to it".
+10. **No toast on Home**: nothing a Home control does can be undone.
+11. **`StatsOverlay` (`components/globe/stats-overlay.tsx`) is no longer drawn by any screen**; it and its test are for Phase 10 to remove.
+12. **`useHomeTrips` returns `covers`** (`coversOf`: each trip's cover thumbnail, by trip id) for the pins' roundels, which are still off
+    (`GlobeLayers.pins.roundelsEnabled`).
+
+### Maestro audit (T538): `03-globe`, `04-zoom`, `offline/*` that touch Home
+
+Read against the new Home; Maestro cannot run here. Two flows changed, each for a legitimately changed screen (the edits are under "Maestro flow
+edits" in `tasks.md`).
+
+| Step (flow)                                                                                                 | Resolves as                                                                                                                                                                                                                                                             |
+| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `globe-map`, `tab-bar`, `tab-index`, `home-screen` (03, 04, offline)                                        | ids kept                                                                                                                                                                                                                                                                |
+| `globe-empty-state`, `'Your globe is waiting for its first trip'`, `home-plan-trip` (03, 04, 05)            | the invitation card; the headline's accent word is a span inside the sentence, so the text is one                                                                                                                                                                       |
+| `'Your trip needs a first stop'`, `home-add-stop` (03)                                                      | the card for one trip with no stop                                                                                                                                                                                                                                      |
+| `globe-stats`, `globe-stat-countries` text `'5'`, `'2'`, `'1'` (03, `offline/03-b`, `07-b`, `14-a`, `14-b`) | the figures row of the HALF sheet, which is where Home opens and what it is at after a relaunch; the numeral counts up to the number (a figure is in the accessible name from the first render)                                                                         |
+| `assertVisible: 'countries'` (03)                                                                           | the figure's label "Countries" (matched case-insensitively over the whole text)                                                                                                                                                                                         |
+| `globe-stat-distance` text `'[0-9,.]+ (km\|mi)'` (03)                                                       | **edited** to `'[0-9,.]+'`: the unit is the label under the numeral now (T535)                                                                                                                                                                                          |
+| `tapOn globe-map point 50%,50%` to open the active trip (03)                                                | **edited**: at half the sheet covers 50 percent, and the planet's centre is not there. The flow lowers the sheet (two taps on `home-sheet-handle`: half, full, peek) and taps `50%,47%`, where the camera's padding puts the active route at peek on a 390 by 844 phone |
+| `doubleTapOn globe-map point 50%,50%`, three times (04)                                                     | **edited** the same way: the sheet is lowered once, then the taps are at `50%,47%`; each double tap zooms about the tapped point, so it must be the stop's                                                                                                              |
+| `waitForAnimationToEnd`, `takeScreenshot` (03, 04)                                                          | unchanged; the idle spin is off whenever a live trip's callout is showing, which is the state of both flows at those steps, so the map is still                                                                                                                         |
+| `setAirplaneMode`, `tab-index`, `globe-map` (04)                                                            | unchanged; Home stays mounted across tabs, so the sheet is still at peek and the map still draws from the pack                                                                                                                                                          |
+
+Not resolved here, left for the device run (T547, T566): the `47%` is the peek planet's centre on the reference phone (`headerBottom` is about
+150 dp; it is `(windowHeight - 212 + headerBottom) / 2 + 4` over the window height) and it moves by a few percent with the window and with a header
+of two lines; the arc's hit box is 44 dp, so a phone shorter than 800 dp or taller than 900 dp may need the percentage adjusted and recorded.
+
+### Device-only checks (add to T547)
+
+- **The fit** (V3, T509): the planet's real radius against `FIT_REFERENCE_RADIUS` at half and peek on 640 to 932 dp windows, the 20 dp margin at
+  peek, the first frame with no visible jump from `initialFit`'s padding on both platforms, and the camera's 280 ms ease reading as the sheet's spring.
+- **The ornaments**: the logo and attribution 8 dp above the sheet at every settle and above the card of an empty state, never hidden.
+- **Touches over the native map**: that `onTouchStart` and `onTouchMove` on the wrapper reach JavaScript over `MapView` on iOS and Android (the first
+  touch stops the spin, a drag or a pinch offers recentre), and that a tap on a connection still opens its trip.
+- **The idle spin**: the chain of `linearTo` moves reads as one smooth turn (no seam every 5 s), stops on touch, at full, in the background and on
+  another tab, and is over after 45 s; under reduced motion nothing turns and the pulses are still.
+- **The actions of the map**: VoiceOver's actions rotor and TalkBack's actions menu offer the four names on the globe, the spoken trip name, "Globe
+  recentred", and "Open countries" raising the sheet.
+- **Reading order** header, globe, sheet on both platforms (the header is first in the tree and stacked by `zIndex`; Android may order by drawing).
+- **Choosing a country**: the flight lands in the free band above the half sheet at a country scale that suits the span (Portugal, the United
+  States, Fiji over the date line, Chile), and recentre brings the planet back.
+- **The header**: a banner arriving refits the planet smoothly; two lines of greeting and the largest text size push the fit and the peek height
+  (`peekRowHeight` is an estimate from the font scale) and nothing clips; the recentre control sits under the banner, not on it.
+- **The invitation**: the frames over the card, the card above the pill at the largest text size, the notice's alert read once.
+- **The button**: the plus at peek leaves the live card its room; the extended button over the next row at half on a 640 dp phone.
+- **Maestro** `03-globe` and `04-zoom` against the new Home, as above.

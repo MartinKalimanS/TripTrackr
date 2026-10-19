@@ -89,20 +89,27 @@ export function overlayMaxHeight(windowHeight: number): number {
   return Math.max(0, Math.round(windowHeight * OVERLAY_MAX_HEIGHT_SHARE));
 }
 
-type OverlayCardProps = PropsWithChildren<{ testID: string }>;
+type OverlayCardProps = PropsWithChildren<{
+  testID: string;
+  /** Extra padding above the content, for art that overhangs the card (the invitation). */
+  topInset?: number;
+}>;
 
 /**
  * The one card both messages use: opaque over the map, a capped width, and a
  * scroller that only matters when the traveller's text is large enough for the
  * words to outgrow their share of the window.
  */
-function OverlayCard({ testID, children }: OverlayCardProps) {
+function OverlayCard({ testID, topInset = 0, children }: OverlayCardProps) {
   const { height } = useWindowDimensions();
   return (
     <Card overMap testID={testID} className={CARD_WIDTH} style={styles.card}>
       <ScrollView
         style={{ maxHeight: overlayMaxHeight(height) }}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: OVERLAY_CARD_INSET + topInset },
+        ]}
         alwaysBounceVertical={false}>
         {children}
       </ScrollView>
@@ -110,18 +117,41 @@ function OverlayCard({ testID, children }: OverlayCardProps) {
   );
 }
 
+/** The headline, with its accent word (if the title has it) in the serif accent face. */
+function Headline({ title, accent }: { title: string; accent?: string }) {
+  const at = accent ? title.indexOf(accent) : -1;
+  if (!accent || at === -1) return <Text type="title">{title}</Text>;
+  return (
+    <Text type="title">
+      {title.slice(0, at)}
+      <Text variant="accent">{accent}</Text>
+      {title.slice(at + accent.length)}
+    </Text>
+  );
+}
+
 export type GlobeEmptyStateProps = {
   reason: GlobeEmptyReason;
+  /** One word of the headline, set in the serif accent face (feature 005, FR-020). */
+  accent?: string;
+  /** Extra padding above the words, for the frames that overhang the card. */
+  topInset?: number;
   /** With exactly one trip waiting for a stop: its title, and `onAction` opens it. */
   tripTitle?: string;
   onAction: () => void;
 };
 
-export function GlobeEmptyState({ reason, tripTitle, onAction }: GlobeEmptyStateProps) {
+export function GlobeEmptyState({
+  reason,
+  tripTitle,
+  accent,
+  topInset,
+  onAction,
+}: GlobeEmptyStateProps) {
   const copy = copyFor(reason, tripTitle);
   return (
-    <OverlayCard testID="globe-empty-state">
-      <Text type="title">{copy.title}</Text>
+    <OverlayCard testID="globe-empty-state" topInset={topInset}>
+      <Headline title={copy.title} accent={accent} />
       <Text type="callout" tone="muted">
         {copy.detail}
       </Text>

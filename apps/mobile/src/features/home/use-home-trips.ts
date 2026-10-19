@@ -18,9 +18,14 @@ import { stopsRepository } from '@/db/repositories/stops';
 import { todayIso } from '@/features/trips/stop-dates';
 import { useTrips, type LiveResult } from '@/features/trips/use-trips';
 
-import { homeTrips, type HomeTrips } from './home-trips';
+import { coversOf, homeTrips, type HomeTrips } from './home-trips';
 
-export function useHomeTrips(today?: string): LiveResult<HomeTrips> {
+/** The trips of the sheet, and the cover pictures of every trip for the globe's pins. */
+export interface HomeTripsResult extends LiveResult<HomeTrips> {
+  covers: Record<string, string>;
+}
+
+export function useHomeTrips(today?: string): HomeTripsResult {
   const db = useDatabase();
   const day = today ?? todayIso();
   const trips = useTrips(day);
@@ -36,8 +41,11 @@ export function useHomeTrips(today?: string): LiveResult<HomeTrips> {
     [trips.data, stops.data, day],
   );
 
+  const covers = useMemo(() => coversOf(trips.data), [trips.data]);
+
   return {
     data,
+    covers,
     loading:
       trips.loading || (stops.updatedAt === undefined && stops.error === undefined),
     error: trips.error ?? stops.error ?? null,

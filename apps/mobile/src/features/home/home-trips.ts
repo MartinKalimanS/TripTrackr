@@ -163,3 +163,18 @@ export function homeTrips(
   }
   return { now: soonest === undefined ? null : show(soonest), next: null };
 }
+
+/**
+ * The cover picture of each trip that has a photograph, by trip id: the globe's pins draw these
+ * as roundels when that is switched on (`GlobeLayers.pins.roundelsEnabled`). A typographic
+ * cover is not a picture and is left out, so the pin stays a dot.
+ */
+export function coversOf(
+  summaries: readonly Pick<TripSummary, 'trip' | 'cover'>[],
+): Record<string, string> {
+  const covers: Record<string, string> = {};
+  for (const { trip, cover } of summaries) {
+    if (cover.kind === 'photo') covers[trip.id] = cover.thumbnailUri;
+  }
+  return covers;
+}

@@ -10,9 +10,10 @@
  *   expect(intervals.all[0].cleared).toBe(true);
  *
  * Only an interval with a delay under 100 ms is captured (the count-up runs at about 30
- * frames a second); any other passes through to the real timer. A captured interval returns a
- * numeric id of 7000 and up, and `clearInterval` of that id marks it cleared and does nothing
- * else. Not a test file.
+ * frames a second); any other passes through to the real timer. `captureIntervals(5000)`
+ * captures every interval up to 5 s instead (the idle spin of the Home globe runs every 5 s;
+ * tell the intervals apart by `ms`). A captured interval returns a numeric id of 7000 and up,
+ * and `clearInterval` of that id marks it cleared and does nothing else. Not a test file.
  */
 export interface CapturedInterval {
   callback: () => void;
@@ -32,7 +33,7 @@ export interface CapturedIntervals {
 const FIRST_ID = 7_000;
 const FRAME_CEILING_MS = 100;
 
-export function captureIntervals(): CapturedIntervals {
+export function captureIntervals(slowestMs = FRAME_CEILING_MS - 1): CapturedIntervals {
   const all: CapturedInterval[] = [];
   const realSet = globalThis.setInterval;
   const realClear = globalThis.clearInterval;
@@ -42,7 +43,7 @@ export function captureIntervals(): CapturedIntervals {
     ms?: number,
     ...rest: unknown[]
   ) => {
-    if (ms === undefined || ms >= FRAME_CEILING_MS) return realSet(callback, ms, ...rest);
+    if (ms === undefined || ms > slowestMs) return realSet(callback, ms, ...rest);
     const id = FIRST_ID + all.length;
     all.push({ callback, ms, id, cleared: false });
     return id as unknown as ReturnType<typeof setInterval>;
