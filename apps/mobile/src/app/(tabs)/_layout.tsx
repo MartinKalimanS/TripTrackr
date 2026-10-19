@@ -2,22 +2,30 @@
  * `(tabs)` group — globe (home), trips, profile (R009, research D-17, amended by
  * D4-06).
  *
- * The stable JavaScript `Tabs` navigator with a custom `tabBar`, the Atlas `TabBar`
- * (https://docs.expo.dev/router/advanced/tabs.md). `expo-router/unstable-native-tabs`
- * is not used: a native bar is platform-supplied styling by definition, which the
- * flat strip of feature 003 FR-013 to FR-016 and feature 004 FR-010 rules out, and an
- * `unstable-` module is the wrong foundation for the root of a production navigation
- * tree. `expo-router/js-tabs` is the non-deprecated import path in the installed v57
- * router; the bare `expo-router` export of `Tabs` is marked deprecated in its typings.
+ * The stable JavaScript `Tabs` navigator with a custom `tabBar`, the `TabBar` of feature 005: a
+ * floating pill on iOS, a Material 3 navigation bar on Android (`components/navigation`;
+ * https://docs.expo.dev/router/advanced/tabs.md). `expo-router/unstable-native-tabs` is not
+ * used: a native bar is platform-supplied styling by definition, which the Sunrise pill (glass
+ * on iOS 26, a blur before it, solid where transparency is reduced) rules out, and an
+ * `unstable-` module is the wrong foundation for the root of a production navigation tree.
+ * `expo-router/js-tabs` is the non-deprecated import path in the installed v57 router; the
+ * bare `expo-router` export of `Tabs` is marked deprecated in its typings.
  *
  * `tabBar` is a render function: React Navigation calls it inside a context consumer's
  * callback, not as a component. The bar is therefore rendered as an element
  * (`<TabBar {...props} />`) so it keeps its own hook scope; `tabBar={TabBar}` type-checks
  * and happens to work while the bar's only hook is `use()`, but would crash at the first
  * `useState`. `test/app/tabs-layout.test.tsx` mounts this layout over the real navigator.
- * The scenes are painted with the canvas TOKEN and the bar with the `bg-background` class:
- * one colour, because the generated stylesheet's `--background` is the palette's `canvas`
- * (pinned by `test/theme/theme-css-sync.test.ts` and, for this pair, by the same suite).
+ *
+ * The bar FLOATS (FR-022, FR-023): it is absolute, so it adds no height to the navigator's
+ * column and every scene runs under it. Each scene is told where the bar's top edge is
+ * (`useBottomTabBarHeight()`, the height the bar reports) and keeps its content 16 dp clear of
+ * it (`useTabInset`, applied by `Screen` and `ListScreen`; `TabInsetScope` publishes the height
+ * to the scene through the navigator's `screenLayout`); a fade of the scene's ground sits
+ * under the pill. The scenes are painted with the canvas TOKEN (`sceneStyle`).
+ *
+ * The third tab is "You" (FR-023, a deliberate label change); the route, `profile`, and the
+ * ids `tab-profile` and `tab-mark-profile` are unchanged.
  *
  * Every tab reads the local store, so the navigator mounts only once the
  * store is open (`RequireLocalStore`, T041) — and, on a device that has never
@@ -29,6 +37,7 @@
 import { Tabs } from 'expo-router/js-tabs';
 
 import { TabBar } from '@/components/navigation/tab-bar';
+import { TabInsetScope } from '@/components/navigation/tab-inset-scope';
 import { RequireLocalStore } from '@/components/require-local-store';
 import { FirstSyncGate } from '@/components/sync/first-sync-gate';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -41,13 +50,14 @@ export default function TabsLayout() {
       <FirstSyncGate>
         <Tabs
           tabBar={(props) => <TabBar {...props} />}
+          screenLayout={({ children }) => <TabInsetScope>{children}</TabInsetScope>}
           screenOptions={{
             headerShown: false,
             sceneStyle: { backgroundColor: tokens.canvas },
           }}>
           <Tabs.Screen name="index" options={{ title: 'Globe' }} />
           <Tabs.Screen name="trips" options={{ title: 'Trips' }} />
-          <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+          <Tabs.Screen name="profile" options={{ title: 'You' }} />
         </Tabs>
       </FirstSyncGate>
     </RequireLocalStore>

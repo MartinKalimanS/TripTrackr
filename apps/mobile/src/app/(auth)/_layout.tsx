@@ -25,7 +25,7 @@ import { Stack } from 'expo-router';
 
 import { HeaderBackButton } from '@/components/ui/header-back-button';
 import { useHeaderTheme } from '@/components/ui/header-theme';
-import { useStackHeaderOptions } from '@/components/ui/stack-header';
+import { useHeaderTitleStyle } from '@/components/ui/header-title-style';
 
 /**
  * The group has no `index`, so the first screen must be named or the router
@@ -42,8 +42,9 @@ const renderBack = () => <HeaderBackButton />;
 
 export default function AuthLayout() {
   const theme = useHeaderTheme();
-  // Only the title face is wanted from it: a pushed form screen has no large title.
-  const { headerTitleStyle } = useStackHeaderOptions('');
+  // A pushed form screen has no large title: the sub-screen title, the same on both platforms
+  // (the Android list header is a bigger, bolder title of its own).
+  const { headerTitleStyle } = useHeaderTitleStyle();
   const pushed = {
     ...theme,
     headerShown: true,

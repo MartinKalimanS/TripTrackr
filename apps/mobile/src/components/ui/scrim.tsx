@@ -7,6 +7,7 @@
  *   <Scrim kind="caption">...text...</Scrim> a ramp and a block that WRAPS its text
  *   <Scrim kind="sky" />                    the warm (or night) sky behind the globe
  *   <Scrim kind="cover" palette={1} />      a generated cover's gradient (`GeneratedCover`)
+ *   <Scrim kind="fade" ground="surface" />  the fade of the ground under the tab pill
  *
  * The VALUES are data in `src/theme/scrim.ts` (stops, alphas, the sky, the passport glow);
  * the contrast gate measures them over a PURE WHITE photograph, and `scrim.test.tsx` measures
@@ -35,7 +36,14 @@
  * (`box-none`). The caption's block has a minimum, never a height, so it grows with large
  * text and the alpha under any line of text is at least `caption.minUnderText` at every text
  * scale (C5-10). Boxes: `top` is the 120 dp band pinned to the top edge; `bottom`, `sky` and
- * `cover` fill their parent; a caller `style` is applied last and wins.
+ * `cover` fill their parent; `fade` is pinned to the bottom edge across the width and takes its
+ * height from the caller (the tab pill's 48 dp); a caller `style` is applied last and wins.
+ *
+ * `fade` (T530, FR-022: "content scrolls beneath the pill with a soft fade") is a gradient
+ * from nothing to the GROUND under it, the canvas of the lists (`ground="canvas"`, the default)
+ * or the surface of the Home sheet (`ground="surface"`): they differ in the dark themes. The
+ * ground is a palette colour, so the values stay in the token layer and the gate that measures
+ * the palette measures them; a fade is a gradient and never an opacity.
  */
 import type { ReactNode } from 'react';
 import {
@@ -58,7 +66,10 @@ import {
   type ScrimSpec,
 } from '@/theme';
 
-export type ScrimKind = 'top' | 'bottom' | 'caption' | 'sky' | 'cover';
+export type ScrimKind = 'top' | 'bottom' | 'caption' | 'sky' | 'cover' | 'fade';
+
+/** What a `fade` fades to: the canvas of the lists or the surface of a sheet. */
+export type FadeGround = 'canvas' | 'surface';
 
 /** Which of the three generated-cover palettes (`cover1..3` in the palette). */
 export type CoverPaletteIndex = 0 | 1 | 2;
@@ -67,6 +78,8 @@ export interface ScrimProps {
   kind: ScrimKind;
   /** `cover` only: the palette, 0 to 2. Default 0. */
   palette?: CoverPaletteIndex;
+  /** `fade` only: the ground it fades to. Default `canvas`. */
+  ground?: FadeGround;
   /** `caption` only: the text the block wraps. */
   children?: ReactNode;
   /** The box: positions the scrim over the default one. For `caption`, the container. */
@@ -169,6 +182,16 @@ function captionLayers({ rgb, caption }: ScrimSpec): { ramp: Layer[]; block: Lay
   };
 }
 
+/** A fade: from nothing to the opaque ground, top to bottom. */
+function fadeLayers(ground: string): Layer[] {
+  return [
+    linear('to bottom', [
+      { color: withAlpha(ground, 0), at: 0 },
+      { color: ground, at: 1 },
+    ]),
+  ];
+}
+
 /** The sky: its glows over its 180 degree gradient. */
 function skyLayers(scheme: 'light' | 'dark'): Layer[] {
   const { stops, glows } = Sky[scheme];
@@ -198,19 +221,22 @@ const HIDDEN = {
   importantForAccessibility: 'no-hide-descendants',
 } as const;
 
-const BANDS: Record<'top' | 'bottom' | 'sky' | 'cover', (spec: ScrimSpec) => ViewStyle> =
-  {
-    top: (spec) => ({
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: spec.top.height,
-    }),
-    bottom: () => StyleSheet.absoluteFill,
-    sky: () => StyleSheet.absoluteFill,
-    cover: () => StyleSheet.absoluteFill,
-  };
+const BANDS: Record<
+  'top' | 'bottom' | 'sky' | 'cover' | 'fade',
+  (spec: ScrimSpec) => ViewStyle
+> = {
+  top: (spec) => ({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: spec.top.height,
+  }),
+  bottom: () => StyleSheet.absoluteFill,
+  sky: () => StyleSheet.absoluteFill,
+  cover: () => StyleSheet.absoluteFill,
+  fade: () => ({ position: 'absolute', left: 0, right: 0, bottom: 0 }),
+};
 
 /** A childless, touch-less, hidden View painted with `layers`. */
 function Band({
@@ -265,6 +291,7 @@ function Caption({
 export function Scrim({
   kind,
   palette = 0,
+  ground = 'canvas',
   children,
   style,
   contentStyle,
@@ -285,6 +312,7 @@ export function Scrim({
     bottom: () => bottomLayers(spec),
     sky: () => skyLayers(theme),
     cover: () => coverLayers(Palettes[themeName], palette),
+    fade: () => fadeLayers(Palettes[themeName][ground]),
   }[kind]();
   return <Band testID={id} layers={layers} box={BANDS[kind](spec)} style={style} />;
 }

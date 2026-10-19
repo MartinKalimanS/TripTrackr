@@ -40,6 +40,9 @@ describe('useHeaderTitleStyle - the ink and the face of a sub-screen title', () 
       color: 'foreground-now',
       fontFamily: 'Face-SemiBold',
       fontWeight: '600',
+      // The `callout` role: a sub-screen title and the collapsed title of a large-title
+      // header are the same 17.
+      fontSize: 17,
     });
   });
 
@@ -51,7 +54,7 @@ describe('useHeaderTitleStyle - the ink and the face of a sub-screen title', () 
     expect(flat(result.current.headerTitleStyle).color).toBe('foreground-now');
   });
 
-  test('is the very style the top-level list headers carry (the two cannot drift apart)', async () => {
+  test('is the very style the iOS list headers carry once collapsed (the two cannot drift apart)', async () => {
     const { result } = await renderHook(() => useHeaderTitleStyle());
     const topLevel = stackHeaderOptions(
       'Trips',
@@ -61,7 +64,7 @@ describe('useHeaderTitleStyle - the ink and the face of a sub-screen title', () 
         accent: 'a',
         titleFont: 'Face-SemiBold',
       },
-      'android',
+      'ios',
     );
 
     expect(result.current.headerTitleStyle).toEqual(topLevel.headerTitleStyle);
@@ -77,7 +80,10 @@ describe('useHeaderTitleStyle - the ink and the face of a sub-screen title', () 
     jest.spyOn(Uniwind, 'useCSSVariable').mockReturnValue(undefined);
     const { result } = await renderHook(() => useHeaderTitleStyle());
 
-    expect(flat(result.current.headerTitleStyle)).toEqual({ color: 'foreground-now' });
+    expect(flat(result.current.headerTitleStyle)).toEqual({
+      color: 'foreground-now',
+      fontSize: 17,
+    });
   });
 
   test('is the same on both platforms: a sub-screen title is never a large title', async () => {

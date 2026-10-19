@@ -19,6 +19,12 @@ module.exports = {
     // (`phosphor-react-native/src/icons/<Name>`, research D5-07), which this anchored rule
     // does not match. The bare package throws, with the reason, instead of loading them all.
     '^phosphor-react-native$': '<rootDir>/test/stubs/phosphor-barrel.js',
+    // `expo-router/testing-library` replaces Reanimated with the module it finds at this path
+    // (its `mocks.js`: `require('react-native-reanimated/mock')`, and `{}` when that cannot
+    // load, which it cannot without the worklets runtime). The app's own stand-in answers
+    // instead, so a router tree with the tab pill (a Reanimated capsule) renders. The library's
+    // real mock stays reachable as `react-native-reanimated/mock.js` (`test/mocks/reanimated-full.ts`).
+    '^react-native-reanimated/mock$': '<rootDir>/test/mocks/reanimated-app.ts',
     // Mirrors tsconfig.json `paths`: `@/assets/*` resolves to the project-root
     // assets directory, NOT to src/assets. Listed before the general alias
     // because moduleNameMapper takes the first match, and the general rule

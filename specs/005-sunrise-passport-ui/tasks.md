@@ -265,24 +265,66 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 ## Phase 3: Chrome (branch `feat/005-chrome`) — User Stories 1 and 6
 
-- [ ] T526 [US1] Failing `test/components/tab-bar.test.tsx` (pill geometry, ids `tab-bar`, `tab-<name>`,
+- [x] T526 [US1] Failing `test/components/tab-bar.test.tsx` (pill geometry, ids `tab-bar`, `tab-<name>`,
       `tab-mark-<name>` on the selected capsule, roles `tablist` and `tab`, selected state, targets 44 and 48,
       labels wrap and the pill grows, `tabSurface()` choice for every flag combination, no opacity animation on the
       glass); then the pill with `tab-surface.tsx` (glass, blur, solid), the capsule spring and
       `BottomTabBarHeightCallbackContext` (FR-022, FR-023, FR-027; D5-05; Q-10). **[DEVICE]** part is T510
-- [ ] T527 [P] [US1] Android navigation bar `android-nav-bar.tsx` (64 dp plus inset, 56 by 32 indicator, hairline,
+      _As built:_ `components/navigation/tab-pill.tsx` (`TabPill`), `tab-surface.tsx` (`tabSurface()` and `TabSurface`),
+      `tab-capsule.tsx`, `tab-metrics.ts` (`PillMetrics`, `pillBottomOffset`, `pillReportedHeight`, `capsuleLayout`) and
+      `tab-shared.ts`; `tab-bar.tsx` is the dispatcher of T527. Written red first: `test/components/tab-bar.test.tsx`
+      (52 tests: the geometry, the ids, the roles, the capsule and its spring, reduced motion, wrapping labels, no node
+      with an opacity) and `test/components/tab-surface.test.tsx` (32: `tabSurface()` over all 16 combinations of
+      platform, glass API, reduced transparency and increased contrast, then each surface). The pill reports
+      `height + bottomOffset` (88 dp on a 390 by 844 phone). Press semantics follow the navigator's own bar:
+      `tabPress` is emitted (a listener may veto it) and the tab is navigated to only when it is not the focused
+      one, so a stack nested in the tab pops to its root on its own event (`tab-shared.ts`, a test on each bar).
+      The Reanimated stand-in moved to `test/mocks/reanimated-app.ts` with
+      the hooks the capsule needs, and `jest.config.js` maps `react-native-reanimated/mock` to it, because
+      `expo-router/testing-library` otherwise replaces the module with `{}` for every router suite. See
+      `contracts/components.md`, "As built (T526 to T530)". **[DEVICE]** V4 (T510) stays open
+- [x] T527 [P] [US1] Android navigation bar `android-nav-bar.tsx` (64 dp plus inset, 56 by 32 indicator, hairline,
       no blur), the rounded-square FAB shape and the 32 by 4 handle as shared tokens; failing tests first
       (FR-022, FR-028; D5-05, D5-21)
-- [ ] T528 [P] [US1] Headers: `useStackHeaderOptions` restyled (large title in `display` on iOS for Trips and You,
+      _As built:_ `components/navigation/android-nav-bar.tsx` (`AndroidNavBar`, 22 tests) chosen by `TabBar` from
+      `Platform.OS`; `src/constants/platform-shapes.ts` (`SheetHandle` 36 by 5 and 32 by 4, `FabShape` 52 dp pill and 56 dp
+      rounded square of radius 16, with `sheetHandleOf` and `fabShapeOf`) beside its test; and
+      `test/lint/glass-imports.test.ts`, which keeps `expo-glass-effect` inside `components/ui` and
+      `components/navigation` (the ESLint boundary lists only the kit, so no lint change was needed). The Android bar sits
+      absolute at the bottom edge, like the pill, so scenes run under it and keep clear by the same inset
+- [x] T528 [P] [US1] Headers: `useStackHeaderOptions` restyled (large title in `display` on iOS for Trips and You,
       standard on Android), `HeaderBackButton` as a round cream control and a `glass` variant for the trip hero,
       transparent trip header, the `useHeroCollapse(scrollY)` hook; failing tests for the options per platform
       and the name "Back" (FR-025; D5-12)
-- [ ] T529 [P] [US6] Sync: failing `use-sync-chip-state.test.ts` (dirty-row count over the seven tables, network,
+      _As built:_ `stack-header.ts` (iOS: large title Bold at the `display` size 40, collapsed title SemiBold at the
+      `callout` size 17; Android: the title role, Bold at 28, from the left), `header-title-style.ts` (sub-screen titles
+      at 17), `header-back-button.tsx` (a round `IconButton`: `default` is a cream disc with a hairline, `glass` a
+      `scrimButton` disc with an `onPhoto` glyph; no visible word; the name is exactly "Back"), `header-theme.ts`
+      (`useTransparentHeaderTheme`) and `src/hooks/use-hero-collapse.ts` (the pure `heroCollapse()` worklet and
+      `useHeroCollapse(scrollY, { heroHeight, topInset })`). The `(auth)` layout now takes its pushed-form title from
+      `useHeaderTitleStyle`. The trip layout is NOT switched to the transparent header: it needs the hero (T543), and a
+      transparent header over today's page would lay the title under it
+- [x] T529 [P] [US6] Sync: failing `use-sync-chip-state.test.ts` (dirty-row count over the seven tables, network,
       runtime status to `SyncChipState`), then `features/sync/use-sync-chip-state.ts`, the chip and `Banner`
       wiring, and the per-record marker (read-only; nothing written) (FR-026, FR-065; D5-17)
-- [ ] T530 [US1] Tabs layout: label "You" (id unchanged), scenes extend under the pill, content insets from the
+      _As built:_ `features/sync/use-sync-chip-state.ts` (`SyncChipState`, `isOffline`, `deriveSyncChipState`,
+      `useSyncChipState`, `useIsPushing`; one live query per synchronised table, 29 tests against a real SQLite
+      database), `record-sync-state.ts` (the per-record marker), `sync-banner.ts` with `SYNC_BANNER_COPY` in
+      `sync-copy.ts`, and `components/sync/sync-status.tsx` (`SyncStatusChip`, `SyncStatusBanner`: Retry is
+      `syncNow('manual')`). The hook writes nothing and makes no request (asserted). `SyncChipState` moved out of
+      `sync-chip.tsx`. The unresolved-id ratchet moved from 51 to 52 accessibility labels (the Android bar forwards the
+      route's accessibility label, as the pill does)
+- [x] T530 [US1] Tabs layout: label "You" (id unchanged), scenes extend under the pill, content insets from the
       pill height, a bottom fade; update `tabs-layout` and `tab-screens` tests and the accessible-name baseline
       with the deliberate label change (FR-023, FR-024, FR-081)
+      _As built:_ the third tab is "You" (route and ids unchanged; so is the title of the profile stack); the scenes run
+      under the pill and keep clear of it: `TabInsetScope` (the navigator's `screenLayout`) publishes the reported
+      height on `TabInsetContext`, `useTabInset()` answers it plus 16 dp (zero above the tabs), and `Screen` and
+      `ListScreen` end that far above the bar; `Scrim` has a `fade` kind (nothing to the ground, over the canvas, or the
+      surface on Home) which the pill draws 48 dp high. `tabs-layout`, `nested-stack-layouts` and `tab-screens` were
+      updated; the label is pinned by `test/app/tab-labels.test.ts` and NOT by the parity allowlist, which only excuses
+      names the `pre-004-baseline` extractor found (a tab's name comes from the route's `title`, so the baseline never
+      held "Profile" and an entry would be rejected). No Maestro flow selects a tab by its label
 
 ---
 
@@ -529,6 +571,9 @@ the one label change ("Profile" to "You") is not tapped by text.
 | Task         | Flow | Edit | Reason |
 | ------------ | ---- | ---- | ------ |
 | _(none yet)_ |      |      |        |
+
+T530 made no flow edit. The tab label "Profile" became "You" and no flow selects it by text; `test/app/tab-labels.test.ts`
+reads every flow and fails if one ever does.
 
 ## FR coverage
 

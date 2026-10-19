@@ -931,3 +931,122 @@ each task before its code: a missing module for T531, a missing module and a mis
 - A hidden view laid out at `left: -2000` captures correctly on iOS and Android with `expo-image` inside it, with the
   right colours and at the device's pixel density (the `scale` of the `Images` entry), a dashed ring on a circle draws
   on Android, and sixty symbols with `symbolSortKey` keep the live trip on top. Until then the dots are what ships.
+
+## As built (T526 to T530)
+
+Branch `feat/005-chrome`. The tab pill, the Android navigation bar, the headers, the sync state and the tabs layout. Files
+are under `apps/mobile/src/components/navigation/`, `components/ui/`, `components/sync/`, `features/sync/`, `hooks/` and
+`constants/`. 432 tests in the 22 suites that were added or changed (tests and code land together in each of the five
+commits); the whole mobile suite is 242 suites and 6,673 tests green, 3 skipped as before, with `tsc`, ESLint
+and the id ratchet clean.
+
+### Public API
+
+| Module                                           | Exports                                                                                                                                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `navigation/tab-bar.tsx`                         | `TabBar(props: BottomTabBarProps)`: `AndroidNavBar` when `Platform.OS` is `android`, else `TabPill`. The one export the layout renders                                                                              |
+| `navigation/tab-pill.tsx`, `tab-capsule.tsx`     | `TabPill`, `TabCapsule` (`routeName`, `index`, `count`, `trackWidth`)                                                                                                                                               |
+| `navigation/tab-surface.tsx`                     | `tabSurface({ os, liquidGlass, reduceTransparency, increasedContrast }): 'glass' \| 'blur' \| 'solid'` (pure), `TabSurface` (`children`, `style`)                                                                   |
+| `navigation/android-nav-bar.tsx`                 | `AndroidNavBar`                                                                                                                                                                                                     |
+| `navigation/tab-metrics.ts`                      | `PillMetrics`, `AndroidBarMetrics`, `pillBottomOffset(inset)`, `pillReportedHeight(height, inset)`, `capsuleLayout(trackWidth, count)`                                                                              |
+| `navigation/tab-inset-scope.tsx`                 | `TabInsetScope`: publishes the bar's reported height to a tab scene (the navigator's `screenLayout`)                                                                                                                |
+| `hooks/use-tab-inset.ts`, `tab-inset-context.ts` | `useTabInset()` (reported height plus 16 dp; 0 above the tabs), `tabInsetOf(height)`, `TAB_CLEARANCE`, `TabInsetContext`                                                                                            |
+| `constants/platform-shapes.ts`                   | `SheetHandle`, `sheetHandleOf(os)`, `FabShape`, `fabShapeOf(os, collapsed?)`                                                                                                                                        |
+| `ui/header-back-button.tsx`                      | `HeaderBackButton({ onPress?, canGoBack?, testID?, variant?: 'default' \| 'glass' })`                                                                                                                               |
+| `ui/stack-header.ts`, `header-title-style.ts`    | `stackHeaderOptions` / `useStackHeaderOptions(title)` (restyled), `roleSize(role)`, `useHeaderTitleStyle()` (callout size added)                                                                                    |
+| `ui/header-theme.ts`                             | `useTransparentHeaderTheme()`: `headerTransparent`, a transparent `headerStyle`, `onPhoto` tint, no shadow, canvas `contentStyle`                                                                                   |
+| `hooks/use-hero-collapse.ts`                     | `HeroMetrics`, `heroCollapse(offset, { heroHeight, topInset, reducedMotion? })` (pure worklet), `useHeroCollapse(scrollY, { heroHeight, topInset })` returning the animated styles `image`, `title`, `bar`, `scrim` |
+| `ui/scrim.tsx`                                   | a sixth kind, `<Scrim kind="fade" ground="canvas" \| "surface" style={{ height }} />`                                                                                                                               |
+| `features/sync/use-sync-chip-state.ts`           | `SyncChipState` (moved from `sync-chip.tsx`), `isOffline`, `deriveSyncChipState`, `useSyncChipState()`, `useIsPushing()`                                                                                            |
+| `features/sync/record-sync-state.ts`             | `recordSyncState(record, pushing?)`: `'pending' \| 'syncing' \| 'failed' \| null` for `SyncBadge`                                                                                                                   |
+| `features/sync/sync-banner.ts`, `sync-copy.ts`   | `syncBannerOf(state)`: `{ tone, message, action? } \| null`; `SYNC_BANNER_COPY`, `describeChanges`                                                                                                                  |
+| `components/sync/sync-status.tsx`                | `SyncStatusChip`, `SyncStatusBanner` (id `sync-banner`): read the derived state, Retry is `syncNow('manual')`                                                                                                       |
+
+### Behaviour per platform
+
+| Aspect         | iOS                                                                                                                                                                                           | Android                                                                                                                                             |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tab bar        | floating pill, absolute, 16 dp from the sides, minimum 64 dp, `bottom = max(inset - 10, 12)`; surface by `tabSurface()`: glass on iOS 26, `BlurView` with an 84 percent `surface` tint, solid | full-width bar, absolute at the bottom edge, 64 dp of content plus the system inset (a minimum), `surfaceSecondary`, one hairline, no blur, no fade |
+| Selection      | one tinted capsule, `translateX` with the sheet spring (a jump under reduced motion), a filled icon, a heavier label                                                                          | a 56 by 32 dp indicator behind the icon (`accentTint`), a filled icon, a heavier label; nothing animates                                            |
+| Reports        | `height + bottomOffset` through `BottomTabBarHeightCallbackContext`                                                                                                                           | its measured height (the inset is inside it)                                                                                                        |
+| Fade           | `Scrim kind="fade"`, 48 dp, canvas (surface on Home)                                                                                                                                          | none                                                                                                                                                |
+| List header    | large title, Bold at 40, collapsing to SemiBold 17                                                                                                                                            | standard header, title Bold at 28 from the left                                                                                                     |
+| Back           | round control, 44 dp, named "Back"; `glass` over a photograph                                                                                                                                 | the same (the 44 dp disc reaches 48 dp with slop)                                                                                                   |
+| Handle and FAB | `SheetHandle.ios` 36 by 5, a 52 dp pill                                                                                                                                                       | `SheetHandle.android` 32 by 4, a 56 dp rounded square of radius 16                                                                                  |
+
+The chip state precedence (each a test): the network gone is `offline`; a cycle running with records waiting is `syncing`
+(over the failure it is retrying); a cycle that could not connect is `offline`; a server failure is `failed` (Retry is
+offered even with nothing waiting); records waiting is `waiting`; none is `synced` and the chip draws nothing. The count is
+`is_dirty` rows across the seven tables, a photograph whose bytes have not arrived and a delete still to be sent
+included (`countUnsynced` leaves the first out because the upload queue counts it; a chip asking "is everything safe"
+must not).
+
+### Kit and router facts verified from source
+
+- **The navigator's layout** (`expo-router/build/react-navigation/bottom-tabs/views/BottomTabView.js`): a column of
+  `[screens (flex: 1), tabBar]`; an ABSOLUTE bar adds no height, so the scenes run under it. The tab bar element is
+  rendered inside `BottomTabBarHeightCallbackContext.Provider` (its value is the navigator's `setTabBarHeight`), and each
+  scene inside `BottomTabBarHeightContext.Provider`, around `descriptor.render()`: a `screenLayout` (which `Tabs`
+  accepts) therefore runs inside that provider, and `useBottomTabBarHeight()` answers in it. `test/app/tabs-layout.test.tsx`
+  proves the chain over the real navigator (a scene reads `bar-height` and `inset` = height + 16).
+- **`expo-glass-effect` 57** (docs v57 `sdk/glass-effect.md`): `GlassView` props are `glassEffectStyle` (`'clear'`, `'regular'`
+  or `'none'`, or `{ style, animate, animationDuration }`), `tintColor`, `isInteractive`, `colorScheme` (`'auto'`, `'light'`,
+  `'dark'`); an `opacity` of 0 on it or an ancestor makes it vanish (expo/expo#41024); `isLiquidGlassAvailable()` says only
+  that the app was built with the design (it may be true while the traveller has limited the effect), and
+  `isGlassEffectAPIAvailable()` guards some iOS 26 betas that crash: `TabSurface` needs both, and the reduced-transparency flag.
+- **`expo-blur`** (docs v57 `sdk/blur-view.md`): `intensity` 1 to 100 and `tint`; the tint is a translucent layer over the
+  blur; on Android the blur needs a `BlurTargetView` around what it blurs, which is why the Android bar has none. Under
+  Jest `BlurView` renders a `View` with the native adapter inside.
+- **`expo-network`** (docs v57 `sdk/network.md`): `useNetworkState()` starts as `{}`, and `isConnected` is false when the type
+  is `NONE` or `UNKNOWN`; on iOS `isInternetReachable` equals `isConnected`. Offline is therefore `isConnected === false` or
+  `isInternetReachable === false` or type `NONE`, and an unanswered hook is not offline.
+- **Native stack headers**: `headerLargeTitleStyle` and `headerTitleStyle` take `fontFamily`, `fontSize`, `fontWeight` and
+  `color`; `headerTitleAlign` is Android's. `headerLargeTitleEnabled` is the option (`headerLargeTitle` is deprecated).
+- **Jest**: `expo-router/testing-library` registers its own mock for `react-native-reanimated` when imported, resolved through
+  `react-native-reanimated/mock`, which cannot load without the worklets runtime and answers `{}`; a mapper entry in
+  `jest.config.js` points that path at `test/mocks/reanimated-app.ts`, and the library's real mock stays reachable as
+  `react-native-reanimated/mock.js` (`test/mocks/reanimated-full.ts`). Jest 30's `restoreAllMocks` restores spies only, so the
+  stand-in's `withSpring` mock survives it.
+
+### Where the build differs from the contract text above
+
+1. **Tab labels are `label` (14 / 20), not 12 / 14.** There is no 12 / 14 role in `typography.ts`, and the sanctioned way to a
+   heavier label is `label` with `strong`. The pill's inside (52 dp) and the Android bar's content (64 dp) hold it at the
+   default size with no growth, capped at 1.3.
+2. **The Android indicator is `accentTint`, not `accentTint` at 26 percent**: the tint is already a tint (`#FFE9E1` on cream, 16
+   percent coral in the dark themes), and 26 percent of it would vanish; the prototype's 26 percent is of the full coral.
+3. **The fade's ground is the canvas, except on Home where it is the surface** (the contract says `surface`): the lists and You
+   are painted with the canvas and the Home sheet with the surface, and the two differ in the dark themes. The ground is read
+   from the palette; no gradient value was added to `src/theme/scrim.ts`.
+4. **The Android bar is absolute too**, so scenes run under it and use the same inset, as the prototype's lists do; it is not
+   in the navigator's flow.
+5. **Glass has no hairline and no lift** (the native glass draws its own edge); blur and solid have both. One line each if V4 says
+   otherwise.
+6. **`useTabInset` reads a light context of its own**, not `BottomTabBarHeightContext`: `expo-router/js-tabs` loads the whole
+   router, which `Screen` and `ListScreen` (imported by nearly every screen) must not pay for.
+7. **`HeaderBackButton` no longer draws the word "Back"**; the control is round (a header of any width and text size holds it)
+   and its name is unchanged. The 004 tests of the word and of the font-scale hiding were replaced by tests of the disc.
+8. **The header tint is still the `accent` fill** (`useHeaderTheme`, `useStackHeaderOptions`): it reaches only the iOS "Plan a
+   trip" header action, which T541 removes; coral as text should be `accentText`, a one-line change if that action stays.
+9. **The trip layout keeps the opaque header** until T543 supplies the hero; `useTransparentHeaderTheme` and the glass Back are
+   ready and tested.
+10. **Keyboard**: the default React Navigation bar hides itself under the keyboard (`tabBarHideOnKeyboard`); neither of ours does.
+    Tab scenes open no keyboard today (forms are sheets above the tabs); a device check on Android covers an absolute bar and
+    `adjustResize`.
+
+### Needs from the token layer (not changed here)
+
+- None blocking. If the owners want the fade as data like the other scrims, `Scrim.fade` belongs in `src/theme/scrim.ts` (two
+  stops, nothing to the ground); the shared FAB and handle shapes are in `src/constants/platform-shapes.ts`, outside `src/theme/`.
+
+### Device-only checks left open (V4, T510, and the headers)
+
+- The glass pill renders on an iOS 26 phone, adapts to a bright sky and a night globe, keeps the labels legible, and needs (or
+  does not need) the hairline and the lift; the blur at intensity 60 (a starting value) on an earlier iPhone; the opacity-0
+  trap is avoided (a style test pins it, the device proves it).
+- The capsule's spring settles within 300 ms and reads as the sheet's; reduced motion jumps.
+- The Android bar's insets with gesture and three-button navigation, and that an absolute bar is not lifted by the keyboard.
+- The large title at 40 and its collapse (T408), the Android 28 title, the display faces on both.
+- `useHeroCollapse` under the real worklets runtime (the Jest stand-in runs it on the JS thread), the parallax and stretch
+  feel, and the glass Back disc over a bright photograph.
+- `boxShadow` on a glass view, and the lift of the blur and solid pills below Android 9 (`LiftElevation`).

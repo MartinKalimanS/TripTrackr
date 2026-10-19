@@ -1,14 +1,23 @@
 /**
- * T423 - contract C4-9 (`HeaderBackButton`), FR-008, FR-026, FR-029, research D4-06 and the
- * "Items to verify" item 7. Maestro flows say `tapOn: 'Back'`, so the accessible name
- * is a promise: it is "Back" whatever the previous screen was called, and whatever the
- * text size.
+ * T423, T528 - contract C4-9 and C5-15 (`HeaderBackButton`), FR-008, FR-025, FR-026, research
+ * D4-06 and D5-12 (feature 004, then Sunrise Passport). Maestro flows say `tapOn: 'Back'`, so
+ * the accessible name is a promise: it is exactly "Back" whatever the previous screen was
+ * called, whichever variant is drawn and whatever the text size.
+ *
+ * The control is a ROUND one (an `IconButton`, 44 dp): a cream disc with a hairline on the
+ * canvas (`default`), or a `scrimButton` disc with an `onPhoto` glyph over the trip hero
+ * (`glass`, a fixed look that keeps the glyph at 3:1 over a pure white photograph). It has no
+ * visible word: the name is the label, so a header of any width and any text size holds it.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
-import { useAppearance } from '@/hooks/use-appearance';
+import { Palettes, Radii } from '@/theme';
+
+import { appearanceOf } from '../../../test/helpers/appearance';
+import { glyphsIn } from '../../../test/helpers/icons';
+import { mockThemeColors } from '../../../test/helpers/theme-colors';
 
 import { HeaderBackButton } from './header-back-button';
 
@@ -25,8 +34,10 @@ jest.mock('expo-router', () => ({
     push: jest.fn(),
   }),
 }));
-// The adapter reads the font scale from the window, not from `useAppearance` (tappable.tsx).
-jest.mock('@/hooks/use-appearance', () => ({ useAppearance: jest.fn() }));
+jest.mock('@/hooks/use-appearance');
+const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
+  useAppearance: jest.Mock;
+};
 
 /** Sets the window font scale `useWindowDimensions` reports. */
 function mockFontScale(fontScale: number) {
@@ -41,37 +52,47 @@ function mockFontScale(fontScale: number) {
 beforeEach(() => {
   mockFontScale(1);
   mockCanGoBack.mockReturnValue(true);
+  useAppearance.mockReturnValue(appearanceOf('light'));
+  mockThemeColors('light');
 });
 afterEach(() => jest.restoreAllMocks());
 
-const hidden = { includeHiddenElements: true };
+const styleOf = (node: { props: Record<string, unknown> }) =>
+  (StyleSheet.flatten(node.props.style as never) ?? {}) as Record<string, unknown>;
+const back = () => screen.getByLabelText('Back');
 
 describe('<HeaderBackButton> - FR-008, contract C4-9', () => {
-  test('is a button named "Back"', async () => {
+  test('is a button named "Back", whichever variant', async () => {
+    for (const variant of ['default', 'glass'] as const) {
+      await render(<HeaderBackButton variant={variant} />);
+      expect(back().props.accessibilityRole).toBe('button');
+      expect(back().props.accessibilityLabel).toBe('Back');
+    }
+  });
+
+  test('draws a chevron and no word: the name is the label', async () => {
     await render(<HeaderBackButton />);
-    const node = screen.getByLabelText('Back');
-    expect(node.props.accessibilityRole).toBe('button');
+
+    expect(glyphsIn()).toHaveLength(1);
+    expect(glyphsIn()[0]).toMatchObject({ name: 'chevron-left', size: 24 });
+    // The word is not drawn, so it can neither clip nor be read twice.
+    expect(screen.queryByText('Back')).toBeNull();
   });
 
-  test('shows a chevron and the word Back', async () => {
-    await render(<HeaderBackButton testID="back" />);
-    expect(screen.getByText('Back')).toBeTruthy();
-    const chevron = screen.getByTestId('back-icon', hidden);
-    expect(chevron.props.accessible).toBe(false);
-  });
-
-  test('forwards testID to the pressable node', async () => {
-    await render(<HeaderBackButton testID="header-back" />);
-    expect(screen.getByTestId('header-back').props.accessibilityLabel).toBe('Back');
+  test('forwards testID to the pressable node, and the glyph gets its own', async () => {
+    await render(<HeaderBackButton testID="trip-back" />);
+    expect(screen.getByTestId('trip-back')).toBe(back());
+    expect(
+      screen.getByTestId('trip-back-icon', { includeHiddenElements: true }),
+    ).toBeTruthy();
   });
 
   test('a caller onPress replaces the default', async () => {
     const onPress = jest.fn();
     await render(<HeaderBackButton onPress={onPress} />);
-    await fireEvent.press(screen.getByLabelText('Back'));
+    await fireEvent.press(back());
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(mockBack).not.toHaveBeenCalled();
-    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   test('does not render when navigation says there is nothing to go back to', async () => {
@@ -81,15 +102,19 @@ describe('<HeaderBackButton> - FR-008, contract C4-9', () => {
 
   test('renders when navigation says it can go back', async () => {
     await render(<HeaderBackButton canGoBack />);
-    expect(screen.getByLabelText('Back')).toBeTruthy();
+    expect(back()).toBeTruthy();
   });
 });
 
 describe('<HeaderBackButton> default press', () => {
+  beforeEach(() => {
+    mockBack.mockClear();
+    mockReplace.mockClear();
+  });
+
   test('goes back through the router when there is somewhere to go', async () => {
-    mockCanGoBack.mockReturnValue(true);
     await render(<HeaderBackButton />);
-    await fireEvent.press(screen.getByLabelText('Back'));
+    await fireEvent.press(back());
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockReplace).not.toHaveBeenCalled();
   });
@@ -97,69 +122,52 @@ describe('<HeaderBackButton> default press', () => {
   test('replaces with the home when the screen was opened with no history (a deep link)', async () => {
     mockCanGoBack.mockReturnValue(false);
     await render(<HeaderBackButton />);
-    await fireEvent.press(screen.getByLabelText('Back'));
-    expect(mockReplace).toHaveBeenCalledTimes(1);
+    await fireEvent.press(back());
     expect(mockReplace).toHaveBeenCalledWith('/');
     expect(mockBack).not.toHaveBeenCalled();
   });
 
   test('asks the router at press time, not at render time', async () => {
-    mockCanGoBack.mockReturnValue(true);
-    await render(<HeaderBackButton />);
     mockCanGoBack.mockReturnValue(false);
-    await fireEvent.press(screen.getByLabelText('Back'));
-    expect(mockReplace).toHaveBeenCalledWith('/');
-    expect(mockBack).not.toHaveBeenCalled();
+    await render(<HeaderBackButton />);
+    mockCanGoBack.mockReturnValue(true);
+    await fireEvent.press(back());
+    expect(mockBack).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('<HeaderBackButton> at the largest text size - FR-029', () => {
-  test('shows the word at the default text size', async () => {
-    mockFontScale(1);
-    await render(<HeaderBackButton testID="back" />);
-    expect(screen.getByText('Back')).toBeTruthy();
-  });
-
-  test('shows the word up to a 1.3 font scale', async () => {
-    mockFontScale(1.3);
-    await render(<HeaderBackButton testID="back" />);
-    expect(screen.getByText('Back')).toBeTruthy();
-  });
-
-  test('hides the word above 1.3 so a fixed-height header does not clip it', async () => {
-    mockFontScale(2);
-    await render(<HeaderBackButton testID="back" />);
-    expect(screen.queryByText('Back')).toBeNull();
-    expect(screen.queryByText('Back', hidden)).toBeNull();
-  });
-
-  test('keeps the name "Back" and the chevron when the word is hidden', async () => {
-    mockFontScale(2);
-    await render(<HeaderBackButton testID="back" />);
-    const node = screen.getByLabelText('Back');
-    expect(node.props.accessibilityRole).toBe('button');
-    expect(node.props.accessibilityLabel).toBe('Back');
-    expect(screen.getByTestId('back-icon', hidden)).toBeTruthy();
-  });
-
-  test('still goes back when only the chevron is shown', async () => {
-    mockFontScale(2);
+describe('<HeaderBackButton> the round control - D5-12', () => {
+  test('the default is a 44 dp cream disc with a hairline on the canvas', async () => {
     await render(<HeaderBackButton />);
-    await fireEvent.press(screen.getByLabelText('Back'));
-    expect(mockBack).toHaveBeenCalledTimes(1);
+
+    expect(styleOf(back())).toMatchObject({
+      width: 44,
+      height: 44,
+      borderRadius: Radii.full,
+      backgroundColor: Palettes.light.surfaceSecondary.toLowerCase(),
+      borderColor: Palettes.light.hairline.toLowerCase(),
+    });
+    expect(glyphsIn()[0]!.color).toBe(Palettes.light.ink.toLowerCase());
   });
 
-  test('is still a platform-minimum target when only the chevron is shown', async () => {
-    mockFontScale(2);
-    await render(<HeaderBackButton />);
-    const style = StyleSheet.flatten(screen.getByLabelText('Back').props.style);
-    expect(style.minHeight).toBe(MinTouchTarget);
-    expect(style.minWidth).toBeGreaterThanOrEqual(MinTouchTarget);
+  test('the glass variant is a scrimButton disc with an onPhoto glyph, for the trip hero', async () => {
+    await render(<HeaderBackButton variant="glass" />);
+
+    expect(styleOf(back())).toMatchObject({
+      width: 44,
+      height: 44,
+      borderRadius: Radii.full,
+      backgroundColor: Palettes.light.scrimButton.toLowerCase(),
+      borderColor: Palettes.light.scrimButtonLine.toLowerCase(),
+    });
+    expect(glyphsIn()[0]!.color).toBe(Palettes.light.onPhoto.toLowerCase());
   });
 
-  test('never subscribes to useAppearance', async () => {
-    await render(<HeaderBackButton />);
-    expect(useAppearance).not.toHaveBeenCalled();
+  test('the glass variant is the same disc in the dark themes: the photograph does not change', async () => {
+    useAppearance.mockReturnValue(appearanceOf('dark'));
+    mockThemeColors('dark');
+    await render(<HeaderBackButton variant="glass" />);
+    expect(styleOf(back()).backgroundColor).toBe(Palettes.dark.scrimButton.toLowerCase());
   });
 });
 
@@ -181,24 +189,18 @@ describe('<HeaderBackButton> as a stack headerLeft', () => {
     expect(screen.queryByLabelText('Trips')).toBeNull();
   });
 
-  test('keeps the platform minimum at the default text size', async () => {
+  test('reaches the platform minimum target: the disc plus the slop around it', async () => {
     await render(<HeaderBackButton />);
-    const style = StyleSheet.flatten(screen.getByLabelText('Back').props.style);
-    expect(style.minHeight).toBe(MinTouchTarget);
-    expect(style.minWidth).toBeGreaterThanOrEqual(MinTouchTarget);
+    const slop = back().props.hitSlop as { left: number; right: number };
+    expect(44 + slop.left + slop.right).toBeGreaterThanOrEqual(MinTouchTarget);
   });
 
-  test('does not outgrow the fixed-height header at the largest text size', async () => {
-    mockFontScale(2);
-    await render(<HeaderBackButton />);
-    const style = StyleSheet.flatten(screen.getByLabelText('Back').props.style);
-    expect(style.minHeight).toBe(MinTouchTarget);
-  });
-
-  test('lays the chevron and the word out in a row', async () => {
-    await render(<HeaderBackButton />);
-    expect(String(screen.getByLabelText('Back').props.className)).toEqual(
-      expect.stringContaining('flex-row'),
-    );
-  });
+  test.each([1, 1.3, 2, 3.1])(
+    'does not outgrow the fixed-height header at font scale %s',
+    async (fontScale) => {
+      mockFontScale(fontScale);
+      await render(<HeaderBackButton />);
+      expect(styleOf(back())).toMatchObject({ width: 44, height: 44 });
+    },
+  );
 });

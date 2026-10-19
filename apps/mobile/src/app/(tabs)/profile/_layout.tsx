@@ -15,7 +15,7 @@ import { Stack } from 'expo-router';
 import { useStackHeaderOptions } from '@/components/ui/stack-header';
 
 export default function ProfileLayout() {
-  const options = useStackHeaderOptions('Profile');
+  const options = useStackHeaderOptions('You');
 
   return <Stack screenOptions={options} />;
 }

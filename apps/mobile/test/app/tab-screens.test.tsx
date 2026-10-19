@@ -524,8 +524,9 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     expect(root.props.testID).toBe('profile-screen');
     expect(root.children[0].type).toBe('RCTScrollView');
     expect(root.children[0].props.contentInsetAdjustmentBehavior).toBe('automatic');
-    // No title of its own any more: that is the header's (profile/_layout.tsx).
+    // No title of its own any more: that is the header's (profile/_layout.tsx), "You".
     expect(screen.queryByText('Profile')).toBeNull();
+    expect(screen.queryByText('You')).toBeNull();
   });
 
   test('sets Sign out and Delete account apart: after the groups, in a block of their own, not in either group', async () => {

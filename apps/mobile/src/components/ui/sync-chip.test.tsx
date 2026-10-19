@@ -11,6 +11,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
+import type { SyncChipState } from '@/features/sync/use-sync-chip-state';
 import { useAccessibilityFlags } from '@/hooks/use-accessibility-flags';
 import { useAppearance, type AppearanceContext } from '@/hooks/use-appearance';
 import {
@@ -24,7 +25,8 @@ import {
 
 import { glyphNamesIn, glyphsIn } from '../../../test/helpers/icons';
 import { asCss, mockThemeColors } from '../../../test/helpers/theme-colors';
-import { SyncChip, type SyncChipState } from './sync-chip';
+
+import { SyncChip } from './sync-chip';
 
 jest.mock('@/hooks/use-appearance');
 jest.mock('@/hooks/use-accessibility-flags');

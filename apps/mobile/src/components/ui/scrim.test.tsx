@@ -294,6 +294,67 @@ describe('Scrim - a generated cover is a gradient between two palette stops', ()
   });
 });
 
+describe('Scrim - the fade under the tab pill (T530, FR-022)', () => {
+  test.each(PaletteNames)(
+    'is a gradient from nothing to the canvas of %s, top to bottom',
+    async (name) => {
+      setTheme(name);
+      await render(<Scrim kind="fade" />);
+
+      const [layer] = layersOf('scrim-fade');
+      expect(layersOf('scrim-fade')).toHaveLength(1);
+      expect(layer.type).toBe('linear-gradient');
+      expect(layer.direction).toBe('to bottom');
+      const stops = stopsOf(layer);
+      expect(stops).toHaveLength(2);
+      expect(stops[0]).toMatchObject({
+        at: 0,
+        rgb: Palettes[name].canvas.toUpperCase(),
+        alpha: 0,
+      });
+      expect(stops[1]).toMatchObject({
+        at: 1,
+        rgb: Palettes[name].canvas.toUpperCase(),
+        alpha: 1,
+      });
+    },
+  );
+
+  test('fades to the surface where the scene under the pill is a sheet (ground="surface")', async () => {
+    setTheme('dark');
+    await render(<Scrim kind="fade" ground="surface" />);
+
+    const stops = stopsOf(layersOf('scrim-fade')[0]);
+    expect(stops[1].rgb).toBe(Palettes.dark.surface.toUpperCase());
+    // The two grounds differ in the dark themes, which is why the choice exists.
+    expect(Palettes.dark.surface).not.toBe(Palettes.dark.canvas);
+  });
+
+  test('sits on the bottom edge across the width, and takes its height from the caller', async () => {
+    await render(<Scrim kind="fade" style={{ height: 48 }} />);
+    expect(flat('scrim-fade')).toMatchObject({
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 48,
+    });
+  });
+
+  test('takes no touch and is hidden from assistive technology, like every scrim', async () => {
+    await render(<Scrim kind="fade" />);
+    const fade = node('scrim-fade');
+    expect(fade.props.pointerEvents).toBe('none');
+    expect(fade.props.accessibilityElementsHidden).toBe(true);
+    expect(fade.props.importantForAccessibility).toBe('no-hide-descendants');
+  });
+
+  test('is a gradient and never an opacity: a fade of the ground, not of the pill', async () => {
+    await render(<Scrim kind="fade" />);
+    expect(flat('scrim-fade').opacity).toBeUndefined();
+  });
+});
+
 describe('Scrim - what it is to the touch and to assistive technology', () => {
   test.each(['top', 'bottom', 'sky'] as const)(
     '%s lets touches through',
@@ -416,7 +477,7 @@ describe.each(PaletteNames)('ink and muted on the sky - %s', (name) => {
 
 describe('Scrim - the kinds are exactly those of the contract and the cover', () => {
   test('the type lists them', () => {
-    const kinds: ScrimKind[] = ['top', 'bottom', 'caption', 'sky', 'cover'];
-    expect(kinds).toHaveLength(5);
+    const kinds: ScrimKind[] = ['top', 'bottom', 'caption', 'sky', 'cover', 'fade'];
+    expect(kinds).toHaveLength(6);
   });
 });
