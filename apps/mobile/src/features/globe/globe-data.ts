@@ -28,6 +28,8 @@ export interface GlobeStopRow {
   arrive_date: string;
   depart_date: string;
   country_id: number | null;
+  /** The ISO 3166-1 alpha-2 code of that country, when this device has cached it. */
+  country_iso?: string | null;
   lat: number | null;
   lng: number | null;
 }
@@ -36,6 +38,11 @@ export interface GlobeStop {
   id: string;
   cityId: number;
   countryId: number | null;
+  /**
+   * Null until this device has cached the country; the tint reads it (`country-codes.ts`).
+   * Absent on a stop built by hand, which tints nothing.
+   */
+  countryIso?: string | null;
   arriveDate: string;
   departDate: string;
   /** Null until this device has cached the city. */
@@ -74,6 +81,7 @@ function toGlobeStop(row: GlobeStopRow): GlobeStop {
     id: row.id,
     cityId: row.city_id,
     countryId: row.country_id,
+    countryIso: row.country_iso ?? null,
     arriveDate: row.arrive_date,
     departDate: row.depart_date,
     coordinate: toCoordinate(row.lng, row.lat),

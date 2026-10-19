@@ -20,9 +20,12 @@ import type { ComponentProps } from 'react';
 
 import {
   BasemapConfigs,
+  BasemapStreetLabels,
   BasemapWorldScaleLabels,
+  basemapConfig,
   type BasemapConfig,
 } from '@/components/globe/basemap-config';
+import { GlobeColors, GlobeStyle } from '@/constants/theme';
 
 /**
  * The configuration properties of Mapbox Standard, copied from the "Configuration
@@ -243,11 +246,18 @@ describe('the source scanner reads what a StyleImport is given', () => {
 });
 
 describe('the app uses allow-listed keys only', () => {
-  test('finds the globe’s own StyleImport, so the scan is not vacuous', () => {
-    const all = sourceFiles().flatMap((file) =>
-      styleImportConfigs(readFileSync(file, 'utf8')),
+  test('finds the globe’s own StyleImport, so the scan is not vacuous: it takes basemap-config.ts, not an inline literal', () => {
+    // T532 replaced the inline `config={{ theme, lightPreset, show3dObjects }}` with the
+    // allow-listed object of `basemap-config.ts`. The scanner reads inline literals only,
+    // so this pins that the globe really does take its configuration from there, and that
+    // no `<StyleImport>` anywhere builds one by hand.
+    const globeView = readFileSync(
+      path.join(SRC, 'components', 'globe', 'globe-view.tsx'),
+      'utf8',
     );
-    expect(all).toContainEqual(['theme', 'lightPreset', 'show3dObjects']);
+    expect(globeView).toMatch(/<StyleImport\b[^>]*\bconfig=\{config\}/s);
+    expect(globeView).toMatch(/\bconfig\s*=\s*basemapConfig\(/);
+    expect(styleImportConfigs(globeView)).toEqual([]);
   });
 
   test('no inline StyleImport config in src/ holds an unknown key', () => {
@@ -308,6 +318,14 @@ describe('basemap-config.ts (the Sunrise globe)', () => {
     }
   });
 
+  test('the street-scale label toggles hold allow-listed keys only, and are all on', () => {
+    expect(unknownKeys(BasemapStreetLabels)).toEqual([]);
+    expect(Object.values(BasemapStreetLabels).every((on) => on === true)).toBe(true);
+    expect(Object.keys(BasemapStreetLabels).sort()).toEqual(
+      Object.keys(BasemapWorldScaleLabels).sort(),
+    );
+  });
+
   test('the type refuses the two wrongly typed keys, and the object feeds StyleImport', () => {
     // `tsc --noEmit` checks these lines: an `@ts-expect-error` that stops failing is an
     // error, so the typo can never type-check here, as it does against the package.
@@ -319,5 +337,75 @@ describe('basemap-config.ts (the Sunrise globe)', () => {
     expect([wrongBoundaries, wrongGreenspaces]).toHaveLength(2);
     const asProp: ComponentProps<typeof StyleImport>['config'] = base;
     expect(asProp).toBe(base);
+  });
+});
+
+describe('basemapConfig(scheme, worldScale): what the globe hands the basemap (T532)', () => {
+  const schemes = ['light', 'dark'] as const;
+
+  test.each(schemes)(
+    'the %s configuration, at either scale, holds allow-listed keys only',
+    (scheme) => {
+      for (const worldScale of [true, false]) {
+        expect(unknownKeys(basemapConfig(scheme, worldScale))).toEqual([]);
+      }
+    },
+  );
+
+  test.each(schemes)(
+    'the %s colours are the tokens: land from GlobeColors, the rest from GlobeStyle',
+    (scheme) => {
+      const config = basemapConfig(scheme, true);
+      expect(config.colorLand).toBe(GlobeColors[scheme].land);
+      expect(config.colorWater).toBe(GlobeStyle[scheme].water);
+      expect(config.colorGreenspace).toBe(GlobeStyle[scheme].greenspace);
+      expect(config.colorAdminBoundaries).toBe(GlobeStyle[scheme].adminBoundaries);
+    },
+  );
+
+  test('uses the documented names for greenspace and administrative boundaries, never the typed ones', () => {
+    const keys = Object.keys(basemapConfig('light', true));
+    expect(keys).toEqual(
+      expect.arrayContaining(['colorGreenspace', 'colorAdminBoundaries']),
+    );
+    expect(keys).not.toContain('colorGreenspaces');
+    expect(keys).not.toContain('colorBoundaries');
+  });
+
+  test('at world scale the point-of-interest, transit and road labels are off', () => {
+    expect(basemapConfig('light', true)).toMatchObject({
+      showPointOfInterestLabels: false,
+      showTransitLabels: false,
+      showRoadLabels: false,
+    });
+  });
+
+  test('closer in they are switched back ON, explicitly: an omitted key keeps its old value', () => {
+    expect(basemapConfig('light', false)).toMatchObject({
+      showPointOfInterestLabels: true,
+      showTransitLabels: true,
+      showRoadLabels: true,
+    });
+  });
+
+  test('keeps the faded theme, the lighting and the 3D objects of the basemap at both scales', () => {
+    for (const worldScale of [true, false]) {
+      expect(basemapConfig('light', worldScale)).toMatchObject({
+        theme: 'faded',
+        lightPreset: 'day',
+        show3dObjects: true,
+      });
+      expect(basemapConfig('dark', worldScale)).toMatchObject({ lightPreset: 'night' });
+    }
+  });
+
+  test('is the same object for the same arguments, so a render does not re-send the configuration', () => {
+    expect(basemapConfig('dark', true)).toBe(basemapConfig('dark', true));
+    expect(basemapConfig('dark', true)).not.toBe(basemapConfig('dark', false));
+  });
+
+  test('the colours of the old constants file now live in GlobeStyle, which was folded in', () => {
+    const folded = path.join(SRC, 'constants', 'globe-basemap.ts');
+    expect(() => readFileSync(folded)).toThrow(/ENOENT/);
   });
 });

@@ -11,9 +11,17 @@
  * a globe token nobody classified fails the build.
  *
  * The same pairs are part of the palette gate as class P22 (`contrast-gate.test.ts`).
+ *
+ * Feature 005, T532 extends it to the rest of the Sunrise globe (research D5-22): every
+ * stop of a gradient arc, sampled along the whole ramp; the visited and planned keylines
+ * against the greenspace as well as the land; the graticule (decoration: visible, never a
+ * mark); the atmosphere and the sea under the greeting and the map labels; and the white
+ * callout card of the live trip. A token nobody classified fails here.
  */
-import { GlobeColors, GlobeGeometry } from '@/constants/theme';
-import { ContrastFloor, contrastRatio } from '@/theme/contrast';
+import { gradientStops } from '@/components/globe/gradient-arcs';
+import { GlobeColors, GlobeGeometry, GlobeStyle } from '@/constants/theme';
+import { Palettes, type PaletteName } from '@/theme';
+import { blend, ContrastFloor, contrastRatio } from '@/theme/contrast';
 
 const THEMES = ['light', 'dark'] as const;
 
@@ -108,5 +116,177 @@ describe('globe contrast gate', () => {
       ContrastFloor.nonText,
     );
     expect(GlobeColors.light.activeEnd).toBe(GlobeColors.light.planning);
+  });
+});
+
+/** Every Sunrise palette and the globe scheme it is drawn over (the globe has no contrast variant). */
+const PALETTES_BY_SCHEME: readonly (readonly [PaletteName, 'light' | 'dark'])[] = [
+  ['light', 'light'],
+  ['light-contrast', 'light'],
+  ['dark', 'dark'],
+  ['dark-contrast', 'dark'],
+];
+
+/** Text floor of a palette: 7:1 in the two increased-contrast themes (FR-072). */
+const textFloor = (name: PaletteName) =>
+  name.endsWith('contrast') ? ContrastFloor.increasedContrast : ContrastFloor.normalText;
+
+/** A colour at `t` between two hex colours, channel by channel in sRGB (how a style ramp mixes). */
+function along(from: string, to: string, t: number): string {
+  return blend(to, from, t);
+}
+
+const GRADIENT_STATUSES = ['past', 'active', 'journey'] as const;
+const RAMP_SAMPLES = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1] as const;
+
+describe('gradient arcs (C5-11, finding M-3)', () => {
+  describe.each(THEMES)('%s theme', (theme) => {
+    const palette = GlobeColors[theme];
+
+    test('past and active run from their start stop to their end stop; the legs between trips are past', () => {
+      expect(gradientStops('past', palette)).toEqual([
+        [0, palette.past],
+        [1, palette.pastEnd],
+      ]);
+      expect(gradientStops('active', palette)).toEqual([
+        [0, palette.active],
+        [1, palette.activeEnd],
+      ]);
+      expect(gradientStops('journey', palette)).toEqual(gradientStops('past', palette));
+    });
+
+    test.each(GRADIENT_STATUSES)(
+      '%s: every point of the ramp, not only its two ends, clears 3:1 on the casing',
+      (status) => {
+        const [[, start], [, end]] = gradientStops(status, palette);
+        for (const t of RAMP_SAMPLES) {
+          expect(
+            contrastRatio(along(start, end, t), palette.casing),
+          ).toBeGreaterThanOrEqual(ContrastFloor.nonText);
+        }
+      },
+    );
+  });
+});
+
+describe('the country keylines against the whole basemap (D5-22)', () => {
+  describe.each(THEMES)('%s theme', (theme) => {
+    const palette = GlobeColors[theme];
+
+    test.each(KEYLINE_TOKENS)(
+      '%s clears 3:1 on the greenspace as well as the land',
+      (token) => {
+        expect(
+          contrastRatio(palette[token], GlobeStyle[theme].greenspace),
+        ).toBeGreaterThanOrEqual(ContrastFloor.nonText);
+      },
+    );
+
+    test('the visited fill is a visible tint of the land, not an invisible one', () => {
+      // A fill that cannot be told from the land would leave the keyline to do everything.
+      expect(contrastRatio(palette.visitedFill, palette.land)).toBeGreaterThanOrEqual(
+        1.2,
+      );
+    });
+
+    test('the basemap tokens are hex colours the gate can measure', () => {
+      const { water, greenspace, adminBoundaries } = GlobeStyle[theme];
+      for (const colour of [water, greenspace, adminBoundaries]) {
+        expect(colour).toMatch(/^#[0-9A-F]{6}$/);
+      }
+    });
+  });
+});
+
+describe('the graticule is decoration (D5-04)', () => {
+  test.each(THEMES)(
+    '%s: visible over the sea, and never a mark that could carry meaning',
+    (theme) => {
+      const { graticule, graticuleOpacity, water } = GlobeStyle[theme];
+      expect(graticuleOpacity).toBeGreaterThan(0);
+      expect(graticuleOpacity).toBeLessThan(1);
+      const seen = contrastRatio(blend(graticule, water, graticuleOpacity), water);
+      expect(seen).toBeGreaterThanOrEqual(1.1);
+      expect(seen).toBeLessThan(ContrastFloor.nonText);
+    },
+  );
+});
+
+describe('the atmosphere and the sea (D5-04, finding M-6)', () => {
+  test.each(THEMES)(
+    '%s: opaque colours, no stars, a horizon blend of .08 to .14',
+    (theme) => {
+      const { atmosphere } = GlobeStyle[theme];
+      for (const colour of [
+        atmosphere.color,
+        atmosphere.highColor,
+        atmosphere.spaceColor,
+      ]) {
+        // Six digits: no alpha, which would load more tiles (research D5-04).
+        expect(colour).toMatch(/^#[0-9A-F]{6}$/);
+      }
+      expect(atmosphere.starIntensity).toBe(0);
+      expect(atmosphere.horizonBlend).toBeGreaterThanOrEqual(0.08);
+      expect(atmosphere.horizonBlend).toBeLessThanOrEqual(0.14);
+    },
+  );
+
+  describe.each(PALETTES_BY_SCHEME)('%s over the %s globe', (name, scheme) => {
+    const { ink, muted } = Palettes[name];
+    const { atmosphere, water } = GlobeStyle[scheme];
+    const floor = textFloor(name);
+
+    test.each(['color', 'highColor', 'spaceColor'] as const)(
+      'the greeting (ink and muted) reads on the atmosphere %s',
+      (stop) => {
+        expect(contrastRatio(ink, atmosphere[stop])).toBeGreaterThanOrEqual(floor);
+        expect(contrastRatio(muted, atmosphere[stop])).toBeGreaterThanOrEqual(floor);
+      },
+    );
+
+    test('a map label over the sea is ink (the muted tone is 4.31:1 there in light)', () => {
+      expect(contrastRatio(ink, water)).toBeGreaterThanOrEqual(floor);
+    });
+  });
+});
+
+describe('the callout of the live trip (FR-011)', () => {
+  test.each(THEMES)(
+    '%s: title and detail read on the white card, the live dot is findable',
+    (theme) => {
+      const { surface, title, detail, liveDot } = GlobeStyle[theme].callout;
+      expect(contrastRatio(title, surface)).toBeGreaterThanOrEqual(
+        ContrastFloor.normalText,
+      );
+      expect(contrastRatio(detail, surface)).toBeGreaterThanOrEqual(
+        ContrastFloor.normalText,
+      );
+      expect(contrastRatio(liveDot, surface)).toBeGreaterThanOrEqual(
+        ContrastFloor.nonText,
+      );
+    },
+  );
+});
+
+describe('GlobeStyle is classified, like GlobeColors', () => {
+  const CLASSIFIED = new Set([
+    'water',
+    'greenspace',
+    'adminBoundaries',
+    'graticule',
+    'graticuleOpacity',
+    'atmosphere',
+    'callout',
+  ]);
+
+  test('both themes expose the same tokens and every one is classified above', () => {
+    for (const theme of THEMES) {
+      expect(
+        Object.keys(GlobeStyle[theme]).filter((key) => !CLASSIFIED.has(key)),
+      ).toEqual([]);
+    }
+    expect(Object.keys(GlobeStyle.light).sort()).toEqual(
+      Object.keys(GlobeStyle.dark).sort(),
+    );
   });
 });

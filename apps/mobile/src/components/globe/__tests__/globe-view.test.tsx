@@ -8,13 +8,17 @@
  * jest.setup.ts. Pixels are the Maestro flow's job (e2e/03-globe.yaml).
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { createRef } from 'react';
+import { StyleSheet } from 'react-native';
 
 import {
   Colors,
   GlobeBasemap,
   GlobeCamera,
   GlobeColors,
+  GlobeLayers,
   GlobePitch,
+  GlobeStyle,
   GlobeTerrain,
   MinTouchTarget,
 } from '@/constants/theme';
@@ -23,6 +27,7 @@ import {
   type GlobeStopRow,
   type GlobeTrip,
 } from '@/features/globe/globe-data';
+import { globeFit, globeFitCamera } from '@/features/globe/globe-fit';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 
 import {
@@ -37,7 +42,8 @@ import {
   arcStyle,
   journeyCasingStyle,
 } from '../arc-styles';
-import { GlobeView } from '../globe-view';
+import { basemapConfig } from '../basemap-config';
+import { GlobeView, type GlobeHandle } from '../globe-view';
 import { TERRAIN_SOURCE_ID } from '../terrain-layers';
 
 jest.mock('@/hooks/use-appearance');
@@ -358,8 +364,12 @@ describe('<GlobeView> — the arc source and its layers (T094, T095)', () => {
 
   test('stacks the journey under casing, then past, planned and active lines, so the active trip is on top', async () => {
     await renderGlobe();
+    // The connections' own layers; the Sunrise style layers (graticule, keylines and the
+    // gradient overlays) are stacked around them and pinned in their own describe below.
     const layers = screen
-      .getAllByTestId(/^mapbox-LineLayer-/)
+      .getAllByTestId(
+        /^mapbox-LineLayer-globe-(journey|arc)-(casing|line|past|planning|active)$/,
+      )
       .map((node) => node.props.id);
     expect(layers).toEqual([
       'globe-journey-casing',
@@ -570,5 +580,361 @@ describe('<GlobeView> — the animated trip (T095, FR-046)', () => {
   test('with nothing to animate, no beacon is drawn at all', async () => {
     await renderGlobe(sampleTrips(), []);
     expect(screen.queryByTestId('mapbox-ShapeSource-globe-beacons')).toBeNull();
+  });
+});
+
+/** The same stop with the ISO code of its country, as the stops query now returns it. */
+const inCountry = (row: GlobeStopRow, iso: string): GlobeStopRow => ({
+  ...row,
+  country_iso: iso,
+});
+
+/** Visited France and Italy, a planned Japan: what the country layers should tint. */
+function tripsWithCountries(): GlobeTrip[] {
+  return toGlobeTrips(
+    [
+      { id: 'italy', title: 'Italy' },
+      { id: 'france', title: 'France' },
+      { id: 'japan', title: 'Japan' },
+    ],
+    [
+      inCountry(stop('italy', ROME, '2026-05-08', '2026-05-09'), 'IT'),
+      inCountry(stop('italy', VENICE, '2026-05-12', '2026-05-14'), 'IT'),
+      inCountry(stop('france', PARIS, '2025-03-01'), 'FR'),
+      inCountry(stop('japan', TOKYO, '2027-01-10'), 'JP'),
+    ],
+    TODAY,
+  );
+}
+
+describe('<GlobeView> — the Sunrise look (T532; FR-010, FR-082)', () => {
+  test.each(['light', 'dark'] as const)(
+    'configures the basemap with the %s tokens, from basemap-config.ts, at world scale',
+    async (theme) => {
+      mockAppearance({ theme });
+      await renderGlobe();
+      expect(screen.getByTestId('mapbox-StyleImport-basemap').props.config).toBe(
+        basemapConfig(theme, true),
+      );
+    },
+  );
+
+  test('switches the street labels on once the traveller is in, and off again on the way out', async () => {
+    await renderGlobe();
+    const config = () => screen.getByTestId('mapbox-StyleImport-basemap').props.config;
+    expect(config().showRoadLabels).toBe(false);
+
+    await act(async () => {
+      screen
+        .getByTestId('globe-map')
+        .props.onMapIdle(settledAt(GlobeLayers.worldScaleZoom + 1));
+    });
+    expect(config()).toBe(basemapConfig('light', false));
+    expect(config().showRoadLabels).toBe(true);
+
+    await act(async () => {
+      screen.getByTestId('globe-map').props.onMapIdle(settledAt(GlobeCamera.zoomLevel));
+    });
+    expect(config()).toBe(basemapConfig('light', true));
+  });
+
+  test('re-applies the tilt as before while it watches the zoom: both read the same idle event', async () => {
+    await renderGlobe();
+    await act(async () => {
+      screen.getByTestId('globe-map').props.onMapIdle(settledAt(GlobePitch.fullZoom));
+    });
+    expect(camera().setCamera).toHaveBeenCalledWith(
+      expect.objectContaining({ pitch: GlobePitch.max }),
+    );
+    expect(
+      screen.getByTestId('mapbox-StyleImport-basemap').props.config.showRoadLabels,
+    ).toBe(true);
+  });
+
+  test.each(['light', 'dark'] as const)('mounts the %s atmosphere', async (theme) => {
+    mockAppearance({ theme });
+    await renderGlobe();
+    expect(screen.getByTestId('mapbox-Atmosphere').props.layerStyle).toMatchObject({
+      spaceColor: GlobeStyle[theme].atmosphere.spaceColor,
+    });
+  });
+
+  test('draws the graticule', async () => {
+    await renderGlobe();
+    expect(screen.getByTestId('mapbox-ShapeSource-globe-graticule')).toBeTruthy();
+  });
+
+  test('tints the countries of the stops: visited by now, planned still to come', async () => {
+    await renderGlobe(tripsWithCountries());
+    const filter = (id: string) =>
+      screen.getByTestId(`mapbox-FillLayer-${id}`).props.filter as unknown[];
+    expect(filter('globe-visited-fill')).toContainEqual([
+      'in',
+      ['get', 'iso_3166_1'],
+      ['literal', ['FR', 'IT']],
+    ]);
+    expect(
+      screen.getByTestId('mapbox-LineLayer-globe-planned-keyline').props.filter,
+    ).toContainEqual(['in', ['get', 'iso_3166_1'], ['literal', ['JP']]]);
+  });
+
+  test('loads no country tiles when no stop has a country on this device', async () => {
+    await renderGlobe();
+    expect(screen.queryByTestId('mapbox-VectorSource-globe-countries')).toBeNull();
+  });
+
+  test('follows the theme: the keyline is the dark token at night', async () => {
+    mockAppearance({ theme: 'dark' });
+    await renderGlobe(tripsWithCountries());
+    expect(
+      screen.getByTestId('mapbox-LineLayer-globe-visited-keyline').props.layerStyle
+        .lineColor,
+    ).toBe(GlobeColors.dark.visitedKeyline);
+  });
+
+  test('draws the gradients above their solid layers, in one stack with the connections', async () => {
+    await renderGlobe(tripsWithCountries());
+    const source = screen.getByTestId('mapbox-ShapeSource-globe-arc-gradients');
+    expect(source.props.lineMetrics).toBe(true);
+    for (const id of ['journey', 'arc-past', 'arc-active']) {
+      expect(
+        screen.getByTestId(`mapbox-LineLayer-globe-${id}-gradient`).props.aboveLayerID,
+      ).toBe(id === 'journey' ? 'globe-journey-line' : `globe-${id}`);
+    }
+  });
+
+  test('keeps the shared hit source as it was: casing, past, planned and active, with the press', async () => {
+    await renderGlobe();
+    const arcs = screen.getByTestId('mapbox-ShapeSource-globe-arcs');
+    expect(arcs.props.lineMetrics).toBeUndefined();
+    expect(arcs.props.onPress).toEqual(expect.any(Function));
+    expect(
+      screen.getByTestId('mapbox-LineLayer-globe-arc-planning').props.layerStyle,
+    ).toHaveProperty('lineDasharray');
+  });
+
+  test('stacks atmosphere, graticule, countries, terrain, connections, gradients, pins, beacons in that order', async () => {
+    await renderGlobe(tripsWithCountries());
+    const order = [
+      'mapbox-Atmosphere',
+      'mapbox-ShapeSource-globe-graticule',
+      'mapbox-VectorSource-globe-countries',
+      `mapbox-RasterDemSource-${TERRAIN_SOURCE_ID}`,
+      'mapbox-ShapeSource-globe-journey',
+      'mapbox-ShapeSource-globe-arcs',
+      'mapbox-ShapeSource-globe-markers',
+      'mapbox-ShapeSource-globe-arc-gradients',
+      'mapbox-ShapeSource-globe-pins',
+      'mapbox-ShapeSource-globe-beacons',
+    ];
+    const seen = screen
+      .getAllByTestId(/^mapbox-/)
+      .map((node) => node.props.testID as string)
+      .filter((id) => order.includes(id));
+    expect(seen).toEqual(order);
+  });
+
+  test('leaves the Mapbox logo and attribution where the sheet puts them, and never hides them', async () => {
+    const offsets = { bottom: 220, left: 8 };
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        logoPosition={offsets}
+        attributionPosition={{ bottom: 220, right: 8 }}
+      />,
+    );
+    const map = screen.getByTestId('globe-map');
+    expect(map.props.logoPosition).toEqual(offsets);
+    expect(map.props.attributionPosition).toEqual({ bottom: 220, right: 8 });
+    expect(map.props.logoEnabled).not.toBe(false);
+    expect(map.props.attributionEnabled).not.toBe(false);
+  });
+
+  test('hands the sheet the camera: setCamera through the ref, once per settle', async () => {
+    const ref = createRef<GlobeHandle>();
+    await render(
+      <GlobeView
+        ref={ref}
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+      />,
+    );
+    const fit = globeFit('half', 390, 110, 405, 844);
+    const settings = globeFitCamera('half', fit);
+    ref.current?.setCamera(settings!);
+    expect(camera().setCamera).toHaveBeenCalledTimes(1);
+    expect(camera().setCamera).toHaveBeenCalledWith(settings);
+  });
+});
+
+describe('<GlobeView> — pins and the callout (T533; FR-011)', () => {
+  const LIVE = { tripId: 'italy', title: 'Italy', detail: 'Day 3 of 8 · Florence' };
+  const dotTripIds = () =>
+    (
+      screen.getByTestId('mapbox-ShapeSource-globe-pins').props.shape.features as {
+        properties: { trip_id: string };
+      }[]
+    ).map((f) => f.properties.trip_id);
+
+  test('draws one dot for each trip with a placed stop, the live trip last', async () => {
+    await renderGlobe();
+    expect(dotTripIds()).toEqual(['france', 'italy']);
+    expect(screen.getByTestId('mapbox-CircleLayer-globe-pin-dot')).toBeTruthy();
+  });
+
+  test('the dots are the default: no roundel source, no bitmap, nothing captured', async () => {
+    const { captureRef } = jest.requireMock('react-native-view-shot') as {
+      captureRef: jest.Mock;
+    };
+    captureRef.mockClear();
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        covers={{ italy: 'file:///italy.jpg', france: 'file:///france.jpg' }}
+      />,
+    );
+    expect(screen.queryByTestId('mapbox-ShapeSource-globe-roundels')).toBeNull();
+    expect(screen.queryByTestId('mapbox-Images')).toBeNull();
+    expect(screen.queryByTestId('roundel-stage')).toBeNull();
+    expect(captureRef).not.toHaveBeenCalled();
+  });
+
+  test('a tap on a pin opens the trip, through the same handler as an arc', async () => {
+    await renderGlobe();
+    const features = screen.getByTestId('mapbox-ShapeSource-globe-pins').props.shape
+      .features;
+    await fireEvent(screen.getByTestId('mapbox-ShapeSource-globe-pins'), 'press', {
+      features,
+    });
+    // Both trips are under the finger: the active one opens first.
+    expect(mockPush).toHaveBeenCalledWith('/trip/italy');
+  });
+
+  test('draws the pins over the connections and under the beacons and the callout', async () => {
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={LIVE}
+      />,
+    );
+    const order = [
+      'mapbox-ShapeSource-globe-arcs',
+      'mapbox-ShapeSource-globe-arc-gradients',
+      'mapbox-ShapeSource-globe-pins',
+      'mapbox-ShapeSource-globe-beacons',
+      'mapbox-MarkerView',
+    ];
+    const seen = screen
+      .getAllByTestId(/^mapbox-/)
+      .map((node) => node.props.testID as string)
+      .filter((id) => order.includes(id));
+    expect(seen).toEqual(order);
+  });
+
+  test('has no callout without a live trip', async () => {
+    await renderGlobe();
+    expect(screen.queryByTestId('mapbox-MarkerView')).toBeNull();
+  });
+
+  test('has ONE callout for the live trip, at the stop it is at today, naming it', async () => {
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={LIVE}
+      />,
+    );
+    const markers = screen.getAllByTestId('mapbox-MarkerView');
+    expect(markers).toHaveLength(1);
+    // Today is the 10th: the traveller is in Florence.
+    expect(markers[0]!.props.coordinate).toEqual([FLORENCE.lng, FLORENCE.lat]);
+    // The callout is hidden from the screen reader on purpose (it is announced instead), and
+    // a query skips what is hidden from it.
+    const seen = { includeHiddenElements: true };
+    expect(screen.getByTestId('globe-callout-title', seen).props.children).toBe('Italy');
+    expect(screen.getByTestId('globe-callout-detail', seen).props.children).toBe(
+      'Day 3 of 8 · Florence',
+    );
+  });
+
+  test('has no callout for a live trip that is not on the globe', async () => {
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={{ ...LIVE, tripId: 'nowhere' }}
+      />,
+    );
+    expect(screen.queryByTestId('mapbox-MarkerView')).toBeNull();
+  });
+
+  test('the callout’s pulse runs while the globe is on screen, pauses while it is not, and is still under reduced motion', async () => {
+    const pulse = () =>
+      StyleSheet.flatten(
+        screen.getByTestId('globe-callout-pulse', { includeHiddenElements: true }).props
+          .style,
+      ) as Record<string, unknown>;
+    const trips = sampleTrips();
+    // A fresh element each time: React skips an identical one, and the focus hook is a mock.
+    const view = () => (
+      <GlobeView
+        trips={trips}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={LIVE}
+      />
+    );
+    const rendered = await render(view());
+    expect(pulse().animationPlayState).toBe('running');
+
+    mockFocus.focused = false;
+    await rendered.rerender(view());
+    expect(pulse().animationPlayState).toBe('paused');
+
+    mockFocus.focused = true;
+    mockAppearance({ prefersLessMotion: true });
+    await rendered.rerender(view());
+    expect(pulse()).not.toHaveProperty('animationName');
+  });
+
+  test('says where the callout may go: the free area between the header and the sheet', async () => {
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={LIVE}
+        calloutArea={{ top: 110, bottom: 632 }}
+      />,
+    );
+    expect(screen.getAllByTestId('mapbox-MarkerView')).toHaveLength(1);
+  });
+
+  test('leaves the shared hit source, the stop markers and tripIdFromPress as they were', async () => {
+    const trips = sampleTrips();
+    await renderGlobe(trips);
+    const markers = screen.getByTestId('mapbox-ShapeSource-globe-markers');
+    expect(markers.props.shape).toEqual(markerCollection(trips));
+    await fireEvent(markers, 'press', {
+      features: [{ type: 'Feature', properties: { trip_id: 'france', status: 'past' } }],
+    });
+    expect(mockPush).toHaveBeenCalledWith('/trip/france');
   });
 });

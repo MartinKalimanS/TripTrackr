@@ -797,3 +797,137 @@ props, roles, states and testIDs) or is new; the call sites are untouched. Facts
 - The toast: announced once by VoiceOver and TalkBack (the kit renders the root twice, the second copy invisible and
   `pointerEvents="none"`), the countdown bar shrinking toward the start edge in a right-to-left layout, the Undo target.
 - `StatTile` at font scales 1, 1.15, 1.5 and 2 in four themes (the row layout), `AreaPill` four across at 390 dp.
+
+## As built (T531 to T533)
+
+Branch `feat/005-home-globe`. The globe stays ONE `MapView` and its geometry, connections, journey legs, statistics and
+camera rules are untouched (FR-082; SC-014): the arcs, `journey.ts`, `great-circle.ts`, `camera.ts`, `terrain-layers.tsx`,
+`use-arc-press.ts` (and so `tripIdFromPress`), the hit source `globe-arcs` with its four layers, and `globe-markers` are as
+they were. What was added is style layers, a pure fit helper, the pins and the callout, and the layout around the map
+(`logoPosition`, `attributionPosition`, a camera handle). Every Mapbox prop name below was read from the installed
+`@rnmapbox/maps` 10.3.5 typings (`src/utils/MapboxStyles.ts` and `src/components/*.tsx`), not recalled.
+
+### Mapbox facts verified from source and documentation
+
+- **`Atmosphere`** takes `style: AtmosphereLayerStyle` with `color`, `highColor`, `spaceColor`, `horizonBlend` and
+  `starIntensity` (also `range` and `verticalRange`, not set); it has no `id`, so the Jest tag is `mapbox-Atmosphere`.
+- **`VectorSource`** takes `id` and `url`; its layers (`FillLayer`, `LineLayer`) take `sourceLayerID`, `slot`
+  (`'bottom' | 'middle' | 'top'`, "v11 only"), `filter`, `aboveLayerID` and `belowLayerID`. **A layer takes its source from
+  the source that is its DIRECT parent**: `ShapeSource` and `VectorSource` clone `sourceID` into their children
+  (`cloneReactChildrenWithProps`, which flattens arrays and skips fragments), so a wrapper component between a source and
+  its layers leaves the layer on the default source. The gradient and country layers are therefore built by plain
+  functions, not by components.
+- **`ShapeSource.lineMetrics`** exists; `LineLayerStyle.lineGradient` is typed `Value<string, ['line-progress']>`. A
+  layer with `aboveLayerID` waits for that layer if it is not in the style yet (Android `RNMBXLayer.addAbove` calls
+  `mapView.waitForLayer`; the iOS counterpart was not read). The tap query of a `ShapeSource` is
+  `queryRenderedFeatures` over THAT source's own layer ids (`RNMBXMapView.handleTapInSources`), and among touchable sources
+  the one with the highest layer wins, so a second source with `onPress` (the pins) takes a tap on a pin from the sources
+  below it.
+- **Mapbox Countries v1** (`docs.mapbox.com/data/tilesets/reference/mapbox-countries-v1/`): tileset
+  `mapbox://mapbox.country-boundaries-v1`, one source layer `country_boundaries`, `iso_3166_1` the alpha-2 code (plus the
+  unofficial `XK` and `XS`), `disputed` the text `'true'` or `'false'`, `worldview` `'all'` or a comma-separated list of
+  `AR CN IN JP MA RU TR US`, "it is important to apply a worldview filter to all your style layers". The filter built is the
+  documented one: `all(disputed == 'false', any(worldview == 'all', 'US' in worldview), iso_3166_1 in [codes])`.
+- **`Images`** takes `images: { [key]: ImageEntry }`; an entry is a URI string or `ImageEntryData` (`url`, `scale`, `sdf`,
+  `stretchX`, ...), which is what a captured file needs: `{ url, scale: PixelRatio.get() }`. `SymbolLayerStyle` has
+  `iconImage`, `iconAllowOverlap`, `iconIgnorePlacement`, `symbolSortKey`, `iconSize` and `iconEmissiveStrength`;
+  `CircleLayerStyle` has `circleSortKey`.
+- **`MarkerView`** takes `coordinate`, `anchor: { x, y }` (0 to 1), `allowOverlap`, `pointerEvents` (`'none'` and
+  `'box-none'` let a touch through to the map) and ONE child element. **`MapView`** takes `logoPosition` and
+  `attributionPosition`, typed by `OrnamentPositonProp` (an unexported name, with a typo, reached through
+  `ComponentProps<typeof MapView>`), and has `async getPointInView(coordinate)`. **`CameraStop.padding`** is
+  `{ paddingTop, paddingBottom, paddingLeft, paddingRight }`, all four required.
+- **Reanimated 4.5.1 CSS animations**: `Animated.View` takes `animationName` (a keyframes object), `animationDuration`,
+  `animationTimingFunction`, `animationIterationCount: 'infinite'` and `animationPlayState: 'running' | 'paused'` in its
+  `style` (`src/css/types/animation.ts`): declarative, on the UI thread, no shared value, so the callout's pulse needs
+  nothing the Jest stand-in lacks. `expo-image` (v57 reference) has `onDisplay: () => void` ("called when the image view
+  successfully rendered the source image"), which is what the roundel capture waits for; `onError` hands over a native
+  event (`{ nativeEvent }`). `react-native-view-shot` 5.1.0 `captureRef(view, { format, result })` keeps the view's own
+  pixel size when no `width` or `height` is given.
+
+### API as built
+
+| Module                                                                       | Public API as built                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `features/globe/globe-fit.ts` (T531)                                         | `globeFit(detent, windowWidth, headerBottom, sheetTop, windowHeight): GlobeFit`; `globeFitCamera(detent, fit, { animated? }): CameraFitSettings \| null` (null at `full`); `SheetDetent`, `FitPadding`, `GlobeFit`, `CameraFitSettings`, `GlobeFitRules`, `FIT_REFERENCE_RADIUS`                                                         |
+| `constants/theme.ts` (T532, T533)                                            | `GlobeStyle[scheme]`: `water`, `greenspace`, `adminBoundaries`, `graticule`, `graticuleOpacity`, `atmosphere { color, highColor, spaceColor, horizonBlend, starIntensity }`, `callout { surface, title, detail, liveDot }`; `GlobeLayers`: `countries`, `graticule`, `worldScaleZoom`, `pins`, `callout`; `type GlobeScheme`             |
+| `components/globe/basemap-config.ts`                                         | `basemapConfig(scheme, worldScale)` (one frozen object per pair), `BasemapConfigs`, `BasemapWorldScaleLabels`, `BasemapStreetLabels`, `BasemapScheme`, `BasemapConfig`, `BasemapLabelToggles`                                                                                                                                            |
+| `AtmosphereLayer`, `GraticuleLayer`, `use-world-scale.ts`                    | `<AtmosphereLayer scheme />`, `<GraticuleLayer scheme />` (static `features/globe/graticule.ts`, `graticule(step)`), `useWorldScale(): { worldScale, onMapIdle }`                                                                                                                                                                        |
+| `VisitedCountriesLayer`, `country-filter.ts`                                 | `<VisitedCountriesLayer scheme visited planned />` (draws nothing, loads no tile, for two empty lists), `countryFilter(codes, worldview?) \| null`, `COUNTRY_WORLDVIEW_CLAUSE`; `features/globe/country-codes.ts`: `countryCodes(trips, today): { visited, planned }`                                                                    |
+| `GradientArcLayer`, `gradient-arcs.ts`                                       | `<GradientArcLayer arcs journey palette />`; `gradientCollection`, `gradientFilter`, `gradientStops`, `arcGradientStyle`, `GRADIENT_ABOVE`                                                                                                                                                                                               |
+| `pin-features.ts`, `PinLayer`, `RoundelLayer`, `useRoundels`, `RoundelStage` | `pinCollection`, `PIN_RANK`, `ROUNDEL_LIMIT`, `pinImageKey`, `roundelRequests`, `splitPins`; `<PinLayer split bitmaps palette onPress />` (the `<PinDotLayer>` and `<RoundelLayer>` it is made of are exported too); `useRoundels(pins, covers, { enabled?, scheme?, capture?, limit? }): { split, bitmaps, stage }`; `<RoundelStage />` |
+| `components/ui/view-capture.ts`                                              | `captureViewToFile(ref): Promise<string>` (`CaptureView`), the only import of `react-native-view-shot`                                                                                                                                                                                                                                   |
+| `ActiveCallout`, `callout-layout.ts`, `use-callout-placement.ts`             | `<ActiveCallout coordinate title detail side? maxWidth? ringSize? running? onCardLayout? />`; `calloutPlacement(pin, card, area, { ringSize }): { side, maxWidth }`; `useCalloutPlacement({ map, coordinate, area, ringSize }): { side, maxWidth, refresh, onCardLayout }`                                                               |
+| `GlobeView`                                                                  | the 003 props plus `logoPosition?`, `attributionPosition?`, `liveTrip?: { tripId, title, detail }`, `calloutArea?: { top, bottom }`, `covers?: Record<tripId, uri>` and `ref?: Ref<GlobeHandle>` (`GlobeHandle.setCamera(settings)`)                                                                                                     |
+
+Stacking, bottom up: Standard basemap, then in the `bottom` slot the graticule, the visited fill, the visited keyline and the
+planned keyline; terrain; the journey (casing, line, **gradient**); the arcs (casing, past, **past gradient**, planned,
+active, **active gradient**); the stop markers; the pins; the beacons; the callout. The solid past, active and journey lines
+stay under their gradient as its fallback.
+
+### Where the build differs from the contract text above
+
+1. **`globeFit` takes `windowHeight`** (a fifth parameter): the padding that centres the padded view on the planet needs
+   the window's height, which `(detent, windowWidth, headerBottom, sheetTop)` cannot give. `padding` is
+   `{ top: max(2 centreY - H, 0), bottom: max(H - 2 centreY, 0), left: 0, right: 0 }`.
+2. **`zoomDelta` is `log2(radius / FIT_REFERENCE_RADIUS)`, not `log2(freeBand / fullHeight)`**, clamped so
+   `GlobeCamera.zoomLevel + zoomDelta >= minZoomLevel`. The planet's radius doubles with each zoom level
+   (`FIT_REFERENCE_RADIUS` is `512 * 2^zoom / (2 pi)`, 215 dp at the default 1.4), so the zoom that realises a radius is the log
+   of its ratio. The contract's literal form leaves out the 0.95, the clamps and the margin cap, and on an 844 dp phone puts
+   both peek (band 522) and half (band 295) under the 1.0 floor, so the planet would be the same size at every detent.
+3. **The peek radius is also capped at `windowWidth / 2 - 20`**: the cap of 175 is the 20 dp margin on the 390 dp reference
+   phone only; at 360 dp it would leave 5 dp, which SC-018 forbids, so a narrow phone loses radius, not margin (160 at 360).
+4. **`centreX` is the middle of the window at every detent.** The prototype's 205 for half is its canvas's own offset; the
+   data model keeps horizontal padding at 0, so the camera cannot realise it.
+5. **`GlobeColors` is unchanged** (its stops were in T513/T514); the new tokens are the separate `GlobeStyle` and
+   `GlobeLayers`, because `test/theme/atlas-values.test.ts` reads every `GlobeColors` value as a hex string.
+   `constants/globe-basemap.ts` is folded into `GlobeStyle` and deleted. The callout card is navy on white in both themes (the
+   prototype's), so it does not use the adaptive text tones; the roundel's ring is that same white.
+6. **`GradientArcLayer` also draws the journey legs** (as past), with its own layers above the solid ones, and a gradient
+   status `journey` in the one `globe-arc-gradients` source. Planned connections keep their dashed layer in the hit source.
+   A leg split at the date line is a `MultiLineString` whose parts each run the whole ramp.
+7. **Stops now carry `countryIso`**: `stopsRepository.allWithPlaceQuery` joins `countries` (`country_iso`) and `GlobeStop`
+   has an optional `countryIso`. A stop is visited from the day it begins and planned before; a country both visited and
+   planned is visited. The statistics still count by `country_id` and still count a planned trip's countries (FR-082).
+8. **Planned countries have a dashed keyline and no fill** (contract C5-11 gives a fill only to visited countries).
+9. **The label toggles of D5-04 are applied from the settled zoom** (`useWorldScale`, `GlobeLayers.worldScaleZoom` 5), and
+   sent back on explicitly, because Standard's configuration keeps an omitted key's old value.
+10. **The callout's text is given, not derived**: `liveTrip: { tripId, title, detail }`, since "Day 3 of 8 · Sintra" needs the
+    trip's days (T544) and the city's name, which `GlobeTrip` does not carry. The pin is the live trip's resting stop. A card
+    that has no room on any side is NARROWED to the side with the most room (down to 96 dp, its text ellipsising) instead of
+    being shifted, so the edge of the screen never cuts it off. Its side comes from where the map says the pin is
+    (`getPointInView`, asked when the camera settles, never per frame).
+11. **The pin is a trip's resting stop and a tap on it opens the trip through the shared handler**; the roundel path is
+    `GlobeLayers.pins.roundelsEnabled`, a typed `boolean`, `false`.
+
+### Desk checks (no device, 2026-10-12)
+
+`npx jest --ci --maxWorkers=3`: 242 suites, 6,769 tests green (3 skipped), 385 of them in the files this work touched or
+added; `npx tsc --noEmit` and `npx eslint . --max-warnings=0` are clean (the React Compiler lint rule included);
+`node scripts/testid-baseline.mjs --check` holds without regenerating the unresolved-id ratchet (the callout's ids are
+written as literals the extractor reads); `npx expo export --platform android --no-minify` exits 0 with "React Compiler
+enabled", 5,312 modules (5,286 at T518: the new files) and a 13 MB Hermes bundle. The test-first red runs were observed for
+each task before its code: a missing module for T531, a missing module and a missing token group for T532 and T533.
+
+### Not done here, and why
+
+- **Home integration** (T537): nothing in `src/app/**` or `components/home/**` passes `logoPosition`, `liveTrip`,
+  `calloutArea` or `covers`, calls `globeFit` or `GlobeHandle.setCamera`, or supplies the trip covers and the "Day N of M"
+  text; `useIdleSpin` and `useGlobeActions` (contract C5-24) are T537's. The old stats and empty-state overlays are as they were.
+- The roundel path is complete and tested through the stand-ins but OFF: its badges are laid out off screen by
+  `RoundelStage`, at most `GlobeLayers.pins.captureBatch` (12) at a time, and a badge that cannot be captured stays a dot.
+
+### Device-only checks (V2, T508)
+
+- `Atmosphere` overrides Standard's own fog at globe zoom; `spaceColor` with alpha 0 is or is not see-through (it is opaque
+  here); the atmosphere, the visited fill, the keylines and the gradient arcs read in day and night, and the starting
+  `GlobeStyle` colours are tuned there.
+- A layer with `aboveLayerID` lands directly above its reference on iOS as it does on Android, and the gradient reads as one
+  ramp per leg; a dashed keyline over a vector tileset draws on both platforms.
+- The planet's real radius at a zoom against `FIT_REFERENCE_RADIUS` (the cos-latitude growth of Mapbox's globe is not
+  modelled), the camera padding and zoom at 640 and 932 dp (V3, T509), and the logo and attribution above the sheet.
+- A `MarkerView` on the far side of the planet is culled; the callout's mirror trick lays out the same on both platforms; the
+  card's lift (a `boxShadow` inside a marker); the pulse at 2.4 s while the map animates.
+- A hidden view laid out at `left: -2000` captures correctly on iOS and Android with `expo-image` inside it, with the
+  right colours and at the device's pixel density (the `scale` of the `Images` entry), a dashed ring on a circle draws
+  on Android, and sixty symbols with `symbolSortKey` keep the live trip on top. Until then the dots are what ships.

@@ -11,16 +11,22 @@
  * any other key does not compile, and `test/globe/basemap-config-keys.test.ts` checks every
  * key the app uses against a literal copy of the provider's list.
  *
- * SKELETON: this module is not wired into `globe-view.tsx`, which keeps the configuration
- * it has (`theme`, `lightPreset`, `show3dObjects`). T532 replaces that inline object with
- * `BasemapConfigs[theme]` once the colours are tuned on a device (V2, T508). What it draws
- * is unchanged until then: the faded theme, lit by day or by night, 3D objects on.
+ * The colours are tokens: the land from `GlobeColors`, the sea, the greenspace and the
+ * administrative boundaries from `GlobeStyle`. `globe-view.tsx` hands `basemapConfig(...)`
+ * to the `StyleImport`: the faded theme, lit by day or by night, 3D objects on, and the
+ * point-of-interest, transit and road labels off while the whole planet is in view
+ * (`worldScale`), switched back on explicitly closer in (an omitted key keeps its old
+ * value, so "on" has to be sent).
  */
-import { GlobeBasemap } from '@/constants/theme';
-import { GlobeBasemapColors } from '@/constants/globe-basemap';
+import {
+  GlobeBasemap,
+  GlobeColors,
+  GlobeStyle,
+  type GlobeScheme,
+} from '@/constants/theme';
 
 /** The two lightings of the globe, which `GlobeColors` and `GlobeBasemap` are keyed by. */
-export type BasemapScheme = keyof typeof GlobeBasemap.lightPreset;
+export type BasemapScheme = GlobeScheme;
 
 /** What the Sunrise globe sets on the basemap; every key is a documented Standard key. */
 export type BasemapConfig = {
@@ -41,15 +47,15 @@ export type BasemapLabelToggles = {
 };
 
 function configFor(scheme: BasemapScheme): BasemapConfig {
-  const colors = GlobeBasemapColors[scheme];
+  const style = GlobeStyle[scheme];
   return {
     theme: GlobeBasemap.theme,
     lightPreset: GlobeBasemap.lightPreset[scheme],
     show3dObjects: true,
-    colorLand: colors.land,
-    colorWater: colors.water,
-    colorGreenspace: colors.greenspace,
-    colorAdminBoundaries: colors.adminBoundaries,
+    colorLand: GlobeColors[scheme].land,
+    colorWater: style.water,
+    colorGreenspace: style.greenspace,
+    colorAdminBoundaries: style.adminBoundaries,
   };
 }
 
@@ -61,11 +67,39 @@ export const BasemapConfigs: Readonly<Record<BasemapScheme, BasemapConfig>> = {
 
 /**
  * "The label toggles off at world scale" (D5-04): points of interest, transit and road
- * labels are noise on a whole sphere. Place labels are left as Standard draws them; whether
- * and at which zoom these are applied is T532's, decided on a device.
+ * labels are noise on a whole sphere. Place labels are left as Standard draws them.
  */
 export const BasemapWorldScaleLabels: Readonly<BasemapLabelToggles> = {
   showPointOfInterestLabels: false,
   showTransitLabels: false,
   showRoadLabels: false,
 };
+
+/** The same toggles closer in: sent explicitly, because an omitted key keeps its old value. */
+export const BasemapStreetLabels: Readonly<BasemapLabelToggles> = {
+  showPointOfInterestLabels: true,
+  showTransitLabels: true,
+  showRoadLabels: true,
+};
+
+export type ScaledBasemapConfig = Readonly<BasemapConfig & BasemapLabelToggles>;
+
+function scaled(scheme: BasemapScheme) {
+  return {
+    world: { ...BasemapConfigs[scheme], ...BasemapWorldScaleLabels },
+    street: { ...BasemapConfigs[scheme], ...BasemapStreetLabels },
+  };
+}
+
+/** Built once: the same object for the same arguments, so a render never re-sends it. */
+const SCALED: Readonly<
+  Record<BasemapScheme, { world: ScaledBasemapConfig; street: ScaledBasemapConfig }>
+> = { light: scaled('light'), dark: scaled('dark') };
+
+/** What the globe hands the basemap for a lighting and a scale. */
+export function basemapConfig(
+  scheme: BasemapScheme,
+  worldScale: boolean,
+): ScaledBasemapConfig {
+  return SCALED[scheme][worldScale ? 'world' : 'street'];
+}
