@@ -83,10 +83,14 @@ function groupByYear(trips: readonly TripCardModel[]): Group[] {
     trips.filter((trip) => trip.dateRange === null),
     (a, b) => descending(a.trip.created_at, b.trip.created_at),
   );
+  // One pass, one list per year (appending to a copy each time is quadratic in a long year).
   const years = new Map<number, TripCardModel[]>();
   for (const trip of trips) {
     if (trip.dateRange === null) continue;
-    years.set(yearOf(trip), [...(years.get(yearOf(trip)) ?? []), trip]);
+    const year = yearOf(trip);
+    const group = years.get(year);
+    if (group === undefined) years.set(year, [trip]);
+    else group.push(trip);
   }
   const dated = [...years.entries()]
     .sort(([a], [b]) => b - a)
@@ -161,11 +165,13 @@ export function tripSpan(trips: readonly TripCardModel[]): {
   count: number;
   sinceYear: number | null;
 } {
-  const years = trips.filter((trip) => trip.dateRange !== null).map(yearOf);
-  return {
-    count: trips.length,
-    sinceYear: years.length > 0 ? Math.min(...years) : null,
-  };
+  // A reduce, not `Math.min(...years)`: a spread of a very long list overflows the call stack.
+  const sinceYear = trips.reduce<number | null>((earliest, trip) => {
+    if (trip.dateRange === null) return earliest;
+    const year = yearOf(trip);
+    return earliest === null || year < earliest ? year : earliest;
+  }, null);
+  return { count: trips.length, sinceYear };
 }
 
 /** The `FlashList` item type: a recycler reuses a cell only for the same shape (rule 5). */

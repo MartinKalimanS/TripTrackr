@@ -336,6 +336,11 @@ describe('tripFilterCounts, tripSpan', () => {
     });
     expect(tripSpan([])).toEqual({ count: 0, sinceYear: null });
   });
+
+  test('reads a very long journal without a spread of its years (the call stack is not the limit)', () => {
+    const long = Array.from({ length: 200_000 }, () => past('p', '2015-03-01'));
+    expect(tripSpan(long)).toEqual({ count: 200_000, sinceYear: 2015 });
+  });
 });
 
 describe('item type, key and year lookups', () => {
