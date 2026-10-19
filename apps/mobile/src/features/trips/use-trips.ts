@@ -38,6 +38,7 @@ import type { TripRow, TripStopRow } from '@/db/schema';
 import type { TripCover } from './trip-cover';
 import { buildTripCards, type TripCardModel } from './trip-card-model';
 import type { TripDateRange, TripStatus } from './trip-status';
+import { useToday } from './use-today';
 
 export interface TripSummary {
   trip: TripRow;
@@ -138,6 +139,9 @@ function useReusedCards(fresh: TripCardModel[]): TripCardModel[] {
  * Covers and places are decorative, so the third and fourth queries neither hold `loading` nor
  * set `error`: until they answer (or if they fail) every trip shows its generated cover with no
  * flag, and the photo and the country take over when they arrive. The list is the product.
+ *
+ * `today` (a local `YYYY-MM-DD`) is for a suite that pins a date; the screen passes none and the
+ * day is the device's, read again at midnight and on return to the foreground (`useToday`).
  */
 export function useTrips(today?: string): LiveResult<TripCardModel[]> {
   const db = useDatabase();
@@ -147,10 +151,13 @@ export function useTrips(today?: string): LiveResult<TripCardModel[]> {
     cityCache.updatedAt?.getTime(),
   ]);
   const covers = useLiveQuery(photosRepository.coverCandidatesQuery(db));
+  // The day moves with the clock, so "Day 3 of 8" is "Day 4 of 8" tomorrow with no write.
+  const clock = useToday();
+  const day = today ?? clock;
 
   const fresh = useMemo(
-    () => buildTripCards(trips.data, stops.data, covers.data, today),
-    [trips.data, stops.data, covers.data, today],
+    () => buildTripCards(trips.data, stops.data, covers.data, day),
+    [trips.data, stops.data, covers.data, day],
   );
   const data = useReusedCards(fresh);
 
