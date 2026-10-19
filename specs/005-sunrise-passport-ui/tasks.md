@@ -402,18 +402,18 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 ## Phase 5: Trips (branch `feat/005-trips`) — User Story 2
 
-- [ ] T539 [P] [US2] Failing `features/trips/trip-sections.test.ts` (hero is the earliest-arrival active trip; the
+- [x] T539 [P] [US2] Failing `features/trips/trip-sections.test.ts` (hero is the earliest-arrival active trip; the
       ticket is the earliest-start planning trip; rows by year newest first with totals; no-stop trips under "No
       dates yet"; filter before composition; `dayOf`, `daysToGo`, strip dots; the cover rule then generated
       palette) then `trip-sections.ts` and the `useTrips` card model (FR-030, FR-034, FR-035; D5-17)
-- [ ] T540 [P] [US2] Failing tests then `TripHeroCard`, `TicketCard` (stacks at font scale 1.15), `TripRow`,
+- [x] T540 [P] [US2] Failing tests then `TripHeroCard`, `TicketCard` (stacks at font scale 1.15), `TripRow`,
       `StopStrip`, `YearHeader`, `YearScrubber` (adjustable); ids `trip-card-<id>` with the label "title,
       status, N stops" and the 004 sub-ids kept (FR-031, FR-032, FR-033, FR-034; D5-10)
-- [ ] T541 [US2] Trips screen: failing tests then the mixed FlashList (`getItemType`), `SegmentedPill` filter with
+- [x] T541 [US2] Trips screen: failing tests then the mixed FlashList (`getItemType`), `SegmentedPill` filter with
       counts, header count, `PlanTripFab` ("Plan a trip" on both platforms; `trips-plan-trip` unique), sync chip,
       `TripListSkeleton`, filtered-empty, empty "No trips yet", error and offline `Banner`s, bottom padding past
       the pill and the FAB; 200-trip fixture test (FR-029, FR-035, FR-036, FR-024; D5-12; Q-4)
-- [ ] T542 [US2] Run `01-account-and-trip`, `02-notes-and-expenses` and `05-photos-and-documents` through Trips;
+- [x] T542 [US2] Run `01-account-and-trip`, `02-notes-and-expenses` and `05-photos-and-documents` through Trips;
       record any edit in "Maestro flow edits" (FR-081; SC-003)
 
 ---
@@ -582,12 +582,19 @@ slice), T560 (VoiceOver and TalkBack), T561 (largest text), T562 (live theme and
 
 ## Maestro flow edits
 
-Recorded here as made (feature 004 recorded them the same way). None is expected: the flows tap identifiers, and
-the one label change ("Profile" to "You") is not tapped by text.
+Recorded here as made (feature 004 recorded them the same way). Few are expected: the flows tap identifiers, and
+the one label change ("Profile" to "You") is not tapped by text. A flow step that was already wrong before this
+feature is not edited here; it is listed under the task that found it.
 
-| Task         | Flow | Edit | Reason |
-| ------------ | ---- | ---- | ------ |
-| _(none yet)_ |      |      |        |
+**Found, not edited (T542):** `01-account-and-trip` asserts `'Planning'` on the Trips list after the trip has two
+stops that start today (the stop editor pre-fills today and tomorrow), so the trip is Active and the list shows
+"Active", on the Atlas card as well as now. It is not a text this feature changed, so the line is left; the fix
+belongs to whoever next runs the flow (`'Active · Day.*'` is the hero's chip; a bare `'Active.*'` would also match the
+filter's own "Active" segment and prove nothing).
+
+| Task | Flow                  | Edit                                                                                                                                                      | Reason                                                                                                                                                                                                                                                                                                                      |
+| ---- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T542 | `01-account-and-trip` | The stop-count assertion (the line after the comment about the accessible name) became `assertVisible: '.*2 stops.*'` (was `'2 stops.*'`), with a comment | The Atlas card's text line "2 stops · EUR" is the country, month and length now, so no text starts with the stop count. "2 stops" is in the hero's eyebrow ("Italy · 2 stops") and in every card's accessible name ("Italy, spring 2026, active, 2 stops": Android content-desc, iOS label), which the leading `.*` reaches |
 
 T530 made no flow edit. The tab label "Profile" became "You" and no flow selects it by text; `test/app/tab-labels.test.ts`
 reads every flow and fails if one ever does.

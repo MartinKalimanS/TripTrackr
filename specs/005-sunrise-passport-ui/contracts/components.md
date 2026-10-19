@@ -1172,3 +1172,199 @@ must not).
 - `useHeroCollapse` under the real worklets runtime (the Jest stand-in runs it on the JS thread), the parallax and stretch
   feel, and the glass Back disc over a bright photograph.
 - `boxShadow` on a glass view, and the lift of the blur and solid pills below Android 9 (`LiftElevation`).
+
+---
+
+## As built (T539 to T542): the trips list
+
+Branch `feat/005-trips`. Test-first: every pure derivation, adapter and screen below has its test file, observed red
+before the code (a module that did not exist, or a screen that did not match). Visibility posture of everything here:
+**private, local, never transmitted, nothing new stored** (FR-084, D5-17); the filter is component state.
+
+### Files
+
+| Area               | Files                                                                                                                                                                                                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Derivations (T539) | `features/trips/trip-card-model.ts` (card model, `buildTripCards`, `stopStrip`, `dayOfTrip`, `daysToGo`, ...), `trip-sections.ts` (`composeTripList` and its lookups), `use-trips.ts` (now returns `TripCardModel[]`), `use-today.ts` (the local day as state), `db/repositories/stops.ts` (`allActiveWithCountryQuery`) |
+| Words (T540)       | `features/trips/trip-card-copy.ts`, `formatMonthYear` in `trip-date-range.ts`                                                                                                                                                                                                                                            |
+| Components (T540)  | `components/trip/`: `trip-hero-card`, `ticket-card`, `trip-row`, `stop-strip`, `year-header`, `year-scrubber`, `trip-cover-art` (replaces `trip-cover-band`)                                                                                                                                                             |
+| Screen (T541)      | `app/(tabs)/trips/index.tsx`, `components/trip/trips-list-parts.tsx`, `use-tab-zone.ts`, `features/trips/use-trips-sync.ts`, `components/ui/plan-trip-fab.tsx`, `components/ui/list-screen.tsx` (additive props)                                                                                                         |
+| Removed            | `components/trip/trip-card.tsx`, `trip-cover-band.tsx`, `plan-trip-action.tsx` and `test/components/trip-card.test.tsx` (nothing imports them; their behaviour is in the new tests)                                                                                                                                      |
+
+### `TripCardModel` and `composeTripList` (T539), data-model section 6
+
+```ts
+interface TripCardModel extends TripSummary {   // every 004 field keeps its name: trip, stopCount, status, cover, dateRange
+  id: string; title: string;                    // trip.id, trip.title, flat as the data model names them
+  generated: { palette: 0 | 1 | 2; iso2: string | null; initial: string };   // fnv1a32(id) % 3
+  country: { iso2: string; name: string } | null;   // the first stop whose city is cached
+  lengthDays: number | null;                    // end - start + 1
+  dayOf: { day: number; of: number } | null;    // active only
+  daysToGo: number | null;                      // planning with dates only
+  strip: ('done' | 'now' | 'next' | 'later')[]; // one per stop
+  stripLabels: string[];                        // three letters of the city, '' when not cached
+  distanceKm: number;                           // the globe's own placedLegs, so list and globe agree (FR-082)
+  pending: boolean;                             // the trip or any stop is_dirty
+}
+composeTripList(trips, filter): TripListItem[]  // hero | ticket | row | yearHeader { year: number | 'none', tripCount, distanceKm }
+tripFilterCounts, tripSpan, tripItemType, tripItemKey, yearOfItems, listedYears, yearHeaderIndex, YEAR_SCRUBBER_MIN_TRIPS (200)
+```
+
+Order as built: hero (earliest-arrival active trip), ticket (earliest-start planning trip WITH dates), further active trips
+as rows, then year groups: "none" first (trips with no stops, newest created first), then years newest first, inside a year
+the newest start first. A tie keeps the order `useTrips` gave (most recently changed first). A header counts the rows UNDER it
+(the hero and the ticket are not counted again under their year, as the prototype's "2026 · 1 trip · 9,380 km" shows). The
+filter is applied before composition, so "Planned" has its own ticket. On a day of transfer the later stop is `now`; an earlier
+stop that overlaps it is `done`.
+
+`useTrips` reads the stops WITH their city and country (`stopsRepository.allActiveWithCountryQuery`, in the globe's leg order)
+and, like `useGlobe`, keys that read on the city cache (`cityCountQuery`'s `updatedAt`), because `useLiveQuery` subscribes to the
+FROM table only; a city cached after the first render gives the card its flag on the next change. The cache query holds neither
+`loading` nor `error`: until a city arrives a card has no flag and the covers are generated. Referential stability: each field of a
+card is kept when deep-equal (`sameData`), a card when every field is, the list when every card is
+(`test/features/use-trips-cover.test.tsx` passes unchanged).
+
+### The cards (T540)
+
+| Component      | API                                       | As built                                                                                                                                                                                                                                                                                                                                                                                  |
+| -------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TripHeroCard` | `trip: TripCardModel`, `onPress`          | A `Tappable` (`feedback="ring"`) with the first lift; inside, a clipped 24 dp frame (`trip-card-<id>-frame`, minimum 219 dp): cover, `Scrim bottom`, a status row (`StatusChip` "Active · Day 3 of 8" and the `SyncBadge` text and icon, wrapping), and the caption scrim holding the flag and "Portugal · 3 stops" (eyebrow), the title (2 lines), the dates and nights, the `StopStrip` |
+| `TicketCard`   | `trip`, `onPress`                         | 88 dp thumb, text, 88 dp stub (`trip-card-<id>-stub`) with a 2 dp dashed `sand` edge and two canvas notches; at font scale 1.15 and above a column (thumb 88 dp high, stub a row under a dashed top edge, no notches). Pressed fill on its own surface                                                                                                                                    |
+| `TripRow`      | `trip`, `onPress`                         | 72 dp minimum, 64 dp thumb (56 at large text) with a hairline, title (1 line, 2 at large text), "Japan · Mar 2026 · 9 days" with the flag, `PressCue`; a `StatusChip` under it for an active or planned row; `SyncBadge` when pending                                                                                                                                                     |
+| `StopStrip`    | `dots`, `labels?`                         | 12 dp dots in a 16 dp halo box, a 2 dp link solid up to a done or current stop and dashed beyond; filled / thick ring with halo / ring 2 dp / ring 1.5 dp; labels only up to 5 stops; hidden from AT; ids `stop-strip`, `-dot-<i>`, `-halo-<i>`, `-link-<i>`, `-label-<i>`                                                                                                                |
+| `YearHeader`   | `year`, `tripCount`, `distanceKm`         | `headline` year + "N trips" + the distance (`formatDistance`, the device's unit); one heading "2026, 1 trip, 9,380 kilometres"; `bg-background` and a hairline for sticking; id `year-header-<year>`                                                                                                                                                                                      |
+| `YearScrubber` | `years`, `activeYear`, `onJump`, `style?` | `adjustable` ("Jump to year", value the year, `increment` = later, `decrement` = earlier); touch and drag by responder events (`locationY`), a selection haptic per year change; newest seven + a dot + the oldest above nine years; 28 dp wide, `hitSlop` to 44; ids `trips-year-scrubber`, `-year-<year>`                                                                               |
+| `TripCoverArt` | `trip`, `thumb?`                          | fills its parent (`absoluteFill`): the thumbnail through `expo-image` (`recyclingKey` = photo id, `cachePolicy` `memory-disk`, 220 ms fade, none under reduced motion) or `GeneratedCover` when there is none or `onError` fired for that thumbnail's address; ids `-cover`, `-photo`, `-generated`                                                                                       |
+
+Every card is ONE `Tappable`, role button, hint "Opens the trip", id `trip-card-<id>`, and its accessible name is the 004 one
+word for word: `${title}, ${status}, ${describeStopCount(stopCount)}`. Each card writes that template where it sets
+`accessibilityLabel` so the id parity guard still reads `<param>, <param>, <param>` (a helper would hide it: the parity run
+failed on the baseline name until it was inlined). The hero's day and the ticket's countdown are the control's
+`accessibilityValue` ("Day 3 of 8", "Starts in 94 days", "Starts tomorrow"), additive, never part of the name. Decoration (cover,
+strip, flag, cue, notches) is hidden from AT. Ids of the 004 card kept where the element still exists: `-cover`, `-photo`,
+`-cue` (row), `-status-row` (hero), `-meta-row` (all three); `-initial` is gone with the typographic cover (the generated cover's
+glyph is `-generated-glyph`).
+
+### `PlanTripFab` (T541), `components/ui/plan-trip-fab.tsx`
+
+```tsx
+<PlanTripFab screen="trips" | "home" onPress bottomInset={tabZone} hidden? />
+planTripFabHidden({ tripCount, sheetFull? }): boolean   // Home: hidden at the full detent and with no trips
+```
+
+A `Button` (`primary`, `lg`, a plus, "Plan a trip") on the second lift, `absolute`, `bottom = bottomInset + 16`, `end = 16 +
+the larger side inset`. A full pill on iOS, a rounded square (16 dp) on Android, the same words on both. The id is a table of the
+screen: `trips-plan-trip` (Trips; unique there) and `home-plan-trip-fab` (Home; `home-plan-trip` stays the invitation card's
+action). **For the Home branch**: import it, pass `screen="home"`, `bottomInset={tabZone}` and
+`hidden={planTripFabHidden({ tripCount, sheetFull })}`. Trips never hides it, in the empty, loading and error states either (flow 01
+taps it from an empty list). `hidden` draws nothing at all.
+
+### The screen (T541)
+
+`ListScreen` (additive optional props: `getItemType`, `stickyHeaderIndices`, `listRef`, `onViewableItemsChanged`,
+`viewabilityConfig`, `bottomInset`, `horizontalInset`, `endInset`, `itemGap`; with none the list is what it was) carries the mixed list. The
+screen passes `getItemType = item.type`, the header indices as sticky, `itemGap={0}` (a card item pads 16 dp under itself, a row
+12 dp, a header none), `horizontalInset` 20 (16 on Android: `ScreenMargin`), `endInset` 44 while the year strip is shown (the prototype's `padding-right: 44px`; a new optional prop of `ListScreen`), `bottomInset = useTabZone()` and a footer
+`trips-fab-clearance` of the button's minimum at this text size plus 16. Under the native title: `trips-count` ("22 trips", and
+from 200 "214 trips · since 2009"), `trips-filter` (`SegmentedPill`, `trips-filter-all|active|planned|past`, "Active, 1"; counts
+are over the whole list and do not move with the filter), and `trips-sync-banner` when there is a banner. States: `trips-skeleton`
+(`TripListSkeleton`; the filter is drawn with no counts), the 004 error words, `trips-empty` "No trips yet" with the secondary
+`trips-empty-plan-trip`, and `trips-filtered-empty` ("No planned trips", "Show all trips" = `trips-filter-reset`). `trips-list` is
+on the scroller only when the list has items. From 200 trips `YearScrubber` sits at the vertical middle of the right edge and
+jumps with `scrollToIndex` to the year's header; the year in view follows `onViewableItemsChanged`.
+
+**`useTabZone`** (`components/trip/use-tab-zone.ts`) reads React Navigation's `BottomTabBarHeightContext` (exported by
+`expo-router/js-tabs`) and answers 0 outside a navigator; `useBottomTabBarHeight()` (documented at
+docs.expo.dev/router/advanced/tabs) throws there. On this branch the bar is still the flat strip in the navigator's flow, so the
+zone is its height and the screen pads and floats a little more than it needs; it is never too little, and exact once the pill merges.
+
+**The sync seam** (`features/trips/use-trips-sync.ts`): the chrome branch writes `features/sync/use-sync-chip-state.ts` (T529).
+Until it lands `useTripsSync(watch)` derives the same `SyncChipState` from `syncRepository.countUnsynced` (re-read when the list,
+the sync phase or the last success changes) and `useSyncStatus()`: a running cycle with rows waiting is `syncing` (it wins over the last failure; with nothing waiting it is a pull and the chip says nothing, or it would flash "0" on every cycle), a
+failure to reach the server is `offline`, any other failure `failed`, rows waiting `waiting`, `unauthorized` says nothing. It returns
+`{ chip, banner, retry }`; the chip goes to the header (`headerRight`, only `failed` is a button) and the banner under the filter
+("Offline. 3 changes will sync when you're back online." / "Couldn't sync 2 changes. Your trips are safe on this phone." with Retry).
+**To wire T529: replace the body of `useTripsSync` (one import in `trips/index.tsx`).** Its limit, written in the file: the count is
+re-read when the list changes or a cycle moves, not on every write to a table the screen does not read.
+
+### Where the build differs from the contract text above
+
+1. `composeTripList(trips, filter)` has no `today` parameter: the statuses, `dayOf`, `daysToGo` and `strip` are in the model, so the
+   composition has no clock. `TripCardModel` extends `TripSummary` instead of replacing it, so `cover` stays the 004 `TripCover`
+   (photo or typographic) and the generated cover is the separate `generated` field; `stripLabels` is new.
+2. The ticket's label is NOT extended with the stub ("in 94 days", C5-19): FR-075 and the parent brief fix the name; the countdown
+   is the accessibility value.
+3. The hero's sync marker is the full `SyncBadge` (icon and "Not yet synced"), not the glyph-only disc of the prototype: US2
+   scenario 6 asks for text and icon, and the Maestro flows wait on "Not yet synced" (a disc would end a `notVisible` wait early).
+4. A row shows a status chip when its trip is active or planned. The prototype draws only past rows; FR-070 forbids a planned
+   trip that reads as a past one.
+5. The count line is a caption under the native title, not a trailing caption beside it (the native large title takes no trailing view),
+   and the chip is the header's `headerRight` (iOS: top bar, not the title row).
+6. The strip's abbreviations are the first three letters of the city ("LIS", "SIN", "POR": the prototype's IATA-like codes need a data
+   source this app does not have) and are drawn only up to five stops.
+7. The year header shows nothing for a year it has no kilometres for.
+8. `useTrips` reads the day from a new `useToday` (`features/trips/use-today.ts`: a timer to just after local midnight and a re-read on
+   return to the foreground), not once when the store last changed: a tab screen never unmounts, so "Day 3 of 8" would otherwise
+   still read "Day 3" the next morning. A `today` argument still wins (the suites that pin a date).
+9. While a cycle runs with nothing waiting the sync chip says nothing (a pull is not the traveller's change): `SyncChip`'s figure for
+   `syncing` is the count, and a count of 0 would flash "0" with a spinner on every periodic cycle.
+
+### Verified from source
+
+- `react-native` 0.86 `Pressable` resolves a function `style` and `children` for the host node, and turns `accessibilityValue` into
+  `{ min, max, now, text }` (the tests read `.text`); `StyleSheet.flatten` of the host style reads the lift (`boxShadow`).
+- `@shopify/flash-list` 2.0.2: `getItemType`, `stickyHeaderIndices`, `onViewableItemsChanged`, `viewabilityConfig` and the `ref`
+  (`FlashListRef.scrollToIndex`) are list props; Jest replaces `FlashList` with `RecyclerView`, which renders a window of the items (the
+  200-trip test draws far fewer than 214 cards).
+- `expo-image` 57.0.x: `cachePolicy` accepts `memory-disk`; `onError`'s event is `{ error: string }` and names no source (so the failure
+  is kept against the address shown when it arrives, as in 004).
+- Yoga positions an absolute child from the padding edge (inside the border): the notch's `left: -9` over a 2 dp edge centres the circle
+  on the edge, as the prototype's CSS does.
+- `expo-router/js-tabs` exports `BottomTabBarHeightContext` beside `useBottomTabBarHeight` (`build/react-navigation/bottom-tabs/index.d.ts`).
+- `syncRepository.countUnsynced` is synchronous and covers the seven tables (byte-backed rows only once uploaded); `useSyncStatus` is a
+  zustand store (`phase`, `failure`, `lastSyncedAt`).
+
+### Device-only checks (add to T547)
+
+- The first lift under the hero and the ticket: it is on the transparent `Tappable` around a clipped frame (iOS and Android 9+); the
+  Android elevation fallback below 9.
+- The ticket's dashed edge: React Native draws a dashed border of one side on a view with no radius; the notches clip half a circle
+  at the card edge on both platforms.
+- The year strip: `locationY` is the strip's own because its labels are `pointerEvents="none"`; a drag across it keeps the list from
+  scrolling; sticky headers under `contentInsetAdjustmentBehavior="automatic"` with the large title collapsing.
+- The thumbnail is drawn on a 390 dp hero (a "card" derivative of D5-09 is not built): sharpness on a 3x screen.
+- The flag emoji at 20 by 14 dp over a photograph and on the generated cover (V6), the caption scrim over a bright photograph in the four
+  themes (gated by `scrim.test.tsx`, to be looked at), the chip in the iOS 26 header (it may sit in the system's glass bubble).
+- Scrolling 214 trips (SC-006) against the baseline, with the tab pill.
+- `useToday` on a device: a hero left open across midnight says "Day 4 of 8" at 00:00:01, and one resumed after a night in the
+  background says it at once (the timer sleeps in the background, the return to the foreground reads the clock).
+- The year strip beside more than nine years: the touch maps the whole height onto every year, the labels show the newest seven, a
+  dot and the oldest (a guide), so a drag through the middle lands on years that have no label. Feel it with 15 or more years.
+- The Maestro flows that assert two or three trips at once (`offline/07-b`, `10-b`: "Gate baseline", "Gate bulk", "Gate over
+  allowance") assume they share the first screen. The hero is 235 dp with its gap, a row 84 dp: count it on the smallest phone.
+- The Maestro flows themselves (not runnable here): the audit is under "Maestro flow edits" in `tasks.md`.
+
+### Maestro audit (T542): `01`, `02`, `05` and every `offline/*` that touches Trips
+
+Read against the new screen; Maestro itself cannot run here. Matching is taken as Maestro documents it: a regex over the whole of an
+element's text, accessibility text (content-desc, label) or hint, case-insensitive.
+
+| Step (flow)                                                                                                      | Resolves as                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tab-trips`, `trips-screen` (01, 02, 03, 04, 05, offline)                                                        | ids kept (the parity run holds: 205 testIDs, 64 labels)                                                                                                                                                                                                                                                                |
+| `assertVisible: 'No trips yet'` then `tapOn: trips-plan-trip` on an empty list (01)                              | the empty state's text; the button is the FAB, drawn in the empty state too (the header action of iOS is gone, one control on both platforms)                                                                                                                                                                          |
+| `tapOn: trips-plan-trip` with trips (02, 03, offline `add-trip`, `15-a`)                                         | the FAB, `trips-plan-trip`, unique on the screen                                                                                                                                                                                                                                                                       |
+| `assertVisible: 'Italy, spring 2026'` and `tapOn: 'Italy, spring 2026'` (01)                                     | the title text of a hero, a ticket or a row                                                                                                                                                                                                                                                                            |
+| `assertVisible: '2 stops.*'` (01)                                                                                | **edited** to `'.*2 stops.*'`: no text starts with it any more (see "Maestro flow edits")                                                                                                                                                                                                                              |
+| `assertVisible: 'Planning'` (01, line 156)                                                                       | **does not resolve, before or after**: the stop editor pre-fills today and tomorrow, so that trip is Active and the list shows "Active" (the Atlas chip) or "Active · Day 1 of 3" (the hero's). Not edited (a step that was wrong before, not a text this feature changed); listed under "Maestro flow edits" as found |
+| `tapOn: 'Swiss notes'`, `'Rome archive'`, `'Gate baseline'`, `'Gate bulk'` ... (02, 05, offline)                 | the title text; rows are about 84 dp, so more trips are on screen than with the 004 cards                                                                                                                                                                                                                              |
+| `assertNotVisible` and `notVisible: 'Not yet synced'` on the list (offline `00-a`, `03-a`, `07-b`, `13-b`, `15`) | every card that is waiting says the words: the ticket and the row through `SyncBadge`, **the hero too** (a glyph-only disc would have ended these waits early)                                                                                                                                                         |
+
+No other flow step reads the Trips screen. Left for T538 and T546, not Trips: `'Active'` on the trip screen (03, 04), see below.
+
+### For the other branches
+
+- Flows 03 and 04 assert `'Active'` on the trip screen. `StatusChip` with `dayOf` writes "Active · Day 3 of 8" in ONE text, so an exact
+  `'Active'` no longer matches wherever `dayOf` is passed (the trip screen's progress row, T543/T546): either keep a separate "Active" text
+  there or make the assertion `'Active.*'` and record it (T538/T546).
+- The pill's merge (T526) removes the interim padding of `useTabZone`; nothing else here knows about the bar.

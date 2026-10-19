@@ -22,9 +22,21 @@
  * first thing down the chain of first children (`FlashList` renders its own wrapper
  * View above the scroll view, which react-native-screens walks through:
  * `RNSScrollViewFinder`), so nothing is rendered before it.
+ *
+ * Feature 005 (T541) adds what a MIXED list needs, all optional and additive: `getItemType`
+ * (a recycler reuses a cell only for the same shape), `stickyHeaderIndices`, `listRef` and
+ * `onViewableItemsChanged` (jump to a year, follow the scroll), `bottomInset` (room at the
+ * foot past a floating pill and button), `horizontalInset` (a screen margin of its own),
+ * `endInset` (more at the end, for a strip along the edge) and `itemGap` (0 where the items
+ * space themselves). With none of them the list is what it was.
  */
-import { FlashList, type ListRenderItem } from '@shopify/flash-list';
-import { useContext, type ReactElement } from 'react';
+import {
+  FlashList,
+  type FlashListProps,
+  type FlashListRef,
+  type ListRenderItem,
+} from '@shopify/flash-list';
+import { useContext, useMemo, type ReactElement, type Ref } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaInsetsContext, type Edge } from 'react-native-safe-area-context';
 
@@ -59,6 +71,25 @@ export type ListScreenProps<Item> = {
    * titles collapse on scroll. Off by default.
    */
   underHeader?: boolean;
+  /** The shape of an item: the list reuses a cell only for the same type. */
+  getItemType?: (item: Item, index: number) => string;
+  /** The items that stick to the top while the rest scroll under them. */
+  stickyHeaderIndices?: number[];
+  /** The list's ref, to scroll it. */
+  listRef?: Ref<FlashListRef<Item>>;
+  onViewableItemsChanged?: FlashListProps<Item>['onViewableItemsChanged'];
+  viewabilityConfig?: FlashListProps<Item>['viewabilityConfig'];
+  /**
+   * Extra room at the foot, added to the safe-area padding: what a floating tab pill and a
+   * floating button need so the last item can be brought clear of them (FR-024).
+   */
+  bottomInset?: number;
+  /** The padding at each side. Default `Spacing.four`. */
+  horizontalInset?: number;
+  /** More room at the END than `horizontalInset` gives, for a strip along that edge. */
+  endInset?: number;
+  /** The gap between items. Default `Spacing.three`; 0 draws none (the items space themselves). */
+  itemGap?: number;
 };
 
 const DEFAULT_EDGES: Edge[] = ['top', 'bottom'];
@@ -67,6 +98,15 @@ const UNDER_HEADER_EDGES: Edge[] = ['bottom'];
 
 function Gap() {
   return <View style={styles.gap} />;
+}
+
+/** The separator for a gap of `height`: the shared one for the default, a made one for another. */
+function separatorOf(height: number | undefined) {
+  if (height === undefined || height === Spacing.three) return Gap;
+  if (height === 0) return undefined;
+  return function CustomGap() {
+    return <View style={{ height }} />;
+  };
 }
 
 export function ListScreen<Item>({
@@ -79,10 +119,21 @@ export function ListScreen<Item>({
   empty = null,
   footer = null,
   underHeader = false,
+  getItemType,
+  stickyHeaderIndices,
+  listRef,
+  onViewableItemsChanged,
+  viewabilityConfig,
+  bottomInset = 0,
+  horizontalInset = Spacing.four,
+  endInset,
+  itemGap,
   // Read after `underHeader`: a default may use only what is destructured before it.
   edges = underHeader ? UNDER_HEADER_EDGES : DEFAULT_EDGES,
 }: ListScreenProps<Item>) {
   const { tokens } = useAppearance();
+  // One component per gap, so the list does not remount its separators on every render.
+  const Separator = useMemo(() => separatorOf(itemGap), [itemGap]);
   // The provider is expo-router's, at the root of every screen; outside one
   // (a component test) there is no inset to honour, not an error to raise.
   const insets = useContext(SafeAreaInsetsContext) ?? {
@@ -93,12 +144,12 @@ export function ListScreen<Item>({
   };
   const paddingTop = Spacing.four + (edges.includes('top') ? insets.top : 0);
   // In a tab scene the floating pill runs over the bottom of the screen: the list ends 16 dp
-  // above it (FR-024), or at its own padding if that is more. Zero above the tabs.
+  // above it (FR-024), or at its own padding if that is more; `bottomInset` is room on top of
+  // that (a floating button). Zero above the tabs.
   const tabInset = useTabInset();
-  const paddingBottom = Math.max(
-    Spacing.four + (edges.includes('bottom') ? insets.bottom : 0),
-    tabInset,
-  );
+  const paddingBottom =
+    Math.max(Spacing.four + (edges.includes('bottom') ? insets.bottom : 0), tabInset) +
+    bottomInset;
 
   return (
     <View
@@ -107,16 +158,27 @@ export function ListScreen<Item>({
       testID={testID}>
       <View style={styles.column}>
         <FlashList
+          ref={listRef}
           testID={listTestID}
           data={data as Item[]}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
-          ItemSeparatorComponent={Gap}
+          ItemSeparatorComponent={Separator}
+          getItemType={getItemType}
+          stickyHeaderIndices={stickyHeaderIndices}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           ListHeaderComponent={header}
           ListHeaderComponentStyle={styles.header}
           ListEmptyComponent={empty}
           ListFooterComponent={footer}
-          contentContainerStyle={{ ...styles.content, paddingTop, paddingBottom }}
+          contentContainerStyle={{
+            ...styles.content,
+            paddingHorizontal: horizontalInset,
+            ...(endInset === undefined ? null : { paddingEnd: endInset }),
+            paddingTop,
+            paddingBottom,
+          }}
           contentInsetAdjustmentBehavior={underHeader ? 'automatic' : undefined}
           keyboardShouldPersistTaps="handled"
         />

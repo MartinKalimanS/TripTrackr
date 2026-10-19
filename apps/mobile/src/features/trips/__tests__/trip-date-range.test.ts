@@ -9,7 +9,11 @@
  * What happens in other time zones is in `test/features/trip-date-range.*.test.ts`, which
  * run the same assertions with the process in Auckland and in Los Angeles.
  */
-import { dayFormatter, formatDateRange } from '@/features/trips/trip-date-range';
+import {
+  dayFormatter,
+  formatDateRange,
+  formatMonthYear,
+} from '@/features/trips/trip-date-range';
 
 describe('formatDateRange', () => {
   test('says the year once when both ends are in it', () => {
@@ -125,6 +129,47 @@ describe('dayFormatter caches one formatter per language and per year', () => {
         formatDateRange({ start: '2026-03-12', end: '2026-03-20' }, tag);
         formatDateRange({ start: '2025-12-28', end: '2026-01-03' }, tag);
       }
+      expect(construct.mock.calls.length).toBe(afterFirst);
+    } finally {
+      construct.mockRestore();
+    }
+  });
+});
+
+describe('formatMonthYear: the month a trip starts in (feature 005, FR-032, FR-033)', () => {
+  test('is the short month and the year, in the device locale', () => {
+    expect(formatMonthYear('2027-01-16')).toBe('Jan 2027');
+    expect(formatMonthYear('2026-03-31')).toBe('Mar 2026');
+  });
+
+  test('is the calendar day it was given, not an instant: the first of a month stays in it', () => {
+    expect(formatMonthYear('2026-12-01')).toBe('Dec 2026');
+    expect(formatMonthYear('2026-06-30')).toBe('Jun 2026');
+  });
+
+  test('formats in the language tag it is given', () => {
+    expect(formatMonthYear('2026-03-12', 'de-DE')).toBe('März 2026');
+  });
+
+  test('is null for what is not a day, and never throws', () => {
+    for (const value of ['', 'garbage', '2026-02-30', '2026-3-2', null, undefined, 5]) {
+      expect(formatMonthYear(value as never)).toBeNull();
+    }
+  });
+
+  test('a language tag the platform rejects falls back to its own locale', () => {
+    expect(formatMonthYear('2026-03-12', 'not a locale')).toEqual(
+      expect.stringContaining('2026'),
+    );
+  });
+
+  test('builds one formatter per language, however often it is asked', () => {
+    const construct = jest.spyOn(Intl, 'DateTimeFormat');
+    try {
+      formatMonthYear('2026-03-12', 'nb-NO');
+      const afterFirst = construct.mock.calls.length;
+      expect(afterFirst).toBe(1);
+      for (let call = 0; call < 25; call += 1) formatMonthYear('2026-05-12', 'nb-NO');
       expect(construct.mock.calls.length).toBe(afterFirst);
     } finally {
       construct.mockRestore();
