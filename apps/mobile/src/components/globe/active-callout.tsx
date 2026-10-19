@@ -41,7 +41,7 @@ import {
 } from '@/constants/theme';
 import type { LngLat } from '@/features/globe/great-circle';
 import { useAppearance } from '@/hooks/use-appearance';
-import { Motion, Radii, Space } from '@/theme';
+import { Motion, Radii, Space, withAlpha } from '@/theme';
 
 import type { CalloutSide } from './callout-layout';
 
@@ -56,8 +56,15 @@ export type ActiveCalloutProps = {
   side?: CalloutSide;
   /** The width the card is narrowed to when its side is short of room. Default the maximum. */
   maxWidth?: number;
-  /** The ring round the pin: round a dot by default, bigger round a roundel. */
+  /** The pin's width, which the gap to the card is measured from: a dot's ring by default. */
   ringSize?: number;
+  /**
+   * Draws the coral ring round the pin (default). A roundel carries its own ring, baked into
+   * its bitmap, so the callout then draws only the pulse.
+   */
+  ring?: boolean;
+  /** The pulse ring's width; default the ring's. A roundel's is the outer edge of its ring. */
+  pulseSize?: number;
   /** False while the globe is not on screen or the app is away: the pulse pauses. */
   running?: boolean;
   /** The card's measured size, for the placement. */
@@ -134,7 +141,21 @@ function CalloutCard({
       <View style={styles.detailRow}>
         <View
           testID={mirror ? undefined : 'globe-callout-dot'}
-          style={[styles.dot, { backgroundColor: colours.liveDot }]}
+          style={[
+            styles.dot,
+            {
+              backgroundColor: colours.liveDot,
+              boxShadow: [
+                {
+                  offsetX: 0,
+                  offsetY: 0,
+                  blurRadius: 0,
+                  spreadDistance: layout.dotHalo,
+                  color: withAlpha(colours.liveDot, layout.dotHaloAlpha),
+                },
+              ],
+            },
+          ]}
         />
         <Text
           variant="caption"
@@ -152,18 +173,22 @@ function CalloutCard({
 type PulseProps = {
   scheme: GlobeScheme;
   size: number;
+  /** The width of the pin the pulse is centred on, and of the border it sits inside. */
+  pinSize: number;
+  inset: number;
   reduced: boolean;
   running: boolean;
 };
 
 /** The ring that grows and fades, or, under reduced motion, a faint still one. */
-function Pulse({ scheme, size, reduced, running }: PulseProps) {
-  // An absolute child sits inside its parent's border: pull it out by the ring's own width so
-  // the two rings share a middle, and the pulse grows round the pin.
+function Pulse({ scheme, size, pinSize, inset, reduced, running }: PulseProps) {
+  // An absolute child sits inside its parent's border: pull it out by that border and by the
+  // difference in size, so the two share a middle and the pulse grows round the pin.
+  const offset = -inset - (size - pinSize) / 2;
   const base = {
     position: 'absolute',
-    top: -layout.ringWidth,
-    left: -layout.ringWidth,
+    top: offset,
+    left: offset,
     width: size,
     height: size,
     borderRadius: size / 2,
@@ -210,6 +235,8 @@ type BodyProps = {
   scheme: GlobeScheme;
   side: CalloutSide;
   ringSize: number;
+  ring: boolean;
+  pulseSize: number;
   reduced: boolean;
   running: boolean;
   /** Draws the card, or its invisible copy. */
@@ -217,7 +244,17 @@ type BodyProps = {
 };
 
 /** Card, ring and mirror in a row or a column, the ring in the middle of the marker. */
-function CalloutBody({ scheme, side, ringSize, reduced, running, card }: BodyProps) {
+function CalloutBody({
+  scheme,
+  side,
+  ringSize,
+  ring: showRing,
+  pulseSize,
+  reduced,
+  running,
+  card,
+}: BodyProps) {
+  const border = showRing ? layout.ringWidth : 0;
   const cardSlot = (
     <View testID="globe-callout-card-slot" style={styles.slot}>
       {card(false)}
@@ -235,10 +272,17 @@ function CalloutBody({ scheme, side, ringSize, reduced, running, card }: BodyPro
         width: ringSize,
         height: ringSize,
         borderRadius: ringSize / 2,
-        borderWidth: layout.ringWidth,
+        borderWidth: border,
         borderColor: GlobeColors[scheme].active,
       }}>
-      <Pulse scheme={scheme} size={ringSize} reduced={reduced} running={running} />
+      <Pulse
+        scheme={scheme}
+        size={pulseSize}
+        pinSize={ringSize}
+        inset={border}
+        reduced={reduced}
+        running={running}
+      />
     </View>
   );
   const cardFirst = side === 'left' || side === 'above';
@@ -262,6 +306,8 @@ export function ActiveCallout({
   side = 'left',
   maxWidth = layout.maxWidth,
   ringSize = layout.ringSize.dot,
+  ring = true,
+  pulseSize = ringSize,
   running = true,
   onCardLayout,
 }: ActiveCalloutProps) {
@@ -300,6 +346,8 @@ export function ActiveCallout({
         scheme={theme}
         side={side}
         ringSize={ringSize}
+        ring={ring}
+        pulseSize={pulseSize}
         reduced={prefersLessMotion}
         running={running}
         card={card}
