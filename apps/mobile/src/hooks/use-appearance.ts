@@ -14,15 +14,16 @@
  * stays per component is the cheap part: the colour scheme and the window's font scale.
  */
 import { useMemo, useSyncExternalStore } from 'react';
-import { useWindowDimensions } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { overrideFlags, useAppearanceOverride } from '@/hooks/appearance-override';
 import {
   getAppearanceServerSnapshot,
   getAppearanceSnapshot,
   subscribeToAppearance,
 } from '@/hooks/appearance-store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useFontScale } from '@/hooks/use-font-scale';
 import { resolvePaletteName, type PaletteName, type ThemeName } from '@/theme/palette';
 
 export interface AppearanceContext {
@@ -63,13 +64,20 @@ export interface AppearanceContext {
 export function useAppearance(): AppearanceContext {
   const scheme = useColorScheme();
   const theme: ThemeName = scheme === 'dark' ? 'dark' : 'light';
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
+  const override = useAppearanceOverride();
 
   // One snapshot, so `ready` and the flags it vouches for change in the same render.
-  const accessibility = useSyncExternalStore(
+  const stored = useSyncExternalStore(
     subscribeToAppearance,
     getAppearanceSnapshot,
     getAppearanceServerSnapshot,
+  );
+  // A dev-gallery scope (T524) replaces the flags; the colour scheme and the font scale
+  // above already answer from it. No scope, no change (and the same object, for the memo).
+  const accessibility = useMemo(
+    () => (override ? overrideFlags(override) : stored),
+    [override, stored],
   );
 
   return useMemo(() => {

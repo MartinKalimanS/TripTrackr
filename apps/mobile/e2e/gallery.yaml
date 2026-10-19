@@ -1,0 +1,97 @@
+# The dev gallery, one screenshot per theme and text scale (feature 005, T524; research D5-18).
+#
+# Opens `/gallery` (development builds only: the root layout guards it with `__DEV__`) and,
+# for each of the four themes at scale 1 and 2, takes or compares one screenshot of the page,
+# cropped on `gallery` so the status bar is not in it.
+#
+# MANUAL. Tagged `manual`, so `config.yaml` never runs it unattended: the gallery exists only in
+# a development build, and `assertScreenshot` needs baselines recorded on a device first
+# (`e2e/__baselines__/README.md`). Prerequisites: the dev client (`com.triptrackr.app.dev`) is
+# installed and showing the app (Metro running, the bundle loaded), on the pinned device.
+#
+#   # record (once, then commit the PNGs):
+#   maestro test -e MODE=record e2e/gallery.yaml
+#   # compare (every run after):
+#   maestro test e2e/gallery.yaml
+#
+# What this CANNOT prove: whether the gallery looks right. It says nothing changed since the
+# owner approved the baselines; the approval is the owner's review of the phone (T547, T570).
+appId: com.triptrackr.app.dev
+tags:
+  - gallery
+  - manual
+env:
+  MODE: 'assert'
+  THRESHOLD: 95
+  BASELINES: '../__baselines__'
+---
+# The dev build registers its package name as a URL scheme on both platforms, so this opens
+# the dev build and not a store build that may be installed beside it.
+- openLink: 'com.triptrackr.app.dev:///gallery'
+- assertVisible:
+    id: 'gallery'
+
+- runFlow:
+    file: gallery/pass.yaml
+    env:
+      THEME: 'light'
+      SCALE: '1'
+      MODE: '${MODE}'
+      THRESHOLD: '${THRESHOLD}'
+      BASELINES: '${BASELINES}'
+- runFlow:
+    file: gallery/pass.yaml
+    env:
+      THEME: 'dark'
+      SCALE: '1'
+      MODE: '${MODE}'
+      THRESHOLD: '${THRESHOLD}'
+      BASELINES: '${BASELINES}'
+- runFlow:
+    file: gallery/pass.yaml
+    env:
+      THEME: 'light-contrast'
+      SCALE: '1'
+      MODE: '${MODE}'
+      THRESHOLD: '${THRESHOLD}'
+      BASELINES: '${BASELINES}'
+- runFlow:
+    file: gallery/pass.yaml
+    env:
+      THEME: 'dark-contrast'
+      SCALE: '1'
+      MODE: '${MODE}'
+      THRESHOLD: '${THRESHOLD}'
+      BASELINES: '${BASELINES}'
+- runFlow:
+    file: gallery/pass.yaml
+    env:
+      THEME: 'light'
+      SCALE: '2'
+      MODE: '${MODE}'
+      THRESHOLD: '${THRESHOLD}'
+      BASELINES: '${BASELINES}'
+- runFlow:
+    file: gallery/pass.yaml
+    env:
+      THEME: 'dark'
+      SCALE: '2'
+      MODE: '${MODE}'
+      THRESHOLD: '${THRESHOLD}'
+      BASELINES: '${BASELINES}'
+- runFlow:
+    file: gallery/pass.yaml
+    env:
+      THEME: 'light-contrast'
+      SCALE: '2'
+      MODE: '${MODE}'
+      THRESHOLD: '${THRESHOLD}'
+      BASELINES: '${BASELINES}'
+- runFlow:
+    file: gallery/pass.yaml
+    env:
+      THEME: 'dark-contrast'
+      SCALE: '2'
+      MODE: '${MODE}'
+      THRESHOLD: '${THRESHOLD}'
+      BASELINES: '${BASELINES}'

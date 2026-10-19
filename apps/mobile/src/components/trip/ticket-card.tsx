@@ -25,7 +25,7 @@
  * A trip with no days to go has no stub: a ticket is only for a planning trip with dates, but the
  * card does not assume it.
  */
-import { View, useWindowDimensions, type ViewStyle } from 'react-native';
+import { View, type ViewStyle } from 'react-native';
 
 import { FlagChip } from '@/components/ui/flag-chip';
 import { StatusChip } from '@/components/ui/chip';
@@ -42,6 +42,7 @@ import {
   type Countdown,
 } from '@/features/trips/trip-card-copy';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
+import { useFontScale } from '@/hooks/use-font-scale';
 import { cornerOf } from '@/theme';
 
 import { TripCoverArt } from './trip-cover-art';
@@ -156,7 +157,7 @@ function Body({ trip, large }: { trip: TripCardModel; large: boolean }) {
 
 export function TicketCard({ trip, onPress }: TicketCardProps) {
   const lift = useLiftStyle('lift1');
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
   const stacked = isLargeText(fontScale);
   const countdown = trip.daysToGo === null ? null : countdownOf(trip.daysToGo);
   const { id } = trip;

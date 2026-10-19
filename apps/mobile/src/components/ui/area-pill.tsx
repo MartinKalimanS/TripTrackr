@@ -28,9 +28,10 @@
  * `<testID>-surface`. Colours are semantic classes and `useThemeColor`, never a literal.
  */
 import { useThemeColor } from 'heroui-native';
-import { View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
+import { View, type GestureResponderEvent } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
+import { useFontScale } from '@/hooks/use-font-scale';
 
 import { assertAccessibleName } from './adapter-guards';
 import { Card } from './card';
@@ -146,7 +147,7 @@ export function AreaPill({
   testID,
 }: AreaPillProps) {
   assertAccessibleName('AreaPill', accessibilityLabel ?? label);
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
   const danger = useThemeColor('danger');
   const minHeight = Math.max(AREA_MIN_HEIGHT, MinTouchTarget * Math.max(1, fontScale));
   return (

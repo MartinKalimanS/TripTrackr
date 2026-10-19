@@ -98,6 +98,33 @@ feature).
   Dynamic Type and Android font scaling work unchanged. The family names are declared in `src/global.css`
   and checked against the font files by `test/theme/global-css.test.ts`.
 
+## The component gallery (feature 005, T524)
+
+Every adapter of the Sunrise Passport look is on one page, in the four themes at text scale 1 and 2:
+type specimen and numerals, buttons (rest, held, busy, disabled), icon buttons over a surface and over
+a white photograph, chips and status, cards, rows, tiles, the trip cards, fields, every skeleton,
+the empty states, banners, toasts, the permission state, scrims, stamps, generated covers, the sheet at
+its three detents and the tab bars. The theme and scale switches at the top repaint the page live.
+
+It exists **only in a development build**: the root layout admits the `(dev)` group behind
+`Stack.Protected guard={__DEV__}`, and the route loads the page with a `require` inside
+`if (__DEV__)`, so a release build neither reaches it nor contains it. Open it with a link, with the
+dev client running and the bundle loaded:
+
+```sh
+# Android phone or emulator (the dev client registers its package name as a scheme)
+adb shell am start -a android.intent.action.VIEW -d "com.triptrackr.app.dev:///gallery"
+# iOS Simulator
+xcrun simctl openurl booted "com.triptrackr.app.dev:///gallery"
+```
+
+The route is `/gallery`. On a physical iPhone, open the link from Notes or Safari. Back returns to the
+app. The scale switch is a **layout** scale (minimum heights and reflow); glyphs follow the system text
+size, so set the phone's font size to the largest as well when judging scale 2. Glass and blur on the
+tab pill are iOS only. The screenshot harness is `e2e/gallery.yaml` (`e2e/__baselines__/README.md`:
+baselines are recorded on a device and committed, never invented). The source is
+`src/components/dev/` and `src/app/(dev)/`; nothing else imports it (`test/dev/gallery-source.test.ts`).
+
 ## Environment variables
 
 Only `EXPO_PUBLIC_*` variables reach the JavaScript bundle; everything else stays on the build

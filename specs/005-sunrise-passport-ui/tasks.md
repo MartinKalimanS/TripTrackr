@@ -254,12 +254,34 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
       `variant`); `useHaptics` with `SemanticHaptics` (`Haptics` keeps its three names), the Android constants and an
       80 ms debounce. 313 new tests, red first. See `contracts/components.md`, "As built (T523)", for the facts, the
       deviations and the device-only checks (V5, V6).
-- [ ] T524 Dev gallery `app/(dev)/gallery.tsx` behind a `Stack.Protected` `__DEV__` guard: every adapter in four
+- [x] T524 Dev gallery `app/(dev)/gallery.tsx` behind a `Stack.Protected` `__DEV__` guard: every adapter in four
       themes at font scale 1 and 2, a numerals row, skeletons, the sheet detents, stamps and scrims over the
       white-photograph fixture; the `assertScreenshot` harness and `e2e/__baselines__/` (D5-18)
-- [ ] T525 Foundation gate: `npm run lint && npm run typecheck && npm run test:cov -w apps/mobile`,
+      _As built:_ branch `feat/005-gallery`. The route is `/gallery` (group `(dev)`, a `Slot` layout and one route that
+      `require`s `components/dev/gallery` inside `if (__DEV__)`, which a release bundle folds away), admitted by one
+      `Stack.Protected guard={__DEV__}` block in the root layout, signed in or not; with `__DEV__` false a deep link is turned
+      away like any protected group's. The page has fifteen sections (`gallery-<id>`: type with the six faces and the numerals
+      row, buttons with a held fixture, icon buttons over a surface and the white photograph, chips and status, cards, rows,
+      tiles, the trip cards, fields, nine skeletons with one progressbar each, empty states, banners, toasts, permission,
+      scrims, stamps, covers, the sheet at three detents, the tab bars) under a theme switch and a scale switch. There was
+      no override hook, so a minimal one was added: `AppearanceScope` (`ui/appearance-scope.tsx`: the appearance override plus
+      Uniwind's `ScopedTheme`), `hooks/appearance-override.ts`, `use-font-scale.ts`, and five one-line `useFontScale()`
+      swaps in `Button`, `Tappable`, `AreaPill`, `TicketCard` and `TripRow`; the context defaults to `null`, so production is
+      unchanged. The scale is a LAYOUT scale (glyphs follow the system text size). The harness: `e2e/gallery.yaml`
+      (`manual`, eight passes) over `e2e/gallery/pass.yaml` and `assert-screenshot.yaml` (`takeScreenshot` to record,
+      `assertScreenshot` cropped on `gallery` to compare) and `e2e/__baselines__/README.md`; no image was created. Tests,
+      red first: `appearance-override` 11, `appearance-scope` 12, `test/dev/gallery` 39, `held-button` 41, `gallery-source` 11,
+      `gallery-e2e` 8, `test/app/gallery-route` 5. See `contracts/components.md`, "As built (T524, T525)", for the facts, the
+      deviations and the device-only checks.
+- [x] T525 Foundation gate: `npm run lint && npm run typecheck && npm run test:cov -w apps/mobile`,
       `npm run theme:check -w apps/mobile` (a clean `theme.css`), the testID parity test; merge groups A, B1, B2
       and B3; no screen moved (SC-004; D5-02)
+      _As built:_ run on the final tree of `feat/005-gallery` (which holds the merged groups): `tsc --noEmit` 0 errors;
+      `eslint . --max-warnings=0` clean; `jest --ci` 308 suites, 7,893 passed and 3 skipped; coverage 98.69 percent of
+      statements, 95.22 of branches, 98.51 of functions, 99.35 of lines (floor 80); `prettier --check` clean;
+      `testid-baseline --check` "Parity holds: 205 testIDs and 64 accessibility labels" (the unresolved count moved from 86
+      and 57 to 90 and 59, for the gallery's forwarded ids and labels); `build-theme-css --check` up to date. No screen moved:
+      the only files outside the gallery that changed are listed in `contracts/components.md`, "As built (T524, T525)".
 
 ---
 

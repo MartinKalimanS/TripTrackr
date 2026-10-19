@@ -23,7 +23,7 @@
  * decoration. Ids kept from the 004 card where the element still exists: `-meta-row`, `-cue`
  * (and `-cover`, `-photo` of `TripCoverArt`).
  */
-import { View, useWindowDimensions } from 'react-native';
+import { View } from 'react-native';
 
 import { FlagChip } from '@/components/ui/flag-chip';
 import { StatusChip } from '@/components/ui/chip';
@@ -34,6 +34,7 @@ import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
 import { describeStopCount, rowMeta } from '@/features/trips/trip-card-copy';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
+import { useFontScale } from '@/hooks/use-font-scale';
 import { cornerOf } from '@/theme';
 
 import { TripCoverArt } from './trip-cover-art';
@@ -75,7 +76,7 @@ function RowText({ trip, large }: { trip: TripCardModel; large: boolean }) {
 }
 
 export function TripRow({ trip, onPress }: TripRowProps) {
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
   const large = isLargeText(fontScale);
   const side = large ? THUMB_LARGE : THUMB;
   const { id } = trip;
