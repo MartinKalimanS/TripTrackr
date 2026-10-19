@@ -130,6 +130,28 @@ function springDriver(
   };
 }
 
+/**
+ * New heights under a mounted sheet (an inset that arrived late, a window that resized): `visible`
+ * still holds the OLD height of the detent, so the sheet would sit that far from where it
+ * belongs, at rest. It is re-seated on the new height of the detent it is at or heading for:
+ * no spring and no report, because no detent changed. Declared before the effect that follows a
+ * parent's new `detent`, so that one springs on from the re-seated height.
+ */
+function useReseat(
+  detents: SheetHeights,
+  visible: SharedValue<number>,
+  headingRef: { current: SheetDetent },
+) {
+  const key = `${detents.peek} ${detents.half} ${detents.full}`;
+  const seatedFor = useRef(key);
+  useEffect(() => {
+    if (seatedFor.current === key) return;
+    seatedFor.current = key;
+    visible.set(detents[headingRef.current]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+}
+
 export function useSheetMotion(input: SheetMotionInput): SheetMotion {
   const { detents, detent } = input;
   const { prefersLessMotion } = useAppearance();
@@ -141,6 +163,7 @@ export function useSheetMotion(input: SheetMotionInput): SheetMotion {
     springOf('sheetSpring', prefersLessMotion),
     finish,
   );
+  useReseat(detents, visible, headingRef);
 
   // A parent that changes `detent` (a country was chosen) moves the sheet; one that is only
   // following a drag or a tap has already been announced, so nothing starts twice.

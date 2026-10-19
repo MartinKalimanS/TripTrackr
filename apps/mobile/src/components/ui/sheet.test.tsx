@@ -47,6 +47,7 @@ jest.mock('@/hooks/use-haptics');
 interface Live {
   springs: { kind: string; to: number; config: Record<string, unknown> | undefined }[];
   finish: () => void;
+  progress: (value: number) => void;
   running: () => number;
   reset: () => void;
 }
@@ -427,6 +428,44 @@ describe('the settle', () => {
   });
 });
 
+describe('when the heights change under a mounted sheet', () => {
+  const taller = { peek: 212, half: 450, full: 800 } as const;
+  const translateY = () => {
+    const style = StyleSheet.flatten(screen.getByTestId('home-sheet').props.style);
+    return (style.transform as [{ translateY: number }])[0].translateY;
+  };
+
+  test('re-seats the sheet on the new height of its detent, with no move reported', async () => {
+    await render(sheet({ detent: 'half' }));
+    await screen.rerender(sheet({ detent: 'half', detents: taller }));
+    expect(translateY()).toBe(800 - 450);
+    expect(live.springs).toHaveLength(0);
+    expect(onSettle).not.toHaveBeenCalled();
+    expect(onDetentChange).not.toHaveBeenCalled();
+  });
+
+  test('keeps it on the detent the traveller left it on, not the one the parent last said', async () => {
+    await render(sheet({ detent: 'half' }));
+    await drag(BODY_DRAG, { translationY: -250, velocityY: -500 });
+    await finishSprings();
+    await screen.rerender(sheet({ detent: 'full', detents: taller }));
+    expect(translateY()).toBe(0);
+  });
+
+  test('a new detent and new heights together spring to the new height', async () => {
+    await render(sheet({ detent: 'half' }));
+    await screen.rerender(sheet({ detent: 'full', detents: taller }));
+    expect(live.springs.at(-1)).toEqual(expect.objectContaining({ to: 800 }));
+  });
+
+  test('the same heights as a new object change nothing', async () => {
+    await render(sheet({ detent: 'half' }));
+    await screen.rerender(sheet({ detent: 'half', detents: { ...HEIGHTS } }));
+    expect(translateY()).toBe(HEIGHTS.full - HEIGHTS.half);
+    expect(live.springs).toHaveLength(0);
+  });
+});
+
 describe('reduced motion', () => {
   beforeEach(() => setMotion(true));
 
@@ -624,6 +663,19 @@ describe('the body scroller hands the drag to the sheet', () => {
       handlers.onUpdate?.(event(-60));
     });
     expect(visibleHeight()).toBe(780);
+  });
+
+  test('a touch in the last dp of the spring up to full leaves it running: the settle comes and the list scrolls', async () => {
+    await render(bodyOf('half'));
+    await drag(BODY_DRAG, { translationY: -250, velocityY: -500 });
+    await act(async () => {
+      live.progress(779.8);
+    });
+    await drag(BODY_DRAG, { translationY: -30, velocityY: -100 });
+    expect(live.running()).toBe(1);
+    await finishSprings();
+    expect(onSettle).toHaveBeenCalledWith('full');
+    expect(screen.getByTestId('scroller').props.scrollEnabled).toBe(true);
   });
 });
 

@@ -14,8 +14,9 @@
  *   value takes up when it is ASSIGNED. The value does not move until the suite calls
  *   `__live.finish()`, which sets every pending value to its target and calls its callback
  *   with `finished: true`; an assignment, or `cancelAnimation`, drops the animation and calls
- *   its callback with `finished: false`, as the real library does. `__live.springs` lists every
- *   spring that was started, with the configuration it was given.
+ *   its callback with `finished: false`, as the real library does. `__live.progress(v)` puts
+ *   the running ones part-way (value `v`, still running). `__live.springs` lists every spring
+ *   that was started, with the configuration it was given.
  *
  * Nothing else of Reanimated is modelled: a suite that needs more adds it here, once.
  */
@@ -54,6 +55,10 @@ const live = {
       cell.current = animation.to;
       animation.callback?.(true);
     }
+  },
+  /** Moves every running animation's value part-way to its target, as a frame of it would. */
+  progress(value: number) {
+    for (const cell of live.cells) if (cell.running !== null) cell.current = value;
   },
   /** How many animations are running. */
   running() {

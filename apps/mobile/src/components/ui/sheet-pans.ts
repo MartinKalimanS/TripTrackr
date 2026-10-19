@@ -59,11 +59,16 @@ interface PanEvent {
   velocityY: number;
 }
 
-/** Hands the finger to the sheet from here. */
-function take(state: PanState, visible: number, translationY: number, from: number) {
+/**
+ * Hands the finger to the sheet from here. This is where a spring in flight is stopped (the
+ * sheet then follows the finger from where it is): a finger that goes to the LIST must leave a
+ * spring up to `full` alone, or its settle never comes and the list stays switched off.
+ */
+function take(motion: SheetUi, state: PanState, translationY: number, from: number) {
   'worklet';
+  cancelAnimation(motion.visible);
   state.taking.set(1);
-  state.anchor.set(visible);
+  state.anchor.set(motion.visible.get());
   state.origin.set(from);
   state.last.set(translationY);
 }
@@ -76,14 +81,12 @@ function begin(
   sharedWithList: boolean,
 ) {
   'worklet';
-  cancelAnimation(motion.visible);
-  const visible = motion.visible.get();
   state.startedAt.set(event.translationY);
   state.atTop.set(state.scrollY.get() <= 0 ? 1 : 0);
   state.taking.set(0);
   state.last.set(event.translationY);
-  if (!sharedWithList || visible < motion.detents.full - AT_FULL) {
-    take(state, visible, event.translationY, event.translationY);
+  if (!sharedWithList || motion.visible.get() < motion.detents.full - AT_FULL) {
+    take(motion, state, event.translationY, event.translationY);
   }
 }
 
@@ -101,7 +104,7 @@ function follow(
     if (state.scrollY.get() > 0) state.atTop.set(0);
     if (!(state.scrollY.get() <= 0 && step > 0)) return;
     const from = state.atTop.get() === 1 ? state.startedAt.get() : event.translationY;
-    take(state, motion.visible.get(), event.translationY, from);
+    take(motion, state, event.translationY, from);
   }
   const raw = state.anchor.get() - (event.translationY - state.origin.get());
   if (sharedWithList && raw > motion.detents.full) {
