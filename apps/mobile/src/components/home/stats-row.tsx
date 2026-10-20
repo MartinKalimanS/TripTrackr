@@ -14,17 +14,22 @@
  *
  * What a screen reader hears is the FINAL value, once, in words: "14 of 195 countries",
  * "22 trips", "61,480 kilometres travelled". The countries tile is a button that opens the
- * Countries list (the full detent) and the trips tile one that opens the Trips tab; the
- * kilometres are announced and are not a control (FR-014).
+ * Countries list (the full detent) and the trips tile one that opens the Trips tab. The
+ * pictures draw the same chevron after "Kilometres" and the app has nothing for it to open
+ * (FR-014: plain text), so by owner answer Q-11 / FR-080 it is a COMING-SOON control: a
+ * button (hint "Not available yet", id `coming-soon-distance`) whose only effect is the
+ * "Kilometres is coming soon" toast. The tile's own id `globe-stats-distance-tile` wraps it.
  *
  * Figures follow the device (FR-077): `Intl` groups the digits, the distance is in miles where
  * the device measures in them, and from seven digits a figure goes compact ("1.26M") instead of
  * overflowing. At a font scale of 1.15 and above the three stack into rows (the tile itself
- * trades its figure and label into a row, `StatTile`), with the hairlines across.
+ * trades its figure and label into a row, `StatTile`), with the hairlines across and no gap
+ * between a row and its hairline (prototype `:root[data-bigtext] .stat`: 8 dp above and below).
  */
 import { View } from 'react-native';
 
 import { AnimatedNumber } from '@/components/ui/animated-number';
+import { COMING_SOON_HINT, useComingSoon } from '@/components/ui/coming-soon-button';
 import { isLargeText } from '@/components/ui/reflow';
 import { StatTile } from '@/components/ui/stat-tile';
 import { countOf, figureFormat } from '@/features/home/home-format';
@@ -112,17 +117,23 @@ function TripsTile({ trips, onPress }: { trips: number; onPress: () => void }) {
   );
 }
 
-/** The kilometres: announced, and not a control. */
+/** The kilometres: drawn as pictured, a coming-soon control (nothing to open yet). */
 function DistanceTile({ distanceKm }: { distanceKm: number }) {
   const locale = deviceLocale();
   const { value, unit } = distanceFigure(distanceKm, locale);
+  const label = unit === 'mi' ? 'Miles' : 'Kilometres';
+  const soon = useComingSoon(label);
   return (
-    <StatTile
-      testID="globe-stats-distance-tile"
-      value={<Counting value={value} index={2} testID="globe-stat-distance" />}
-      label={unit === 'mi' ? 'Miles' : 'Kilometres'}
-      accessibilityLabel={`${formatDistance(distanceKm, locale).spoken} travelled`}
-    />
+    <View testID="globe-stats-distance-tile">
+      <StatTile
+        testID="coming-soon-distance"
+        value={<Counting value={value} index={2} testID="globe-stat-distance" />}
+        label={label}
+        accessibilityLabel={`${formatDistance(distanceKm, locale).spoken} travelled`}
+        accessibilityHint={COMING_SOON_HINT}
+        onPress={soon}
+      />
+    </View>
   );
 }
 
@@ -140,7 +151,7 @@ export function StatsRow({
   return (
     <View
       testID="globe-stats"
-      className={stacked ? 'gap-1' : 'items-stretch'}
+      className={stacked ? '' : 'items-stretch'}
       style={{ flexDirection: stacked ? 'column' : 'row' }}>
       <View className={cells[0]}>
         <CountriesTile countries={countries} onPress={onOpenCountries} />

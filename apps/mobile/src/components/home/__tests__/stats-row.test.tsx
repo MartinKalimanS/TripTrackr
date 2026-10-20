@@ -6,12 +6,16 @@
  * What a flow reads stays what it was: `globe-stat-countries` is the PLAIN number ("5",
  * "/195" is a sibling), `globe-stat-distance` the plain distance, and `globe-stats` the
  * container. A screen reader hears the FINAL value in words ("14 of 195 countries") and the
- * countries and trips tiles are buttons; the kilometres are announced and are not a control.
+ * countries and trips tiles are buttons that open something. The pictures draw the same
+ * chevron after "Kilometres" and there is nothing to open (FR-014), so by owner answer Q-11
+ * that tile is a coming-soon control: a button whose only effect is the toast.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { getLocales } from 'expo-localization';
+
+import { glyphsIn } from '../../../../test/helpers/icons';
 
 import { appearance } from '../../../../test/helpers/appearance';
 import { captureIntervals } from '../../../../test/helpers/captured-interval';
@@ -23,6 +27,10 @@ const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock;
 };
 
+const { mockToast } = jest.requireMock('heroui-native') as {
+  mockToast: { show: jest.Mock; hide: jest.Mock };
+};
+
 const defaultLocales = (getLocales as jest.Mock).getMockImplementation();
 
 /** Reduced motion draws the final figure at once, which is what a text assertion reads. */
@@ -32,6 +40,7 @@ beforeEach(() => {
   useAppearance.mockReturnValue(appearance({ prefersLessMotion: true }));
   // A count-up runs its own interval; capturing it keeps a real timer from outliving the test.
   intervals = captureIntervals();
+  mockToast.show.mockClear();
 });
 afterEach(() => {
   (getLocales as jest.Mock).mockImplementation(defaultLocales);
@@ -155,15 +164,30 @@ describe('<StatsRow> what a screen reader hears', () => {
     );
   });
 
-  test('countries and trips are buttons; the kilometres are announced and are not', async () => {
+  test('countries and trips are buttons; the kilometres are a coming-soon button', async () => {
     await render(row());
     expect(screen.getByLabelText('14 of 195 countries').props.accessibilityRole).toBe(
       'button',
     );
     expect(screen.getByLabelText('22 trips').props.accessibilityRole).toBe('button');
-    expect(
-      screen.getByLabelText('61,480 kilometres travelled').props.accessibilityRole,
-    ).not.toBe('button');
+    const distance = screen.getByLabelText('61,480 kilometres travelled');
+    expect(distance.props.accessibilityRole).toBe('button');
+    expect(distance.props.accessibilityHint).toBe('Not available yet');
+    expect(distance).toBe(screen.getByTestId('coming-soon-distance'));
+    expect(screen.getByTestId('globe-stats-distance-tile')).toBeOnTheScreen();
+  });
+
+  test('pressing the kilometres shows the coming-soon toast and nothing else', async () => {
+    const onOpenCountries = jest.fn();
+    const onOpenTrips = jest.fn();
+    await render(row({ onOpenCountries, onOpenTrips }));
+    await fireEvent.press(screen.getByTestId('coming-soon-distance'));
+    expect(mockToast.show).toHaveBeenCalledTimes(1);
+    expect(mockToast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'coming-soon' }),
+    );
+    expect(onOpenCountries).not.toHaveBeenCalled();
+    expect(onOpenTrips).not.toHaveBeenCalled();
   });
 
   test('countries opens the list and trips opens the trips; the kilometres open nothing', async () => {
@@ -192,10 +216,77 @@ describe('<StatsRow> counting up', () => {
     expect(intervals.all).toHaveLength(3);
   });
 
+  test('does not count again when the same figures are drawn again', async () => {
+    useAppearance.mockReturnValue(appearance({ prefersLessMotion: false }));
+    await render(row());
+    await screen.rerender(row());
+    expect(intervals.all).toHaveLength(3);
+  });
+
   test('draws the final figures at once under reduced motion, with no timer at all', async () => {
     await render(row());
     expect(screen.queryByTestId('globe-stat-countries-width', hidden)).toBeNull();
     expect(intervals.all).toHaveLength(0);
+  });
+});
+
+describe('<StatsRow> as pictured (home.png, prototype .stats / .stat)', () => {
+  const classes = (id: string) =>
+    String(screen.getByTestId(id).props.className ?? '')
+      .split(' ')
+      .filter(Boolean);
+
+  test('each figure is the 36 / 40 numeral with tabular digits', async () => {
+    await render(row());
+    for (const id of [
+      'globe-stat-countries',
+      'globe-stat-trips',
+      'globe-stat-distance',
+    ]) {
+      const figure = screen.getByTestId(id);
+      expect(classes(id)).toEqual(
+        expect.arrayContaining(['text-[36px]', 'leading-[40px]']),
+      );
+      expect(StyleSheet.flatten(figure.props.style).fontVariant).toContain(
+        'tabular-nums',
+      );
+    }
+  });
+
+  test('each label is the muted caption, followed by a 16 dp chevron in the subtle ink', async () => {
+    await render(row());
+    for (const label of ['Countries', 'Trips', 'Kilometres']) {
+      expect(String(screen.getByText(label).props.className)).toContain('text-muted');
+    }
+    const chevrons = glyphsIn();
+    expect(chevrons).toHaveLength(3);
+    for (const glyph of chevrons) {
+      expect(glyph).toMatchObject({ name: 'chevron-right', size: 16 });
+    }
+    for (const tile of ['countries', 'trips', 'distance']) {
+      expect(screen.getByTestId(`globe-stats-${tile}-tile`)).toBeOnTheScreen();
+    }
+  });
+
+  test('the three columns are equal and the hairlines are 1 dp, the figures starting 12 dp in', async () => {
+    await render(row());
+    expect(
+      String(screen.getAllByTestId('globe-stats-divider')[0]!.props.className).split(' '),
+    ).toEqual(['w-px', 'self-stretch', 'bg-separator']);
+    const cell = (id: string) => {
+      let node = screen.getByTestId(id).parent;
+      while (node && !String(node.props.className ?? '').includes('flex-1')) {
+        node = node.parent;
+      }
+      return node?.props.className;
+    };
+    expect(cell('globe-stats-countries-tile')).toBe('flex-1 pr-3');
+    expect(cell('globe-stats-trips-tile')).toBe('flex-1 px-3');
+  });
+
+  test('the denominator is the semibold label in the subtle ink beside the countries figure', async () => {
+    await render(row());
+    expect(String(screen.getByText('/195').props.className)).toContain('text-subtle');
   });
 });
 
@@ -216,6 +307,22 @@ describe('<StatsRow> layout', () => {
     await render(row());
     expect(direction()).toBe('column');
     expect(screen.getAllByTestId('globe-stats-divider')).toHaveLength(2);
+  });
+
+  test('at large text each row is label left, figure right, with a plain hairline between', async () => {
+    useAppearance.mockReturnValue(appearance({ prefersLessMotion: true, fontScale: 2 }));
+    await render(row());
+    const layout = String(
+      screen.getByTestId('globe-stats-countries-tile-layout').props.className,
+    );
+    expect(layout).toContain('flex-row');
+    expect(layout).toContain('justify-between');
+    expect(String(screen.getByTestId('globe-stats').props.className ?? '')).not.toMatch(
+      /gap/,
+    );
+    expect(
+      String(screen.getAllByTestId('globe-stats-divider')[0]!.props.className),
+    ).toContain('h-px');
   });
 
   test('is still a row just below the threshold', async () => {

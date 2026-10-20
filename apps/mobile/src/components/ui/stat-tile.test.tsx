@@ -155,7 +155,7 @@ describe('<StatTile> read-only - the figure is announced once, in words', () => 
     expect(glyphsIn()).toEqual([]);
   });
 
-  test('a glyph the caller names is 16 dp, duotone, muted and decorative', async () => {
+  test('a glyph the caller names is 16 dp, duotone, subtle and decorative', async () => {
     jest
       .spyOn(HeroUI, 'useThemeColor')
       .mockImplementation(((token: string) => `colour:${token}`) as never);
@@ -165,10 +165,24 @@ describe('<StatTile> read-only - the figure is announced once, in words', () => 
         name: 'globe',
         size: 16,
         weight: 'duotone',
-        color: 'colour:muted',
+        color: 'colour:subtle',
       }),
     ]);
     expect(screen.queryByTestId(anyGlyph)).toBeNull();
+  });
+
+  test('the label is the caption role in the muted ink (the prototype’s .stat .l)', async () => {
+    await render(countries());
+    expect(tokens(screen.getByText('Countries').props.className)).toEqual(
+      expect.arrayContaining(['text-muted']),
+    );
+  });
+
+  test('the of-sibling is the semibold label role in the subtle ink', async () => {
+    await render(countries());
+    expect(tokens(screen.getByText('/195').props.className)).toEqual(
+      expect.arrayContaining(['text-subtle']),
+    );
   });
 
   test('an element value needs a name of its own', async () => {
@@ -190,6 +204,13 @@ describe('<StatTile onPress> is one control with a cue', () => {
     expect(screen.getAllByRole('button')).toHaveLength(1);
     await fireEvent.press(tile);
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  test('says what pressing does, after the name, when the caller gives a hint', async () => {
+    await render(
+      countries({ onPress: jest.fn(), accessibilityHint: 'Not available yet' }),
+    );
+    expect(screen.getByTestId('stat').props.accessibilityHint).toBe('Not available yet');
   });
 
   test('names its cue: a 16 dp chevron after the label, decorative', async () => {

@@ -19,8 +19,8 @@
  *   name. The tile is one accessibility element; its numeral and label are not read apart.
  * - With `onPress` it is ONE control (`Tappable`: role `button`, `busy` and `disabled`
  *   announced and inert, the scaled platform target, the focus ring) and names its cue (FR-024):
- *   a 16 dp duotone chevron after the label (`chevron-right`), or the caller's own `icon`
- *   key. Without it nothing opens, so no chevron is drawn unless the caller names a glyph.
+ *   a 16 dp duotone chevron after the label (`chevron-right`, in the `subtle` ink as the
+ *   prototype's `.stat .l .ic`), or the caller's own `icon` key. Without it nothing opens, so no chevron is drawn unless the caller names a glyph.
  *   `<testID>-cue` is the glyph.
  * - At a font scale of 1.15 and above (`reflow.ts`) the tile is a row: the label on the
  *   left, the figure on the right (the prototype's `data-bigtext`), so three tiles stack
@@ -53,6 +53,8 @@ interface StatTileBaseProps {
   icon?: IconName;
   /** What a screen reader says. Composed from the parts unless given; required for an element value. */
   accessibilityLabel?: string;
+  /** What pressing does, said after the name (a coming-soon tile: "Not available yet"). */
+  accessibilityHint?: string;
   testID?: string;
   /** Lands on the numeral. */
   valueTestID?: string;
@@ -122,7 +124,7 @@ function Caption({
           name={icon}
           size={16}
           weight="duotone"
-          tone="muted"
+          tone="subtle"
           testID={testID ? `${testID}-cue` : undefined}
         />
       ) : null}
@@ -162,6 +164,7 @@ export function StatTile({
   disabled,
   busy,
   accessibilityLabel,
+  accessibilityHint,
   icon,
   testID,
   ...parts
@@ -184,6 +187,7 @@ export function StatTile({
     <Tappable
       testID={testID}
       accessibilityLabel={name as string}
+      accessibilityHint={accessibilityHint}
       onPress={onPress}
       disabled={disabled}
       busy={busy}>
