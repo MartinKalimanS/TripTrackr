@@ -53,6 +53,7 @@ export interface HomeSheetProps extends HomeTrips {
 type BodyProps = Omit<HomeSheetProps, 'detents' | 'onDetentChange' | 'onSettle'> & {
   onOpenCountries: () => void;
   onCollapse: () => void;
+  onExpand: () => void;
 };
 
 function Body({ detent, tabZone, overview, now, next, banner, ...rest }: BodyProps) {
@@ -79,7 +80,7 @@ function Body({ detent, tabZone, overview, now, next, banner, ...rest }: BodyPro
           onOpenTrip={rest.onOpenTrip}
         />
       ) : (
-        <HomePeek now={now} onOpenTrip={rest.onOpenTrip} />
+        <HomePeek now={now} onOpenTrip={rest.onOpenTrip} onExpand={rest.onExpand} />
       )}
     </View>
   );
@@ -104,6 +105,7 @@ export function HomeSheet({
           detent={detent}
           onOpenCountries={() => onDetentChange('full')}
           onCollapse={() => onDetentChange('half')}
+          onExpand={() => onDetentChange('half')}
         />
       )}
     />

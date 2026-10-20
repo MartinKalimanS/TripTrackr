@@ -214,6 +214,17 @@ describe('<HomeSheet> the handle and the parent (FR-017)', () => {
     });
   });
 
+  test('at peek the live trip card raises the sheet to half, as its up chevron says', async () => {
+    const onDetentChange = jest.fn();
+    const onOpenTrip = jest.fn();
+    await render(
+      <HomeSheet {...props({ detent: 'peek', onDetentChange, onOpenTrip })} />,
+    );
+    await fireEvent.press(screen.getByTestId('home-now-card'));
+    expect(onDetentChange).toHaveBeenCalledWith('half');
+    expect(onOpenTrip).not.toHaveBeenCalled();
+  });
+
   test('a tap on the handle reports the next detent for the parent to pass back', async () => {
     const onDetentChange = jest.fn();
     await render(<HomeSheet {...props({ onDetentChange })} />);
