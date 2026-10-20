@@ -32,11 +32,11 @@ Branch `feat/f2-sheet-shell` (from `feat/f2-sheet`). Pictures read: `home-peek`,
 - `ui/plan-trip-fab.tsx`, `ui/button.tsx` (`capped`): the FAB's size, padding and cap.
 - `globe/empty-state.tsx` (`invite`, `secondary`), `home/invitation-card.tsx`, `ui/state-art.tsx` (frames).
 - `ui/screen-skeletons.tsx` (`sheetHeight`, `greetingDate`), `home/home-states.tsx`.
-- Tests extended: `sheet`, `home-sheet`, `home-header`, `greeting-header`, `invitation-card`, `plan-trip-fab`, `button`, `screen-skeletons`, `home-screen`.
+- Tests extended: `sheet-shell` (new, the shell's pins; `sheet.test.tsx` was near the 800-line limit), `home-sheet`, `home-header`, `greeting-header`, `invitation-card`, `plan-trip-fab`, `button`, `screen-skeletons`, `home-screen`.
 
 Assertions changed (each because a picture needs another value): the FAB's "at least 56 dp" is now 52 (iOS) / 56 (Android); the no-trips Home's
 button list lost `coming-soon-search` (no disc in `home-empty.png`) and gained `coming-soon-find-trips`; the invitation's "one button" is now "one primary";
-the skeleton's figure bones `h-12 w-3/4` are `h-10 w-2/3` plus a `h-3.5` label bone.
+`state-view`'s frames test (cream fill, photo glyph: `StateArt frames` is shared); the skeleton's figure bones `h-12 w-3/4` are `h-10 w-2/3` plus a `h-3.5` label bone.
 
 ## Deviations and open items
 
