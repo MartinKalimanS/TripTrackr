@@ -1,0 +1,251 @@
+@import url('fonts.css');
+/* =====================================================================
+   SUNRISE PASSPORT v2  -  DESIGN TOKENS            (published, STABLE)
+   ---------------------------------------------------------------------
+   Link order for any page (core or extra\):
+     <script src="../tokens.js"></script>   (head, sync; reads ?theme ?contrast ?scale ?platform ?long)
+     <link rel="stylesheet" href="../tokens.css">
+   tokens.js only sets attributes/vars on <html>:
+     data-theme=dark | data-contrast=more | data-platform=android | data-long-mode=1 | data-bigtext (fs >= 1.15) | --fs
+   (If you do not want the script: set those attributes yourself.)
+
+   Themes:  :root                                 = Sunrise (light)
+            [data-theme=dark]                      = Nightfall
+            [data-contrast=more]                   = Sunrise, increased contrast (target >= 7:1 text)
+            [data-theme=dark][data-contrast=more]  = Nightfall, increased contrast
+
+   ---- REQUIRED COLOURS (light / dark / light+more / dark+more) -------
+   token          light     dark      +more     dark+more   use
+   --paper        #FFFFFF   #0F2037   #FFFFFF   #0F2037     sheet / card / screen surface
+   --cream        #FFF1E3   #182E4A   #FFF1E3   #182E4A     tile, field fill, raised row (needs hairline)
+   --sand         #EBDCC9   #2B4466   #D9C3A6   #4A6688     decorative only: dashes, perforation, tracks, skeleton
+   --ink          #0E2A47   #F4F7FB   #061629   #FFFFFF     text, icons, selected fills
+   --ink-2        #4A5B6E   #A4B3C4   #2B3B4F   #D3DCE8     secondary text      (6.97 / 7.66 / 11.41 / 11.83 on paper)
+   --ink-3        #566779   #93A5BA   #3D4F63   #B8C5D6     tertiary, meta      (5.81 / 6.50 / 8.41 / 9.36 on paper; >= 5.24 on cream)
+   --coral        #FF6B4A   #FF8266   #FF8466   #FF9A82     primary fill; text ON it = --on-coral (5.17 / 7.47 / 7.57 / 8.82)
+   --coral-press  #FF8466   #FF9A80   #FF9A80   #FFB09C     pressed fill (LIGHTER, keeps contrast)
+   --coral-line   #E04A33   #FF8266   #A82618   #FFA690     graphic >= 3:1: visited stroke, active node, bars (4.04 / 6.74 / 7.11 / 8.66 on paper)
+   --coral-text   #B92A1D   #FFA08C   #8F1D12   #FFC4B4     coral as TEXT/icon (6.16 / 8.31 / 8.93 / 10.77 on paper; 5.27 on coral-tint)
+   --aqua         #35C9D6   #35C9D6   #35C9D6   #35C9D6     water, fills ONLY (2.0 on white: never text/line)
+   --aqua-line    #1A8FA0   #46D5E0   #08606B   #5FDCE6     aqua graphic (3.83 / 9.25 / 7.25 / 10.04 on paper)
+   --aqua-ink     #0B6F7C   #5FDCE6   #064F59   #8EE8EF     aqua as text (5.87 / 10.04 / 9.25 on paper)
+   --amber        #FFB547   #FFC25E   #FFB547   #FFC25E     planned fill/ring on photos; navy text on it 8.30
+   --amber-line   #B86E00   #FFC25E   #7A4800   #FFD27F     planned graphic on paper (3.99 / 10.24 / 7.62)
+   --danger       #9F1239   #FF8FA8   #7F0F2B   #FFB3C4     error text/icon; ALWAYS icon + verb (8.02 / 7.60 / 10.47)
+   --success-ink  #0D6B4C   #55DDA8   #0A5A3F   #7DE8BC     synced / ready (6.51 / 9.59 / 8.24)
+   --hairline     rgba(14,42,71,.12) | rgba(255,255,255,.14) | rgba(6,22,41,.50) | rgba(255,255,255,.40)   decorative divider / card edge
+   --focus        #D93A2E   #FFB4A0   #061629   #FFFFFF     2.5px ring (4.57 white / 4.12 cream) offset 2px
+   --scrim-top    linear-gradient 180deg  rgba(8,26,48,.68) held to 44% (status-bar zone, 120px box) then -> 0
+   --scrim-bottom linear-gradient 180deg  0 -> .38@25% -> .66@55% -> .88@100%  (alpha under ANY text line >= .64, white text >= 5.3:1 on a white photo)
+
+   ---- EXTENDED COLOURS (also published; stable) ---------------------
+   --canvas (behind sheets: white | #0A1626)   --on-coral (navy on coral)   --on-ink (label on an --ink fill)
+   --coral-tint #FFE9E1 / dark rgba(255,130,102,.16)    --amber-tint #FFF0D1 / dark rgba(255,194,94,.16)
+   --amber-ink  #8A5200 (text on amber-tint 5.67)       --aqua-tint #DDF6F8      --success-tint #DDF4E8
+   --danger-tint #FDE8EE                                 --field-border #6B7D93 (4.22 white, 3.80 cream) / dark #7A90AB
+   --grab (sheet handle ~3:1)  --scrim-btn (icon button on photo)  --scrim-btn-line  --on-photo (#FFFFFF, always opaque)
+   --sky (home globe backdrop)   --ring (avatar/pin ring over photos)   --skeleton / --skeleton-hi
+
+   ---- SPACING  --sp-1 4  --sp-2 8  --sp-3 12  --sp-4 16  --sp-5 20 (screen margin)  --sp-6 24  --sp-8 32  --sp-10 40
+        rule: between sections 24 (32 above a major heading) | between cards 16 | inside groups 8/12
+   ---- RADII    --r-sm 8  --r-md 12 (inputs)  --r-lg 16 (thumbs, tiles)  --r-xl 24 (cards, hero, ticket)  --r-sheet 28  --r-full 999px
+        rule: inner radius = outer radius - padding (min 8)
+   ---- SHADOWS  --shadow-1 card/tile lift   --shadow-2 floating (FAB, tab bar, tag, sheet, toast).  Only two. Dark = hairline ring + tonal lift.
+   ---- TEXT SCALE  --fs (default 1; ?scale=1.5 / ?scale=2). EVERY font size is calc(var(--fs) * Npx).
+        --fs-cap = min(var(--fs), 1.2)  for tab labels, pills, chips, numerals (RN maxFontSizeMultiplier 1.2)
+   ---- TYPE ROLES (9 sizes: 40 36 28 22 17 16 14 13 12; weights 400 / 600 / 700 ONLY)
+        .t-display  40/44 Bricolage 700 -.025em      .t-numeral  36/40 Bricolage 700 -.03em, TABULAR (+ .prop = proportional, for static hero numerals)
+        .t-title    28/32 Bricolage 700 -.02em       .t-headline 22/28 Bricolage 700 -.01em
+        .t-callout  17/22 Bricolage 600              .t-body     16/24 DM Sans 400   (strong = 600)
+        .t-label    14/20 DM Sans 400 (.b = 600)     .t-caption  13/18 DM Sans 600
+        .t-eyebrow  12/16 DM Sans 700 caps +.06em    .t-serif    Instrument Serif italic 400 (accent word, inherits size, max ONE word per screen)
+        modifiers:  .tnum (tabular figures) .prop (proportional) .c2 .c3 (ink-2 / ink-3 colour) .clamp-1 .clamp-2 (line clamps)
+   ===================================================================== */
+
+:root {
+  /* ---- fonts ---- */
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+
+  /* ---- text scale ---- */
+  --fs: 1;
+  --fs-cap: min(var(--fs), 1.2);
+
+  /* ---- spacing ---- */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  /* ---- radii ---- */
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-sheet: 28px; --r-full: 999px;
+
+  /* ---- Sunrise (light) ---- */
+  --paper: #FFFFFF;
+  --cream: #FFF1E3;
+  --sand: #EBDCC9;
+  --ink: #0E2A47;
+  --ink-2: #4A5B6E;
+  --ink-3: #566779;
+  --coral: #FF6B4A;
+  --coral-press: #FF8466;
+  --coral-line: #E04A33;
+  --coral-text: #B92A1D;
+  --aqua: #35C9D6;
+  --aqua-line: #1A8FA0;
+  --aqua-ink: #0B6F7C;
+  --amber: #FFB547;
+  --amber-line: #B86E00;
+  --danger: #9F1239;
+  --success-ink: #0D6B4C;
+  --hairline: rgba(14, 42, 71, .12);
+  --focus: #D93A2E;
+  --scrim-top: linear-gradient(180deg, rgba(8, 26, 48, .68) 0%, rgba(8, 26, 48, .68) 44%, rgba(8, 26, 48, 0) 100%);
+  --scrim-bottom: linear-gradient(180deg, rgba(8, 26, 48, 0) 0%, rgba(8, 26, 48, .38) 25%, rgba(8, 26, 48, .66) 55%, rgba(8, 26, 48, .88) 100%);
+
+  /* extended */
+  --canvas: #FFFFFF;
+  --on-coral: #0E2A47;
+  --on-ink: #FFFFFF;
+  --on-photo: #FFFFFF;
+  --coral-tint: #FFE9E1;
+  --amber-tint: #FFF0D1;
+  --amber-ink: #8A5200;
+  --aqua-tint: #DDF6F8;
+  --success-tint: #DDF4E8;
+  --danger-tint: #FDE8EE;
+  --field-border: #6B7D93;
+  --grab: rgba(14, 42, 71, .52);
+  --scrim-btn: rgba(9, 24, 43, .46);
+  --scrim-btn-line: rgba(255, 255, 255, .26);
+  --ring: #FFFFFF;
+  --skeleton: #F3E8DA;
+  --skeleton-hi: rgba(255, 181, 71, .16);
+  --sky: radial-gradient(120% 70% at 92% -8%, rgba(255, 181, 71, .46) 0%, rgba(255, 181, 71, 0) 62%),
+         linear-gradient(180deg, #FFF1DF 0%, #FFE6D0 20%, #D7F0F6 56%, #EEF9FC 100%);
+
+  /* ---- shadows (only two) ---- */
+  --shadow-1: 0 1px 2px rgba(14, 42, 71, .06), 0 8px 24px -8px rgba(14, 42, 71, .14);
+  --shadow-2: 0 2px 6px rgba(14, 42, 71, .10), 0 16px 32px -8px rgba(14, 42, 71, .28);
+}
+
+/* ---- Nightfall (dark) ---- */
+:root[data-theme='dark'] {
+  --paper: #0F2037;
+  --cream: #182E4A;
+  --sand: #2B4466;
+  --ink: #F4F7FB;
+  --ink-2: #A4B3C4;
+  --ink-3: #93A5BA;
+  --coral: #FF8266;
+  --coral-press: #FF9A80;
+  --coral-line: #FF8266;
+  --coral-text: #FFA08C;
+  --aqua: #35C9D6;
+  --aqua-line: #46D5E0;
+  --aqua-ink: #5FDCE6;
+  --amber: #FFC25E;
+  --amber-line: #FFC25E;
+  --danger: #FF8FA8;
+  --success-ink: #55DDA8;
+  --hairline: rgba(255, 255, 255, .14);
+  --focus: #FFB4A0;
+
+  --canvas: #0A1626;
+  --on-coral: #0A1626;
+  --on-ink: #0A1626;
+  --coral-tint: rgba(255, 130, 102, .16);
+  --amber-tint: rgba(255, 194, 94, .16);
+  --amber-ink: #FFC25E;
+  --aqua-tint: rgba(70, 213, 224, .14);
+  --success-tint: rgba(85, 221, 168, .14);
+  --danger-tint: rgba(255, 143, 168, .14);
+  --field-border: #7A90AB;
+  --grab: rgba(255, 255, 255, .40);
+  --scrim-btn: rgba(9, 24, 43, .56);
+  --ring: #F4F7FB;
+  --skeleton: #1F3756;
+  --skeleton-hi: rgba(255, 194, 94, .10);
+  --sky: radial-gradient(110% 60% at 94% -10%, rgba(255, 140, 110, .10) 0%, rgba(255, 140, 110, 0) 60%),
+         radial-gradient(90% 60% at 8% 38%, rgba(53, 201, 214, .12) 0%, rgba(53, 201, 214, 0) 62%),
+         linear-gradient(180deg, #0A1626 0%, #0B1D36 40%, #0C2442 72%, #0F2037 100%);
+  --shadow-1: 0 0 0 1px rgba(255, 255, 255, .10), 0 8px 24px -8px rgba(0, 0, 0, .50);
+  --shadow-2: 0 0 0 1px rgba(255, 255, 255, .10), 0 2px 6px rgba(0, 0, 0, .35), 0 16px 32px -8px rgba(0, 0, 0, .60);
+}
+
+/* ---- Sunrise, increased contrast ---- */
+:root[data-contrast='more'] {
+  --ink: #061629;
+  --ink-2: #2B3B4F;
+  --ink-3: #3D4F63;
+  --sand: #D9C3A6;
+  --coral: #FF8466;
+  --coral-press: #FF9A80;
+  --coral-line: #A82618;
+  --coral-text: #8F1D12;
+  --aqua-line: #08606B;
+  --aqua-ink: #064F59;
+  --amber-line: #7A4800;
+  --danger: #7F0F2B;
+  --success-ink: #0A5A3F;
+  --hairline: rgba(6, 22, 41, .50);
+  --focus: #061629;
+  --scrim-top: linear-gradient(180deg, rgba(6, 18, 34, .80) 0%, rgba(6, 18, 34, .80) 44%, rgba(6, 18, 34, 0) 100%);
+  --scrim-bottom: linear-gradient(180deg, rgba(6, 18, 34, 0) 0%, rgba(6, 18, 34, .50) 25%, rgba(6, 18, 34, .78) 55%, rgba(6, 18, 34, .94) 100%);
+
+  --on-coral: #061629;
+  --amber-ink: #6E4200;
+  --field-border: #3D4F63;
+  --grab: rgba(6, 22, 41, .70);
+  --scrim-btn: rgba(6, 18, 34, .66);
+  --scrim-btn-line: rgba(255, 255, 255, .55);
+}
+
+/* ---- Nightfall, increased contrast ---- */
+:root[data-theme='dark'][data-contrast='more'] {
+  --ink: #FFFFFF;
+  --ink-2: #D3DCE8;
+  --ink-3: #B8C5D6;
+  --sand: #4A6688;
+  --coral: #FF9A82;
+  --coral-press: #FFB09C;
+  --coral-line: #FFA690;
+  --coral-text: #FFC4B4;
+  --aqua-line: #5FDCE6;
+  --aqua-ink: #8EE8EF;
+  --amber-line: #FFD27F;
+  --danger: #FFB3C4;
+  --success-ink: #7DE8BC;
+  --hairline: rgba(255, 255, 255, .40);
+  --focus: #FFFFFF;
+
+  --on-coral: #0A1626;
+  --on-ink: #0A1626;
+  --amber-ink: #FFD27F;
+  --field-border: #B8C5D6;
+  --grab: rgba(255, 255, 255, .70);
+}
+
+/* ---- base ---- */
+* { box-sizing: border-box; }
+.t-display, .t-numeral, .t-title, .t-headline, .t-callout, .t-body, .t-label, .t-caption, .t-eyebrow {
+  margin: 0; color: var(--ink); font-synthesis: none; overflow-wrap: anywhere;
+}
+.t-display  { font: 700 calc(var(--fs) * 40px)/calc(var(--fs) * 44px) var(--font-display); letter-spacing: -.025em; }
+.t-numeral  { font: 700 calc(var(--fs-cap) * 36px)/calc(var(--fs-cap) * 40px) var(--font-display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+.t-title    { font: 700 calc(var(--fs) * 28px)/calc(var(--fs) * 32px) var(--font-display); letter-spacing: -.02em; }
+.t-headline { font: 700 calc(var(--fs) * 22px)/calc(var(--fs) * 28px) var(--font-display); letter-spacing: -.01em; }
+.t-callout  { font: 600 calc(var(--fs) * 17px)/calc(var(--fs) * 22px) var(--font-display); letter-spacing: 0; }
+.t-body     { font: 400 calc(var(--fs) * 16px)/calc(var(--fs) * 24px) var(--font-body); }
+.t-body strong, .t-label.b { font-weight: 600; }
+.t-label    { font: 400 calc(var(--fs) * 14px)/calc(var(--fs) * 20px) var(--font-body); }
+.t-caption  { font: 600 calc(var(--fs) * 13px)/calc(var(--fs) * 18px) var(--font-body); }
+.t-eyebrow  { font: 700 calc(var(--fs-cap) * 12px)/calc(var(--fs-cap) * 16px) var(--font-body); letter-spacing: .06em; text-transform: uppercase; }
+.t-serif    { font-family: var(--font-serif); font-style: italic; font-weight: 400; letter-spacing: 0; }
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+.prop { font-variant-numeric: proportional-nums; font-feature-settings: 'tnum' 0; }
+.c2 { color: var(--ink-2); }
+.c3 { color: var(--ink-3); }
+.clamp-1 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; }
+.clamp-2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}

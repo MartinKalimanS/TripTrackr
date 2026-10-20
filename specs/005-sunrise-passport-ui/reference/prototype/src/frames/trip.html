@@ -1,0 +1,86 @@
+<section class="slot" data-slot="trip">
+  <div class="phone" id="trip" data-frame="trip">
+    <div class="screen" style="background:var(--canvas)">
+      <div class="td-hero ph" data-ph="tram:1000" style="height:262px;background-position:50% 60%"></div>
+      <div class="fade-photo-t"></div>
+      <div class="scrim-b" style="position:absolute;left:0;right:0;top:64px;height:200px;z-index:2"></div>
+
+      <button class="icon-btn scrim" style="position:absolute;left:20px;top:58px;z-index:8" aria-label="Back">[[i:chevron-left]]</button>
+      <div style="position:absolute;right:20px;top:58px;z-index:8;display:flex;gap:10px">
+        <button class="icon-btn scrim" aria-label="Share">[[i:share]]</button>
+        <button class="icon-btn scrim" aria-label="More">[[i:ellipsis]]</button>
+      </div>
+
+      <div class="td-title" style="top:146px">
+        <div class="t-micro">[[i16:map-pin]]Portugal · 12–19 Oct 2026</div>
+        <h1>Portugal Road Trip</h1>
+      </div>
+
+      <div class="sheet" style="top:228px">
+        <div class="grab"></div>
+        <div class="body" style="top:28px;left:20px;right:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;height:32px">
+            <div style="display:flex;align-items:center;gap:10px"><span class="pill s-active" style="height:32px">[[i:circle-dot]]Active</span><span class="t-sm muted" style="font-weight:600">Day 3 of 8</span></div>
+            <span class="pill s-sync" style="height:32px">[[i:cloud-upload]]Waiting to sync</span>
+          </div>
+        </div>
+
+        <div class="areas" style="position:absolute;left:20px;right:20px;top:76px">
+          <div class="tile2 photo ph" data-ph="sintra:500" style="background-position:50% 30%">
+            <div class="sc"></div>
+            <div class="tt"><span class="lb">Photos</span>[[i20:images]]</div>
+            <div class="vv"><span class="v num">128</span></div>
+            <div class="sb">3 waiting to sync</div>
+          </div>
+          <div class="tile2">
+            <div class="tt"><span class="lb">Notes</span>[[i20:notebook-pen]]</div>
+            <div class="vv"><span class="v num">6</span></div>
+            <div class="sb">Edited 2 h ago</div>
+          </div>
+          <div class="tile2">
+            <div class="tt"><span class="lb">Expenses</span>[[i20:wallet]]</div>
+            <div class="vv"><span class="v num"><small>EUR</small>842</span></div>
+            <div class="sb priv">[[i16:lock]]Only you</div>
+          </div>
+          <div class="tile2">
+            <div class="tt"><span class="lb">Documents</span>[[i20:folder-lock]]</div>
+            <div class="vv"><span class="v num">4</span></div>
+            <div class="sb priv">[[i16:lock]]Only you</div>
+          </div>
+          <div class="tile2 wide">
+            <div class="ib">[[i20:map-pinned]]</div>
+            <div class="tx"><span class="lb">Offline maps</span><span class="v2 num">2 downloaded · 310 MB</span></div>
+            <span class="pill s-ok">[[i:circle-check]]Ready</span>
+          </div>
+        </div>
+
+        <div class="sec-head" style="position:absolute;left:20px;right:20px;top:330px">
+          <div class="t-title3">Stops<small>3</small></div>
+          <span class="link">Map [[i16:arrow-up-right]]</span>
+        </div>
+        <div class="timeline" style="position:absolute;left:20px;right:20px;top:370px">
+          <div class="stop">
+            <div class="rail-c"><div class="node done">[[i16:check]]</div><div class="line"></div></div>
+            <div class="bd"><div class="ttl">Lisbon</div><div class="sub">12–14 Oct · 2 nights</div><span class="pill s-past">[[i:circle-check]]Visited</span></div>
+            <div class="th ph" data-ph="lisbonRoofs:200"></div>
+          </div>
+          <div class="stop">
+            <div class="rail-c"><div class="node here"></div><div class="line dash"></div></div>
+            <div class="bd"><div class="ttl">Sintra</div><div class="sub">14–15 Oct · 1 night</div><span class="pill s-active">[[i:circle-dot]]You are here</span></div>
+            <div class="th ph" data-ph="sintra:200"></div>
+          </div>
+          <div class="stop">
+            <div class="rail-c"><div class="node next">3</div></div>
+            <div class="bd"><div class="ttl">Porto</div><div class="sub">15–19 Oct · 4 nights</div><span class="pill s-planned">[[i:calendar]]Next</span></div>
+            <div class="th ph" data-ph="portoBridge:200"></div>
+          </div>
+        </div>
+        <div class="fade-b" style="--fade-from:transparent;--fade-to:var(--sheet);height:104px"></div>
+      </div>
+      <button class="btn btn-primary fab" style="position:absolute;z-index:30;right:20px;bottom:34px">[[i:plus]]Add stop</button>
+    </div>
+    {{STATUS_PHOTO}}
+    {{HIND}}
+  </div>
+  <p class="cap"><b>05</b>Trip detail<span>Hero photo, overlapping 28px sheet, a bento of areas (private ones say “Only you”), then the stops timeline. One coral action.</span></p>
+</section>

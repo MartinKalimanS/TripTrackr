@@ -1,0 +1,41 @@
+# Row 12 (1 of 5) — Delete a record on one device while editing it on another.
+# Expected: a deterministic outcome; no resurrection (spec edge case; FR-039;
+# SC-011). Device A goes OFFLINE and DELETES 'Race note' FIRST.
+#
+# The five phases of row 12, in order:
+#   12a  A  offline, deletes 'Race note'                      (this file; A stays offline)
+#   12b  B  offline, edits the same note LATER than A's delete
+#   12c  A  reconnects FIRST: the tombstone reaches the server
+#   12d  B  reconnects SECOND: told its edit was superseded; the note is gone
+#   12e  A  the note has not come back
+#
+# This is the order a plain last-write-wins rule gets WRONG: B's edit is newer
+# than A's delete and arrives after it, so "newest wins" would resurrect the note.
+# The server's rule is that a tombstone is terminal and wins over a concurrent
+# edit (push-conflict.ts, rules 3 and 4), so the note ends deleted in both
+# orders; both orders are also pinned server-side by the API contract suite
+# (apps/api/test/contract/sync-conflict.spec.ts, "scenario 12").
+#
+# 'Sentinel for row 12' is created in the same offline window so that its pending
+# marker clearing proves this table's batch, A's tombstone included, was
+# acknowledged: a deleted row has no marker of its own to wait on.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/go-offline.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Race note'
+- tapOn: 'Delete Race note'
+- assertVisible: 'Delete this note\?'
+- runFlow: _helpers/confirm-alert.yaml
+- assertNotVisible: 'Race note'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Sentinel for row 12'
+      NOTE_BODY: 'Pending until the tombstone has been pushed.'
+- assertVisible: 'Not yet synced'

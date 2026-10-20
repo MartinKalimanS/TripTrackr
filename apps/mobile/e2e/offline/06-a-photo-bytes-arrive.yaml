@@ -1,0 +1,55 @@
+# Row 6, second half — Reconnect after a photo capture.
+# Expected: the photo is treated as saved only once the file itself arrives
+# (FR-041). Device A, ONLINE again (after 03-a-reconnect.yaml).
+#
+# The record's metadata and its bytes travel on separate channels (sync-protocol
+# §1/§2 versus §4), so "Waiting to upload" clears on the upload queue's own
+# schedule, after the object store confirms. Documents follow the same rule: the
+# row's pending marker and the "Not uploaded yet" line clear only when the bytes
+# land. The gallery and the documents list retry pending uploads when they gain
+# focus, so this is "no explicit sync action", not "no navigation".
+#
+# 90 s, not 30: the 30 s of SC-010 is for a typical day's metadata; a photo's
+# bytes are bounded by the uplink, and the upload queue prefers Wi-Fi and backs
+# off on failure.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+
+# --- The photo's bytes land ------------------------------------------------------
+- tapOn:
+    id: 'trip-open-photos'
+- assertVisible:
+    id: 'photo-thumbnail-.*'
+- extendedWaitUntil:
+    notVisible: 'Waiting to upload'
+    timeout: 90000
+- assertNotVisible: 'Upload failed'
+- tapOn:
+    id: 'photo-open-.*'
+    index: 0
+- assertVisible: 'Uploaded to your account\.'
+- assertNotVisible: 'Waiting to upload'
+- tapOn: 'Close photo'
+- tapOn: 'Back'
+
+# --- And the document's ----------------------------------------------------------
+- tapOn:
+    id: 'trip-open-documents'
+- assertVisible:
+    id: 'document-row-.*'
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 90000
+- tapOn:
+    id: 'document-row-.*'
+- assertVisible:
+    id: 'document-upload-status'
+    text: 'Uploaded to your account\.'
+- tapOn: 'Back'
+- tapOn: 'Back'
+- tapOn: 'Back'

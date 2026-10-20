@@ -1,15 +1,24 @@
 /**
- * Where a note belongs — tasks.md T084, T085 (FR-017, FR-018).
+ * Where a note belongs — tasks.md T084, T085 (FR-017, FR-018); on the Atlas adapters since
+ * feature 004 (T436; contract C4-8; FR-025, FR-030, FR-037).
  *
- * The three levels as pills: the whole trip (or each country of a multi-
- * country trip), then each city the trip stops in. Selection is conveyed by
- * treatment AND by the `accessibilityState`, never by hue alone (FR-010).
+ * The three levels as chips: the whole trip (or each country of a multi-country trip),
+ * then each city the trip stops in, in a `ChipGroup` that wraps, so every place is in view
+ * and none waits off the edge of a sideways row. Selection is the chip's own: a filled
+ * accent chip, a heavier label and a check glyph, announced `{ selected, checked }` on a
+ * `radio`, never hue alone (FR-010, FR-025).
+ *
+ * What did not change: the props, `testID` on the container, `anchor-<key>` on each chip
+ * named by the target's label, the radio group (unnamed, as before: its name would be a
+ * label the guard in `scripts/testid-baseline.mjs` cannot read), the words for a trip with
+ * no stop. New and additive: a refusal is words with an alert icon (`InlineError`, id
+ * `<testID>-error`, or `anchor-picker-error` with no `testID`), an alert as before.
  */
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { PressableSurface } from '@/components/ui/pressable-surface';
-import { Spacing } from '@/constants/theme';
+import { ChipGroup, type ChipOption } from '@/components/ui/chip';
+import { InlineError } from '@/components/ui/inline-error';
+import { Text } from '@/components/ui/text';
 import type { AnchorTarget } from '@/features/notes/use-move-note';
 
 export type AnchorPickerProps = {
@@ -22,6 +31,15 @@ export type AnchorPickerProps = {
   testID?: string;
 };
 
+function chipOptions(targets: readonly AnchorTarget[]): ChipOption[] {
+  return targets.map((target) => ({
+    key: target.key,
+    label: target.label,
+    testID: `anchor-${target.key}`,
+    accessibilityLabel: target.label,
+  }));
+}
+
 export function AnchorPicker({
   label,
   targets,
@@ -31,46 +49,23 @@ export function AnchorPicker({
   testID,
 }: AnchorPickerProps) {
   return (
-    <View style={styles.container} testID={testID}>
-      <ThemedText type="small">{label}</ThemedText>
+    <View className="gap-2" testID={testID}>
+      <Text type="callout">{label}</Text>
       {targets.length === 0 ? (
-        <ThemedText type="small" themeColor="textMuted">
+        <Text type="callout" tone="muted">
           Add a stop to this trip first — notes are filed under its countries and cities.
-        </ThemedText>
+        </Text>
       ) : (
-        <View style={styles.pills} accessibilityRole="radiogroup">
-          {targets.map((target) => {
-            const selected = target.key === value;
-            return (
-              <PressableSurface
-                key={target.key}
-                testID={`anchor-${target.key}`}
-                accessibilityLabel={target.label}
-                accessibilityRole="radio"
-                accessibilityState={{ selected, checked: selected }}
-                treatment={selected ? 'recessed' : 'raised'}
-                radius="pill"
-                onPress={() => onChange(target.key)}
-                style={styles.pill}>
-                <ThemedText type={selected ? 'smallBold' : 'small'}>
-                  {target.label}
-                </ThemedText>
-              </PressableSurface>
-            );
-          })}
-        </View>
+        <ChipGroup
+          options={chipOptions(targets)}
+          selectedKey={value}
+          onSelect={onChange}
+        />
       )}
-      {error ? (
-        <ThemedText type="small" themeColor="danger" accessibilityRole="alert">
-          {error}
-        </ThemedText>
-      ) : null}
+      <InlineError
+        testID={`${testID ?? 'anchor-picker'}-error`}
+        message={error ?? null}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { gap: Spacing.two },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  pill: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
-});

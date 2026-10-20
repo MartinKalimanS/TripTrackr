@@ -1,0 +1,68 @@
+# Row 3 — Restore connectivity.
+# Expected: everything reaches the server with no user action (FR-038);
+# SC-010 "within 30 s of reconnect". Device A: the end of the offline window.
+#
+# The flow parks on the NOTES screen, which still holds pending rows (row 1's
+# notes), turns the radio back on, and then ONLY WAITS. It never taps, never
+# navigates and never triggers a sync: the "connectivity restored" trigger
+# (sync-protocol.md §3) must push by itself. The pending marker leaving the
+# list is the app saying the server acknowledged those rows ('applied' clears
+# `is_dirty`; a 'rejected' row would stay pending).
+#
+# Why one wait covers the rest: a cycle pushes the tables in dependency order
+# (trips, stops, notes, expenses, photos, documents) and stops at the first
+# failure, so notes being acknowledged means the trips, stops and tombstones
+# before them were too. Expenses and the trip created offline (row 13) are then
+# checked on their own screens.
+#
+# The 30 s is the budget of SC-010 INCLUDING the radio coming back. On a
+# physical device that includes the Wi-Fi rejoin: if this fails only on that,
+# record the real time in gate-evidence.md; do not just lengthen the timeout.
+#
+# What this cannot prove: that the rows are on the SERVER. The marker clearing
+# is the client's receipt of 'applied'. The independent proof is device B
+# receiving them (03-b-arrival.yaml and the B checks of rows 4, 13 and 14); a
+# direct database query is the manual cross-check in the README.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+# Precondition: this really is the offline window, with pending rows.
+- assertVisible: 'Not yet synced'
+
+- runFlow: _helpers/go-online.yaml
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 30000
+- assertVisible: 'Offline note'
+- assertVisible: 'Edited in airplane mode\.'
+# The deleted ones are gone locally and stay gone.
+- assertNotVisible: 'Ephemeral note'
+- assertNotVisible: 'Synced note to delete'
+- tapOn: 'Back'
+
+# --- Expenses of the baseline trip ---------------------------------------------
+- tapOn:
+    id: 'trip-open-expenses'
+- assertNotVisible: 'Not yet synced'
+- assertVisible: '.*12.34.*'
+- tapOn: 'Back'
+- tapOn: 'Back'
+
+# --- Row 13: the trip created offline is acknowledged, with its stop and expense --
+- assertVisible: 'Gate offline trip'
+- assertNotVisible: 'Not yet synced'
+- tapOn: 'Gate offline trip'
+- assertVisible: 'Stop 1: Rom(a|e).*'
+- assertNotVisible: 'Not yet synced'
+- tapOn:
+    id: 'trip-open-expenses'
+- assertVisible: '.*7.77.*'
+- assertNotVisible: 'Not yet synced'
+- tapOn: 'Back'
+- tapOn: 'Back'

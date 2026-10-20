@@ -20,7 +20,11 @@
  * stop pulled from the server may name a city this device has never cached,
  * and that must not be a constraint violation. Foreign keys exist only where
  * the sync protocol guarantees the parent arrives first — `trip_id` → `trips`
- * (sync-protocol.md §2, "parents before children").
+ * (sync-protocol.md §2, "parents before children"). That guarantee holds for
+ * PUSH; a PULL pages by `(updated_at, id)` across tables, so a child can arrive
+ * a page before its parent. `sync/pull.ts` therefore applies each page with
+ * enforcement suspended and audits with `PRAGMA foreign_key_check` once the
+ * pull completes.
  *
  * Migrations are generated from this file with `npx drizzle-kit generate`
  * (drizzle.config.ts → src/db/migrations/) and bundled into the app
@@ -32,6 +36,7 @@
  * column without a local one — or drifting a type — fails `tsc`, not a sync.
  */
 import type {
+  DocumentParsedFields,
   DocumentPullRecord,
   ExpenseCategoryPullRecord,
   ExpensePullRecord,
@@ -40,7 +45,14 @@ import type {
   TripPullRecord,
   TripStopPullRecord,
 } from '@triptrackr/contracts';
-import { index, integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import {
+  index,
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+} from 'drizzle-orm/sqlite-core';
 
 // ---------------------------------------------------------------------------
 // Shared column groups
@@ -202,7 +214,7 @@ export const documents = sqliteTable(
       .notNull()
       .references(() => trips.id, { onDelete: 'cascade' }),
     type: text({ enum: documentType }).notNull(),
-    parsed_json: text({ mode: 'json' }).$type<Record<string, unknown> | null>(),
+    parsed_json: text({ mode: 'json' }).$type<DocumentParsedFields | null>(),
     parsed_confirmed_at: text(),
     upload_state: text({ enum: uploadState }).notNull().default('pending'),
     ...localMeta,
@@ -260,11 +272,51 @@ export const fxRates = sqliteTable('fx_rates', {
 // Sync bookkeeping (US6)
 // ---------------------------------------------------------------------------
 
-/** One opaque `next_cursor` per table, as returned by `GET /sync/pull` (sync-protocol.md §1). */
+/**
+ * One opaque `next_cursor` per table. SUPERSEDED and unused: the server pages
+ * ONE cursor across all seven tables (sync-protocol.md §1), which lives in
+ * `sync_state` below. The table stays because a generated migration is never
+ * edited after it has shipped; nothing reads or writes it.
+ */
 export const syncCursors = sqliteTable('sync_cursors', {
   table_name: text().primaryKey(),
   cursor: text().notNull(),
 });
+
+/**
+ * Local-only key/value state of the sync engine (tasks.md T131; US6). One
+ * database file exists per account (`db/client.ts`), so the rows are per
+ * account without a user column. Never pushed, never mirrored:
+ *
+ *   - `pull_cursor`         the opaque `next_cursor` of the last page applied,
+ *                           written in the SAME transaction as that page
+ *   - `first_sync_complete` `'1'` once a full snapshot finished (FR-042)
+ */
+export const syncState = sqliteTable('sync_state', {
+  key: text().primaryKey(),
+  value: text().notNull(),
+});
+
+/**
+ * Records the server refused as `invalid` (tasks.md T132), or that cannot be
+ * re-identified. A parked record is not pushed again until it is edited: the
+ * park is keyed to the `updated_at` the refused version carried, so any later
+ * write (which stamps a new `updated_at`) makes it retryable without any
+ * bookkeeping in the repositories. The row itself stays dirty and untouched:
+ * nothing the traveller recorded is discarded or hidden (Constitution V).
+ */
+export const syncParked = sqliteTable(
+  'sync_parked',
+  {
+    table_name: text().notNull(),
+    record_id: text().notNull(),
+    /** `updated_at` of the version that was refused. */
+    parked_updated_at: text().notNull(),
+    reason: text({ enum: ['invalid', 'id_unavailable'] }).notNull(),
+    parked_at: text().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.table_name, table.record_id] })],
+);
 
 // ---------------------------------------------------------------------------
 // Row types

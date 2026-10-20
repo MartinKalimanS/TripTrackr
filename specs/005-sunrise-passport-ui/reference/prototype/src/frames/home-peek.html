@@ -1,0 +1,41 @@
+<section class="slot" data-slot="home-peek">
+  <div class="phone" id="home-peek" data-frame="home-peek">
+    <div class="screen">
+      <div class="sky"></div>
+      <canvas class="globe" aria-label="Interactive globe"></canvas>
+      <div class="markers"></div>
+
+      <header class="home-head">
+        <div>
+          <div class="t-micro">Wed 14 Oct</div>
+          <h1>Hello, <span class="serif">Marta</span></h1>
+        </div>
+        <div class="avatar ph" data-ph="marta:300" style="width:48px;height:48px;margin-top:2px" role="img" aria-label="Your profile"></div>
+      </header>
+
+      <div class="sheet" style="top:540px">
+        <div class="grab"></div>
+        <button class="btn btn-primary fab home-fab" style="top:-26px">[[i:plus]]New trip</button>
+        <div class="body" style="top:56px">
+          <div class="stats">
+            <div class="stat"><div class="v">14<small>/195</small></div><div class="l t-micro">Countries</div></div>
+            <div class="stat"><div class="v">22</div><div class="l t-micro">Trips</div></div>
+            <div class="stat"><div class="v">61,480</div><div class="l t-micro">Kilometres</div></div>
+          </div>
+          <button class="trip-now mini" style="width:100%;text-align:left;margin-top:14px">
+            <div class="th ph" data-ph="tram:240"></div>
+            <div class="bd">
+              <div class="ttl">Portugal Road Trip</div>
+              <div class="sub t-sm"><span style="display:inline-flex;align-items:center;gap:6px"><svg class="ic ic-16" style="color:var(--accent-text)"><use href="#i-circle-dot"/></svg>Active · Day 3 of 8</span></div>
+            </div>
+            <div class="go">[[i:chevron-up]]</div>
+          </button>
+        </div>
+      </div>
+      {{TABS:globe}}
+    </div>
+    {{STATUS}}
+    {{HIND}}
+  </div>
+  <p class="cap"><b>02</b>Home · peek detent<span>Whole planet visible with its atmosphere, all roundels on show. The peek still carries the numerals and the live trip. Grabber is a 48px tap target that cycles detents.</span></p>
+</section>

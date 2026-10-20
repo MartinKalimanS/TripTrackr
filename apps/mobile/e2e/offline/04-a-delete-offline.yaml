@@ -1,0 +1,44 @@
+# Row 4, first half — Delete a record offline, then sync.
+# Expected: the deletion propagates; the record does not reappear on a second
+# device (FR-039). Device A, still in the offline window.
+#
+# Two deletions, because they fail differently:
+#   'Ephemeral note'         created offline in row 1 and deleted before it was
+#                            ever pushed: the second device must NEVER acquire it
+#                            (quickstart.md §5 step 5, "it never had it, and it
+#                            must not acquire it").
+#   'Synced note to delete'  already on device B (phase p02): the second device
+#                            must LOSE it, not keep it.
+# 'Offline note' stays: it is also the sentinel the reconnect waits on. A pending
+# marker on a surviving note in the same table is the only on-screen evidence
+# that this table's batch, tombstones included, has been acknowledged.
+#
+# Alert.alert's destructive button is pressed by id (confirm-alert.yaml).
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Ephemeral note'
+- assertVisible: 'Synced note to delete'
+
+- tapOn: 'Delete Ephemeral note'
+- assertVisible: 'Delete this note\?'
+- runFlow: _helpers/confirm-alert.yaml
+- assertNotVisible: 'Ephemeral note'
+
+- tapOn: 'Delete Synced note to delete'
+- assertVisible: 'Delete this note\?'
+- runFlow: _helpers/confirm-alert.yaml
+- assertNotVisible: 'Synced note to delete'
+
+# The rest of the list is untouched.
+- assertVisible: 'Offline note'
+- assertVisible: 'Shared note'
+- assertVisible: 'Race note'
+- tapOn: 'Back'
+- tapOn: 'Back'

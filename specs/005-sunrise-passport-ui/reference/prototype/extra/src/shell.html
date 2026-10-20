@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SUNRISE PASSPORT v2 - extra screens</title>
+<script src="../tokens.js"></script>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="extra.css">
+<link rel="stylesheet" href="screens.css">
+</head>
+<body>
+<!--SPRITE-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="grunge" x="-6%" y="-6%" width="112%" height="112%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="3" seed="11" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  8 0 0 0 -2.05" result="m"/>
+    <feComposite in="SourceGraphic" in2="m" operator="in"/>
+  </filter>
+</defs></svg>
+
+<header class="board-head">
+  <h1>SUNRISE PASSPORT <span>v2</span> &middot; extra screens</h1>
+  <p>Add stop, Countries, Photos, Expenses, Notes, Documents, Offline maps, Auth, Settings, Recap, Trip menu, Search and the states sheet. Same tokens as the core prototype (<code>../tokens.css</code>): paper / cream / ink, coral = do and now, 44 px targets, 9 type sizes, two shadows, no blur dependence.</p>
+  <div class="theme-switch" role="group" aria-label="Theme"><button data-set-theme="light"><svg class="ic ic-20"><use href="#i-sun"/></svg>Sunrise</button><button data-set-theme="dark"><svg class="ic ic-20"><use href="#i-moon"/></svg>Nightfall</button></div>
+</header>
+
+<main class="frames" id="frames">
+<!--FRAMES-->
+</main>
+<div class="foot">Prototype only. Photos: Unsplash (local copies, <code>photos.json</code>). Icons: Lucide, 1.75 stroke. Query: <code>?only=&lt;id&gt;</code> <code>&amp;theme=dark</code> <code>&amp;scale=1.5</code> <code>&amp;long=1</code> <code>&amp;contrast=more</code>.</div>
+
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
+<script src="vendor/world.js"></script>
+<script src="extra.js"></script>
+<script src="audit.js"></script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+/**
+ * `useStackHeaderOptions` - the themed options of a native stack header (feature 004, then
+ * Sunrise Passport; contracts C4-9 and C5-32; research D4-06 and D5-12; FR-007, FR-023, FR-025).
+ *
+ *   // src/app/(tabs)/trips/_layout.tsx
+ *   const options = useStackHeaderOptions('Trips');
+ *   return <Stack screenOptions={options} />;
+ *
+ * It is an adapter because the colours and the display face are the kit's and Uniwind's
+ * to read: `useThemeColor` and `useCSSVariable` may not be imported outside
+ * `src/components/ui/` (contract C4-6), and a native header cannot take a className, so
+ * the values have to be read in JavaScript and handed over as style.
+ *
+ * What a top-level list screen gets (`stackHeaderOptions`, the pure half, asserted per
+ * platform; Trips and You):
+ * - iOS: a large title in the display face, Bold at the `display` role's 40 (it collapses as
+ *   a list scrolls when the list is the first child of the screen and sets
+ *   `contentInsetAdjustmentBehavior`, as `ListScreen` and `Screen` do with `underHeader`;
+ *   the options and those props are asserted, the collapse itself is native and a device
+ *   check, T408), then a collapsed title in SemiBold at the `callout` role's 17, no shadow
+ *   under either bar, the controls in the accent and the titles in the foreground ink. The
+ *   option is `headerLargeTitleEnabled`:
+ *   `headerLargeTitle` is deprecated in the installed router (v57 Stack reference). The
+ *   header itself is NOT given a background: React Navigation leaves a large-title header
+ *   transparent over the content (it is the canvas), and its own note in
+ *   `useHeaderConfigProps` says a background colour there makes the title invisible on
+ *   iOS 26.
+ * - Android: a standard header with the same title, painted with the canvas, no large
+ *   title and no shadow; the title is the `title` role, Bold at 28, from the left, as the
+ *   prototype's top app bar draws it (D5-21: Android is designed, not derived).
+ * - Both: the scene behind is the canvas (`contentStyle`).
+ *
+ * The display face (research D4-07, D5-06): the iOS title uses `--font-display` (SemiBold)
+ * and the large title `--font-display-bold`; the Android title uses `--font-display-bold`; read
+ * with `useCSSVariable` from `global.css`, where the iOS block already spells the
+ * PostScript names. Each is paired with the weight of its own face, because React
+ * Native picks the nearest weight of the family and the router's default weights
+ * (bold, heavy) would otherwise choose for it. A variable that is not readable leaves
+ * the platform face, with no family and no weight.
+ * UNVERIFIED ON A DEVICE: that both headers draw the display face (device check T408).
+ */
+import type { NativeStackNavigationOptions } from 'expo-router';
+import { useThemeColor } from 'heroui-native';
+import { useMemo } from 'react';
+import { Platform } from 'react-native';
+import { useCSSVariable } from 'uniwind';
+
+import { TypeRoles, type TypeRole } from '@/theme';
+
+/** What a header is painted with: three theme colours and, optionally, two families. */
+export interface StackHeaderTheme {
+  canvas: string;
+  foreground: string;
+  accent: string;
+  /** The display face for the (collapsed) title: SemiBold. */
+  titleFont?: string;
+  /** The display face for the large title: Bold. */
+  largeTitleFont?: string;
+}
+
+/** The size of a sized role, for a native header that takes a number and no class. */
+export function roleSize(role: Exclude<TypeRole, 'accent'>): number {
+  const { size } = TypeRoles[role];
+  if (size === null) throw new Error(`The role ${role} has no size.`);
+  return size;
+}
+
+/** The weight of each display face's own file; see the header. */
+const TITLE_WEIGHT = '600';
+const LARGE_TITLE_WEIGHT = '700';
+type FaceWeight = typeof TITLE_WEIGHT | typeof LARGE_TITLE_WEIGHT;
+
+/**
+ * A family name from what `useCSSVariable` returns. The stylesheet writes the name in
+ * quotes (`'BricolageGrotesque-Bold'`); a native header wants it bare. Anything that is
+ * not a non-blank string is no family.
+ */
+export function fontFamilyOf(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const bare = value
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '')
+    .trim();
+  return bare === '' ? undefined : bare;
+}
+
+/**
+ * The ink and the size of a role, and the family with the weight of its own file when there
+ * is a family. The size is a token and stays when the face is not declared.
+ */
+function titleStyle(
+  color: string,
+  family: string | undefined,
+  weight: FaceWeight,
+  fontSize: number,
+) {
+  return family === undefined
+    ? { color, fontSize }
+    : { color, fontFamily: family, fontWeight: weight, fontSize };
+}
+
+/** The options for a header over the canvas, for `platform`. Pure. */
+export function stackHeaderOptions(
+  title: string,
+  theme: StackHeaderTheme,
+  platform: string,
+): NativeStackNavigationOptions {
+  const { canvas, foreground, accent, titleFont, largeTitleFont } = theme;
+  const common: NativeStackNavigationOptions = {
+    title,
+    headerShadowVisible: false,
+    headerLargeTitleShadowVisible: false,
+    headerTintColor: accent,
+    contentStyle: { backgroundColor: canvas },
+  };
+  if (platform !== 'ios') {
+    return {
+      ...common,
+      headerStyle: { backgroundColor: canvas },
+      headerTitleAlign: 'left',
+      headerTitleStyle: titleStyle(
+        foreground,
+        largeTitleFont,
+        LARGE_TITLE_WEIGHT,
+        roleSize('title'),
+      ),
+    };
+  }
+  return {
+    ...common,
+    headerTitleStyle: titleStyle(
+      foreground,
+      titleFont,
+      TITLE_WEIGHT,
+      roleSize('callout'),
+    ),
+    headerLargeTitleEnabled: true,
+    headerLargeTitleStyle: titleStyle(
+      foreground,
+      largeTitleFont,
+      LARGE_TITLE_WEIGHT,
+      roleSize('display'),
+    ),
+  };
+}
+
+const THEME_COLORS = ['background', 'foreground', 'accent'] as const;
+
+/**
+ * `stackHeaderOptions` for the running platform and theme: the same object until the
+ * title, a colour or a family changes, so a navigator does not re-apply it every render.
+ */
+export function useStackHeaderOptions(title: string): NativeStackNavigationOptions {
+  const [canvas, foreground, accent] = useThemeColor(THEME_COLORS);
+  const titleFont = fontFamilyOf(useCSSVariable('--font-display'));
+  const largeTitleFont = fontFamilyOf(useCSSVariable('--font-display-bold'));
+
+  return useMemo(
+    () =>
+      stackHeaderOptions(
+        title,
+        { canvas, foreground, accent, titleFont, largeTitleFont },
+        Platform.OS,
+      ),
+    [title, canvas, foreground, accent, titleFont, largeTitleFont],
+  );
+}

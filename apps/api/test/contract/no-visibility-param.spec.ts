@@ -9,6 +9,13 @@ import {
   type RegisteredTraveller,
 } from '../support/app';
 import { migrationSql } from '../support/db';
+import {
+  PASS_FIELDS,
+  documentsBucket,
+  uploadBody,
+  uploadDocument,
+  type DocumentsBucket,
+} from '../support/documents';
 import { FOOD, createExpenseFor, createTripFor, seedFxRates } from '../support/expenses';
 import { seedGeography } from '../support/geography';
 
@@ -24,15 +31,17 @@ import { seedGeography } from '../support/geography';
  */
 const VISIBILITY_KEYS = ['is_public', 'visibility', 'public', 'shared'] as const;
 
-describe('contract 9 — no visibility parameter on expense routes', () => {
+describe('contract 9 — no visibility parameter on expense or document routes', () => {
   let app: NestExpressApplication;
   let owner: Sql;
+  let bucket: DocumentsBucket;
   let traveller: RegisteredTraveller;
   let tripId: string;
 
   beforeAll(async () => {
     app = await bootTestApp();
     owner = migrationSql();
+    bucket = documentsBucket();
     await seedGeography(owner);
     await seedFxRates(owner);
     traveller = await registerTraveller(app);
@@ -40,6 +49,7 @@ describe('contract 9 — no visibility parameter on expense routes', () => {
   });
 
   afterAll(async () => {
+    bucket?.close();
     await owner?.end();
     await app?.close();
   });
@@ -119,10 +129,70 @@ describe('contract 9 — no visibility parameter on expense routes', () => {
     expect(columns).toEqual([]);
   });
 
-  // Document routes arrive with User Story 5 (T114); the same four keys are
-  // asserted against POST /trips/:tripId/documents and PATCH /documents/:id
-  // there, alongside adversarial row 4 (T108).
-  it.todo(
-    'POST /trips/:tripId/documents and PATCH /documents/:id refuse every visibility key (US5)',
+  // Documents (User Story 5, T114): the same four keys, against the upload and
+  // the patch — and, since no document route takes a query at all, against the
+  // reads' query strings too. Adversarial row 4 is test/privacy/documents.spec.ts.
+  const documentsOnTrip = async () => {
+    const rows = await owner<{ n: string }[]>`
+      SELECT count(*)::text AS n FROM documents WHERE trip_id = ${tripId}::uuid
+    `;
+    return rows[0]?.n;
+  };
+
+  it.each(VISIBILITY_KEYS)(
+    'POST /trips/:tripId/documents refuses `%s`, storing no row and no object',
+    async (key) => {
+      const rowsBefore = await documentsOnTrip();
+      const objectsBefore = await bucket.keys(`${traveller.tokens.user.id}/`);
+
+      const response = await server()
+        .post(`/v1/trips/${tripId}/documents`)
+        .set(auth())
+        .send(uploadBody({ parsed_json: PASS_FIELDS, [key]: false }));
+
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({ error: { code: 'VALIDATION_FAILED' } });
+      expect(await documentsOnTrip()).toBe(rowsBefore);
+      expect(await bucket.keys(`${traveller.tokens.user.id}/`)).toEqual(objectsBefore);
+    },
+  );
+
+  it.each(VISIBILITY_KEYS)('PATCH /documents/:id refuses `%s`', async (key) => {
+    const document = await uploadDocument(app, traveller, tripId, {
+      parsed_json: PASS_FIELDS,
+    });
+
+    const response = await server()
+      .patch(`/v1/documents/${document.id}`)
+      .set(auth())
+      .send({ confirmed: true, [key]: true });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({ error: { code: 'VALIDATION_FAILED' } });
+
+    const [row] = await owner<{ parsed_confirmed_at: Date | null; updated_at: Date }[]>`
+      SELECT parsed_confirmed_at, updated_at FROM documents WHERE id = ${document.id}::uuid
+    `;
+    expect(row?.parsed_confirmed_at).toBeNull();
+    expect(row?.updated_at.toISOString()).toBe(document.updated_at);
+  });
+
+  it.each(VISIBILITY_KEYS)(
+    'the document reads refuse `%s` as a filter — there is no public variant',
+    async (key) => {
+      const document = await uploadDocument(app, traveller, tripId);
+
+      const list = await server()
+        .get(`/v1/trips/${tripId}/documents?${key}=true`)
+        .set(auth());
+      const content = await server()
+        .get(`/v1/documents/${document.id}/content?${key}=true`)
+        .set(auth());
+
+      expect(list.status).toBe(400);
+      expect(content.status).toBe(400);
+      expect(list.body).toMatchObject({ error: { code: 'VALIDATION_FAILED' } });
+      expect(content.body).toMatchObject({ error: { code: 'VALIDATION_FAILED' } });
+    },
   );
 });

@@ -6,10 +6,15 @@ import { loadEnv } from '@/common/config/env.schema';
 import {
   FX_REFRESH_SCHEDULER,
   QUEUE_NAMES,
+  TOMBSTONE_PURGE_SCHEDULER,
   type QueueName,
 } from '@/common/queue/queue.constants';
+import { StorageService } from '@/common/storage/storage.service';
 
 import { refreshFxRates } from './fx-refresh.processor';
+import { processPhoto, type MediaStorage } from './media.processor';
+import { FailClosedPhotoScreening, type PhotoScreening } from './photo-screening';
+import { purgeTombstones, type PurgeStorage } from './tombstone-purge.processor';
 
 /**
  * Everything the worker process is made of, apart from starting it — so that
@@ -24,8 +29,8 @@ import { refreshFxRates } from './fx-refresh.processor';
  * The database connection is the API role's (`DATABASE_URL`), exactly as the
  * API's own pool — never the owner (research D-20). A processor that must
  * touch a policed table without a traveller identity goes through a SECURITY
- * DEFINER keyhole (the FX backfill, 0009), which is the same rule the request
- * path follows for registration.
+ * DEFINER keyhole (the FX backfill, 0009; the media worker, 0012), which is the
+ * same rule the request path follows for registration.
  */
 
 /** Where a log line goes; injectable so a test can read it. */
@@ -79,6 +84,23 @@ export interface ProcessorDeps {
   readonly sql: Sql;
   readonly fetch: typeof fetch;
   readonly fxRatesUrl: string;
+  /**
+   * The object store the media worker reads originals from and writes
+   * thumbnails to (T113). `bootstrapWorker` always supplies it; a registry
+   * built without one fails every media job, loudly, rather than letting the
+   * queue fill with jobs nothing can run.
+   */
+  readonly storage?: MediaStorage;
+  /**
+   * The object store as the tombstone purge removes from it (T129): the strict
+   * `removeObject`, which throws where `deleteObject` — part of
+   * {@link MediaStorage} — logs and carries on. `bootstrapWorker` passes the
+   * same `StorageService` for both; a registry built without it fails every
+   * purge job, loudly, rather than deleting rows whose bytes it cannot remove.
+   */
+  readonly purgeStorage?: PurgeStorage;
+  /** Photo screening (research D-34); the fail-closed port when absent. */
+  readonly screening?: PhotoScreening;
   readonly streams?: WorkerStreams;
 }
 
@@ -89,6 +111,8 @@ export interface ProcessorDeps {
 export function buildProcessors(
   deps: ProcessorDeps,
 ): Partial<Record<QueueName, Processor>> {
+  const screening = deps.screening ?? new FailClosedPhotoScreening();
+
   return {
     [QUEUE_NAMES.fxRefresh]: async () => {
       const result = await refreshFxRates({
@@ -97,6 +121,33 @@ export function buildProcessors(
         url: deps.fxRatesUrl,
       });
       logLine('info', { queue: QUEUE_NAMES.fxRefresh, ...result }, deps.streams);
+      return result;
+    },
+    [QUEUE_NAMES.media]: async (job) => {
+      if (!deps.storage) {
+        throw new Error(
+          'The media processor was built without object storage; bootstrapWorker supplies it.',
+        );
+      }
+      const result = await processPhoto(job.data, {
+        sql: deps.sql,
+        storage: deps.storage,
+        screening,
+      });
+      // The only trace a finished media job leaves: the job itself is removed
+      // on completion (modules/photos/media-job.producer.ts).
+      logLine('info', { queue: QUEUE_NAMES.media, ...result }, deps.streams);
+      return result;
+    },
+    [QUEUE_NAMES.tombstonePurge]: async () => {
+      if (!deps.purgeStorage) {
+        throw new Error(
+          'The tombstone purge was built without object removal; bootstrapWorker supplies it.',
+        );
+      }
+      const result = await purgeTombstones({ sql: deps.sql, storage: deps.purgeStorage });
+      // Counts only: the purge never writes a key, an id or a traveller to a log.
+      logLine('info', { queue: QUEUE_NAMES.tombstonePurge, ...result }, deps.streams);
       return result;
     },
   };
@@ -123,10 +174,68 @@ export interface SchedulerQueue {
   close(): Promise<void>;
 }
 
+/** One recurring job: the queue it runs on, and the scheduler that keeps it running. */
+interface Schedule {
+  readonly queue: QueueName;
+  readonly assert: (queue: SchedulerQueue) => Promise<unknown>;
+}
+
+const SCHEDULES: readonly Schedule[] = [
+  {
+    queue: QUEUE_NAMES.fxRefresh,
+    // `immediately` gives a fresh deployment rates on first boot.
+    assert: (queue) =>
+      queue.upsertJobScheduler(
+        FX_REFRESH_SCHEDULER.id,
+        { every: FX_REFRESH_SCHEDULER.everyMs, immediately: true },
+        { name: 'refresh' },
+      ),
+  },
+  {
+    queue: QUEUE_NAMES.tombstonePurge,
+    // No `immediately`: a fresh deployment has nothing old enough to purge
+    // (queue.constants.ts), so the first run is the next interval boundary.
+    assert: (queue) =>
+      queue.upsertJobScheduler(
+        TOMBSTONE_PURGE_SCHEDULER.id,
+        { every: TOMBSTONE_PURGE_SCHEDULER.everyMs },
+        { name: 'purge' },
+      ),
+  },
+];
+
+async function assertSchedule(
+  schedule: Schedule,
+  streams: WorkerStreams,
+  makeQueue: (name: QueueName) => SchedulerQueue,
+): Promise<void> {
+  // Built here rather than through `createQueue`: that helper logs through
+  // the Nest Logger, and this process has no Nest application to bind it to.
+  const queue = makeQueue(schedule.queue);
+  queue.on('error', (error: Error) => {
+    logLine(
+      'error',
+      { queue: schedule.queue, message: `scheduler: ${error.message}` },
+      streams,
+    );
+  });
+
+  try {
+    await schedule.assert(queue);
+  } finally {
+    await queue.close();
+  }
+}
+
 /**
  * Makes sure the recurring jobs exist. `upsertJobScheduler` is idempotent by
- * id, so every worker start re-asserts the same schedule and never creates a
- * second one; `immediately` gives a fresh deployment rates on first boot.
+ * id, so every worker start re-asserts the same schedules and never creates a
+ * second one.
+ *
+ * Each schedule is asserted whatever became of the one before it, so that a
+ * failure on one queue cannot leave another without its job; the function
+ * still rejects afterwards, naming every schedule that failed, so the caller
+ * logs it and the next start retries.
  */
 export async function ensureSchedulers(
   connection: Redis,
@@ -134,25 +243,21 @@ export async function ensureSchedulers(
   makeQueue: (name: QueueName) => SchedulerQueue = (name) =>
     new Queue(name, { connection }),
 ): Promise<void> {
-  // Built here rather than through `createQueue`: that helper logs through
-  // the Nest Logger, and this process has no Nest application to bind it to.
-  const queue = makeQueue(QUEUE_NAMES.fxRefresh);
-  queue.on('error', (error: Error) => {
-    logLine(
-      'error',
-      { queue: QUEUE_NAMES.fxRefresh, message: `scheduler: ${error.message}` },
-      streams,
-    );
-  });
+  const failures: Error[] = [];
 
-  try {
-    await queue.upsertJobScheduler(
-      FX_REFRESH_SCHEDULER.id,
-      { every: FX_REFRESH_SCHEDULER.everyMs, immediately: true },
-      { name: 'refresh' },
+  for (const schedule of SCHEDULES) {
+    try {
+      await assertSchedule(schedule, streams, makeQueue);
+    } catch (error: unknown) {
+      failures.push(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new AggregateError(
+      failures,
+      failures.map((failure) => failure.message).join('; '),
     );
-  } finally {
-    await queue.close();
   }
 }
 
@@ -266,8 +371,20 @@ export function bootstrapWorker(connection: Redis): void {
   const env = loadEnv();
   const sql = createWorkerDatabase(env.DATABASE_URL);
 
+  // Reads the S3_* variables loadEnv() has just validated. One instance for
+  // both roles it plays: the media worker's best-effort store and the purge's
+  // strict `removeObject`.
+  const storage = new StorageService();
+
   const workers = startWorkers(
-    buildProcessors({ sql, fetch, fxRatesUrl: env.FX_RATES_URL }),
+    buildProcessors({
+      sql,
+      fetch,
+      fxRatesUrl: env.FX_RATES_URL,
+      storage,
+      purgeStorage: storage,
+      screening: new FailClosedPhotoScreening(),
+    }),
     bullWorkerFactory(connection),
   );
 

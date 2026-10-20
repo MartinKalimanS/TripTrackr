@@ -1,0 +1,24 @@
+# Plan a trip from the trips tab (a title and the home currency, nothing else).
+#
+# Needs: the trips tab showing and TRIP_TITLE (a literal). Works with the
+# network down: a trip is written to the local store first (D-08, T202). Leaves
+# the new trip's screen open.
+appId: com.triptrackr.app
+---
+- tapOn:
+    id: 'tab-trips'
+- tapOn:
+    id: 'trips-plan-trip'
+- assertVisible:
+    id: 'add-trip-screen'
+- tapOn:
+    id: 'add-trip-title'
+- inputText: ${TRIP_TITLE}
+- hideKeyboard
+- tapOn:
+    id: 'currency-EUR'
+- tapOn:
+    id: 'add-trip-save'
+- assertVisible:
+    id: 'trip-screen'
+- assertVisible: ${TRIP_TITLE}

@@ -45,6 +45,25 @@ export type StopWithPlace = TripStopRow & {
   city_name: string | null;
   country_id: number | null;
   country_name: string | null;
+  /**
+   * The country's ISO alpha-2 code, for its flag (`FlagChip`); null if never cached. Optional
+   * so a row built by hand (a test, a fixture) need not carry it.
+   */
+  country_iso?: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
+/**
+ * A stop with its cached city's position and its country's code and name, as the trip
+ * list reads it (feature 005, T539): every place column is null while this device has not
+ * cached the city.
+ */
+export type StopWithCountry = TripStopRow & {
+  city_name: string | null;
+  country_id: number | null;
+  country_iso: string | null;
+  country_name: string | null;
   lat: number | null;
   lng: number | null;
 };
@@ -120,6 +139,7 @@ function forTripQuery(db: AppDatabase, tripId: string) {
       city_name: cities.name,
       country_id: cities.country_id,
       country_name: countries.name,
+      country_iso: countries.iso_code,
       lat: cities.lat,
       lng: cities.lng,
     })
@@ -137,6 +157,99 @@ function allActiveQuery(db: AppDatabase) {
     .from(tripStops)
     .where(isNull(tripStops.deleted_at))
     .orderBy(asc(tripStops.trip_id), asc(tripStops.sort_order));
+}
+
+/**
+ * Every live stop with its cached city's position and country — what the
+ * globe draws (research D-30). Ordered as the server pairs stops into arcs
+ * (arcs.service.ts: `sort_order, created_at, id`), so both sides draw the same
+ * legs even when two stops share a position. Null place columns mean the city
+ * is not cached on this device. Live-queryable.
+ */
+function allWithPlaceQuery(db: AppDatabase) {
+  return db
+    .select({
+      id: tripStops.id,
+      trip_id: tripStops.trip_id,
+      city_id: tripStops.city_id,
+      arrive_date: tripStops.arrive_date,
+      depart_date: tripStops.depart_date,
+      country_id: cities.country_id,
+      country_iso: countries.iso_code,
+      lat: cities.lat,
+      lng: cities.lng,
+    })
+    .from(tripStops)
+    .leftJoin(cities, eq(cities.id, tripStops.city_id))
+    .leftJoin(countries, eq(countries.id, cities.country_id))
+    .where(isNull(tripStops.deleted_at))
+    .orderBy(
+      asc(tripStops.trip_id),
+      asc(tripStops.sort_order),
+      asc(tripStops.created_at),
+      asc(tripStops.id),
+    );
+}
+
+/**
+ * Every live stop with the name of its cached city and the code of that city's country, in
+ * trip order then stop order: what the Home sheet names the live trip's place and flag from
+ * (feature 005, T535). Null names mean the city is not cached on this device. It reads
+ * `trip_stops` live; a change to the geography cache is the caller's to key on, as the
+ * globe's query is (`use-globe.ts`).
+ */
+function allWithNamesQuery(db: AppDatabase) {
+  return db
+    .select({
+      id: tripStops.id,
+      trip_id: tripStops.trip_id,
+      sort_order: tripStops.sort_order,
+      arrive_date: tripStops.arrive_date,
+      depart_date: tripStops.depart_date,
+      city_name: cities.name,
+      country_id: cities.country_id,
+      iso_code: countries.iso_code,
+    })
+    .from(tripStops)
+    .leftJoin(cities, eq(cities.id, tripStops.city_id))
+    .leftJoin(countries, eq(countries.id, cities.country_id))
+    .where(isNull(tripStops.deleted_at))
+    .orderBy(
+      asc(tripStops.trip_id),
+      asc(tripStops.sort_order),
+      asc(tripStops.created_at),
+      asc(tripStops.id),
+    );
+}
+
+/**
+ * Every live stop with its cached city and country, in the order the globe pairs stops
+ * into legs (`sort_order, created_at, id`), so a trip's distance on the list is the
+ * globe's. What the trip list's card model reads (feature 005, T539; research D5-17):
+ * the country of a card, its stop labels and its kilometres. Null place columns mean the
+ * city is not cached on this device. Live-queryable; read-only, local.
+ */
+function allActiveWithCountryQuery(db: AppDatabase) {
+  return db
+    .select({
+      ...getTableColumns(tripStops),
+      city_name: cities.name,
+      country_id: cities.country_id,
+      country_iso: countries.iso_code,
+      country_name: countries.name,
+      lat: cities.lat,
+      lng: cities.lng,
+    })
+    .from(tripStops)
+    .leftJoin(cities, eq(cities.id, tripStops.city_id))
+    .leftJoin(countries, eq(countries.id, cities.country_id))
+    .where(isNull(tripStops.deleted_at))
+    .orderBy(
+      asc(tripStops.trip_id),
+      asc(tripStops.sort_order),
+      asc(tripStops.created_at),
+      asc(tripStops.id),
+    );
 }
 
 function liveStopsOf(db: AppDatabase, tripId: string): TripStopRow[] {
@@ -226,6 +339,9 @@ function remove(db: AppDatabase, id: string): void {
 export const stopsRepository = {
   forTripQuery,
   allActiveQuery,
+  allActiveWithCountryQuery,
+  allWithPlaceQuery,
+  allWithNamesQuery,
   add,
   updateDates,
   move,

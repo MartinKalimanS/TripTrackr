@@ -44,6 +44,67 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+
+      # T201 / research D-13: the sync wire format is defined ONCE, in
+      # packages/contracts/src/. Constitution II makes the two apps agreeing on
+      # it the offline-sync gate, so a second copy of a record shape — however
+      # innocent — is a defect the build refuses rather than a review comment.
+      # Plain grep + awk on purpose: no install, fails in seconds.
+      #   1. No object schema (`z.object`, `z.strictObject`, `z.looseObject`)
+      #      inside the two sync modules; they import every shape from
+      #      @triptrackr/contracts.
+      #   2. No sync record or envelope schema declared anywhere outside
+      #      packages/contracts/ (a `*PushRecord`, `*PullRecord`, `PushRequest`,
+      #      `PullResponse`, ... built with one of those), and no hand-written
+      #      `interface`/`type` literal standing in for a record shape.
+      # The one escape hatch is deliberate and visible in review: a line that
+      # carries — or is directly preceded by — a `sync-guard:allow <reason>`
+      # comment, or a file with a `sync-guard:allow-file <reason>` comment. It
+      # exists for a shape that is NOT a sync record (a server-private token
+      # payload, a lenient envelope that lets each record be validated against
+      # its contracts schema on its own); never for a record.
+      - name: Sync record shapes live only in @triptrackr/contracts (T201)
+        run: |
+          shapes='z\.(strictObject|object|looseObject)[(]'
+          named='(PushRecord|PullRecord|PushRequest|PushResponse|PushResult|PullQuery|PullChanges|PullResponse)'
+          declared="(const|let|var) +[A-Za-z0-9_]*${named}[A-Za-z0-9_]* *(:[^=]+)?= *z\.(strictObject|object|looseObject)[(]"
+          copied="(interface +[A-Za-z0-9_]*${named}([^A-Za-z0-9_]|$)|type +[A-Za-z0-9_]*${named}[A-Za-z0-9_]* *= *[{])"
+
+          # file:line:text of every line under the given paths matching $1 that is
+          # not covered by a sync-guard:allow comment; packages/contracts/ is exempt.
+          scan() {
+            local pattern="$1"; shift
+            local files
+            files=$(grep -rlE --include='*.ts' --include='*.tsx' \
+              --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build \
+              -e "$pattern" "$@" | grep -v '^packages/contracts/' || true)
+            while IFS= read -r file; do
+              [ -n "$file" ] || continue
+              ! grep -q 'sync-guard:allow-file' "$file" || continue
+              RE="$pattern" awk '
+                $0 ~ ENVIRON["RE"] && $0 !~ /sync-guard:allow/ && prev !~ /sync-guard:allow/ {
+                  print FILENAME ":" FNR ":" $0
+                }
+                { prev = $0 }' "$file"
+            done <<< "$files"
+          }
+
+          in_sync_modules=$(scan "$shapes" apps/api/src/modules/sync apps/mobile/src/sync)
+          declared_elsewhere=$(scan "$declared|$copied" apps packages)
+
+          if [ -n "$in_sync_modules$declared_elsewhere" ]; then
+            if [ -n "$in_sync_modules" ]; then
+              echo "::error::object schema inside a sync module - import it from @triptrackr/contracts (or mark a non-record shape with sync-guard:allow <reason> / sync-guard:allow-file <reason>):"
+              echo "$in_sync_modules"
+            fi
+            if [ -n "$declared_elsewhere" ]; then
+              echo "::error::sync record shape defined outside packages/contracts/src/:"
+              echo "$declared_elsewhere"
+            fi
+            exit 1
+          fi
+          echo "no local copy of a sync record shape"
+
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc

@@ -8,6 +8,7 @@
  * be asserted without mocking React Native internals.
  */
 import {
+  accessibleFallbackFlags,
   appearanceChangeEvents,
   readPrefersLessTransparency,
   readPrefersMoreContrast,
@@ -123,6 +124,46 @@ describe('readPrefersLessMotion — FR-015', () => {
   });
 });
 
+describe('accessibleFallbackFlags — contract C4, "never the less accessible one"', () => {
+  test('on iOS every signal falls back to the more accessible value', () => {
+    expect(accessibleFallbackFlags('ios')).toEqual({
+      prefersMoreContrast: true,
+      prefersLessMotion: true,
+      prefersLessTransparency: true,
+    });
+  });
+
+  test('on Android reduced transparency stays structurally false: the setting does not exist', () => {
+    expect(accessibleFallbackFlags('android')).toEqual({
+      prefersMoreContrast: true,
+      prefersLessMotion: true,
+      prefersLessTransparency: false,
+    });
+  });
+
+  test('on an unknown platform only motion has a reader that falls back', () => {
+    expect(accessibleFallbackFlags('unknown-os')).toEqual({
+      prefersMoreContrast: false,
+      prefersLessMotion: true,
+      prefersLessTransparency: false,
+    });
+  });
+
+  test.each(['ios', 'android', 'unknown-os'])(
+    'is exactly what the three readers return when no query is available (%s)',
+    async (os) => {
+      const none = {} as AccessibilityQueries;
+      await expect(
+        Promise.all([
+          readPrefersMoreContrast(os, none),
+          readPrefersLessMotion(os, none),
+          readPrefersLessTransparency(os, none),
+        ]),
+      ).resolves.toEqual(Object.values(accessibleFallbackFlags(os)));
+    },
+  );
+});
+
 describe('appearanceChangeEvents — contract C4 "every field updates live"', () => {
   /**
    * Found on device (T058): increased contrast was read correctly at mount but
@@ -152,7 +193,7 @@ describe('appearanceChangeEvents — contract C4 "every field updates live"', ()
   });
 
   test('every signal the context exposes has a corresponding subscription', () => {
-    // theme, fontScale and elevationProfile are derived elsewhere; the three
+    // theme and fontScale are derived elsewhere; the three
     // accessibility flags must each be covered or one of them goes stale.
     for (const os of ['ios', 'android'] as const) {
       const events = appearanceChangeEvents(os);

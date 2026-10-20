@@ -236,7 +236,12 @@ parent trip public.
 - The spec's edge case "a photo's embedded location contradicts the city it was filed under" is
   resolved by keeping `city_id` and the EXIF columns independent. EXIF is recorded as observed; the
   filing is the traveller's. Neither overwrites the other, and a mismatch is surfaced rather than
-  silently reconciled (Constitution IV).
+  silently reconciled (Constitution IV). The media worker files a photo that has **no** city under
+  the nearest city among its trip's stops within 50 km of its EXIF position; it never replaces a
+  filing (research D-34).
+- The uploaded bytes carry no EXIF — the device re-encodes before upload — so `exif_lat`/`exif_lng`
+  are the only copy of where a photo was taken. A public projection (User Story 7, FR-055) must
+  leave them out.
 
 ### `documents`
 
@@ -245,10 +250,12 @@ parent trip public.
 | `id`                                     | `UUID` PK                                      |                                                         |
 | `trip_id`                                | `UUID` → `trips.id` ON DELETE CASCADE NOT NULL |                                                         |
 | `type`                                   | `TEXT` ∈ `{boarding_pass, booking, other}`     | FR-031                                                  |
-| `storage_key`                            | `TEXT` NOT NULL                                |                                                         |
+| `storage_key`                            | `TEXT` NOT NULL                                | Object key of the **ciphertext**                        |
+| `content_type`                           | `TEXT` ∈ `{image/jpeg, image/png}` NOT NULL    | **Added** 2026-09-29 — served back on read (D-32)       |
+| `byte_size`                              | `INT` NOT NULL, `> 0`                          | **Added** 2026-09-29 — plaintext size, for the list     |
 | `wrapped_dek`                            | `BYTEA` NOT NULL                               | **Added** — envelope encryption, FR-033 (research D-04) |
 | `dek_key_id`                             | `TEXT` NOT NULL                                | **Added** — which master key wrapped it, for rotation   |
-| `parsed_json`                            | `JSONB` NULL                                   | Extracted barcode fields (FR-035)                       |
+| `parsed_sealed`                          | `BYTEA` NULL                                   | **Changed** 2026-09-29 from `parsed_json JSONB` (D-33)  |
 | `parsed_confirmed_at`                    | `TIMESTAMPTZ` NULL                             | **Added** — Constitution IV: confirmed, not assumed     |
 | `upload_state`                           | `TEXT`                                         | **Added** — FR-041, as for photos                       |
 | `created_at`, `updated_at`, `deleted_at` | `TIMESTAMPTZ`                                  |                                                         |
@@ -265,7 +272,13 @@ public-read policy exists for this table (FR-032). This is deliberate and must n
 - `parsed_confirmed_at` distinguishes extracted-but-unconfirmed from traveller-confirmed data.
   FR-035 says "offer them for confirmation rather than requiring manual entry", and Constitution IV
   forbids presenting unconfirmed extraction as fact. An unreadable or unrecognised barcode (spec edge
-  case) simply leaves `parsed_json` null and falls back to manual entry — it is not an error state.
+  case) simply leaves the fields null and falls back to manual entry — it is not an error state.
+- `parsed_sealed` holds the extracted fields — flight number, flight date, passenger name, and
+  nothing else from the barcode — as AES-256-GCM under the document's own key with the associated
+  data `<id>:parsed` (research D-33). A database dump reveals neither a name nor a flight. On the
+  wire (REST and sync) the owner's fields travel decrypted as `parsed_json` over TLS.
+- The object at `storage_key` is ciphertext written by the API (research D-32); the bucket never
+  holds a document in the clear, and no pre-signed URL is ever issued for this bucket.
 
 ---
 

@@ -1,0 +1,59 @@
+# Row 12 (4 of 5) — Device B reconnects SECOND. Expected: a deterministic
+# outcome and no resurrection: the delete wins, and B, whose newer edit it
+# supersedes, is told (FR-040). See 12a-a-delete-offline.yaml for the whole row.
+#
+# B's push carries a live record newer than the stored row, but the stored row is
+# a tombstone and a tombstone is terminal: the answer is `conflict` carrying the
+# tombstone, B removes the note locally and says why. The notice is held in memory
+# only, so this flow does not restart the app between the reconnect and the
+# assertions. It restarts afterwards, to pull from the cursor once more and see
+# that nothing comes back.
+appId: com.triptrackr.app
+---
+# B is offline; a relaunch loses nothing (the edit is on disk, no notice yet).
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+# Precondition: B's edit of the note is on screen and pending.
+- assertVisible: 'Race note'
+- assertVisible: 'Edited on B after A deleted it\.'
+- assertVisible: 'Not yet synced'
+
+- runFlow: _helpers/go-online.yaml
+
+# --- Told ---------------------------------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: 'conflict-notices'
+    timeout: 60000
+- assertVisible: 'Updated from another device'
+- assertVisible: '.*Race note.* was deleted on another device after your change, so it was removed here\.'
+- takeScreenshot: 12d-b-conflict-notice
+
+# --- Gone, not resurrected ------------------------------------------------------------
+- assertNotVisible: 'Edited on B after A deleted it\.'
+- extendedWaitUntil:
+    notVisible: 'Race note'
+    timeout: 30000
+- tapOn:
+    id: 'conflict-notice-notes:.*-dismiss'
+- assertNotVisible: 'Updated from another device'
+- tapOn: 'Back'
+- tapOn: 'Back'
+
+# Pull again from the stored cursor: the note does not come back.
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Sentinel for row 12'
+- assertNotVisible: 'Race note'
+- tapOn: 'Back'
+- tapOn: 'Back'

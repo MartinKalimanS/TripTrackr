@@ -8,6 +8,12 @@
 
 **Input**: User description: "I want the app to have neumorphism look"
 
+> **Superseded in part by [004-app-ui-redesign](../004-app-ui-redesign/spec.md) (2026-10-07).**
+> The neumorphic identity was dismissed. FR-001 to FR-006 and the surface recipes are replaced;
+> FR-007 to FR-029 are inherited by 004 (restated without shadows in its FR-023 to FR-037), with FR-009
+> clarified to the wording of the accessibility rule it cites. This document is kept as history and as
+> the source of the contrast, touch-target, text-size, motion and transparency commitments.
+
 ## Overview
 
 TripTrackr currently presents its screens with unremarkable default styling. This feature gives
@@ -231,7 +237,7 @@ carry the style.
 - **FR-002**: The system MUST define at least three surface treatments: raised (appears lifted out
   of the background), recessed (appears pressed into it), and flat (neither), plus a pressed state
   for interactive elements.
-- **FR-003**: Every screen, panel, card, list row, button, input, toggle, tab, header, and dialog in
+- **FR-003** _(tab bar amended by 003-globe-first-home: flat, one divider, no per-tab surface)_: Every screen, panel, card, list row, button, input, toggle, tab, header, and dialog in
   the product MUST be presented using these treatments. No screen may retain default
   platform-supplied styling.
 - **FR-004**: Backgrounds and surfaces MUST be tonally close enough for the raised and recessed
@@ -247,7 +253,7 @@ carry the style.
 
 - **FR-008**: Text MUST meet a contrast ratio of at least 4.5:1 against the surface behind it, and
   at least 3:1 for large text, in every theme and every state.
-- **FR-009**: Every interactive control and every meaningful boundary MUST be distinguishable from
+- **FR-009** _(tab bar: boundary carried by one 3:1 divider, see 003 FR-014)_: Every interactive control and every meaningful boundary MUST be distinguishable from
   its surroundings at a contrast ratio of at least 3:1, achieved by outline, tint, or shadow.
 - **FR-010**: No state MUST be communicated by colour alone; each MUST also be conveyed by shape,
   position, icon, text, or depth.

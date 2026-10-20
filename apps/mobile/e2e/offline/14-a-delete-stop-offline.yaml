@@ -1,0 +1,48 @@
+# Row 14, first half — Delete a stop offline; sync; open the trip on a second
+# device. Expected: the stop is gone on the second device; the trip's arcs
+# redraw (FR-039). Device A, still in the offline window.
+#
+# 'Gate baseline' has two stops in two countries (Rome, Paris). Removing Paris
+# leaves one stop, so the trip's arc disappears and the globe's country count
+# falls from 2 to 1. The count and the arcs are derived from the SAME local
+# store (features/globe/), so the count is the assertable proxy for "the arcs
+# redraw": the map itself is native and draws nothing into the accessibility
+# tree. The screenshots are the evidence to review by eye (quickstart.md §7).
+#
+# A checks the redraw locally and at once; B checks it after the sync
+# (14-b-stop-gone.yaml).
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+
+# Before: two countries on the globe.
+- tapOn:
+    id: 'tab-index'
+- assertVisible:
+    id: 'globe-stat-countries'
+    text: '2'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 14-a-globe-before-stop-delete
+
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- assertVisible: 'Stop 2: Paris.*'
+- tapOn: 'Remove Paris'
+- assertVisible: 'Remove Paris\?'
+- runFlow: _helpers/confirm-alert.yaml
+- assertNotVisible: 'Stop 2: Paris.*'
+- assertVisible: 'Stop 1: Rom(a|e).*'
+- tapOn: 'Back'
+
+# After: one country, one stop, no arc.
+- tapOn:
+    id: 'tab-index'
+- assertVisible:
+    id: 'globe-stat-countries'
+    text: '1'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 14-a-globe-after-stop-delete

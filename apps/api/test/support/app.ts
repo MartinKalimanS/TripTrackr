@@ -1,4 +1,3 @@
-import { Module } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { AuthTokens } from '@triptrackr/contracts';
@@ -13,6 +12,9 @@ import { REDIS_CLIENT } from '@/common/redis/redis.module';
 
 import { ensureMigrated } from './db';
 import { applyDatabaseTestEnv } from './env';
+import { InertQueueModule } from './queues';
+
+export { enqueuedJobs, type RecordedJob } from './queues';
 
 /**
  * Boots the application that ships — the real AppModule, the real
@@ -27,14 +29,13 @@ import { applyDatabaseTestEnv } from './env';
  *     limiter fails open and logs — its documented behaviour under an outage.
  *     A spec about the limiter passes an `InMemoryRedis` instead.
  *   - **BullMQ is inert.** Its reconnect loop is not an HTTP contract and would
- *     hold the Jest worker open.
+ *     hold the Jest worker open. Every queue token still resolves — to a
+ *     stand-in that records what it is given (support/queues.ts), so a suite can
+ *     assert that a request enqueued a job with `enqueuedJobs(app, queue)`.
  */
 
 /** Nothing listens here; the connection is refused at once. */
 const UNREACHABLE_REDIS = 'redis://127.0.0.1:1';
-
-@Module({})
-class InertQueueModule {}
 
 export interface BootOptions {
   /** A Redis stand-in for the rate limiter. Without one the limiter fails open. */

@@ -1,0 +1,287 @@
+# User Story 6 — the offline acceptance suite, the GATE (tasks.md T140 rows 1-12,
+# T203 rows 13-15; sync-protocol.md §6; quickstart.md §5). The social layer does not
+# begin until every row passes against real devices (T141, gate-evidence.md).
+#
+# FLOW WRITTEN, NOT YET RUN: needs two Android devices or emulators with a
+# dev-client build, a reachable API and object store, and the preparation in
+# e2e/offline/README.md. No row of this suite has been run yet, so none can be
+# recorded as passing.
+#
+# WHY THIS IS A DISPATCHER AND NOT ONE LINEAR FLOW. The gate needs TWO devices (a
+# second device is the only way to observe arrival, deletion, conflict and a fresh
+# sign-in) and Maestro drives ONE device per invocation. So the suite is cut into
+# 22 PHASES, each the slice one device runs between two operator steps. Run them
+# in order, each against the device it belongs to:
+#
+#   maestro --device <udid> test \
+#     -e RUN_ID=<same for the whole run> -e DEVICE_ROLE=<A|B> -e PHASE=<pNN> \
+#     apps/mobile/e2e/06-offline-acceptance.yaml
+#
+# The README has the ordered command list, the row-to-file table, how to reset the
+# server account and how to record results. Calling this file with no PHASE fails at
+# the first step on purpose, with that pointer: there is no honest single-device
+# run of the gate.
+#
+#   phase  device  rows            what
+#   p01    A       setup           register, baseline trip/notes/expense, wait for the server
+#          (host)  setup           node offline/gate-tools.mjs seed-bulk
+#   p02    B       7, 8            first sync on a new device; offline readable
+#   p03    A       1, 2, 6a, 4a, 14a, 13a   the OFFLINE WINDOW: create/edit, force-quit,
+#                                  photo pending, deletes, stop delete, trip+stop+expense
+#   p04    B       (before)        B before A reconnects: none of it has arrived
+#   p05    A       3, 6b           reconnect and wait; the photo's bytes land
+#   p06    B       3, 4b, 6b, 13b, 14b   arrival, deletion, photo, offline trip, stop gone
+#   p07-p10        5               two-device edit: B edits, A edits and wins, B told, A not
+#   p11-p15        12              delete vs edit race, no resurrection
+#   p16-p17        9               double interruption of a push; nothing lost or duplicated
+#   p18-p19        15              over-allowance trip offline; kept (flag: gate-tools verify-flag)
+#   p20-p21        11              sign out holding unsynced changes
+#   p22    B       10              a snapshot too large for one attempt, interrupted
+#
+# Android only: `setAirplaneMode` is a silent no-op on iOS and would let every
+# "offline" step run online while still passing. The `manual` tag keeps this file
+# out of `maestro test e2e/` (config.yaml excludes it): it needs the preparation and
+# the second device, so it is never an unattended CI flow.
+appId: com.triptrackr.app
+tags:
+  - offline-gate
+  - two-device
+  - manual
+---
+- runFlow: offline/_helpers/require-env.yaml
+- assertTrue:
+    condition: "${['p01','p02','p03','p04','p05','p06','p07','p08','p09','p10','p11','p12','p13','p14','p15','p16','p17','p18','p19','p20','p21','p22'].indexOf(String(PHASE)) >= 0}"
+    label: 'Unknown PHASE. Valid phases are p01 to p22 (e2e/offline/README.md).'
+
+# --- p01 · device A · setup ------------------------------------------------------------------
+- runFlow:
+    label: p01 device A - register and baseline
+    when:
+      true: ${PHASE == 'p01'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p01 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/00-a-setup-account.yaml
+
+# --- p02 · device B · rows 7, 8 ----------------------------------------------------------------
+- runFlow:
+    label: p02 device B - rows 7 and 8
+    when:
+      true: ${PHASE == 'p02'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p02 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/07-b-first-sync-new-device.yaml
+      - runFlow: offline/08-b-offline-readable.yaml
+
+# --- p03 · device A · the offline window: rows 1, 2, 6 (pending), 4, 14, 13 --------------------------
+- runFlow:
+    label: p03 device A - the offline window
+    when:
+      true: ${PHASE == 'p03'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p03 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/01-a-create-edit-offline.yaml
+      - runFlow: offline/02-a-force-quit-relaunch.yaml
+      - runFlow: offline/06-a-photo-pending-offline.yaml
+      - runFlow: offline/04-a-delete-offline.yaml
+      - runFlow: offline/14-a-delete-stop-offline.yaml
+      - runFlow: offline/13-a-trip-stop-expense-offline.yaml
+
+# --- p04 · device B · the "before" snapshot ------------------------------------------------------------
+- runFlow:
+    label: p04 device B - nothing has arrived yet
+    when:
+      true: ${PHASE == 'p04'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p04 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/03-b-before-reconnect.yaml
+
+# --- p05 · device A · rows 3, 6 (bytes) ------------------------------------------------------------------
+- runFlow:
+    label: p05 device A - reconnect
+    when:
+      true: ${PHASE == 'p05'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p05 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/03-a-reconnect.yaml
+      - runFlow: offline/06-a-photo-bytes-arrive.yaml
+
+# --- p06 · device B · arrival: rows 3, 4, 6, 13, 14 ---------------------------------------------------------
+- runFlow:
+    label: p06 device B - arrival on the second device
+    when:
+      true: ${PHASE == 'p06'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p06 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/03-b-arrival.yaml
+      - runFlow: offline/04-b-deletion-propagated.yaml
+      - runFlow: offline/06-b-photo-arrived.yaml
+      - runFlow: offline/13-b-trip-arrived.yaml
+      - runFlow: offline/14-b-stop-gone.yaml
+
+# --- p07-p10 · row 5: one record edited on two devices -----------------------------------------------------
+- runFlow:
+    label: p07 device B - edits offline first
+    when:
+      true: ${PHASE == 'p07'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p07 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/05a-b-edit-offline.yaml
+- runFlow:
+    label: p08 device A - edits offline second, reconnects first
+    when:
+      true: ${PHASE == 'p08'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p08 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/05b-a-edit-then-reconnect.yaml
+- runFlow:
+    label: p09 device B - reconnects second and is told
+    when:
+      true: ${PHASE == 'p09'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p09 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/05c-b-reconnect-told.yaml
+- runFlow:
+    label: p10 device A - the winner is not told
+    when:
+      true: ${PHASE == 'p10'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p10 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/05d-a-winner-not-told.yaml
+
+# --- p11-p15 · row 12: delete on one device while editing on another --------------------------------------------
+- runFlow:
+    label: p11 device A - deletes offline
+    when:
+      true: ${PHASE == 'p11'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p11 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/12a-a-delete-offline.yaml
+- runFlow:
+    label: p12 device B - edits offline, later than the delete
+    when:
+      true: ${PHASE == 'p12'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p12 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/12b-b-edit-offline.yaml
+- runFlow:
+    label: p13 device A - reconnects first
+    when:
+      true: ${PHASE == 'p13'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p13 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/12c-a-reconnect.yaml
+- runFlow:
+    label: p14 device B - reconnects second, delete wins
+    when:
+      true: ${PHASE == 'p14'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p14 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/12d-b-reconnect-superseded.yaml
+- runFlow:
+    label: p15 device A - no resurrection
+    when:
+      true: ${PHASE == 'p15'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p15 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/12e-a-no-resurrection.yaml
+
+# --- p16-p17 · row 9: connectivity dropped mid-sync, twice ----------------------------------------------------------
+- runFlow:
+    label: p16 device A - backlog, two interruptions
+    when:
+      true: ${PHASE == 'p16'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p16 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/09a-a-interrupted-push.yaml
+- runFlow:
+    label: p17 device B - nothing lost or duplicated
+    when:
+      true: ${PHASE == 'p17'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p17 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/09b-b-interrupted-arrival.yaml
+
+# --- p18-p19 · row 15: trip created offline at the free allowance ------------------------------------------------------
+- runFlow:
+    label: p18 device A - over-allowance trip offline
+    when:
+      true: ${PHASE == 'p18'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p18 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/15-a-over-allowance-offline.yaml
+- runFlow:
+    label: p19 device B - the trip was kept
+    when:
+      true: ${PHASE == 'p19'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p19 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/15-b-trip-kept.yaml
+
+# --- p20-p21 · row 11: sign out holding unsynced changes ---------------------------------------------------------------
+- runFlow:
+    label: p20 device A - sign out with unsynced changes
+    when:
+      true: ${PHASE == 'p20'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'A'}
+          label: 'p20 belongs to device A: use --device <A> -e DEVICE_ROLE=A'
+      - runFlow: offline/11-a-sign-out-unsynced.yaml
+- runFlow:
+    label: p21 device B - both notes arrived
+    when:
+      true: ${PHASE == 'p21'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p21 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/11-b-signout-arrived.yaml
+
+# --- p22 · device B · row 10: a snapshot too large for one attempt ---------------------------------------------------------
+- runFlow:
+    label: p22 device B - large snapshot, interrupted
+    when:
+      true: ${PHASE == 'p22'}
+    commands:
+      - assertTrue:
+          condition: ${DEVICE_ROLE == 'B'}
+          label: 'p22 belongs to device B: use --device <B> -e DEVICE_ROLE=B'
+      - runFlow: offline/10-b-large-snapshot-resume.yaml

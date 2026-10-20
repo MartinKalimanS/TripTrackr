@@ -1,0 +1,67 @@
+@import 'tailwindcss';
+@import 'uniwind';
+@import 'heroui-native/styles';
+@import './theme/generated/theme.css';
+
+/*
+ * The Atlas stylesheet entry (feature 004, research D4-02). Metro hands this file to
+ * Uniwind (`cssEntryFile` in metro.config.js); `app/_layout.tsx` imports it once.
+ *
+ * Nothing here is a colour. Every theme variable, for `light`, `dark` and the two
+ * increased-contrast themes registered as `extraThemes`, comes from
+ * `theme/generated/theme.css`, which `npm run theme:build -w apps/mobile` writes from the
+ * palette (contract C4-5) and a Jest test keeps in sync. It is imported AFTER
+ * `heroui-native/styles` on purpose: both declare `@layer theme { :root { @variant ... } }`
+ * blocks, and for equal specificity the later one wins, so the kit's own defaults are
+ * overridden variable by variable. `@import` is only honoured ahead of every other rule,
+ * so the four imports stay together at the top.
+ *
+ * What is written by hand below is the type faces (feature 005, research D5-06, contract
+ * C5-7, which supersede 004 D4-07): six files embedded at build time by the `expo-font`
+ * config plugin (`app.config.ts`), one variable each, named by role and weight:
+ *
+ *   --font-display, --font-display-bold         Bricolage Grotesque 600, 700
+ *   --font-body, --font-body-semibold,
+ *   --font-body-bold                            DM Sans 400, 600, 700
+ *   --font-serif                                Instrument Serif Italic 400
+ *
+ * There is no third Bricolage weight. Each weight is its own family, so a text style sets
+ * `fontWeight: 'normal'` beside it (a weight on top of a weight-named family emboldens
+ * twice) and, for the italic, sets no `fontStyle` (the file is the italic). The kit's own
+ * `--font-normal`, `--font-medium`, `--font-semibold` and `--font-bold` are deliberately
+ * NOT set here: mapping the kit's text onto these faces is the adapters' decision. React
+ * Native scales any custom face by the user's text size, so Dynamic Type and Android font
+ * scaling work unchanged. DM Sans has no tabular figures: figures that align are set in
+ * Bricolage (research D5-06).
+ *
+ * A custom family is one name per weight, and the name is not the same on both platforms
+ * (https://docs.expo.dev/versions/v57.0.0/sdk/font.md, "Configurable properties"): on
+ * Android it is the file name without its extension (and Uniwind's rule is that the CSS
+ * name equals it, https://docs.uniwind.dev/faq.md); on iOS it is read from the font file,
+ * where React Native resolves the PostScript name. `test/theme/global-css.test.ts` reads
+ * both from the files, so a font package upgrade that renames either fails the build.
+ *
+ * `static` makes Tailwind emit the two variables although no class uses them yet: a native
+ * header cannot take a className, so it reads the family with `useCSSVariable`.
+ */
+@theme static {
+  --font-display: 'BricolageGrotesque_600SemiBold';
+  --font-display-bold: 'BricolageGrotesque_700Bold';
+  --font-body: 'DMSans_400Regular';
+  --font-body-semibold: 'DMSans_600SemiBold';
+  --font-body-bold: 'DMSans_700Bold';
+  --font-serif: 'InstrumentSerif_400Regular_Italic';
+}
+
+@layer theme {
+  :root {
+    @variant ios {
+      --font-display: 'BricolageGrotesque-SemiBold';
+      --font-display-bold: 'BricolageGrotesque-Bold';
+      --font-body: 'DMSans-Regular';
+      --font-body-semibold: 'DMSans-SemiBold';
+      --font-body-bold: 'DMSans-Bold';
+      --font-serif: 'InstrumentSerif-Italic';
+    }
+  }
+}

@@ -1,0 +1,25 @@
+<!--frame id=add-stop-kb no=02 title="Add stop, keyboard up" status=photo cap="Searching: the form steps aside, matches show flag, city and region. Save returns once a place is picked."-->
+{{INC:trip-backdrop}}
+<div class="dim"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-label="Add stop">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <div class="side"><button class="btn btn-text" aria-label="Cancel">Cancel</button></div>
+    <h2 class="tt t-callout">Add stop</h2>
+    <div class="side r"></div>
+  </div>
+  <div class="sheet-body">
+    <div class="field">
+      <label class="lab" for="place2">Place</label>
+      <div class="input is-focus" id="place2">[[i:search]]<span class="val">Por<span class="caret"></span></span><button class="clr" aria-label="Clear search">[[i16:x]]</button></div>
+    </div>
+    <ul class="sugg" role="listbox" aria-label="Places matching Por">
+      <li class="sg-row is-best" role="option" aria-selected="true">[[flag:pt]]<div class="tx"><div class="t-callout"><b>Por</b><span class="rest">to</span></div><div class="t-label c2">Porto District, Portugal</div></div><span class="pill p-neutral">[[i16:history]]Recent</span></li>
+      <li class="sg-row" role="option">[[flag:pt]]<div class="tx"><div class="t-callout"><b>Por</b><span class="rest">timão</span></div><div class="t-label c2">Algarve, Portugal</div></div></li>
+      <li class="sg-row" role="option">[[flag:it]]<div class="tx"><div class="t-callout"><b>Por</b><span class="rest">tofino</span></div><div class="t-label c2">Liguria, Italy</div></div></li>
+      <li class="sg-row" role="option">[[flag:gb]]<div class="tx"><div class="t-callout"><b>Por</b><span class="rest">tsmouth</span></div><div class="t-label c2">England, United Kingdom</div></div></li>
+      <li class="sg-row" role="option">[[flag:us]]<div class="tx"><div class="t-callout"><b>Por</b><span class="rest">tland</span></div><div class="t-label c2">Oregon, United States</div></div></li>
+    </ul>
+  </div>
+</div>
+{{INC:kb-letters}}

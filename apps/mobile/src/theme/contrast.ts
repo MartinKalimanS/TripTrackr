@@ -75,6 +75,34 @@ export function contrastRatio(a: string, b: string): number {
   return (lighter + RATIO_OFFSET) / (darker + RATIO_OFFSET);
 }
 
+function toHex([red, green, blue]: [number, number, number]): string {
+  const part = (channel: number) => channel.toString(16).padStart(2, '0');
+  return `#${part(red)}${part(green)}${part(blue)}`.toUpperCase();
+}
+
+/**
+ * Composite `foreground` at `alpha` (0 to 1) over an OPAQUE `background`, in sRGB, and
+ * return an uppercase `#RRGGBB` — contract 004 C4-2.
+ *
+ * This is what lets the gate measure the tinted chips and the hover and pressed fills
+ * the UI kit derives with `color-mix(in oklab, ...)`. The kit mixes in OKLAB; this
+ * mixes the encoded sRGB channels, and the gate carries a stated 0.1 tolerance for the
+ * difference. Each channel is rounded to the nearest integer.
+ *
+ * @throws RangeError if `alpha` is not a number in [0, 1].
+ * @throws if either colour is not a 3- or 6-digit hex colour.
+ */
+export function blend(foreground: string, background: string, alpha: number): string {
+  if (!Number.isFinite(alpha) || alpha < 0 || alpha > 1) {
+    throw new RangeError(`Expected an alpha between 0 and 1, received ${alpha}.`);
+  }
+  const [fr, fg, fb] = toChannels(foreground);
+  const [br, bg, bb] = toChannels(background);
+  const mix = (top: number, bottom: number) =>
+    Math.round(top * alpha + bottom * (1 - alpha));
+  return toHex([mix(fr, br), mix(fg, bg), mix(fb, bb)]);
+}
+
 /** The floors this product holds itself to. See contract C3. */
 export const ContrastFloor = {
   /** FR-008 — body text against its surface. */

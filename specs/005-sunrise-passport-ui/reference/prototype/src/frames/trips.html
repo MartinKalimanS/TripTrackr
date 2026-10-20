@@ -1,0 +1,68 @@
+<section class="slot" data-slot="trips">
+  <div class="phone" id="trips" data-frame="trips">
+    <div class="screen" style="background:var(--canvas)">
+      <header class="trips-head">
+        <h1 class="t-display">Trips</h1>
+        <button class="btn btn-primary btn-sm">[[i:plus]]New</button>
+      </header>
+      <div class="chips" role="tablist" aria-label="Filter trips">
+        <button class="chip is-selected" role="tab" aria-selected="true">[[i16:check]]All <span class="n">22</span></button>
+        <button class="chip" role="tab">Active <span class="n">1</span></button>
+        <button class="chip" role="tab">Planned <span class="n">1</span></button>
+        <button class="chip" role="tab">Past <span class="n">20</span></button>
+      </div>
+
+      <article class="hero-card" style="position:absolute;left:20px;top:180px;width:350px;height:250px">
+        <div class="bg ph" data-ph="tram:900" style="background-position:50% 58%"></div>
+        <div class="sc scrim-b" style="top:22%"></div>
+        <div class="top">
+          <span class="pill on-photo">[[i:circle-dot]]Active · Day 3 of 8</span>
+          <span class="pill on-photo sync">[[i:cloud-upload]]Waiting to sync</span>
+        </div>
+        <div class="stamp rot" data-stamp="pt" data-bold style="position:absolute;right:16px;bottom:84px;width:76px;height:76px;--r:-10deg;--stamp-ink:#fff;opacity:.92"></div>
+        <div class="bot">
+          <div class="t-micro">Portugal · 3 stops</div>
+          <h3>Portugal Road Trip</h3>
+          <div class="meta">[[i:calendar]]12–19 Oct 2026 · Lisbon → Sintra → Porto</div>
+          <div class="days" aria-label="Day 3 of 8"><i class="on"></i><i class="on"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </article>
+
+      <div class="ticket-wrap" style="position:absolute;left:20px;top:446px;width:350px"><article class="ticket">
+        <div class="ph" data-ph="iceland:300"></div>
+        <div class="bd">
+          <span class="pill s-planned" style="align-self:flex-start">[[i:calendar]]Planned</span>
+          <div class="t-head" style="font-size:18px;line-height:22px">Iceland Ring Road</div>
+          <div class="t-sm muted">Jan 2027 · Reykjavík</div>
+        </div>
+        <div class="stub">
+          <div class="t-micro muted" style="font-size:12px">In</div>
+          <div class="v">3</div>
+          <div class="t-cap muted" style="font-weight:600">months</div>
+        </div>
+      </article></div>
+
+      <div class="sec-head" style="position:absolute;left:20px;right:20px;top:574px">
+        <div class="t-title3">Past trips<small>2026</small></div>
+        <span class="link">See all [[i16:chevron-right]]</span>
+      </div>
+      <div style="position:absolute;left:20px;right:20px;top:614px;display:flex;flex-direction:column;gap:16px">
+        <a class="trip-row">
+          <div class="th ph squircle" data-ph="kyoto:260"></div>
+          <div class="bd"><div class="ttl">Tokyo &amp; Kyoto</div><div class="sub">Mar 2026 · 9 days</div><div class="sub" style="margin-top:0">Japan · 2 cities</div></div>
+          <div class="tr"><div class="stamp" data-stamp="jp" data-bold style="--stamp-ink:var(--text);width:44px;height:44px;transform:rotate(-8deg)"></div>[[i:chevron-right]]</div>
+        </a>
+        <a class="trip-row">
+          <div class="th ph squircle" data-ph="mexico:260"></div>
+          <div class="bd"><div class="ttl">Mexico City</div><div class="sub">Nov 2025 · 6 days</div><div class="sub" style="margin-top:0">Mexico · 1 city</div></div>
+          <div class="tr"><div class="stamp" data-stamp="mx" data-bold style="--stamp-ink:var(--aqua-text);width:44px;height:44px;transform:rotate(7deg)"></div>[[i:chevron-right]]</div>
+        </a>
+      </div>
+      <div class="fade-b"></div>
+      {{TABS:trips}}
+    </div>
+    {{STATUS}}
+    {{HIND}}
+  </div>
+  <p class="cap"><b>04</b>Trips list<span>One hero card for the live trip, a ticket for what is next, compact rows with a generated stamp for the past. Status is always icon plus text.</span></p>
+</section>

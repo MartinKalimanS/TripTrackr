@@ -1,0 +1,33 @@
+<!--frame id=add-expense no=07 title="Add expense" status=photo cap="Amount-first form sheet with the decimal pad up. Giant amount, category and currency chip rows, note and date collapsed. Save is pinned above the keypad."-->
+{{INC:trip-backdrop}}
+<div class="dim"></div>
+<div class="sheet kbpad" role="dialog" aria-modal="true" aria-label="Add expense">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <div class="side"><button class="btn btn-text">Cancel</button></div>
+    <h2 class="tt t-callout">Add expense</h2>
+    <div class="side r"><span class="pill p-priv">[[i16:lock]]Only you</span></div>
+  </div>
+  <div class="sheet-body ae-body">
+    <div class="aamt" role="group" aria-label="Amount">
+      <span class="cur">€</span><span class="xnum tnum ed">24.50<span class="caret xl"></span></span>
+    </div>
+    <p class="t-label c2 aeq" style="text-align:center">&asymp; $26.62 at today's rate</p>
+
+    <div class="field">
+      <div class="lab" id="cat-l">Category</div>
+      <div class="chips scrollx fadeR" role="radiogroup" aria-labelledby="cat-l" data-pick>
+        <button class="chip is-on" role="radio" aria-checked="true">[[i20:check]]Food</button><button class="chip" role="radio">[[i20:car-front]]Transport</button><button class="chip" role="radio">[[i20:bed-double]]Stay</button><button class="chip" role="radio">[[i20:ticket]]Activities</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="lab" id="cur-l">Currency</div>
+      <div class="chips" role="radiogroup" aria-labelledby="cur-l" data-pick>
+        <button class="chip is-on" role="radio" aria-checked="true">[[i20:check]]EUR</button><button class="chip" role="radio">USD</button><button class="chip" role="radio">GBP</button><button class="chip" role="radio">JPY</button><button class="chip" aria-label="More currencies">[[i20:plus]]</button>
+      </div>
+    </div>
+    <button class="disc" aria-expanded="false"><span class="ico">[[i20:pen-line]]</span><span class="tx"><span class="t-callout">Add note, date or place</span><span class="t-label c2 clamp-1">Today, 14 Oct &middot; Lisbon</span></span>[[i20:chevron-down.chev]]</button>
+  </div>
+  <div class="sheet-foot tight"><button class="btn btn-primary lg block" data-long="Save expense of €24.50 in Food for Portugal Road Trip">Save expense</button></div>
+</div>
+{{INC:kb-decimal}}

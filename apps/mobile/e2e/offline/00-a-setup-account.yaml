@@ -1,0 +1,142 @@
+# Device A, ONLINE — setup for the whole gate (no acceptance row of its own).
+#
+# Registers the gate's account and records the baseline that later phases edit,
+# delete, race and read back:
+#
+#   trip   'Gate baseline'  EUR, stops Stop 1 Rome (IT) and Stop 2 Paris (FR),
+#                           two countries on purpose: row 14 deletes Paris and
+#                           the globe's country count goes 2 -> 1
+#   notes  'Shared note'            row 5   (edited on both devices)
+#          'Race note'              row 12  (deleted on A, edited on B)
+#          'Synced note to delete'  row 4   (B already holds it when A deletes it)
+#   spend  20.00 EUR                rows 7, 8 (history a new device must show)
+#
+# Ends only when everything has reached the server (no "Not yet synced" left),
+# so device B's first sync in phase p02 really gets "the full history".
+#
+# The 30 s foreground timer is the only trigger for a fresh local write (there
+# is no push-on-save), hence the generous waits.
+appId: com.triptrackr.app
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    id: 'welcome-screen'
+
+# --- Register the gate's account ---------------------------------------------
+- tapOn:
+    id: 'welcome-create-account'
+- assertVisible:
+    id: 'register-screen'
+- tapOn:
+    id: 'register-display-name'
+- inputText: 'Gate Traveller'
+- tapOn:
+    id: 'register-email'
+- inputText: maestro-offline-${RUN_ID}@example.com
+- tapOn:
+    id: 'register-password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'register-confirm-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register-submit'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 30000
+
+# --- The baseline trip and its two stops (the city catalogue needs the API) ----
+- runFlow:
+    file: _helpers/add-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- runFlow:
+    file: _helpers/add-stop.yaml
+    env:
+      COUNTRY_FILTER: 'Italy'
+      COUNTRY_ISO: 'IT'
+      CITY_QUERY: 'Rom'
+      CITY_PATTERN: 'Rom(a|e)'
+- runFlow:
+    file: _helpers/add-stop.yaml
+    env:
+      COUNTRY_FILTER: 'France'
+      COUNTRY_ISO: 'FR'
+      CITY_QUERY: 'Par'
+      CITY_PATTERN: 'Paris'
+- assertVisible: 'Stop 1: Rom(a|e).*'
+- assertVisible: 'Stop 2: Paris.*'
+
+# --- Notes -------------------------------------------------------------------
+- runFlow:
+    file: _helpers/open-section.yaml
+    env:
+      SEGMENT: 'notes'
+- assertVisible:
+    id: 'notes-screen'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Shared note'
+      NOTE_BODY: 'Original shared text.'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Race note'
+      NOTE_BODY: 'Original race text.'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Synced note to delete'
+      NOTE_BODY: 'This one is deleted offline in row 4.'
+- tapOn: 'Back'
+
+# --- One expense -------------------------------------------------------------
+- runFlow:
+    file: _helpers/open-section.yaml
+    env:
+      SEGMENT: 'expenses'
+- assertVisible:
+    id: 'expenses-screen'
+- runFlow:
+    file: _helpers/add-expense.yaml
+    env:
+      AMOUNT: '20.00'
+- tapOn: 'Back'
+
+# --- Wait until all of it is on the server ------------------------------------
+# Children are pushed after their parents inside one cycle, and a cycle stops at
+# its first failure, so walking trip -> notes -> expenses and finding no pending
+# marker anywhere means the server acknowledged every row.
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 60000
+- runFlow:
+    file: _helpers/open-section.yaml
+    env:
+      SEGMENT: 'notes'
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 60000
+- assertVisible: 'Synced note to delete'
+- tapOn: 'Back'
+- runFlow:
+    file: _helpers/open-section.yaml
+    env:
+      SEGMENT: 'expenses'
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 60000
+- assertVisible: '.*20.00.*'
+- tapOn: 'Back'
+- tapOn: 'Back'
+- tapOn:
+    id: 'tab-trips'
+- assertVisible: 'Gate baseline'
+- assertNotVisible: 'Not yet synced'

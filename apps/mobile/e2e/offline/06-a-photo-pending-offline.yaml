@@ -1,0 +1,34 @@
+# Row 6, first half — Capture a photo offline.
+# Expected: not treated as saved until the file itself arrives (FR-041).
+# Device A, still in the offline window. The second half (the bytes land) is
+# 06-a-photo-bytes-arrive.yaml, after the reconnect.
+#
+# Three places a photo could pass for saved, each asserted to say otherwise:
+# the gallery tile carries "Waiting to upload", the full-screen view says it is
+# "Saved on this device only", and nowhere does it say "Uploaded to your
+# account." The record exists locally (that is FR-036) but its bytes have not
+# left the device, so it is not "saved" in the sense FR-041 defines.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-photos'
+- assertVisible:
+    id: 'photo-thumbnail-.*'
+- assertVisible: 'Waiting to upload'
+- assertNotVisible: 'Upload failed'
+- tapOn:
+    id: 'photo-open-.*'
+    index: 0
+- assertVisible:
+    id: 'photo-viewer'
+- assertVisible: 'Waiting to upload'
+- assertVisible: 'Saved on this device only\. It uploads when you.re online\.'
+- assertNotVisible: 'Uploaded to your account\.'
+- tapOn: 'Close photo'
+- tapOn: 'Back'
+- tapOn: 'Back'

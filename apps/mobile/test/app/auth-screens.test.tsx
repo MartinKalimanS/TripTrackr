@@ -4,16 +4,26 @@
  * The mockMutations (`use-session.ts`) are mocked: their own suite proves what
  * they persist. What is pinned here is the screens' behaviour — validation
  * mirrors the contracts and is said in words (FR-010), a busy control while a
- * request is in flight, API refusals shown as plain language, and the OAuth
- * buttons appearing only where they can work.
+ * request is in flight, API refusals shown as plain language, and where the
+ * Google and Apple section sits: on Sign in and Create account, not on the
+ * welcome screen. What that section does is pinned by its own suite
+ * (src/components/auth/__tests__/social-sign-in.test.tsx).
  *
  * `expo-router` is replaced with a recording router: the screens' job is to
  * ask for a navigation, and the root layout suite covers what the real router
  * does with it.
+ *
+ * Atlas (feature 004, T446; FR-005, FR-017, FR-030): the title and "Back" of Sign in and
+ * Create account are the NATIVE header's (`(auth)/_layout`, `auth-layout.test.tsx`), so
+ * the screens draw neither; the one primary action of each screen sits in the lower part
+ * of it (thumb zone) with the secondary ones below, and the keyboard never covers it.
+ * What a Field's props are, what is logged and what is kept lives in
+ * `auth-security.test.tsx` (T447).
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { Platform } from 'react-native';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import LoginScreen from '@/app/(auth)/login';
 import RegisterScreen from '@/app/(auth)/register';
@@ -57,18 +67,15 @@ jest.mock('@/features/auth/use-session', () => ({
 jest.mock('expo-apple-authentication', () => ({
   isAvailableAsync: jest.fn(async () => false),
   signInAsync: jest.fn(),
-  AppleAuthenticationButton: (props: Record<string, unknown>) => {
-    const { Pressable, Text } = jest.requireActual('react-native');
-    return (
-      <Pressable testID={props.testID as string} onPress={props.onPress as () => void}>
-        <Text>Sign in with Apple</Text>
-      </Pressable>
-    );
-  },
-  AppleAuthenticationButtonType: { SIGN_IN: 0 },
-  AppleAuthenticationButtonStyle: { BLACK: 0, WHITE: 1 },
   AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
 }));
+
+jest.mock('@expo/vector-icons/Ionicons', () => {
+  const { Text } = jest.requireActual('react-native');
+  return function MockIonicons({ name }: { name: string }) {
+    return <Text testID={`icon-${name}`}>{name}</Text>;
+  };
+});
 
 const mockPromptAsync = jest.fn();
 let mockGoogleResponse: {
@@ -79,6 +86,36 @@ let mockGoogleResponse: {
 jest.mock('expo-auth-session/providers/google', () => ({
   useIdTokenAuthRequest: () => [{ loaded: true }, mockGoogleResponse, mockPromptAsync],
 }));
+
+interface Json {
+  type: string;
+  props: Record<string, unknown>;
+  children: (Json | string)[] | null;
+}
+
+/** Every host node of the rendered tree, in document order. */
+function hostNodes(node: Json | null = screen.toJSON() as Json | null): Json[] {
+  if (node === null) return [];
+  const below = (node.children ?? []).flatMap((child) =>
+    typeof child === 'string' ? [] : hostNodes(child),
+  );
+  return [node, ...below];
+}
+
+/** The testIDs of the tree, in document order: where each thing sits on the screen. */
+const idsInOrder = () =>
+  hostNodes()
+    .map((node) => node.props.testID)
+    .filter((id): id is string => typeof id === 'string');
+
+const classesOf = (node: { props: { className?: unknown } }) =>
+  String(node.props.className ?? '')
+    .split(/\s+/)
+    .filter(Boolean);
+
+/** The buttons of the screen the kit's Button gave an emphasis (`variant`) to. */
+const primaries = () =>
+  screen.getAllByRole('button').filter((button) => button.props.variant === 'primary');
 
 beforeEach(() => {
   for (const mutation of Object.values(mockMutations)) {
@@ -118,105 +155,72 @@ describe('<WelcomeScreen>', () => {
     expect(mockPush).toHaveBeenCalledWith('/register');
   });
 
-  test('hides Sign in with Apple when the platform says it is unavailable', async () => {
+  test('offers no provider sign-in of its own: that lives on Sign in and Create account', async () => {
     await render(<WelcomeScreen />);
-    await waitFor(() => expect(AppleAuthentication.isAvailableAsync).toHaveBeenCalled());
-    expect(screen.queryByTestId('welcome-apple-sign-in')).toBeNull();
+    expect(screen.queryByTestId('social-sign-in')).toBeNull();
+    expect(screen.queryByLabelText(/Continue with (Google|Apple)/)).toBeNull();
   });
 
-  test('shows Sign in with Apple on iOS when available and forwards the identity token and name', async () => {
-    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
-    (AppleAuthentication.signInAsync as jest.Mock).mockResolvedValue({
-      identityToken: 'apple-jwt',
-      fullName: { givenName: 'Ana', familyName: 'Rossi' },
-    });
+  test('the product name is its one heading (the screen has no header)', async () => {
     await render(<WelcomeScreen />);
-
-    const button = await screen.findByTestId('welcome-apple-sign-in');
-    await fireEvent.press(button);
-
-    await waitFor(() =>
-      expect(mockMutations.apple.mutate).toHaveBeenCalledWith({
-        identityToken: 'apple-jwt',
-        displayName: 'Ana Rossi',
-      }),
-    );
+    const headings = screen.getAllByRole('header');
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toHaveTextContent('TripTrackr');
   });
 
-  test('a cancelled Apple sheet is not an error', async () => {
-    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
-    (AppleAuthentication.signInAsync as jest.Mock).mockRejectedValue(
-      Object.assign(new Error('cancelled'), { code: 'ERR_REQUEST_CANCELED' }),
-    );
+  test('has ONE primary action, Create account; Sign in is the secondary one (FR-005)', async () => {
     await render(<WelcomeScreen />);
-
-    await fireEvent.press(await screen.findByTestId('welcome-apple-sign-in'));
-
-    await waitFor(() => expect(AppleAuthentication.signInAsync).toHaveBeenCalled());
-    expect(screen.queryByTestId('welcome-error')).toBeNull();
-    expect(mockMutations.apple.mutate).not.toHaveBeenCalled();
+    expect(primaries().map((button) => button.props.testID)).toEqual([
+      'welcome-create-account',
+    ]);
+    expect(screen.getByTestId('welcome-sign-in').props.variant).toBe('secondary');
   });
 
-  test('an Apple failure other than cancellation is shown in words', async () => {
-    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
-    (AppleAuthentication.signInAsync as jest.Mock).mockRejectedValue(new Error('boom'));
+  test('keeps the reading order: Create account, then Sign in (FR-030)', async () => {
     await render(<WelcomeScreen />);
-
-    await fireEvent.press(await screen.findByTestId('welcome-apple-sign-in'));
-
-    expect(await screen.findByTestId('welcome-error')).toHaveTextContent(
-      /Something went wrong/,
-    );
+    const order = screen.getAllByRole('button').map((button) => button.props.testID);
+    expect(order).toEqual(['welcome-create-account', 'welcome-sign-in']);
   });
 
-  test('hides Continue with Google until a client id for this platform is configured', async () => {
+  test('puts both actions in the lower part of the screen, under a hero that takes the spare room (FR-017)', async () => {
     await render(<WelcomeScreen />);
-    expect(screen.queryByTestId('welcome-google-sign-in')).toBeNull();
+    const hero = screen.getByTestId('welcome-hero');
+    const actions = screen.getByTestId('welcome-actions');
+
+    expect(idsInOrder().filter((id) => /^welcome-(hero|actions)$/.test(id))).toEqual([
+      'welcome-hero',
+      'welcome-actions',
+    ]);
+    // The hero grows, the actions do not: the actions are the bottom of the screen, and
+    // the content scrolls rather than squeezing the hero at the largest text size.
+    expect(classesOf(hero)).toEqual(expect.arrayContaining(['grow', 'shrink-0']));
+    expect(classesOf(actions)).not.toContain('grow');
+    expect(within(actions).getByTestId('welcome-create-account')).toBeTruthy();
+    expect(within(actions).getByTestId('welcome-sign-in')).toBeTruthy();
   });
 
-  test('shows Continue with Google when configured and forwards the id_token from the response', async () => {
-    process.env[
-      Platform.OS === 'ios'
-        ? 'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID'
-        : 'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID'
-    ] = 'client-id';
-    mockGoogleResponse = { type: 'success', params: { id_token: 'google-jwt' } };
-
+  test('the two actions are the large, thumb-sized size', async () => {
     await render(<WelcomeScreen />);
-
-    await fireEvent.press(screen.getByTestId('welcome-google-sign-in'));
-    expect(mockPromptAsync).toHaveBeenCalled();
-    await waitFor(() =>
-      expect(mockMutations.google.mutate).toHaveBeenCalledWith('google-jwt'),
-    );
+    expect(screen.getByTestId('welcome-create-account').props.size).toBe('lg');
+    expect(screen.getByTestId('welcome-sign-in').props.size).toBe('lg');
   });
 
-  test('a Google response without an id_token is shown as a failure, not sent to the API', async () => {
-    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID = 'client-id';
-    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID = 'client-id';
-    mockGoogleResponse = { type: 'success', params: {} };
-
+  test('passes nothing in the route when it navigates (FR-030)', async () => {
     await render(<WelcomeScreen />);
-
-    expect(await screen.findByTestId('welcome-error')).toHaveTextContent(
-      /Something went wrong/,
-    );
-    expect(mockMutations.google.mutate).not.toHaveBeenCalled();
-  });
-
-  test('shows an API refusal of an OAuth sign-in in plain language', async () => {
-    mockMutations.google.error = new ApiRequestError(401, {
-      code: 'OAUTH_TOKEN_INVALID',
-      message: 'Bad token.',
-    });
-    await render(<WelcomeScreen />);
-    expect(screen.getByTestId('welcome-error')).toHaveTextContent(
-      /could not be verified/,
-    );
+    await fireEvent.press(screen.getByTestId('welcome-sign-in'));
+    await fireEvent.press(screen.getByTestId('welcome-create-account'));
+    expect(mockPush.mock.calls).toEqual([['/login'], ['/register']]);
   });
 });
 
 describe('<LoginScreen>', () => {
+  test('offers Google and Apple below the email form (FR-002)', async () => {
+    await render(<LoginScreen />);
+    const section = screen.getByTestId('social-sign-in');
+    expect(within(section).getByLabelText(/Continue with Google/)).toBeTruthy();
+    expect(await within(section).findByLabelText(/Continue with Apple/)).toBeTruthy();
+  });
+
   test('renders an email and a password field with the right keyboard behaviour', async () => {
     await render(<LoginScreen />);
     expect(screen.getByLabelText('Email').props.keyboardType).toBe('email-address');
@@ -271,14 +275,131 @@ describe('<LoginScreen>', () => {
     );
   });
 
-  test('offers a way back — the header is hidden, so the screen supplies its own', async () => {
+  test('leaves its title and its Back to the native header: it draws neither (FR-007, FR-008)', async () => {
     await render(<LoginScreen />);
-    await fireEvent.press(screen.getByLabelText('Back'));
-    expect(mockBack).toHaveBeenCalled();
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.queryAllByRole('header')).toEqual([]);
+    // The only "Sign in" on the page is the action; the title is the header's.
+    expect(screen.getAllByText('Sign in')).toHaveLength(1);
+  });
+
+  test('says a field error in words under the field, as an alert, and marks the field invalid (FR-017, FR-025)', async () => {
+    await render(<LoginScreen />);
+    await fireEvent.press(screen.getByTestId('login-submit'));
+
+    const email = screen.getByTestId('login-email-error');
+    expect(email.props.accessibilityRole).toBe('alert');
+    expect(email).toHaveTextContent('Enter a valid email address.');
+    expect(screen.getByTestId('login-password-error')).toHaveTextContent(
+      'Enter your password.',
+    );
+    expect(screen.getByTestId('login-email').props['aria-invalid']).toBe(true);
+    expect(screen.getByTestId('login-password').props['aria-invalid']).toBe(true);
+  });
+
+  test('has no error text and no invalid field before the traveller has tried', async () => {
+    await render(<LoginScreen />);
+    expect(screen.queryByTestId('login-email-error')).toBeNull();
+    expect(screen.getByTestId('login-email').props['aria-invalid']).toBe(false);
+  });
+
+  test('says a refusal as an alert in words, with its id, between the form and the action (FR-017)', async () => {
+    mockMutations.login.error = new ApiRequestError(401, {
+      code: 'INVALID_CREDENTIALS',
+      message: 'Nope.',
+    });
+    await render(<LoginScreen />);
+
+    expect(screen.getByTestId('login-error').props.accessibilityRole).toBe('alert');
+    const order = idsInOrder();
+    expect(order.indexOf('login-password')).toBeLessThan(order.indexOf('login-error'));
+    expect(order.indexOf('login-error')).toBeLessThan(order.indexOf('login-submit'));
+  });
+
+  test('shows no error element at all while there is no refusal', async () => {
+    await render(<LoginScreen />);
+    expect(screen.queryByTestId('login-error')).toBeNull();
+  });
+
+  test('has ONE primary action, Sign in; the provider buttons are not primary (FR-005)', async () => {
+    await render(<LoginScreen />);
+    await screen.findByLabelText(/Continue with Apple/);
+    expect(primaries().map((button) => button.props.testID)).toEqual(['login-submit']);
+    expect(screen.getByTestId('login-submit').props.size).toBe('lg');
+  });
+
+  test('puts the action and the provider buttons in the lower part, after the fields (FR-017)', async () => {
+    await render(<LoginScreen />);
+    const actions = screen.getByTestId('login-actions');
+
+    // `mt-auto` takes the spare room above the actions, so they sit at the bottom of a
+    // tall screen and follow the fields closely on a short one.
+    expect(classesOf(actions)).toContain('mt-auto');
+    expect(within(actions).getByTestId('login-submit')).toBeTruthy();
+    expect(within(actions).getByTestId('social-sign-in')).toBeTruthy();
+    expect(within(actions).queryByTestId('login-email')).toBeNull();
+
+    const order = idsInOrder();
+    expect(order.indexOf('login-email')).toBeLessThan(order.indexOf('login-password'));
+    expect(order.indexOf('login-password')).toBeLessThan(order.indexOf('login-actions'));
+    expect(order.indexOf('login-submit')).toBeLessThan(order.indexOf('social-sign-in'));
+  });
+
+  test('the form scrolls above the keyboard and keeps taps on the buttons while it is open (C4-10 rule 8)', async () => {
+    await render(<LoginScreen />);
+    const scroller = hostNodes().find((node) => node.type === 'RCTScrollView');
+    expect(scroller?.props.keyboardShouldPersistTaps).toBe('handled');
+    // Only the keyboard-aware scroller carries this offset.
+    expect(scroller?.props.bottomOffset).toEqual(expect.any(Number));
+    // Under the native header: inset below it, and the scroller is the first thing drawn.
+    expect(scroller?.props.contentInsetAdjustmentBehavior).toBe('automatic');
+    expect(((screen.toJSON() as Json).children ?? [])[0]).toMatchObject({
+      type: 'RCTScrollView',
+    });
+  });
+
+  test('the last field’s return key submits, so the action is reachable with the keyboard up', async () => {
+    await render(<LoginScreen />);
+    await fireEvent.changeText(screen.getByLabelText('Email'), 'ana@example.com');
+    await fireEvent.changeText(screen.getByLabelText('Password'), 'correct horse');
+    await fireEvent(screen.getByLabelText('Password'), 'submitEditing');
+    expect(mockMutations.login.mutate).toHaveBeenCalledWith({
+      email: 'ana@example.com',
+      password: 'correct horse',
+    });
+  });
+
+  test('keeps the reading order: email, password, error, Sign in, then the providers (FR-030)', async () => {
+    mockMutations.login.error = new ApiRequestError(401, { code: 'X', message: 'Nope.' });
+    await render(<LoginScreen />);
+    const order = idsInOrder().filter((id) =>
+      /^login-(email|password|error|submit)$|^social-sign-in$/.test(id),
+    );
+    expect(order).toEqual([
+      'login-email',
+      'login-password',
+      'login-error',
+      'login-submit',
+      'social-sign-in',
+    ]);
+  });
+
+  test('while a request is in flight the action cannot be pressed twice', async () => {
+    mockMutations.login.isPending = true;
+    await render(<LoginScreen />);
+    await fireEvent.press(screen.getByTestId('login-submit'));
+    expect(mockMutations.login.mutate).not.toHaveBeenCalled();
   });
 });
 
 describe('<RegisterScreen>', () => {
+  test('offers Google and Apple below the email form (FR-002)', async () => {
+    await render(<RegisterScreen />);
+    const section = screen.getByTestId('social-sign-in');
+    expect(within(section).getByLabelText(/Continue with Google/)).toBeTruthy();
+    expect(await within(section).findByLabelText(/Continue with Apple/)).toBeTruthy();
+  });
+
   const fill = async (overrides: Partial<Record<string, string>> = {}) => {
     const values = {
       Name: 'Ana',
@@ -368,9 +489,161 @@ describe('<RegisterScreen>', () => {
     });
   });
 
-  test('offers a way back', async () => {
+  test('leaves its title and its Back to the native header: it draws neither (FR-007, FR-008)', async () => {
     await render(<RegisterScreen />);
-    await fireEvent.press(screen.getByLabelText('Back'));
-    expect(mockBack).toHaveBeenCalled();
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.queryAllByRole('header')).toEqual([]);
+    // The only "Create account" on the page is the action; the title is the header's.
+    expect(screen.getAllByText('Create account')).toHaveLength(1);
+  });
+
+  test('says each field error in words under its field, as an alert, and marks the field invalid (FR-017, FR-025)', async () => {
+    await render(<RegisterScreen />);
+    await fill({ Name: ' ', Email: 'nope', Password: 'short', 'Confirm password': 'x' });
+    await fireEvent.press(screen.getByTestId('register-submit'));
+
+    expect(screen.getByTestId('register-display-name-error')).toHaveTextContent(
+      /Tell us what to call you/,
+    );
+    expect(screen.getByTestId('register-email-error')).toHaveTextContent(
+      'Enter a valid email address.',
+    );
+    expect(screen.getByTestId('register-password-error')).toHaveTextContent(
+      'Use at least 12 characters.',
+    );
+    const mismatch = screen.getByTestId('register-confirm-password-error');
+    expect(mismatch).toHaveTextContent('Passwords do not match');
+    expect(mismatch.props.accessibilityRole).toBe('alert');
+    for (const id of [
+      'register-display-name',
+      'register-email',
+      'register-password',
+      'register-confirm-password',
+    ]) {
+      expect(screen.getByTestId(id).props['aria-invalid']).toBe(true);
+    }
+  });
+
+  test('says a refusal as an alert, between the form and the action, with its id (FR-017)', async () => {
+    mockMutations.register.error = new ApiRequestError(409, {
+      code: 'EMAIL_TAKEN',
+      message: 'x',
+    });
+    await render(<RegisterScreen />);
+
+    expect(screen.getByTestId('register-error').props.accessibilityRole).toBe('alert');
+    const order = idsInOrder();
+    expect(order.indexOf('register-confirm-password')).toBeLessThan(
+      order.indexOf('register-error'),
+    );
+    expect(order.indexOf('register-error')).toBeLessThan(
+      order.indexOf('register-submit'),
+    );
+  });
+
+  test('has ONE primary action, Create account; the provider buttons are not primary (FR-005)', async () => {
+    await render(<RegisterScreen />);
+    await screen.findByLabelText(/Continue with Apple/);
+    expect(primaries().map((button) => button.props.testID)).toEqual(['register-submit']);
+    expect(screen.getByTestId('register-submit').props.size).toBe('lg');
+  });
+
+  test('puts the action and the provider buttons in the lower part, after the four fields (FR-017)', async () => {
+    await render(<RegisterScreen />);
+    const actions = screen.getByTestId('register-actions');
+
+    expect(classesOf(actions)).toContain('mt-auto');
+    expect(within(actions).getByTestId('register-submit')).toBeTruthy();
+    expect(within(actions).getByTestId('social-sign-in')).toBeTruthy();
+
+    const order = idsInOrder();
+    const fields = [
+      'register-display-name',
+      'register-email',
+      'register-password',
+      'register-confirm-password',
+    ].map((id) => order.indexOf(id));
+    expect(fields).toEqual([...fields].sort((a, b) => a - b));
+    expect(Math.min(...fields)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...fields)).toBeLessThan(order.indexOf('register-actions'));
+    expect(order.indexOf('register-submit')).toBeLessThan(
+      order.indexOf('social-sign-in'),
+    );
+  });
+
+  test('the form scrolls above the keyboard and keeps taps on the buttons while it is open (C4-10 rule 8)', async () => {
+    await render(<RegisterScreen />);
+    const scroller = hostNodes().find((node) => node.type === 'RCTScrollView');
+    expect(scroller?.props.keyboardShouldPersistTaps).toBe('handled');
+    expect(scroller?.props.bottomOffset).toEqual(expect.any(Number));
+    expect(scroller?.props.contentInsetAdjustmentBehavior).toBe('automatic');
+    expect(((screen.toJSON() as Json).children ?? [])[0]).toMatchObject({
+      type: 'RCTScrollView',
+    });
+  });
+
+  test('the last field’s return key submits, so the action is reachable with the keyboard up', async () => {
+    await render(<RegisterScreen />);
+    await fill();
+    await fireEvent(screen.getByLabelText('Confirm password'), 'submitEditing');
+    expect(mockMutations.register.mutate).toHaveBeenCalled();
+  });
+
+  test('keeps the reading order: name, email, password, confirmation, error, action, providers (FR-030)', async () => {
+    mockMutations.register.error = new ApiRequestError(409, { code: 'X', message: 'x' });
+    await render(<RegisterScreen />);
+    const order = idsInOrder().filter((id) =>
+      /^register-(display-name|email|password|confirm-password|error|submit)$|^social-sign-in$/.test(
+        id,
+      ),
+    );
+    expect(order).toEqual([
+      'register-display-name',
+      'register-email',
+      'register-password',
+      'register-confirm-password',
+      'register-error',
+      'register-submit',
+      'social-sign-in',
+    ]);
+  });
+});
+
+describe('the auth screens - sources (FR-036, C4-10 rule 1)', () => {
+  const FILES = [
+    'app/(auth)/welcome.tsx',
+    'app/(auth)/login.tsx',
+    'app/(auth)/register.tsx',
+    'app/(auth)/_layout.tsx',
+    'components/auth/social-sign-in.tsx',
+    'components/auth/provider-button.tsx',
+    'components/auth/google-sign-in-button.tsx',
+    'components/auth/apple-sign-in-button.tsx',
+  ];
+  const source = (file: string) =>
+    readFileSync(path.resolve(__dirname, '..', '..', 'src', file), 'utf8');
+  const importsOf = (text: string) =>
+    [...text.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1]);
+
+  test.each(FILES)('%s imports none of the retired primitives', (file) => {
+    const specifiers = importsOf(source(file));
+    for (const retired of [
+      '@/components/ui/surface',
+      '@/components/ui/pressable-surface',
+      '@/components/ui/text-field',
+      '@/components/ui/pill-group',
+      '@/components/themed-text',
+      '@/components/themed-view',
+    ]) {
+      expect(specifiers).not.toContain(retired);
+    }
+  });
+
+  test.each(FILES)('%s has no colour literal and imports no kit', (file) => {
+    const text = source(file);
+    expect(text).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|\[#/);
+    expect(importsOf(text).some((from) => /^(heroui-native|uniwind)/.test(from))).toBe(
+      false,
+    );
   });
 });

@@ -1,0 +1,14 @@
+# Aeroplane mode on, app restarted, and the offline state PROVEN.
+#
+# Restarting first matters twice: it drops every in-memory cache (so the probe
+# below really issues a request) and it is the state a traveller is in when they
+# open the app on a plane. Leaves the app on the trips tab.
+#
+# Android only (`setAirplaneMode` is a silent no-op on iOS), and over USB or an
+# emulator only: wireless adb dies with the radio. Never run this with
+# `adb reverse` serving the API.
+appId: com.triptrackr.app
+---
+- setAirplaneMode: enabled
+- runFlow: relaunch.yaml
+- runFlow: assert-offline-probe.yaml

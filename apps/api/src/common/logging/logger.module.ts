@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 
 import { loadEnv } from '@/common/config/env.schema';
 
+import { prettyTransport } from './pretty-transport';
+
 /**
  * Structured request logging.
  *
@@ -35,12 +37,9 @@ import { loadEnv } from '@/common/config/env.schema';
             level: isProduction ? 'info' : isTest ? 'warn' : 'debug',
 
             // Pretty output locally; JSON in production, where a log shipper
-            // reads it. Never under test: pino-pretty runs in a worker thread,
-            // which Jest cannot see to wait for and reports as a leaked handle.
-            transport:
-              isProduction || isTest
-                ? undefined
-                : { target: 'pino-pretty', options: { singleLine: true } },
+            // reads it, and wherever pino-pretty is not installed (the Docker
+            // image). Never under test. See prettyTransport.
+            transport: prettyTransport(env.NODE_ENV),
 
             // Correlates every line of one request, and reaches the client as a
             // header so a support report can name the exact request.

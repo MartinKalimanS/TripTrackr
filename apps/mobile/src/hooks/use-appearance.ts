@@ -7,104 +7,90 @@
  *
  * Every field updates live: each signal has a change event, which is what
  * Acceptance Scenario 3.2 (switching appearance with the app open) requires.
+ *
+ * The accessibility flags are NOT read here. They live in one shared store
+ * (`appearance-store.ts`) that registers one listener per event type and runs one read per
+ * signal for the whole app, however many components call this hook (tasks.md T461). What
+ * stays per component is the cheap part: the colour scheme and the window's font scale.
  */
-import { useEffect, useMemo, useState } from 'react';
-import { AccessibilityInfo, Platform, useWindowDimensions } from 'react-native';
+import { useMemo, useSyncExternalStore } from 'react';
 
 import { Colors } from '@/constants/theme';
+import { overrideFlags, useAppearanceOverride } from '@/hooks/appearance-override';
+import {
+  getAppearanceServerSnapshot,
+  getAppearanceSnapshot,
+  subscribeToAppearance,
+} from '@/hooks/appearance-store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import {
-  appearanceChangeEvents,
-  platformQueries,
-  readPrefersLessMotion,
-  readPrefersLessTransparency,
-  readPrefersMoreContrast,
-} from '@/theme/accessibility';
-import {
-  resolveElevationProfile,
-  type ElevationProfile,
-} from '@/theme/elevation-profile';
-import type { ThemeName } from '@/theme/surfaces';
+import { useFontScale } from '@/hooks/use-font-scale';
+import { resolvePaletteName, type PaletteName, type ThemeName } from '@/theme/palette';
 
 export interface AppearanceContext {
+  /** The device scheme. */
   theme: ThemeName;
+  /**
+   * `theme` plus increased contrast: `light-contrast` or `dark-contrast` when
+   * `prefersMoreContrast` is true, otherwise equal to `theme` (contract C4-4). The root
+   * layout hands it to `Uniwind.setTheme`; nothing else sets the kit's theme.
+   */
+  themeName: PaletteName;
   prefersMoreContrast: boolean;
   prefersLessMotion: boolean;
   /** Structurally false on Android — the platform has no such setting. */
   prefersLessTransparency: boolean;
   fontScale: number;
-  elevationProfile: ElevationProfile;
-  tokens: (typeof Colors)['light'] | (typeof Colors)['dark'];
+  /**
+   * The colours that code hands over instead of a class, for `themeName`: the palette of
+   * the theme the kit is painting, increased contrast included, so the root stack, the
+   * navigation theme and every canvas agree with the kit's `--background` in all four
+   * themes.
+   */
+  tokens: (typeof Colors)[PaletteName];
+  /**
+   * True once the FIRST read of the accessibility flags has settled, whether it answered
+   * or failed. Until then `themeName` and `prefersLessMotion` are the defaults, not what
+   * the OS said, so the root layout keeps the splash up and renders nothing: the first
+   * frame the traveller sees already has the contrast theme and the motion setting
+   * (research D4-05). Later change events never reset it.
+   */
+  ready: boolean;
 }
 
-interface AccessibilityFlags {
-  prefersMoreContrast: boolean;
-  prefersLessMotion: boolean;
-  prefersLessTransparency: boolean;
-}
-
-/** Android exposes its API level as `Platform.Version`; iOS reports a string. */
-function androidApiLevel(): number | null {
-  if (Platform.OS !== 'android') return null;
-  const version = Platform.Version;
-  return typeof version === 'number' ? version : null;
-}
-
+/**
+ * The returned object is the same one between renders until the scheme, the font scale or a
+ * shared accessibility flag changes.
+ */
 export function useAppearance(): AppearanceContext {
   const scheme = useColorScheme();
   const theme: ThemeName = scheme === 'dark' ? 'dark' : 'light';
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
+  const override = useAppearanceOverride();
 
-  const [flags, setFlags] = useState<AccessibilityFlags>({
-    prefersMoreContrast: false,
-    prefersLessMotion: false,
-    prefersLessTransparency: false,
-  });
-
-  useEffect(() => {
-    let active = true;
-
-    const refresh = async () => {
-      const os = Platform.OS;
-      const [prefersMoreContrast, prefersLessMotion, prefersLessTransparency] =
-        await Promise.all([
-          readPrefersMoreContrast(os, platformQueries),
-          readPrefersLessMotion(os, platformQueries),
-          readPrefersLessTransparency(os, platformQueries),
-        ]);
-      if (active)
-        setFlags({ prefersMoreContrast, prefersLessMotion, prefersLessTransparency });
-    };
-
-    void refresh();
-
-    // Subscribe so the context updates live rather than only at launch. The
-    // event names differ per platform — see appearanceChangeEvents.
-    const subscriptions = appearanceChangeEvents(Platform.OS).map((event) =>
-      AccessibilityInfo.addEventListener(
-        event as Parameters<typeof AccessibilityInfo.addEventListener>[0],
-        () => void refresh(),
-      ),
-    );
-
-    return () => {
-      active = false;
-      subscriptions.forEach((subscription) => subscription?.remove());
-    };
-  }, []);
-
-  return useMemo(
-    () => ({
-      theme,
-      ...flags,
-      fontScale,
-      elevationProfile: resolveElevationProfile({
-        os: Platform.OS,
-        apiLevel: androidApiLevel(),
-        prefersMoreContrast: flags.prefersMoreContrast,
-      }),
-      tokens: Colors[theme],
-    }),
-    [theme, flags, fontScale],
+  // One snapshot, so `ready` and the flags it vouches for change in the same render.
+  const stored = useSyncExternalStore(
+    subscribeToAppearance,
+    getAppearanceSnapshot,
+    getAppearanceServerSnapshot,
   );
+  // A dev-gallery scope (T524) replaces the flags; the colour scheme and the font scale
+  // above already answer from it. No scope, no change (and the same object, for the memo).
+  const accessibility = useMemo(
+    () => (override ? overrideFlags(override) : stored),
+    [override, stored],
+  );
+
+  return useMemo(() => {
+    const themeName = resolvePaletteName(theme, accessibility.prefersMoreContrast);
+    return {
+      theme,
+      themeName,
+      prefersMoreContrast: accessibility.prefersMoreContrast,
+      prefersLessMotion: accessibility.prefersLessMotion,
+      prefersLessTransparency: accessibility.prefersLessTransparency,
+      fontScale,
+      tokens: Colors[themeName],
+      ready: accessibility.ready,
+    };
+  }, [theme, accessibility, fontScale]);
 }

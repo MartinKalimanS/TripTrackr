@@ -1,0 +1,41 @@
+# Row 13, second half — a trip, a stop and an expense created in aeroplane mode
+# all arrived in one reconnect, and the expense references the right trip
+# (research D-08, D-15, D-16). Device B, ONLINE, after A reconnected.
+#
+# Before (03-b-before-reconnect.yaml) B had none of the three. Now the trip,
+# its stop and the 7.77 expense are all here. "The right trip" is shown by where
+# the expense appears: under 'Gate offline trip', and NOT under 'Gate baseline'
+# (whose expenses are 20.00 and 12.34). An expense that had lost its trip
+# reference would be missing from the first list or present in the second.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- tapOn:
+    id: 'tab-trips'
+- extendedWaitUntil:
+    visible: 'Gate offline trip'
+    timeout: 60000
+- assertNotVisible: 'Not yet synced'
+- tapOn: 'Gate offline trip'
+- extendedWaitUntil:
+    visible: 'Stop 1: Rom(a|e).*'
+    timeout: 60000
+- tapOn:
+    id: 'trip-open-expenses'
+- extendedWaitUntil:
+    visible: '.*7.77.*'
+    timeout: 60000
+- assertNotVisible: '.*12.34.*'
+- assertNotVisible: '.*20.00.*'
+- tapOn: 'Back'
+- tapOn: 'Back'
+
+# And the other trip did not gain it.
+- tapOn: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-expenses'
+- assertVisible: '.*20.00.*'
+- assertVisible: '.*12.34.*'
+- assertNotVisible: '.*7.77.*'
+- tapOn: 'Back'
+- tapOn: 'Back'

@@ -1,5 +1,7 @@
 /**
- * Country-filtered searchable city picker — tasks.md T067 (FR-014).
+ * Country-filtered searchable city picker — tasks.md T067 (FR-014); on the Atlas adapters
+ * since feature 004 (T437; contract C4-8, C4-10 rules 2 and 8; FR-009, FR-024, FR-025,
+ * FR-029, FR-030, FR-037).
  *
  * Two steps, one component: choose a country from the full list (filtered as
  * the traveller types), then type a city and pick from the server's ranked
@@ -10,16 +12,30 @@
  * Selection returns the wire `City` (with its coordinates), which the stop
  * editor stores by `city_id`; the row itself is already in the local cache
  * because the search that offered it wrote it there.
+ *
+ * What it is made of: a search `Field` (label on top, so the largest text size wraps it
+ * instead of clipping a placeholder) and, under it, ONE `ListGroup` of `ListRow`s. A result
+ * is a single pressable row, named exactly as the old button was (`Italy`, `Roma, Italy`,
+ * `Country: Italy. Change country`), with the continent or the accent-free spelling as its
+ * second line and a chevron for a cue. The loading, empty and error states are the
+ * `state-view` presentations beside the field, never in place of it: a traveller who got
+ * nothing retypes in the same field. The offline note is an `alert`, words only.
+ *
+ * It does NOT scroll by itself. It lives in a sheet whose body is the scroller (the stop
+ * editor's `FormSheet`: a `KeyboardAwareScrollView` with `keyboardShouldPersistTaps=
+ * "handled"`), so the list, the field and the dates move together and a tap on a result
+ * is never swallowed by a dismissal of the keyboard. A scroller of its own would nest one
+ * inside the other and fight for the gesture. The country list is capped at
+ * `MAX_COUNTRY_ROWS` and says "Keep typing" past it.
  */
 import type { City, Country } from '@triptrackr/contracts';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { PressableSurface } from '@/components/ui/pressable-surface';
+import { Field } from '@/components/ui/field';
+import { ListGroup, ListRow } from '@/components/ui/list-group';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
-import { TextField } from '@/components/ui/text-field';
-import { Spacing } from '@/constants/theme';
+import { Text } from '@/components/ui/text';
 import { useCitySearch, useCountries } from '@/features/geography/use-geography';
 import { foldAccents } from '@/db/repositories/geography';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -35,13 +51,9 @@ const OFFLINE_NOTE = 'Offline — showing saved places';
 
 function OfflineNote() {
   return (
-    <ThemedText
-      type="small"
-      themeColor="textMuted"
-      accessibilityRole="alert"
-      style={styles.note}>
+    <Text type="callout" tone="muted" accessibilityRole="alert" className="px-1">
       {OFFLINE_NOTE}
-    </ThemedText>
+    </Text>
   );
 }
 
@@ -50,6 +62,40 @@ function matchesCountry(country: Country, needle: string): boolean {
   return (
     foldAccents(country.name).toLowerCase().includes(needle) ||
     country.iso_code.toLowerCase() === needle
+  );
+}
+
+type CountryRowsProps = {
+  countries: readonly Country[];
+  /** More countries match than are shown. */
+  hasMore: boolean;
+  onPick: (country: Country) => void;
+};
+
+function CountryRows({ countries, hasMore, onPick }: CountryRowsProps) {
+  if (countries.length === 0) {
+    return <EmptyState title="No country matches" detail="Try another spelling." />;
+  }
+  return (
+    <View className="gap-2">
+      <ListGroup testID="city-picker-country-list">
+        {countries.map((country) => (
+          <ListRow
+            key={country.id}
+            testID={`city-picker-country-${country.iso_code}`}
+            title={country.name}
+            description={country.continent}
+            accessibilityLabel={country.name}
+            onPress={() => onPick(country)}
+          />
+        ))}
+      </ListGroup>
+      {hasMore ? (
+        <Text type="caption" tone="muted" className="px-1">
+          Keep typing to narrow the list
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -74,11 +120,10 @@ function CountryStep({ onPick }: CountryStepProps) {
   const matches = countries.data.items.filter((country) =>
     matchesCountry(country, needle),
   );
-  const visible = matches.slice(0, MAX_COUNTRY_ROWS);
 
   return (
-    <View style={styles.step}>
-      <TextField
+    <View className="gap-3">
+      <Field
         label="Country"
         value={filter}
         onChangeText={setFilter}
@@ -88,32 +133,56 @@ function CountryStep({ onPick }: CountryStepProps) {
         testID="city-picker-country-filter"
       />
       {countries.data.offline ? <OfflineNote /> : null}
-      {visible.length === 0 ? (
-        <EmptyState title="No country matches" detail="Try another spelling." />
-      ) : (
-        <View style={styles.list} testID="city-picker-country-list">
-          {visible.map((country) => (
-            <PressableSurface
-              key={country.id}
-              testID={`city-picker-country-${country.iso_code}`}
-              accessibilityLabel={country.name}
-              treatment="flat"
-              onPress={() => onPick(country)}
-              style={styles.row}>
-              <ThemedText>{country.name}</ThemedText>
-              <ThemedText type="small" themeColor="textMuted">
-                {country.continent}
-              </ThemedText>
-            </PressableSurface>
-          ))}
-          {matches.length > visible.length ? (
-            <ThemedText type="small" themeColor="textMuted" style={styles.note}>
-              Keep typing to narrow the list
-            </ThemedText>
-          ) : null}
-        </View>
-      )}
+      <CountryRows
+        countries={matches.slice(0, MAX_COUNTRY_ROWS)}
+        hasMore={matches.length > MAX_COUNTRY_ROWS}
+        onPick={onPick}
+      />
     </View>
+  );
+}
+
+type CityResultsProps = {
+  search: ReturnType<typeof useCitySearch>;
+  country: Country;
+  /** What the search ran for; decides which empty-state hint is true. */
+  query: string;
+  onPick: (city: City) => void;
+};
+
+/** The search's loading, error, empty and populated presentations, in that order. */
+function CityResults({ search, country, query, onPick }: CityResultsProps) {
+  if (search.isError) {
+    return (
+      <ErrorState
+        title="Couldn’t search cities"
+        detail="Check your connection and try again."
+        onRetry={() => void search.refetch()}
+      />
+    );
+  }
+  if (search.isPending) return <LoadingState title="Searching cities" />;
+  if (search.data.items.length === 0) {
+    return (
+      <EmptyState
+        title="No city matches"
+        detail={query.trim() ? 'Try another spelling.' : 'Start typing a city name.'}
+      />
+    );
+  }
+  return (
+    <ListGroup testID="city-picker-city-list">
+      {search.data.items.map((city) => (
+        <ListRow
+          key={city.id}
+          testID={`city-picker-city-${city.id}`}
+          title={city.name}
+          description={city.ascii_name !== city.name ? city.ascii_name : undefined}
+          accessibilityLabel={`${city.name}, ${country.name}`}
+          onPress={() => onPick(city)}
+        />
+      ))}
+    </ListGroup>
   );
 }
 
@@ -129,20 +198,22 @@ function CityStep({ country, onChangeCountry, onPick }: CityStepProps) {
   const cities = useCitySearch(country.id, debounced);
 
   return (
-    <View style={styles.step}>
-      <PressableSurface
-        testID="city-picker-change-country"
-        accessibilityLabel={`Country: ${country.name}. Change country`}
-        treatment="flat"
-        onPress={onChangeCountry}
-        style={styles.row}>
-        <ThemedText type="smallBold">{country.name}</ThemedText>
-        <ThemedText type="small" themeColor="textMuted">
-          Change
-        </ThemedText>
-      </PressableSurface>
+    <View className="gap-3">
+      <ListGroup>
+        <ListRow
+          testID="city-picker-change-country"
+          title={country.name}
+          accessibilityLabel={`Country: ${country.name}. Change country`}
+          trailing={
+            <Text type="callout" tone="accent">
+              Change
+            </Text>
+          }
+          onPress={onChangeCountry}
+        />
+      </ListGroup>
 
-      <TextField
+      <Field
         label="City"
         value={query}
         onChangeText={setQuery}
@@ -154,41 +225,7 @@ function CityStep({ country, onChangeCountry, onPick }: CityStepProps) {
       />
 
       {cities.data?.offline ? <OfflineNote /> : null}
-      {cities.isError ? (
-        <ErrorState
-          title="Couldn’t search cities"
-          detail="Check your connection and try again."
-          onRetry={() => void cities.refetch()}
-        />
-      ) : cities.isPending ? (
-        <LoadingState title="Searching cities" />
-      ) : cities.data.items.length === 0 ? (
-        <EmptyState
-          title="No city matches"
-          detail={
-            debounced.trim() ? 'Try another spelling.' : 'Start typing a city name.'
-          }
-        />
-      ) : (
-        <View style={styles.list} testID="city-picker-city-list">
-          {cities.data.items.map((city) => (
-            <PressableSurface
-              key={city.id}
-              testID={`city-picker-city-${city.id}`}
-              accessibilityLabel={`${city.name}, ${country.name}`}
-              treatment="flat"
-              onPress={() => onPick(city)}
-              style={styles.row}>
-              <ThemedText>{city.name}</ThemedText>
-              {city.ascii_name !== city.name ? (
-                <ThemedText type="small" themeColor="textMuted">
-                  {city.ascii_name}
-                </ThemedText>
-              ) : null}
-            </PressableSurface>
-          ))}
-        </View>
-      )}
+      <CityResults search={cities} country={country} query={debounced} onPick={onPick} />
     </View>
   );
 }
@@ -206,17 +243,3 @@ export function CityPicker({ onSelect }: CityPickerProps) {
     />
   );
 }
-
-const styles = StyleSheet.create({
-  step: { gap: Spacing.two },
-  list: { gap: Spacing.one },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  note: { paddingHorizontal: Spacing.one },
-});

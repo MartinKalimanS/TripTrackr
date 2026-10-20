@@ -1,0 +1,46 @@
+# Row 9 (2 of 2) — nothing lost or duplicated after the interrupted sync.
+# Device B, ONLINE, after 09a-a-interrupted-push.yaml.
+#
+# All six titles A wrote offline have arrived (nothing lost), and each is listed
+# exactly once (nothing duplicated): the second occurrence of a title is asserted
+# absent with `index: 1`. A duplicate on the server could only come from a retried
+# push creating a second row instead of upserting the same client-generated id.
+# Identity is the row's own UUID on both sides (research D-15), so B also cannot
+# hold two rows for one id.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- extendedWaitUntil:
+    visible: 'Interrupt 6'
+    timeout: 90000
+- assertVisible: 'Interrupt 1'
+- assertVisible: 'Interrupt 2'
+- assertVisible: 'Interrupt 3'
+- assertVisible: 'Interrupt 4'
+- assertVisible: 'Interrupt 5'
+- assertNotVisible:
+    text: 'Interrupt 1'
+    index: 1
+- assertNotVisible:
+    text: 'Interrupt 2'
+    index: 1
+- assertNotVisible:
+    text: 'Interrupt 3'
+    index: 1
+- assertNotVisible:
+    text: 'Interrupt 4'
+    index: 1
+- assertNotVisible:
+    text: 'Interrupt 5'
+    index: 1
+- assertNotVisible:
+    text: 'Interrupt 6'
+    index: 1
+- tapOn: 'Back'
+- tapOn: 'Back'

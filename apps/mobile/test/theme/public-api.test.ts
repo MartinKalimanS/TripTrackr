@@ -1,12 +1,31 @@
 /**
  * Contract C7 — the token layer's public surface.
  *
- * Token NAMES are stable and `SurfaceTreatment` is a closed union: feature 001's
- * screens will be built against exactly these exports, so an accidental rename
- * or removal is a breaking change and should fail here rather than in a screen.
+ * Token NAMES are stable: the screens are built against exactly these exports, so
+ * an accidental rename or removal is a breaking change and should fail here rather
+ * than in a screen.
  */
 import {
+  AtlasRadius,
+  AtlasSpacing,
   ContrastFloor,
+  FocusRing,
+  IconSize,
+  Lift,
+  Motion,
+  PaletteKeys,
+  PaletteNames,
+  Palettes,
+  Passport,
+  PrimaryEdgeRing,
+  Radii,
+  Scrim,
+  Sky,
+  Space,
+  TextRoles,
+  TypeRoles,
+  blend,
+  colourAt,
   contrastRatio,
   meetsFloor,
   platformQueries,
@@ -14,9 +33,7 @@ import {
   readPrefersLessTransparency,
   readPrefersMoreContrast,
   relativeLuminance,
-  resolveElevationProfile,
-  resolveInk,
-  surfaceStyle,
+  resolvePaletteName,
 } from '@/theme';
 
 describe('token layer public API — contract C7', () => {
@@ -24,12 +41,11 @@ describe('token layer public API — contract C7', () => {
     // Named imports rather than a namespace lookup: a removed export becomes a
     // compile error here, which is the earliest place it can possibly surface.
     for (const fn of [
+      blend,
       contrastRatio,
       relativeLuminance,
       meetsFloor,
-      resolveElevationProfile,
-      surfaceStyle,
-      resolveInk,
+      resolvePaletteName,
       readPrefersMoreContrast,
       readPrefersLessTransparency,
       readPrefersLessMotion,
@@ -47,6 +63,38 @@ describe('token layer public API — contract C7', () => {
     });
   });
 
+  test('exports the Atlas palette as data (004 C4-1)', () => {
+    expect(PaletteNames).toHaveLength(4);
+    expect(PaletteKeys.length).toBeGreaterThan(0);
+    expect(Palettes.light.canvas).toMatch(/^#[0-9A-F]{6}$/);
+  });
+
+  test('exports the Atlas type, shape and motion tables as data (004 C4-6)', () => {
+    expect(Object.keys(TextRoles)).toEqual(
+      expect.arrayContaining(['largeTitle', 'body', 'numeric']),
+    );
+    expect(AtlasRadius.pill).toBe(999);
+    expect(AtlasSpacing.twelve).toBe(12);
+    expect(FocusRing).toEqual({ width: 2.5, offset: 2 });
+    expect(Motion.transitionMs).toBe(200);
+  });
+
+  test('exports the Sunrise type, shape, motion and scrim tables as data (005 C5-7 to C5-10)', () => {
+    expect(Object.keys(TypeRoles)).toEqual(
+      expect.arrayContaining(['display', 'numeral', 'eyebrow', 'accent']),
+    );
+    expect(Space[5]).toBe(20);
+    expect(Radii.sheet).toBe(28);
+    expect(IconSize.lg).toBe(24);
+    expect(Object.keys(Lift.light)).toEqual(['lift1', 'lift2']);
+    expect(PrimaryEdgeRing.colourKey).toBe('accentLine');
+    expect(Motion.sheetSpring.stiffness).toBe(700);
+    expect(Scrim.base.rgb).toBe('#081A30');
+    expect(Sky.light.stops).toHaveLength(4);
+    expect(Passport.angle).toBe(135);
+    expect(colourAt(Sky.light.stops, 0)).toBe('#FFF1DF');
+  });
+
   test('exports the platform query facade', () => {
     expect(platformQueries).toBeDefined();
   });
@@ -54,8 +102,8 @@ describe('token layer public API — contract C7', () => {
   test('the barrel re-exports work, not just types', () => {
     // A barrel that only re-exported types would compile and cover nothing.
     expect(contrastRatio('#000000', '#FFFFFF')).toBeCloseTo(21, 4);
-    expect(
-      resolveElevationProfile({ os: 'ios', apiLevel: null, prefersMoreContrast: false }),
-    ).toBe('full');
+    expect(blend('#000000', '#FFFFFF', 1)).toBe('#000000');
+    // The theme resolver (C4-4): the device scheme plus increased contrast selects the theme.
+    expect(resolvePaletteName('dark', true)).toBe('dark-contrast');
   });
 });

@@ -207,6 +207,45 @@ describe('stopsRepository', () => {
     expect(rows[0]).toMatchObject({ lat: 41.9, lng: 12.5 });
   });
 
+  test('allWithNamesQuery lists every live stop with its city name and country code, null when uncached', () => {
+    geographyRepository.cacheCountries(sqlite.db, [italy]);
+    geographyRepository.cacheCities(sqlite.db, [rome]);
+    const a = newTrip('A');
+    const b = newTrip('B');
+    addStop(a.id, rome.id, '2026-05-10', '2026-05-12');
+    addStop(a.id, 999, '2026-05-12', '2026-05-15');
+    const gone = addStop(b.id, rome.id, '2026-06-01', '2026-06-02');
+    addStop(b.id, rome.id, '2026-06-03', '2026-06-04');
+    stopsRepository.remove(sqlite.db, gone.id);
+
+    const rows = stopsRepository.allWithNamesQuery(sqlite.db).all();
+
+    expect(rows).toHaveLength(3);
+    expect(
+      rows
+        .filter((row) => row.trip_id === a.id)
+        .map((row) => [row.city_name, row.iso_code, row.country_id, row.sort_order]),
+    ).toEqual([
+      ['Roma', 'IT', 1, 0],
+      [null, null, null, 1],
+    ]);
+    expect(stopsRepository.allWithNamesQuery(sqlite.db).toSQL().sql).toMatch(
+      /"deleted_at" is null/i,
+    );
+  });
+
+  test('forTripQuery names a stop country by its ISO code for the flag, null when uncached (T545)', () => {
+    geographyRepository.cacheCountries(sqlite.db, [italy]);
+    geographyRepository.cacheCities(sqlite.db, [rome]);
+    const trip = newTrip();
+    addStop(trip.id, rome.id, '2026-05-10', '2026-05-12');
+    addStop(trip.id, 999, '2026-05-12', '2026-05-15');
+
+    const rows = stopsRepository.forTripQuery(sqlite.db, trip.id).all();
+
+    expect(rows.map((row) => row.country_iso)).toEqual([italy.iso_code, null]);
+  });
+
   test('updateDates validates, bumps updated_at and re-dirties the row', () => {
     const trip = newTrip();
     const stop = addStop(trip.id, rome.id, '2026-05-10', '2026-05-12');
@@ -433,6 +472,13 @@ describe('geographyRepository', () => {
     geographyRepository.cacheCities(sqlite.db, [rome]);
     geographyRepository.cacheCities(sqlite.db, [{ ...rome, population: 1 }]);
     expect(geographyRepository.searchCities(sqlite.db, 1, '')).toHaveLength(1);
+  });
+
+  test('countriesQuery is the cached countries by name, as a select a screen can watch live', () => {
+    geographyRepository.cacheCountries(sqlite.db, [spain, italy]);
+    const rows = geographyRepository.countriesQuery(sqlite.db).all();
+    expect(rows.map((row) => row.name)).toEqual(['Italy', 'Spain']);
+    expect(Object.keys(rows[0]!).sort()).toEqual(['continent', 'id', 'iso_code', 'name']);
   });
 
   test('caching an empty list is a no-op, not an invalid statement', () => {

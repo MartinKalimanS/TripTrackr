@@ -1,0 +1,47 @@
+<!--frame id=add-stop no=01 title="Add stop" status=photo cap="Form sheet, large detent. Place is searched, dates drive a nights stepper, note is optional. Save is sticky and the only coral object."-->
+{{INC:trip-backdrop}}
+<div class="dim"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-label="Add stop">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <div class="side"><button class="btn btn-text" aria-label="Cancel">Cancel</button></div>
+    <h2 class="tt t-callout">Add stop</h2>
+    <div class="side r"></div>
+  </div>
+  <div class="sheet-body">
+    <div class="field">
+      <label class="lab" for="place">Place</label>
+      <div class="input" id="place">[[flag:pt]]<span class="val t-callout"><span data-long="Vila Nova de Foz Côa">Porto</span><span class="c2 reg">, Portugal</span></span><button class="clr" aria-label="Clear place">[[i16:x]]</button></div>
+      <div class="route" role="img" aria-label="Route: Lisbon, Sintra, then Porto as the new third stop, 322 kilometres from Sintra">
+        <div class="rs done"><i></i><span>LIS</span></div><div class="rl"></div>
+        <div class="rs done"><i></i><span>SNT</span></div><div class="rl dash"></div>
+        <div class="rs new"><i></i><span>OPO</span></div>
+      </div>
+      <p class="route-meta t-label c2"><b>Stop 3</b> &middot; 322 km from Sintra</p>
+    </div>
+
+    <div class="field">
+      <div class="lab" id="dates-l">Dates</div>
+      <div class="dates" role="group" aria-labelledby="dates-l">
+        <button class="dseg"><span class="t-caption c2">Arrive</span><span class="t-callout">Thu 15 Oct</span></button>
+        <span class="dline" aria-hidden="true"></span>
+        <button class="dseg r"><span class="t-caption c2">Depart</span><span class="t-callout">Mon 19 Oct</span></button>
+      </div>
+      <div class="stepper-row">
+        <div class="tx"><div class="t-callout">Nights</div><div class="t-label c2">Fits your trip, ends 19 Oct</div></div>
+        <div class="stepper" role="group" aria-label="Nights"><button class="sbtn" aria-label="Fewer nights">[[i:minus]]</button><span class="sval t-callout tnum" aria-live="polite">4</span><button class="sbtn" aria-label="More nights">[[i:plus]]</button></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="lab" id="mode-l">Getting there <em>(optional)</em></div>
+      <div class="chips scrollx fadeR" role="radiogroup" aria-labelledby="mode-l" data-pick><button class="chip is-on" role="radio" aria-checked="true">[[i20:check]]Car</button><button class="chip" role="radio" aria-checked="false">[[i20:train-front]]Train</button><button class="chip" role="radio" aria-checked="false">[[i20:plane]]Plane</button><button class="chip" role="radio" aria-checked="false">[[i20:footprints]]Walk</button></div>
+    </div>
+
+    <div class="field">
+      <label class="lab" for="note">Note <em>(optional)</em></label>
+      <div class="input ta" id="note"><span class="val" data-long="Livraria Lello when it opens at 09:30 before the queue builds, then the Ribeira at sunset, dinner booked at Cantinho do Avillez for 20:00, ask about the port cellars across the river on Friday morning and the tram to Foz.">Livraria Lello when it opens, sunset on the Ribeira.</span></div>
+    </div>
+  </div>
+  <div class="sheet-foot"><button class="btn btn-primary lg block">Save stop</button></div>
+</div>

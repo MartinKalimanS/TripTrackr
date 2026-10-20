@@ -1,24 +1,30 @@
 /**
- * Typed keychain wrapper — tasks.md T040 (FR-003).
+ * Typed keychain wrapper — tasks.md T040 (FR-003), T212 (FR-033).
  *
  * Everything that must survive an app restart but must never sit in plain
  * storage goes through here: the token pair, the traveller's own profile (it
- * contains their email), and the key that encrypts the local database. The
- * API client (T039), the session store, and the database client (T041) all
- * import this module rather than `expo-secure-store` directly, so the key
- * names and the "what counts as a session" rule live in exactly one place.
+ * contains their email), the key that encrypts the local database, the key
+ * that seals travel-document files on this device (research D-32), and a
+ * sign-out's pending wipe of the offline maps, which must outlive the session. The
+ * API client (T039), the session store, the database client (T041) and the
+ * document vault (T212) all import this module rather than `expo-secure-store`
+ * directly, so the key names and the "what counts as a session" rule live in
+ * exactly one place.
  *
  * Platform notes (https://docs.expo.dev/versions/v57.0.0/sdk/securestore.md):
  *   - Keys may contain alphanumerics, `.`, `-`, `_` only.
  *   - iOS Keychain values persist across an uninstall/reinstall with the same
  *     bundle id; Android Keystore values do not. Neither is relied upon: a
  *     lost session costs a sign-in, a lost database key costs the local
- *     mirror, which the server holds anyway once US6 syncs it.
+ *     mirror, which the server holds anyway once US6 syncs it, and a lost
+ *     documents key costs the sealed copies of documents the API already
+ *     holds sealed (D-32) — only one not yet uploaded is lost with it.
  *   - Some iOS releases refused values above ~2 KB. The largest value here is
  *     the profile JSON (bounded by the contract to well under that).
  *   - `AFTER_FIRST_UNLOCK` lets the background reconciler (US6) read the
- *     tokens and the database key while the screen is locked; the default
- *     `WHEN_UNLOCKED` would make every background sync fail on a locked phone.
+ *     tokens, the database key and the documents key while the screen is
+ *     locked; the default `WHEN_UNLOCKED` would make every background sync —
+ *     a pending boarding pass's upload included — fail on a locked phone.
  */
 import { UserProfile } from '@triptrackr/contracts';
 import * as Crypto from 'expo-crypto';
@@ -28,7 +34,9 @@ export const SECURE_KEYS = {
   accessToken: 'triptrackr.access_token',
   refreshToken: 'triptrackr.refresh_token',
   dbKey: 'triptrackr.db_key',
+  documentsKey: 'triptrackr.documents_key',
   user: 'triptrackr.user',
+  offlineMapsWipe: 'triptrackr.offline_maps_wipe',
 } as const;
 
 export interface StoredTokens {
@@ -40,9 +48,12 @@ export interface StoredSession extends StoredTokens {
   user: UserProfile;
 }
 
-/** SQLCipher takes a raw 256-bit key; 32 bytes → 64 hex characters. */
-const DATABASE_KEY_BYTES = 32;
-const DATABASE_KEY_PATTERN = /^[0-9a-f]{64}$/;
+/**
+ * SQLCipher takes a raw 256-bit key, and so does AES-256-GCM (the document
+ * vault): 32 bytes → 64 hex characters, for both device keys.
+ */
+const DEVICE_KEY_BYTES = 32;
+const DEVICE_KEY_PATTERN = /^[0-9a-f]{64}$/;
 
 const options: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
@@ -100,10 +111,11 @@ export async function setSession(session: StoredSession): Promise<void> {
 }
 
 /**
- * Sign out on this device. The database key is deliberately NOT removed: the
- * local mirror is per-account (`triptrackr-<user id>.db`), stays encrypted on
- * disk, and is reopened when that traveller signs in again (Constitution V —
- * nothing recorded is discarded by a sign-out).
+ * Sign out on this device. The database and documents keys are deliberately
+ * NOT removed: the local mirror is per-account (`triptrackr-<user id>.db`),
+ * stays encrypted on disk with the sealed document files it points at, and is
+ * reopened when that traveller signs in again (Constitution V — nothing
+ * recorded is discarded by a sign-out).
  */
 export async function clearSession(): Promise<void> {
   await Promise.all([
@@ -113,30 +125,81 @@ export async function clearSession(): Promise<void> {
   ]);
 }
 
+/**
+ * A sign-out's request to wipe this device's offline maps, kept until the
+ * wipe is confirmed (`lib/mapbox.ts`). Deliberately not part of the session:
+ * a sign-out the app closed part-way through is finished at the next start-up.
+ */
+export async function markOfflineMapsWipePending(): Promise<void> {
+  await SecureStore.setItemAsync(SECURE_KEYS.offlineMapsWipe, 'pending', options);
+}
+
+export async function isOfflineMapsWipePending(): Promise<boolean> {
+  return (await SecureStore.getItemAsync(SECURE_KEYS.offlineMapsWipe, options)) !== null;
+}
+
+export async function clearOfflineMapsWipePending(): Promise<void> {
+  await SecureStore.deleteItemAsync(SECURE_KEYS.offlineMapsWipe, options);
+}
+
 function toHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function readOrCreateDatabaseKey(): Promise<string> {
-  const existing = await SecureStore.getItemAsync(SECURE_KEYS.dbKey, options);
+interface DeviceKey {
+  name: (typeof SECURE_KEYS)[keyof typeof SECURE_KEYS];
+  /** Thrown when the stored value is not a 256-bit hex key. */
+  malformed: string;
+}
+
+const DATABASE_KEY: DeviceKey = {
+  name: SECURE_KEYS.dbKey,
+  malformed: 'Stored database key is malformed; refusing to open the database.',
+};
+
+const DOCUMENTS_KEY: DeviceKey = {
+  name: SECURE_KEYS.documentsKey,
+  malformed: 'Stored documents key is malformed; refusing to seal or open documents.',
+};
+
+async function readOrCreateDeviceKey({ name, malformed }: DeviceKey): Promise<string> {
+  const existing = await SecureStore.getItemAsync(name, options);
   if (existing !== null) {
-    if (!DATABASE_KEY_PATTERN.test(existing)) {
-      // Opening SQLCipher with a malformed key would silently produce a
-      // database nothing else can read. Refuse loudly instead.
-      throw new Error('Stored database key is malformed; refusing to open the database.');
+    if (!DEVICE_KEY_PATTERN.test(existing)) {
+      // Opening SQLCipher — or sealing a document — with a malformed key would
+      // silently produce data nothing else can read. Refuse loudly instead.
+      throw new Error(malformed);
     }
     return existing;
   }
 
   // https://docs.expo.dev/versions/v57.0.0/sdk/crypto.md — `getRandomBytesAsync`
   // uses the platform CSPRNG (byteCount 0–1024).
-  const bytes = await Crypto.getRandomBytesAsync(DATABASE_KEY_BYTES);
+  const bytes = await Crypto.getRandomBytesAsync(DEVICE_KEY_BYTES);
   const key = toHex(bytes);
-  await SecureStore.setItemAsync(SECURE_KEYS.dbKey, key, options);
+  await SecureStore.setItemAsync(name, key, options);
   return key;
 }
 
-let databaseKeyInFlight: Promise<string> | null = null;
+/**
+ * Single-flight per key: two callers racing on first use must not each
+ * generate one, or whatever the first key protected becomes unreadable the
+ * moment the second write lands.
+ */
+function singleFlight(key: DeviceKey): () => Promise<string> {
+  let inFlight: Promise<string> | null = null;
+  return () => {
+    if (!inFlight) {
+      inFlight = readOrCreateDeviceKey(key).finally(() => {
+        inFlight = null;
+      });
+    }
+    return inFlight;
+  };
+}
+
+const databaseKey = singleFlight(DATABASE_KEY);
+const documentsKey = singleFlight(DOCUMENTS_KEY);
 
 /**
  * The SQLCipher key for this device, created on first use and never rotated.
@@ -146,10 +209,17 @@ let databaseKeyInFlight: Promise<string> | null = null;
  * second write lands.
  */
 export function getOrCreateDatabaseKey(): Promise<string> {
-  if (!databaseKeyInFlight) {
-    databaseKeyInFlight = readOrCreateDatabaseKey().finally(() => {
-      databaseKeyInFlight = null;
-    });
-  }
-  return databaseKeyInFlight;
+  return databaseKey();
+}
+
+/**
+ * The AES-256-GCM key that seals travel-document files on this device
+ * (research D-32; `features/documents/document-vault.ts`), created on first
+ * use and never rotated, single-flight like the database key. Kept beside the
+ * database key rather than derived from it: a file dump plus a leaked database
+ * key must still not open a boarding pass. Like the database key, it outlives
+ * a sign-out (Constitution V).
+ */
+export function getOrCreateDocumentsKey(): Promise<string> {
+  return documentsKey();
 }

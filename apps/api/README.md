@@ -15,6 +15,11 @@ npm run db:migrate -w apps/api           # owner role; also sets the API role's 
 npm run start:dev -w apps/api            # http://localhost:3000
 ```
 
+`start:dev`, `db:migrate` and `geo:import` load the repository-root `.env` themselves
+(Node's `--env-file`), so nothing needs exporting first. A variable already set in the shell
+wins over the file, which is how CI supplies its own. `start:dev` needs the file
+(`cp .env.example .env`); the other two carry on without it.
+
 `GET /health` answers `{ "status": "ok" }` once the database does. Every other
 route lives under `/v1` (contracts/README.md).
 

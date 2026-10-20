@@ -8,7 +8,7 @@
  */
 import { View, type ViewProps } from 'react-native';
 
-import { BorderHairline, Colors, Radius } from '@/constants/theme';
+import { BorderHairline, Radius } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
 
 export type MediaFrameProps = ViewProps & {
@@ -16,8 +16,8 @@ export type MediaFrameProps = ViewProps & {
 };
 
 export function MediaFrame({ radius = 'md', style, ...rest }: MediaFrameProps) {
-  const { theme } = useAppearance();
-  const palette = Colors[theme];
+  // The edge is the active theme's `border`, increased contrast included.
+  const { tokens } = useAppearance();
 
   return (
     <View
@@ -28,7 +28,7 @@ export function MediaFrame({ radius = 'md', style, ...rest }: MediaFrameProps) {
           borderRadius: Radius[radius],
           // FR-026 — a near-white photo on the light canvas needs an edge.
           borderWidth: BorderHairline,
-          borderColor: palette.border,
+          borderColor: tokens.border,
           // Keeps the image inside the frame's corners rather than spilling
           // square corners over a rounded border.
           overflow: 'hidden',

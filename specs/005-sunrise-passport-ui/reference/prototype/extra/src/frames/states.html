@@ -1,0 +1,72 @@
+<!--frame id=states no=28 kind=board title="States sheet" cap="Generic states every list/screen reuses: skeletons that mirror the real layout, four empty states (illustration + one action), offline banner, sync error with Retry, permission denied, no results, undo toast and the per-record sync glyphs."-->
+<div class="sgrid">
+
+  <section class="sp"><h3 class="sl">Skeleton &middot; list rows</h3>
+    <div class="sbody2" aria-busy="true" aria-label="Loading">
+      <div class="skr"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:62%"></div><div class="sk" style="height:12px;width:40%"></div></div></div>
+      <div class="skr"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:48%"></div><div class="sk" style="height:12px;width:56%"></div></div></div>
+      <div class="skr"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:70%"></div><div class="sk" style="height:12px;width:34%"></div></div></div>
+      <div class="skr"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:54%"></div><div class="sk" style="height:12px;width:46%"></div></div></div>
+    </div></section>
+
+  <section class="sp"><h3 class="sl">Skeleton &middot; trip card</h3>
+    <div class="sbody2" aria-busy="true" aria-label="Loading trip">
+      <div class="sk xl skcard"><span class="skpin">[[i:map-pin]]</span></div>
+      <div class="skt" style="margin-top:var(--sp-3)"><div class="sk" style="height:20px;width:58%"></div><div class="sk" style="height:12px;width:38%"></div></div>
+      <div style="display:flex;gap:var(--sp-1);margin-top:var(--sp-4)"><div class="sk r" style="height:8px;flex:1"></div><div class="sk r" style="height:8px;flex:1"></div><div class="sk r" style="height:8px;flex:1"></div></div>
+    </div></section>
+
+  <section class="sp"><h3 class="sl">Empty &middot; photos</h3>
+    <div class="sbody2 emp"><div class="fan sm" aria-hidden="true"><i class="ph pf a" data-ph="sintra@center"></i><i class="ph pf b" data-ph="porto@center"></i><i class="ph pf c" data-ph="tram@center"></i></div>
+      <h4 class="t-callout">No photos yet</h4><p class="t-label c2">Add the first one and it lands on the right day.</p><button class="btn btn-primary">[[i:image-plus]]Add photos</button></div></section>
+
+  <section class="sp"><h3 class="sl">Empty &middot; notes</h3>
+    <div class="sbody2 emp"><svg class="ill" aria-hidden="true"><use href="#ill-notes"/></svg>
+      <h4 class="t-callout">Nothing written yet</h4><p class="t-label c2">Notes save on your phone the moment you type.</p><button class="btn btn-primary">[[i:pencil]]New note</button></div></section>
+
+  <section class="sp"><h3 class="sl">Empty &middot; expenses</h3>
+    <div class="sbody2 emp"><svg class="ill" aria-hidden="true"><use href="#ill-expenses"/></svg>
+      <h4 class="t-callout">No spending yet</h4><p class="t-label c2">Private to you. Start with today's coffee.</p><button class="btn btn-primary">[[i:plus]]Add expense</button></div></section>
+
+  <section class="sp"><h3 class="sl">Empty &middot; documents</h3>
+    <div class="sbody2 emp"><svg class="ill" aria-hidden="true"><use href="#ill-docs"/></svg>
+      <h4 class="t-callout">Tickets, offline</h4><p class="t-label c2">Scan a boarding pass or booking. Only you can see it.</p><button class="btn btn-primary">[[i:scan-line]]Scan document</button></div></section>
+
+  <section class="sp"><h3 class="sl">Offline banner</h3>
+    <div class="sbody2">
+      <div class="t-headline" style="margin-bottom:var(--sp-3)">Trips</div>
+      <div role="status" class="banner">[[i:wifi-off]]Offline &middot; 3 changes waiting</div>
+      <div class="skr" style="margin-top:var(--sp-4);opacity:.55"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:62%"></div><div class="sk" style="height:12px;width:40%"></div></div></div>
+      <p class="t-caption c2" style="margin-top:var(--sp-4)">Slim pill under the header, never blocking. Amber only after 24 h offline.</p>
+    </div></section>
+
+  <section class="sp"><h3 class="sl">Sync error</h3>
+    <div class="sbody2">
+      <div class="errrow" role="alert"><span class="ei">[[i:cloud-alert]]</span><div class="tx"><div class="t-callout" style="color:var(--danger)">Couldn&rsquo;t sync 2 changes</div><div class="t-label c2">Safe on this phone. We&rsquo;ll keep trying.</div></div><button class="btn btn-secondary sm">[[i20:refresh-cw]]Retry</button></div>
+      <p class="t-caption c2" style="margin-top:var(--sp-4)">Appears in the Sync row and as a per-record glyph. Detail lives in Settings &rsaquo; Sync.</p>
+    </div></section>
+
+  <section class="sp"><h3 class="sl">Permission denied</h3>
+    <div class="sbody2 emp"><svg class="ill" aria-hidden="true"><use href="#ill-camera-off"/></svg>
+      <h4 class="t-callout">Photos access is off</h4><p class="t-label c2">Turn it on in Settings to add photos from your library.</p><button class="btn btn-primary">Open Settings</button><button class="btn btn-text">Choose files instead</button></div></section>
+
+  <section class="sp"><h3 class="sl">No results</h3>
+    <div class="sbody2 emp"><svg class="ill" aria-hidden="true"><use href="#ill-search-x"/></svg>
+      <h4 class="t-callout">No results for &lsquo;lisb0n&rsquo;</h4><p class="t-label c2">Check the spelling or try a city name.</p><button class="btn btn-secondary sm">Clear search</button></div></section>
+
+  <section class="sp"><h3 class="sl">Undo toast</h3>
+    <div class="sbody2 toastzone">
+      <div class="skr" style="opacity:.55"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:62%"></div><div class="sk" style="height:12px;width:40%"></div></div></div>
+      <div class="toast tst" role="status"><span class="tx">Trip deleted</span><button class="btn-text btn">Undo</button><div class="bar"><i></i></div></div>
+      <p class="t-caption c2" style="margin-top:var(--sp-4)">10 s, announces politely, Undo restores all children.</p>
+    </div></section>
+
+  <section class="sp"><h3 class="sl">Sync glyph &middot; per record</h3>
+    <div class="sbody2 gl">
+      <div class="gr"><span class="sg ok">[[i16:cloud-check]]</span><span class="t-callout">Synced</span><span class="t-label c2">Bytes are on the server</span></div>
+      <div class="gr"><span class="sg q">[[i16:cloud-upload]]</span><span class="t-callout">Waiting</span><span class="t-label c2">Saved here, no network</span></div>
+      <div class="gr"><span class="pring" style="--p:62;--sz:16px;--w:2.5px;--c:var(--coral-line);--t:var(--sand)"></span><span class="t-callout">Uploading</span><span class="t-label c2 tnum">62%</span></div>
+      <div class="gr"><span class="sg q">[[i16:rotate-ccw]]</span><span class="t-callout">Retrying</span><span class="t-label c2">Next try in 30 s</span></div>
+      <div class="gr"><span class="sg fail">[[i16:triangle-alert]]</span><span class="t-callout" style="color:var(--danger)">Failed</span><span class="t-label c2">Tap to retry</span></div>
+    </div></section>
+</div>

@@ -1,0 +1,306 @@
+# User Story 3 — see your travel history as a 3D globe (tasks.md T101).
+#
+# The story's Independent Test, end to end: an account holding three trips in
+# three statuses opens the home screen on a globe with three arcs, the active
+# trip animated, and tapping an arc opens that trip (FR-045 to FR-047). On the
+# way it walks the two designed empty states, each shown over the globe, which
+# is mounted from the first launch (FR-051; spec Edge Cases, Globe; feature 003
+# FR-001, FR-002), and checks the statistics overlay (FR-050). Feature 003 also
+# draws one line through every visited place; like the arcs it is native and
+# not in the accessibility tree, so the `03-globe-*` screenshots are its
+# evidence.
+#
+# Everything the globe draws is LOCAL (research D-30): arcs and statistics are
+# derived from the device's SQLCipher store, so the flow proves the local-first
+# path. The network is needed only for registration, the city lookups, and
+# Mapbox's tiles.
+#
+# PREREQUISITES
+# -------------
+# - Those of 01-account-and-trip.yaml (development build, reachable API), with
+#   a geography catalogue holding Paris (FR), New York City (US), Tokyo (JP),
+#   Sydney (AU), Rome and Florence (IT). The trips are on three continents on
+#   purpose: at globe zoom, three Italian trips would overlap in a few pixels
+#   and the screenshots below would show nothing.
+# - EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN set in the build, and a network that
+#   reaches Mapbox — without a token the globe shows its designed error state
+#   and this flow stops at `globe-map`.
+# - ANDROID, English device language: the dates are picked in the system
+#   DatePickerDialog, whose month arrows are "Previous month" / "Next month"
+#   and whose day cells read "10 May 2026". iOS uses an inline calendar and
+#   needs its own date steps.
+#
+# WHAT THIS CANNOT PROVE
+# ----------------------
+# That the three arcs LOOK distinct and that the active one moves: the map is
+# native and its features are not in the accessibility tree. The screenshots
+# `03-globe-*` are the evidence to review by eye (quickstart.md §7, steps 2-4);
+# the per-status styling itself is pinned by the unit suites under
+# src/components/globe/__tests__/.
+#
+# The arc tap relies on the globe opening centred ON the animated trip's route
+# (`cameraCenter`, research D-30): the centre of the planet is a point of the
+# active trip's arc, so a tap there must open it. Feature 005 fits the planet to the free
+# space above the Home sheet (`globeFit`), so at peek that centre is about 47 percent of the
+# way down the screen, not 50.
+appId: com.triptrackr.app
+tags:
+  - us3
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    id: 'welcome-screen'
+
+# --- Register ---------------------------------------------------------------
+- evalScript: ${output.email = 'maestro-us3-' + Date.now() + '@example.com'}
+- tapOn:
+    id: 'welcome-create-account'
+- tapOn:
+    id: 'register-display-name'
+- inputText: 'Maestro Globetrotter'
+- tapOn:
+    id: 'register-email'
+- inputText: ${output.email}
+- tapOn:
+    id: 'register-password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'register-confirm-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register-submit'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+
+# --- No trips: the globe is there, with an invitation over it (FR-051; 003 FR-001) ---
+- extendedWaitUntil:
+    visible:
+      id: 'globe-map'
+    timeout: 20000
+- assertVisible:
+    id: 'globe-empty-state'
+- assertVisible: 'Your globe is waiting for its first trip'
+
+# --- A trip without a stop: the card opens it to add one (spec Edge Cases, Globe; 003 FR-002) ---
+- tapOn:
+    id: 'home-plan-trip'
+- tapOn:
+    id: 'add-trip-title'
+- inputText: 'Past trip'
+- hideKeyboard
+- tapOn:
+    id: 'currency-EUR'
+- tapOn:
+    id: 'add-trip-save'
+- assertVisible:
+    id: 'trip-screen'
+- tapOn: 'Back'
+- tapOn:
+    id: 'tab-index'
+- assertVisible:
+    id: 'globe-map'
+- assertVisible: 'Your trip needs a first stop'
+# With exactly one trip waiting for a stop the card opens that trip itself.
+- tapOn:
+    id: 'home-add-stop'
+- assertVisible:
+    id: 'trip-screen'
+- assertVisible: 'Past trip'
+
+# --- Past trip: Paris → New York, last month --------------------------------
+- tapOn:
+    id: 'trip-add-stop'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'France'
+- tapOn:
+    id: 'city-picker-country-FR'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'Par'
+- tapOn:
+    text: 'Paris'
+- tapOn:
+    id: 'stop-editor-arrive'
+- tapOn: 'Previous month'
+- tapOn: '10 .*'
+- tapOn: 'OK'
+- tapOn:
+    id: 'stop-editor-depart'
+- tapOn: 'Previous month'
+- tapOn: '12 .*'
+- tapOn: 'OK'
+- tapOn:
+    id: 'stop-editor-save'
+# The second stop's dates are suggested from the first's departure (FR-015),
+# so they are in the past too.
+- tapOn:
+    id: 'trip-add-stop'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'United States'
+- tapOn:
+    id: 'city-picker-country-US'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'New York'
+- tapOn:
+    text: 'New York( City)?'
+- tapOn:
+    id: 'stop-editor-save'
+- assertVisible: 'Past'
+- tapOn: 'Back'
+# The trip was opened from the globe, so Back lands on the globe.
+- tapOn:
+    id: 'tab-trips'
+
+# --- Planned trip: Tokyo → Sydney, next month --------------------------------
+- tapOn:
+    id: 'trips-plan-trip'
+- tapOn:
+    id: 'add-trip-title'
+- inputText: 'Planned trip'
+- hideKeyboard
+- tapOn:
+    id: 'currency-EUR'
+- tapOn:
+    id: 'add-trip-save'
+- tapOn:
+    id: 'trip-add-stop'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Japan'
+- tapOn:
+    id: 'city-picker-country-JP'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'Tok'
+- tapOn:
+    text: 'Tokyo'
+- tapOn:
+    id: 'stop-editor-arrive'
+- tapOn: 'Next month'
+- tapOn: '10 .*'
+- tapOn: 'OK'
+# A later arrival pulls the departure up to it (stop-editor.tsx
+# `changeArrival`), so the departure picker already opens in next month.
+- tapOn:
+    id: 'stop-editor-depart'
+- tapOn: '12 .*'
+- tapOn: 'OK'
+- tapOn:
+    id: 'stop-editor-save'
+- tapOn:
+    id: 'trip-add-stop'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Australia'
+- tapOn:
+    id: 'city-picker-country-AU'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'Syd'
+- tapOn:
+    text: 'Sydney'
+- tapOn:
+    id: 'stop-editor-save'
+- assertVisible: 'Planning'
+- tapOn: 'Back'
+
+# --- Active trip: Rome → Florence, starting today (the suggested dates) -----
+- tapOn:
+    id: 'trips-plan-trip'
+- tapOn:
+    id: 'add-trip-title'
+- inputText: 'Active trip'
+- hideKeyboard
+- tapOn:
+    id: 'currency-EUR'
+- tapOn:
+    id: 'add-trip-save'
+- tapOn:
+    id: 'trip-add-stop'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Italy'
+- tapOn:
+    id: 'city-picker-country-IT'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'Rom'
+- tapOn:
+    text: 'Rom(a|e)'
+- tapOn:
+    id: 'stop-editor-save'
+- tapOn:
+    id: 'trip-add-stop'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Italy'
+- tapOn:
+    id: 'city-picker-country-IT'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'F'
+- tapOn:
+    text: '(Firenze|Florence)'
+- tapOn:
+    id: 'stop-editor-save'
+- assertVisible: 'Active'
+- tapOn: 'Back'
+
+# --- The globe: three arcs, statistics, the active trip animated ------------
+- tapOn:
+    id: 'tab-index'
+- extendedWaitUntil:
+    visible:
+      id: 'globe-map'
+    timeout: 20000
+- assertVisible:
+    id: 'globe-stats'
+# France, the United States, Japan, Australia and Italy (FR-050).
+- assertVisible:
+    id: 'globe-stat-countries'
+    text: '5'
+- assertVisible: 'countries'
+# The numeral is the plain number; the unit (Kilometres or Miles) is the label under it.
+- assertVisible:
+    id: 'globe-stat-distance'
+    text: '[0-9,.]+'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 03-globe-three-statuses
+
+# --- Tap the active trip's arc — the trip opens (FR-047) --------------------
+# The sheet is at half and covers the middle of the map: lower it to peek first. A tap on
+# the handle steps half, full, peek, so two taps. At peek the whole planet is in view and
+# the camera's padding puts the active route's centre at the planet's centre, 47 percent of
+# the way down a 390 by 844 phone (see the audit under "Maestro flow edits" in tasks.md).
+- tapOn:
+    id: 'home-sheet-handle'
+- tapOn:
+    id: 'home-sheet-handle'
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'globe-map'
+    point: '50%,47%'
+- assertVisible:
+    id: 'trip-screen'
+- assertVisible: 'Active trip'
+
+# --- Relaunch: the globe comes back from the local store ---------------------
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: 'globe-map'
+    timeout: 20000
+- takeScreenshot: 03-globe-after-relaunch

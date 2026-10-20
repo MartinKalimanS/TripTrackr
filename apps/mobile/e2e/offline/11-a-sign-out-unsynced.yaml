@@ -1,0 +1,141 @@
+# Row 11 — Sign out holding unsynced changes.
+# Expected: pushes first, or warns explicitly (Constitution V; sync-protocol.md §3
+# last row; FR-004). Device A. Three outcomes, each asserted:
+#
+#   (a) OFFLINE, the push cannot complete -> the guard WARNS, naming the count and
+#       the reason, and offers "Stay signed in" (the raised, safe choice) and
+#       "Sign out anyway". "Stay" leaves the traveller signed in. "Anyway" signs out
+#       but the change is KEPT on the device (one encrypted database per account):
+#       signing back in, with a network, shows it still there and then syncs it.
+#   (b) ONLINE -> the guard PUSHES FIRST and signs out WITHOUT a warning; signing
+#       back in shows the note already acknowledged, no pending marker, with no
+#       30 s timer needed to explain it.
+#
+# The device-B half (both notes arrived, once each) is 11-b-signout-arrived.yaml.
+#
+# The warning is an in-screen panel (`sign-out-warning`), not a system dialog. Its
+# copy comes from features/auth/sign-out-copy.ts; the typographic apostrophes are
+# matched with `.`.
+#
+# The count in (a) is "1 change" only if device A holds nothing else unsynced when
+# the phase starts, which is why it runs after every earlier phase has settled.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/go-offline.yaml
+
+# --- (a) Offline: the guard warns explicitly ----------------------------------------------
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Unsynced at sign-out'
+      NOTE_BODY: 'Written offline, then signing out.'
+- assertVisible: 'Not yet synced'
+- tapOn: 'Back'
+- tapOn: 'Back'
+- tapOn:
+    id: 'tab-profile'
+- assertVisible:
+    id: 'profile-screen'
+- tapOn:
+    id: 'profile-sign-out'
+# The guard tries to push for up to 20 s before it concludes.
+- extendedWaitUntil:
+    visible:
+      id: 'sign-out-warning'
+    timeout: 40000
+- assertVisible: 'Not everything is backed up yet'
+- assertVisible: '1 change on this device hasn.t reached your account yet\. You.re offline right now, so they couldn.t be sent\.'
+- assertVisible: 'If you sign out now, they stay on this device.*'
+- assertVisible: 'Stay signed in'
+- assertVisible: 'Sign out anyway'
+- takeScreenshot: 11-a-sign-out-warning
+
+# "Stay signed in": nothing happened.
+- tapOn:
+    id: 'sign-out-warning-stay'
+- assertNotVisible:
+    id: 'sign-out-warning'
+- assertVisible:
+    id: 'profile-email'
+- assertNotVisible:
+    id: 'welcome-screen'
+
+# "Sign out anyway": signed out, the change kept on the device.
+- tapOn:
+    id: 'profile-sign-out'
+- extendedWaitUntil:
+    visible:
+      id: 'sign-out-warning'
+    timeout: 40000
+- tapOn:
+    id: 'sign-out-warning-anyway'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome-screen'
+    timeout: 30000
+
+# Signing back in needs the network. The change is still there, then it syncs.
+- runFlow: _helpers/go-online.yaml
+- runFlow: _helpers/sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 60000
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Unsynced at sign-out'
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 60000
+- tapOn: 'Back'
+- tapOn: 'Back'
+
+# --- (b) Online: the guard pushes first, signs out without a warning ---------------------------
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- runFlow:
+    file: _helpers/add-note.yaml
+    env:
+      NOTE_TITLE: 'Pushed before sign-out'
+      NOTE_BODY: 'Written online, then signing out at once.'
+- tapOn: 'Back'
+- tapOn: 'Back'
+- tapOn:
+    id: 'tab-profile'
+- tapOn:
+    id: 'profile-sign-out'
+# No warning panel: the push succeeded, so the sign-out simply completes.
+- extendedWaitUntil:
+    visible:
+      id: 'welcome-screen'
+    timeout: 60000
+- runFlow: _helpers/sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 60000
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- assertVisible: 'Pushed before sign-out'
+# Already acknowledged: it was pushed BEFORE the sign-out, not by a timer since.
+- assertNotVisible: 'Not yet synced'
+- tapOn: 'Back'
+- tapOn: 'Back'

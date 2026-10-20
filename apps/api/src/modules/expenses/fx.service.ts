@@ -20,6 +20,28 @@ export interface Conversion {
 }
 
 /**
+ * What a NEW expense freezes (FR-021, FR-022; research D-10): the device's own
+ * conversion when it sent both halves of one, otherwise whatever `resolve`
+ * finds — the server's snapshot — or nothing, which stores the row `fx_pending`.
+ *
+ * One function for the two ways an expense is first stored, `POST
+ * /trips/:id/expenses` and `POST /sync/push`, so the freeze cannot drift
+ * between them. It is only ever asked for a row that does not exist yet: an
+ * edit never comes here, and nothing stored is ever recomputed.
+ */
+export async function conversionForEntry(
+  client: {
+    readonly fx_rate_to_home?: string | null;
+    readonly amount_home?: string | null;
+  },
+  resolve: () => Promise<Conversion | null>,
+): Promise<Conversion | null> {
+  return client.fx_rate_to_home != null && client.amount_home != null
+    ? { fxRateToHome: client.fx_rate_to_home, amountHome: client.amount_home }
+    : resolve();
+}
+
+/**
  * FX rates for the expense path (FR-021; research D-10, D-26, D-28).
  *
  * Conversions are served from the `fx_rates` table — the daily snapshot the

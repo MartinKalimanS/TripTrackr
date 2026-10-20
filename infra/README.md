@@ -15,17 +15,22 @@ infra/
 
 ## Services
 
-| Service      | Image                                              | Role                                                                           |
-| ------------ | -------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `postgres`   | `postgis/postgis:17-3.5`                           | The database. RLS is the privacy authority.                                    |
-| `redis`      | `redis:7.4.11-alpine`                              | Sessions, rate limits, planner cache, BullMQ. `noeviction` — see the comment.  |
-| `minio`      | `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z` | S3-compatible storage, development only. Private buckets.                      |
-| `minio-init` | `quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z`    | Creates the two private buckets once.                                          |
-| `migrate`    | `triptrackr-api:local` (built from `apps/api`)     | One-shot: applies SQL migrations as the **owner**, sets the API role password. |
-| `api`        | `triptrackr-api:local`                             | NestJS API, connects as `triptrackr_api`.                                      |
-| `worker`     | `triptrackr-api:local`                             | BullMQ consumer, connects as `triptrackr_api`.                                 |
-| `traefik`    | `traefik:v3.7.13`                                  | Edge: TLS, HTTP→HTTPS, security headers, coarse rate limit.                    |
-| `backup`     | `triptrackr-backup:local` (prod only)              | Nightly `pg_dump`, checksums, optional off-box copy.                           |
+| Service               | Image                                          | Role                                                                           |
+| --------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| `postgres`            | `postgis/postgis:17-3.5`                       | The database. RLS is the privacy authority.                                    |
+| `redis`               | `redis:7.4.11-alpine`                          | Sessions, rate limits, planner cache, BullMQ. `noeviction` — see the comment.  |
+| `rustfs`              | `rustfs/rustfs:1.0.0` (digest-pinned)          | S3-compatible storage, development only (research D-31). Private buckets.      |
+| `rustfs-volume-owner` | `rclone/rclone:1.75.1` (digest-pinned)         | One-shot: gives RustFS's UID 10001 its data volume.                            |
+| `rustfs-init`         | `rclone/rclone:1.75.1` (digest-pinned)         | Creates the two private buckets once.                                          |
+| `migrate`             | `triptrackr-api:local` (built from `apps/api`) | One-shot: applies SQL migrations as the **owner**, sets the API role password. |
+| `api`                 | `triptrackr-api:local`                         | NestJS API, connects as `triptrackr_api`.                                      |
+| `worker`              | `triptrackr-api:local`                         | BullMQ consumer, connects as `triptrackr_api`.                                 |
+| `traefik`             | `traefik:v3.7.13`                              | Edge: TLS, HTTP→HTTPS, security headers, coarse rate limit.                    |
+| `backup`              | `triptrackr-backup:local` (prod only)          | Nightly `pg_dump`, checksums, optional off-box copy.                           |
+
+Signed photo URLs are issued for `S3_PUBLIC_ENDPOINT` when it is set (research D-31): to test
+uploads from a phone against the dev stack, set it to `http://<this machine's LAN IP>:9000` and
+`S3_REGION=us-east-1` in `.env`.
 
 The API image is built once (by `api`, from the **repository root** so `packages/contracts`
 is in the context) and reused by `migrate` and `worker` through a YAML anchor.
@@ -77,11 +82,10 @@ Reset everything, including data: `docker compose -f infra/docker-compose.yml do
 The country/city picker needs the GeoNames extracts loaded once (and refreshed occasionally):
 
 ```bash
-# from the repository root, with the dev stack up (5432 is published in development);
-# the script runs with apps/api as its working directory, so pass absolute paths
-MIGRATION_DATABASE_URL=postgresql://triptrackr:triptrackr@localhost:5432/triptrackr \
-  npm run geo:import -w apps/api -- \
-    --countries "$PWD/data/countryInfo.txt" --cities "$PWD/data/cities15000.txt"
+# from the repository root, with the dev stack up (5432 is published in development).
+# MIGRATION_DATABASE_URL is read from the root .env. The script runs with apps/api as its
+# working directory, so pass absolute paths ($PWD expands in bash and PowerShell alike).
+npm run geo:import -w apps/api -- --countries "$PWD/data/countryInfo.txt" --cities "$PWD/data/cities15000.txt"
 ```
 
 The import connects as the **owner** (it alters reference tables). In production 5432 is not
@@ -107,7 +111,7 @@ docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compo
 What the overlay changes: no default passwords (`${VAR:?}` fails loudly), no published ports
 except Traefik's 80/443, Let's Encrypt via TLS-ALPN, permanent HTTP→HTTPS redirect, HSTS and
 friends, `NODE_ENV=production`, memory/CPU ceilings (postgres 1.5 GB, api 512 MB, worker
-512 MB, redis 256 MB, backup 256 MB, traefik 128 MB), Postgres tuned to its ceiling, MinIO not
+512 MB, redis 256 MB, backup 256 MB, traefik 128 MB), Postgres tuned to its ceiling, RustFS not
 started, and the `backup` service.
 
 Deploying a new version:

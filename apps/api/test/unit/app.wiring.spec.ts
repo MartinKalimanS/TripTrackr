@@ -1,4 +1,3 @@
-import { Module } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { ApiError } from '@triptrackr/contracts';
@@ -13,6 +12,7 @@ import { QueueModule } from '@/common/queue/queue.module';
 import { REDIS_CLIENT } from '@/common/redis/redis.module';
 
 import { applyUnitTestEnv } from '../support/env';
+import { InertQueueModule } from '../support/queues';
 
 /**
  * The root module, assembled and served — with the two things that need a
@@ -27,9 +27,6 @@ import { applyUnitTestEnv } from '../support/env';
  * failing unit test rather than a 500 — and it runs without Docker, so CI has
  * this answer even when the container suites are not run.
  */
-
-@Module({})
-class InertQueueModule {}
 
 interface FakePool {
   readonly sql: Sql;

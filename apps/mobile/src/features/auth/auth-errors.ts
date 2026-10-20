@@ -12,6 +12,7 @@ export const AUTH_ERROR_COPY: Record<string, string> = {
   EMAIL_TAKEN: 'An account with that email already exists. Try signing in instead.',
   RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
   NETWORK: 'You seem to be offline. Check your connection and try again.',
+  TIMEOUT: 'TripTrackr took too long to answer. Check your connection and try again.',
   SESSION_EXPIRED: 'Your session has expired. Please sign in again.',
   INVALID_RESPONSE:
     'The server sent something this version of the app does not understand. Please update the app.',

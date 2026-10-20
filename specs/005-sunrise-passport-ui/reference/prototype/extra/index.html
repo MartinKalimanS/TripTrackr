@@ -1,0 +1,1060 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SUNRISE PASSPORT v2 - extra screens</title>
+<script src="../tokens.js"></script>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="extra.css">
+<link rel="stylesheet" href="screens.css">
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-align-left" viewBox="0 0 24 24"><path d="M21 5H3" /> <path d="M15 12H3" /> <path d="M17 19H3" /></symbol>
+<symbol id="i-arrow-down-to-line" viewBox="0 0 24 24"><path d="M12 17V3" /> <path d="m6 11 6 6 6-6" /> <path d="M19 21H5" /></symbol>
+<symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14" /> <path d="m19 12-7 7-7-7" /></symbol>
+<symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7" /> <path d="M19 12H5" /></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /></symbol>
+<symbol id="i-arrow-up-down" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4" /> <path d="M17 20V4" /> <path d="m3 8 4-4 4 4" /> <path d="M7 4v16" /></symbol>
+<symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 7h10v10" /> <path d="M7 17 17 7" /></symbol>
+<symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7" /> <path d="M12 19V5" /></symbol>
+<symbol id="i-badge-check" viewBox="0 0 24 24"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" /> <path d="m16 9-5.5 5.5L8 12" /></symbol>
+<symbol id="i-banknote" viewBox="0 0 24 24"><rect width="20" height="12" x="2" y="6" rx="2" /> <circle cx="12" cy="12" r="2" /> <path d="M6 12h.01M18 12h.01" /></symbol>
+<symbol id="i-barcode" viewBox="0 0 24 24"><path d="M3 5v14" /> <path d="M8 5v14" /> <path d="M12 5v14" /> <path d="M17 5v14" /> <path d="M21 5v14" /></symbol>
+<symbol id="i-battery-full" viewBox="0 0 24 24"><path d="M10 10v4" /> <path d="M14 10v4" /> <path d="M22 14v-4" /> <path d="M6 10v4" /> <rect x="2" y="6" width="16" height="12" rx="2" /></symbol>
+<symbol id="i-bed-double" viewBox="0 0 24 24"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" /> <path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" /> <path d="M12 4v6" /> <path d="M2 18h20" /></symbol>
+<symbol id="i-bed-single" viewBox="0 0 24 24"><path d="M3 20v-8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8" /> <path d="M5 10V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4" /> <path d="M3 18h18" /></symbol>
+<symbol id="i-bell-off" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0" /> <path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742" /> <path d="m2 2 20 20" /> <path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05" /></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0" /> <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></symbol>
+<symbol id="i-bold" viewBox="0 0 24 24"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" /></symbol>
+<symbol id="i-book-open" viewBox="0 0 24 24"><path d="M12 5v16" /> <path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z" /></symbol>
+<symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z" /></symbol>
+<symbol id="i-bus-front" viewBox="0 0 24 24"><path d="M4 6 2 7" /> <path d="M10 6h4" /> <path d="m22 7-2-1" /> <rect width="16" height="16" x="4" y="3" rx="2" /> <path d="M4 11h16" /> <path d="M8 15h.01" /> <path d="M16 15h.01" /> <path d="M6 19v2" /> <path d="M18 21v-2" /></symbol>
+<symbol id="i-calendar-days" viewBox="0 0 24 24"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /> <path d="M8 13h.01" /> <path d="M12 13h.01" /> <path d="M16 13h.01" /> <path d="M8 17h.01" /> <path d="M12 17h.01" /> <path d="M16 17h.01" /></symbol>
+<symbol id="i-calendar-plus" viewBox="0 0 24 24"><path d="M16 18h6" /> <path d="M16 2v3" /> <path d="M19 15v6" /> <path d="M21 11.5V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h8.3" /> <path d="M3 9h18" /> <path d="M8 2v3" /></symbol>
+<symbol id="i-calendar-range" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M16 2v3" /> <path d="M3 9h18" /> <path d="M8 2v3" /> <path d="M17 13h-6" /> <path d="M13 17H7" /> <path d="M7 13h.01" /> <path d="M17 17h.01" /></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /></symbol>
+<symbol id="i-camera-off" viewBox="0 0 24 24"><path d="M14.564 14.558a3 3 0 1 1-4.122-4.121" /> <path d="m2 2 20 20" /> <path d="M20 20H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 .819-.175" /> <path d="M9.695 4.024A2 2 0 0 1 10.004 4h3.993a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v7.344" /></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" /> <circle cx="12" cy="13" r="3" /></symbol>
+<symbol id="i-car-front" viewBox="0 0 24 24"><path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8" /> <path d="M7 14h.01" /> <path d="M17 14h.01" /> <rect width="18" height="8" x="3" y="10" rx="2" /> <path d="M5 18v2" /> <path d="M19 18v2" /></symbol>
+<symbol id="i-car" viewBox="0 0 24 24"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" /> <circle cx="7" cy="17" r="2" /> <path d="M9 17h6" /> <circle cx="17" cy="17" r="2" /></symbol>
+<symbol id="i-check-check" viewBox="0 0 24 24"><path d="M18 6 7 17l-5-5" /> <path d="m22 10-7.5 7.5L13 16" /></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></symbol>
+<symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></symbol>
+<symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6" /></symbol>
+<symbol id="i-chevrons-up-down" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5" /> <path d="m7 9 5-5 5 5" /></symbol>
+<symbol id="i-circle-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <line x1="12" x2="12" y1="8" y2="12" /> <line x1="12" x2="12.01" y1="16" y2="16" /></symbol>
+<symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="m16 9-5.5 5.5L8 12" /></symbol>
+<symbol id="i-circle-dot-dashed" viewBox="0 0 24 24"><path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0" /> <path d="M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7" /> <path d="M21.82 10.1a9.93 9.93 0 0 1 0 3.8" /> <path d="M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69" /> <path d="M13.9 21.82a9.94 9.94 0 0 1-3.8 0" /> <path d="M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7" /> <path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8" /> <path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69" /> <circle cx="12" cy="12" r="1" /></symbol>
+<symbol id="i-circle-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1" /> <circle cx="12" cy="12" r="10" /></symbol>
+<symbol id="i-circle-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M17 12h.01" /> <path d="M12 12h.01" /> <path d="M7 12h.01" /></symbol>
+<symbol id="i-circle-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /> <path d="M12 17h.01" /></symbol>
+<symbol id="i-circle-minus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M8 12h8" /></symbol>
+<symbol id="i-circle-pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <line x1="10" x2="10" y1="15" y2="9" /> <line x1="14" x2="14" y1="15" y2="9" /></symbol>
+<symbol id="i-circle-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M8 12h8" /> <path d="M12 8v8" /></symbol>
+<symbol id="i-circle-user-round" viewBox="0 0 24 24"><path d="M17.925 20.056a6 6 0 0 0-11.851.001" /> <circle cx="12" cy="11" r="4" /> <circle cx="12" cy="12" r="10" /></symbol>
+<symbol id="i-circle-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="m15 9-6 6" /> <path d="m9 9 6 6" /></symbol>
+<symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></symbol>
+<symbol id="i-clapperboard" viewBox="0 0 24 24"><path d="m12.296 3.464 3.02 3.956" /> <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z" /> <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /> <path d="m6.18 5.276 3.1 3.899" /></symbol>
+<symbol id="i-clock-3" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M12 6v6h4" /></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M12 6v6l4 2" /></symbol>
+<symbol id="i-cloud-alert" viewBox="0 0 24 24"><path d="M12 12v4" /> <path d="M12 20h.01" /> <path d="M8.128 16.949A7 7 0 1 1 15.71 8h1.79a1 1 0 0 1 0 9h-1.642" /></symbol>
+<symbol id="i-cloud-check" viewBox="0 0 24 24"><path d="m17 15-5.5 5.5L9 18" /> <path d="M5.516 16.07A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 3.501 7.327" /></symbol>
+<symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M10.94 5.274A7 7 0 0 1 15.71 10h1.79a4.5 4.5 0 0 1 4.222 6.057" /> <path d="M18.796 18.81A4.5 4.5 0 0 1 17.5 19H9A7 7 0 0 1 5.79 5.78" /> <path d="m2 2 20 20" /></symbol>
+<symbol id="i-cloud-sun" viewBox="0 0 24 24"><path d="M12 2v2" /> <path d="m4.93 4.93 1.41 1.41" /> <path d="M20 12h2" /> <path d="m19.07 4.93-1.41 1.41" /> <path d="M15.947 12.65a4 4 0 0 0-5.925-4.128" /> <path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z" /></symbol>
+<symbol id="i-cloud-upload" viewBox="0 0 24 24"><path d="M12 13v8" /> <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" /> <path d="m8 17 4-4 4 4" /></symbol>
+<symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" /></symbol>
+<symbol id="i-coins" viewBox="0 0 24 24"><path d="M13.744 17.736a6 6 0 1 1-7.48-7.48" /> <path d="M15 6h1v4" /> <path d="m6.134 14.768.866-.5 2 3.464" /> <circle cx="16" cy="8" r="6" /></symbol>
+<symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" /></symbol>
+<symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M12 18a6 6 0 0 0 0-12v12z" /></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /> <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></symbol>
+<symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3" /> <path d="M3 5V19A9 3 0 0 0 21 19V5" /> <path d="M3 12A9 3 0 0 0 21 12" /></symbol>
+<symbol id="i-delete" viewBox="0 0 24 24"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" /> <path d="m12 9 6 6" /> <path d="m18 9-6 6" /></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <path d="m7 10 5 5 5-5" /></symbol>
+<symbol id="i-earth" viewBox="0 0 24 24"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54" /> <path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17" /> <path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05" /> <circle cx="12" cy="12" r="10" /></symbol>
+<symbol id="i-ellipsis-vertical" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1" /> <circle cx="12" cy="5" r="1" /> <circle cx="12" cy="19" r="1" /></symbol>
+<symbol id="i-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1" /> <circle cx="19" cy="12" r="1" /> <circle cx="5" cy="12" r="1" /></symbol>
+<symbol id="i-euro" viewBox="0 0 24 24"><path d="M4 10h12" /> <path d="M4 14h9" /> <path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2" /></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><path d="m15 15 6 6" /> <path d="m15 9 6-6" /> <path d="M21 16v5h-5" /> <path d="M21 8V3h-5" /> <path d="M3 16v5h5" /> <path d="m3 21 6-6" /> <path d="M3 8V3h5" /> <path d="M9 9 3 3" /></symbol>
+<symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /> <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /> <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /> <path d="m2 2 20 20" /></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /> <circle cx="12" cy="12" r="3" /></symbol>
+<symbol id="i-file-down" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M12 18v-6" /> <path d="m9 15 3 3 3-3" /></symbol>
+<symbol id="i-file-image" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <circle cx="10" cy="12" r="2" /> <path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22" /></symbol>
+<symbol id="i-file-lock" viewBox="0 0 24 24"><path d="M4 9.8V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M9 17v-2a2 2 0 0 0-4 0v2" /> <rect width="8" height="5" x="3" y="17" rx="1" /></symbol>
+<symbol id="i-file-text" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M10 9H8" /> <path d="M16 13H8" /> <path d="M16 17H8" /></symbol>
+<symbol id="i-fingerprint" viewBox="0 0 24 24"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4" /> <path d="M14 13.12c0 2.38 0 6.38-1 8.88" /> <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02" /> <path d="M2 12a10 10 0 0 1 18-6" /> <path d="M2 16h.01" /> <path d="M21.8 16c.2-2 .131-5.354 0-6" /> <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2" /> <path d="M8.65 22c.21-.66.45-1.32.57-2" /> <path d="M9 6.8a6 6 0 0 1 9 5.2v2" /></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528" /></symbol>
+<symbol id="i-folder-lock" viewBox="0 0 24 24"><rect width="8" height="5" x="14" y="17" rx="1" /> <path d="M10 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v2.5" /> <path d="M20 17v-2a2 2 0 1 0-4 0v2" /></symbol>
+<symbol id="i-folder-open" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /></symbol>
+<symbol id="i-footprints" viewBox="0 0 24 24"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /> <path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /> <path d="M16 17h4" /> <path d="M4 13h4" /></symbol>
+<symbol id="i-globe-lock" viewBox="0 0 24 24"><path d="M15.686 15A14.5 14.5 0 0 1 12 22a14.5 14.5 0 0 1 0-20 10 10 0 1 0 9.542 13" /> <path d="M2 12h8.5" /> <path d="M20 6V4a2 2 0 1 0-4 0v2" /> <rect width="8" height="5" x="14" y="6" rx="1" /></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /> <path d="M2 12h20" /></symbol>
+<symbol id="i-hard-drive" viewBox="0 0 24 24"><path d="M10 16h.01" /> <path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /> <path d="M21.946 12.013H2.054" /> <path d="M6 16h.01" /></symbol>
+<symbol id="i-heading" viewBox="0 0 24 24"><path d="M6 12h12" /> <path d="M6 20V4" /> <path d="M18 20V4" /></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" /></symbol>
+<symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /> <path d="M12 7v5l4 2" /></symbol>
+<symbol id="i-hotel" viewBox="0 0 24 24"><path d="M10 22v-6.57" /> <path d="M12 11h.01" /> <path d="M12 7h.01" /> <path d="M14 15.43V22" /> <path d="M15 16a5 5 0 0 0-6 0" /> <path d="M16 11h.01" /> <path d="M16 7h.01" /> <path d="M8 11h.01" /> <path d="M8 7h.01" /> <rect x="4" y="2" width="16" height="20" rx="2" /></symbol>
+<symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol>
+<symbol id="i-id-card" viewBox="0 0 24 24"><path d="M13 19a4 4 0 00-8 0" /> <path d="M16 10h2" /> <path d="M16 14h2" /> <circle cx="9" cy="12" r="3" /> <rect x="2" y="5" width="20" height="14" rx="2" /></symbol>
+<symbol id="i-image-plus" viewBox="0 0 24 24"><path d="M16 5h6" /> <path d="M19 2v6" /> <path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /> <circle cx="9" cy="9" r="2" /></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></symbol>
+<symbol id="i-images" viewBox="0 0 24 24"><path d="m22 11-1.296-1.296a2.4 2.4 0 0 0-3.408 0L11 16" /> <path d="M4 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2" /> <circle cx="13" cy="7" r="1" fill="currentColor" /> <rect x="8" y="2" width="14" height="14" rx="2" /></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M12 16v-4" /> <path d="M12 8h.01" /></symbol>
+<symbol id="i-key-round" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" /> <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" /></symbol>
+<symbol id="i-languages" viewBox="0 0 24 24"><path d="m5 8 6 6" /> <path d="m4 14 6-6 2-3" /> <path d="M2 5h12" /> <path d="M7 2h1" /> <path d="m22 22-5-10-5 10" /> <path d="M14 18h6" /></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" /> <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12" /> <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17" /></symbol>
+<symbol id="i-layout-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1" /> <rect width="7" height="7" x="14" y="3" rx="1" /> <rect width="7" height="7" x="14" y="14" rx="1" /> <rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /> <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></symbol>
+<symbol id="i-list-checks" viewBox="0 0 24 24"><path d="M13 5h8" /> <path d="M13 12h8" /> <path d="M13 19h8" /> <path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" /></symbol>
+<symbol id="i-list-ordered" viewBox="0 0 24 24"><path d="M11 5h10" /> <path d="M11 12h10" /> <path d="M11 19h10" /> <path d="M4 4h1v5" /> <path d="M4 9h2" /> <path d="M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02" /></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M3 5h.01" /> <path d="M3 12h.01" /> <path d="M3 19h.01" /> <path d="M8 5h13" /> <path d="M8 12h13" /> <path d="M8 19h13" /></symbol>
+<symbol id="i-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></symbol>
+<symbol id="i-locate-fixed" viewBox="0 0 24 24"><line x1="2" x2="5" y1="12" y2="12" /> <line x1="19" x2="22" y1="12" y2="12" /> <line x1="12" x2="12" y1="2" y2="5" /> <line x1="12" x2="12" y1="19" y2="22" /> <circle cx="12" cy="12" r="7" /> <circle cx="12" cy="12" r="3" /></symbol>
+<symbol id="i-lock-keyhole" viewBox="0 0 24 24"><circle cx="12" cy="16" r="1" /> <rect x="3" y="10" width="18" height="12" rx="2" /> <path d="M7 10V7a5 5 0 0 1 10 0v3" /></symbol>
+<symbol id="i-lock-open" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 9.9-1" /></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 10 0v4" /></symbol>
+<symbol id="i-log-out" viewBox="0 0 24 24"><path d="m16 17 5-5-5-5" /> <path d="M21 12H9" /> <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></symbol>
+<symbol id="i-luggage" viewBox="0 0 24 24"><path d="M6 20a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2" /> <path d="M8 18V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14" /> <path d="M10 20h4" /> <circle cx="16" cy="20" r="2" /> <circle cx="8" cy="20" r="2" /></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7" /> <rect x="2" y="4" width="20" height="16" rx="2" /></symbol>
+<symbol id="i-map-pin-off" viewBox="0 0 24 24"><path d="M12.75 7.09a3 3 0 0 1 2.16 2.16" /> <path d="M17.072 17.072c-1.634 2.17-3.527 3.912-4.471 4.727a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 1.432-4.568" /> <path d="m2 2 20 20" /> <path d="M8.475 2.818A8 8 0 0 1 20 10c0 1.183-.31 2.377-.81 3.533" /> <path d="M9.13 9.13a3 3 0 0 0 3.74 3.74" /></symbol>
+<symbol id="i-map-pin-plus" viewBox="0 0 24 24"><path d="M19.914 11.105A7.298 7.298 0 0 0 20 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 1.202 0 32 32 0 0 0 .824-.738" /> <circle cx="12" cy="10" r="3" /> <path d="M16 18h6" /> <path d="M19 15v6" /></symbol>
+<symbol id="i-map-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /></symbol>
+<symbol id="i-map-pinned" viewBox="0 0 24 24"><path d="M18 8c0 3.613-3.869 7.429-5.393 8.795a1 1 0 01-1.214 0C9.87 15.429 6 11.613 6 8a6 6 0 0112 0" /> <path d="M4.474 15h-.197a1 1 0 00-.969.753l-1.097 4.35a1.5 1.5 0 001.444 1.898L20.344 22a1.5 1.5 0 001.446-1.897l-1.098-4.35a1 1 0 00-.969-.753h-.197" /> <circle cx="12" cy="8" r="2" /></symbol>
+<symbol id="i-map" viewBox="0 0 24 24"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /> <path d="M15 5.764v15" /> <path d="M9 3.236v15" /></symbol>
+<symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+<symbol id="i-monitor-smartphone" viewBox="0 0 24 24"><path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8" /> <path d="M10 19v-3.96 3.15" /> <path d="M7 19h5" /> <rect width="6" height="10" x="16" y="12" rx="2" /></symbol>
+<symbol id="i-moon-star" viewBox="0 0 24 24"><path d="M18 5h4" /> <path d="M20 3v4" /> <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></symbol>
+<symbol id="i-mountain-snow" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2L8 3z" /> <path d="M4.14 15.08c2.62-1.57 5.24-1.43 7.86.42 2.74 1.94 5.49 2 8.23.19" /></symbol>
+<symbol id="i-navigation" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11" /></symbol>
+<symbol id="i-notebook-pen" viewBox="0 0 24 24"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" /> <path d="M2 6h4" /> <path d="M2 10h4" /> <path d="M2 14h4" /> <path d="M2 18h4" /> <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" /></symbol>
+<symbol id="i-notebook" viewBox="0 0 24 24"><path d="M2 6h4" /> <path d="M2 10h4" /> <path d="M2 14h4" /> <path d="M2 18h4" /> <rect width="16" height="20" x="4" y="2" rx="2" /> <path d="M16 2v20" /></symbol>
+<symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z" /> <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /> <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" /> <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" /> <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /></symbol>
+<symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551" /></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="3" width="5" height="18" rx="1" /> <rect x="5" y="3" width="5" height="18" rx="1" /></symbol>
+<symbol id="i-pen-line" viewBox="0 0 24 24"><path d="M13 21h8" /> <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></symbol>
+<symbol id="i-plane-landing" viewBox="0 0 24 24"><path d="M2 22h20" /> <path d="M3.77 10.77 2 9l2-4.5 1.1.55c.55.28.9.84.9 1.45s.35 1.17.9 1.45L8 8.5l3-6 1.05.53a2 2 0 0 1 1.09 1.52l.72 5.4a2 2 0 0 0 1.09 1.52l4.4 2.2c.42.22.78.55 1.01.96l.6 1.03c.49.88-.06 1.98-1.06 2.1l-1.18.15c-.47.06-.95-.02-1.37-.24L4.29 11.15a2 2 0 0 1-.52-.38Z" /></symbol>
+<symbol id="i-plane-takeoff" viewBox="0 0 24 24"><path d="M2 22h20" /> <path d="M6.36 17.4 4 17l-2-4 1.1-.55a2 2 0 0 1 1.8 0l.17.1a2 2 0 0 0 1.8 0L8 12 5 6l.9-.45a2 2 0 0 1 2.09.2l4.02 3a2 2 0 0 0 2.1.2l4.19-2.06a2.41 2.41 0 0 1 1.73-.17L21 7a1.4 1.4 0 0 1 .87 1.99l-.38.76c-.23.46-.6.84-1.07 1.08L7.58 17.2a2 2 0 0 1-1.22.18Z" /></symbol>
+<symbol id="i-plane" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" /></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /> <path d="M12 5v14" /></symbol>
+<symbol id="i-qr-code" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1" /> <rect width="5" height="5" x="16" y="3" rx="1" /> <rect width="5" height="5" x="3" y="16" rx="1" /> <path d="M21 16h-3a2 2 0 0 0-2 2v3" /> <path d="M21 21v.01" /> <path d="M12 7v3a2 2 0 0 1-2 2H7" /> <path d="M3 12h.01" /> <path d="M12 3h.01" /> <path d="M12 16v.01" /> <path d="M16 12h1" /> <path d="M21 12v.01" /> <path d="M12 21v-1" /></symbol>
+<symbol id="i-radio" viewBox="0 0 24 24"><path d="M16.247 7.761a6 6 0 0 1 0 8.478" /> <path d="M19.075 4.933a10 10 0 0 1 0 14.134" /> <path d="M4.925 19.067a10 10 0 0 1 0-14.134" /> <path d="M7.753 16.239a6 6 0 0 1 0-8.478" /> <circle cx="12" cy="12" r="2" /></symbol>
+<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M12 17V7" /> <path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8" /> <path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z" /></symbol>
+<symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" /></symbol>
+<symbol id="i-repeat-2" viewBox="0 0 24 24"><path d="m2 9 3-3 3 3" /> <path d="M13 18H7a2 2 0 0 1-2-2V6" /> <path d="m22 15-3 3-3-3" /> <path d="M11 6h6a2 2 0 0 1 2 2v10" /></symbol>
+<symbol id="i-rotate-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /></symbol>
+<symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3" /> <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /> <circle cx="18" cy="5" r="3" /></symbol>
+<symbol id="i-ruler" viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" /> <path d="m14.5 12.5 2-2" /> <path d="m11.5 9.5 2-2" /> <path d="m8.5 6.5 2-2" /> <path d="m17.5 15.5 2-2" /></symbol>
+<symbol id="i-scan-face" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2" /> <path d="M17 3h2a2 2 0 0 1 2 2v2" /> <path d="M21 17v2a2 2 0 0 1-2 2h-2" /> <path d="M7 21H5a2 2 0 0 1-2-2v-2" /> <path d="M8 14s1.5 2 4 2 4-2 4-2" /> <path d="M9 9h.01" /> <path d="M15 9h.01" /></symbol>
+<symbol id="i-scan-line" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2" /> <path d="M17 3h2a2 2 0 0 1 2 2v2" /> <path d="M21 17v2a2 2 0 0 1-2 2h-2" /> <path d="M7 21H5a2 2 0 0 1-2-2v-2" /> <path d="M7 12h10" /></symbol>
+<symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2" /> <path d="M17 3h2a2 2 0 0 1 2 2v2" /> <path d="M21 17v2a2 2 0 0 1-2 2h-2" /> <path d="M7 21H5a2 2 0 0 1-2-2v-2" /></symbol>
+<symbol id="i-search-x" viewBox="0 0 24 24"><path d="m13.5 8.5-5 5" /> <path d="m8.5 8.5 5 5" /> <circle cx="11" cy="11" r="8" /> <path d="m21 21-4.3-4.3" /></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /> <circle cx="12" cy="12" r="3" /></symbol>
+<symbol id="i-share-2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3" /> <circle cx="6" cy="12" r="3" /> <circle cx="18" cy="19" r="3" /> <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" /> <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" /></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><path d="M12 2v13" /> <path d="m16 6-4-4-4 4" /> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /></symbol>
+<symbol id="i-shield-alert" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="M12 8v4" /> <path d="M12 16h.01" /></symbol>
+<symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /></symbol>
+<symbol id="i-ship" viewBox="0 0 24 24"><path d="M12 2v2" /> <path d="M12 9.189V13" /> <path d="M19 12V6a2 2 0 00-2-2H7a2 2 0 00-2 2v6" /> <path d="M19.38 19A11.6 11.6 0 0021 13l-8.188-3.639a2 2 0 00-1.624 0L3 13.001a11.6 11.6 0 002.81 7.76" /> <path d="M2 20c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1s1.2 1 2.5 1c2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" /></symbol>
+<symbol id="i-shopping-bag" viewBox="0 0 24 24"><path d="M16 10a4 4 0 0 1-8 0" /> <path d="M3.103 6.034h17.794" /> <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z" /></symbol>
+<symbol id="i-signal" viewBox="0 0 24 24"><path d="M2 20h.01" /> <path d="M7 20v-4" /> <path d="M12 20v-8" /> <path d="M17 20V8" /> <path d="M22 4v16" /></symbol>
+<symbol id="i-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3" /> <path d="M12 19H3" /> <path d="M14 3v4" /> <path d="M16 17v4" /> <path d="M21 12h-9" /> <path d="M21 19h-5" /> <path d="M21 5h-7" /> <path d="M8 10v4" /> <path d="M8 12H3" /></symbol>
+<symbol id="i-smartphone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" /></symbol>
+<symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /> <path d="M20 2v4" /> <path d="M22 4h-4" /> <circle cx="4" cy="20" r="2" /></symbol>
+<symbol id="i-stamp" viewBox="0 0 24 24"><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13" /> <path d="M20 15.5a2.5 2.5 0 0 0-2.5-2.5h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1z" /> <path d="M5 22h14" /></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></symbol>
+<symbol id="i-sticky-note" viewBox="0 0 24 24"><path d="M21 9a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z" /> <path d="M15 3v5a1 1 0 0 0 1 1h5" /></symbol>
+<symbol id="i-sun-moon" viewBox="0 0 24 24"><path d="M12 2v2" /> <path d="M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715" /> <path d="M16 12a4 4 0 0 0-4-4" /> <path d="m19 5-1.256 1.256" /> <path d="M20 12h2" /></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /> <path d="M12 2v2" /> <path d="M12 20v2" /> <path d="m4.93 4.93 1.41 1.41" /> <path d="m17.66 17.66 1.41 1.41" /> <path d="M2 12h2" /> <path d="M20 12h2" /> <path d="m6.34 17.66-1.41 1.41" /> <path d="m19.07 4.93-1.41 1.41" /></symbol>
+<symbol id="i-sunrise" viewBox="0 0 24 24"><path d="M12 2v8" /> <path d="m4.93 10.93 1.41 1.41" /> <path d="M2 18h2" /> <path d="M20 18h2" /> <path d="m19.07 10.93-1.41 1.41" /> <path d="M22 22H2" /> <path d="m8 6 4-4 4 4" /> <path d="M16 18a4 4 0 0 0-8 0" /></symbol>
+<symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" /> <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></symbol>
+<symbol id="i-tent-tree" viewBox="0 0 24 24"><circle cx="4" cy="4" r="2" /> <path d="m14 5 3-3 3 3" /> <path d="m14 10 3-3 3 3" /> <path d="M17 14V2" /> <path d="M17 14H7l-5 8h20Z" /> <path d="M8 14v8" /> <path d="m9 14 5 8" /></symbol>
+<symbol id="i-thermometer" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" /></symbol>
+<symbol id="i-ticket-check" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" /> <path d="m9 12 2 2 4-4" /></symbol>
+<symbol id="i-ticket" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" /> <path d="M13 5v2" /> <path d="M13 17v2" /> <path d="M13 11v2" /></symbol>
+<symbol id="i-timer" viewBox="0 0 24 24"><line x1="10" x2="14" y1="2" y2="2" /> <line x1="12" x2="15" y1="14" y2="11" /> <circle cx="12" cy="14" r="8" /></symbol>
+<symbol id="i-train-front" viewBox="0 0 24 24"><path d="M8 3.1V7a4 4 0 0 0 8 0V3.1" /> <path d="m9 15-1-1" /> <path d="m15 15 1-1" /> <path d="M9 19c-2.8 0-5-2.2-5-5v-4a8 8 0 0 1 16 0v4c0 2.8-2.2 5-5 5Z" /> <path d="m8 19-2 3" /> <path d="m16 19 2 3" /></symbol>
+<symbol id="i-tram-front" viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="3" rx="2" /> <path d="M4 11h16" /> <path d="M12 3v8" /> <path d="m8 19-2 3" /> <path d="m18 22-2-3" /> <path d="M8 15h.01" /> <path d="M16 15h.01" /></symbol>
+<symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol>
+<symbol id="i-trending-up" viewBox="0 0 24 24"><path d="M16 7h6v6" /> <path d="m22 7-8.5 8.5-5-5L2 17" /></symbol>
+<symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></symbol>
+<symbol id="i-type" viewBox="0 0 24 24"><path d="M12 4v16" /> <path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2" /> <path d="M9 20h6" /></symbol>
+<symbol id="i-undo-2" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /> <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 3v12" /> <path d="m17 8-5-5-5 5" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /></symbol>
+<symbol id="i-user-round" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5" /> <path d="M20 21a8 8 0 0 0-16 0" /></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <path d="M16 3.128a4 4 0 0 1 0 7.744" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <circle cx="9" cy="7" r="4" /></symbol>
+<symbol id="i-utensils" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" /> <path d="M7 2v20" /> <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" /></symbol>
+<symbol id="i-wallet-cards" viewBox="0 0 24 24"><path d="M3 11h3.75a2 2 0 0 1 1.6.8l.45.6a4 4 0 0 0 6.4 0l.45-.6a2 2 0 0 1 1.6-.8H21" /> <path d="M3 7h18" /> <rect x="3" y="3" width="18" height="18" rx="2" /></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /> <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></symbol>
+<symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /> <path d="M5 12.859a10 10 0 0 1 5.17-2.69" /> <path d="M19 12.859a10 10 0 0 0-2.007-1.523" /> <path d="M2 8.82a15 15 0 0 1 4.177-2.643" /> <path d="M22 8.82a15 15 0 0 0-11.288-3.764" /> <path d="m2 2 20 20" /></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M12 20h.01" /> <path d="M2 8.82a15 15 0 0 1 20 0" /> <path d="M5 12.859a10 10 0 0 1 14 0" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18" /> <path d="m6 6 12 12" /></symbol>
+<symbol id="i-apple" viewBox="0 0 24 24"><path style="fill:currentColor;stroke:none" d="M16.37 12.6c-.03-2.7 2.2-4 2.3-4.06-1.25-1.83-3.2-2.08-3.9-2.11-1.66-.17-3.24.98-4.08.98-.84 0-2.14-.96-3.52-.93-1.81.03-3.48 1.05-4.41 2.67-1.88 3.26-.48 8.09 1.35 10.74.9 1.3 1.97 2.75 3.37 2.7 1.35-.05 1.86-.87 3.5-.87 1.63 0 2.09.87 3.52.84 1.45-.03 2.37-1.32 3.26-2.62 1.03-1.5 1.45-2.96 1.48-3.03-.03-.01-2.83-1.09-2.86-4.31zM13.7 4.63c.74-.9 1.24-2.15 1.1-3.4-1.07.04-2.36.71-3.13 1.61-.69.8-1.29 2.07-1.13 3.29 1.19.09 2.4-.61 3.16-1.5z"/></symbol>
+<symbol id="i-google" viewBox="0 0 24 24"><g style="stroke:none"><path style="fill:#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.5h3.23c1.89-1.74 2.99-4.3 2.99-7.35z"/><path style="fill:#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.42l-3.23-2.5c-.9.6-2.04.95-3.39.95-2.6 0-4.8-1.76-5.59-4.12H3.07v2.58A10 10 0 0 0 12 22z"/><path style="fill:#FBBC05" d="M6.41 13.91a6 6 0 0 1 0-3.82V7.51H3.07a10 10 0 0 0 0 8.98l3.34-2.58z"/><path style="fill:#EA4335" d="M12 5.97c1.47 0 2.79.5 3.83 1.5l2.86-2.86C16.96 3 14.7 2 12 2A10 10 0 0 0 3.07 7.51l3.34 2.58C7.2 7.73 9.4 5.97 12 5.97z"/></g></symbol>
+<symbol id="i-sig" viewBox="0 0 18 12"><g style="fill:currentColor;stroke:none"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></g></symbol>
+<symbol id="i-sbwifi" viewBox="0 0 17 12"><g style="stroke:none"><path d="M1.15 4.25A10.4 10.4 0 0 1 15.85 4.25" style="fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round"/><path d="M3.83 6.93A6.6 6.6 0 0 1 13.17 6.93" style="fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round"/><path d="M6.17 9.27A3.3 3.3 0 0 1 10.83 9.27L8.5 11.6Z" style="fill:currentColor"/></g></symbol>
+<symbol id="i-batt" viewBox="0 0 27 13"><g style="stroke:none"><rect x=".5" y=".5" width="22" height="12" rx="3.800" style="fill:none;stroke:currentColor;opacity:.4"/><rect x="2" y="2" width="19" height="9" rx="2.400" style="fill:currentColor"/><path d="M24 4.400v4.200c.8-.3 1.500-1.100 1.500-2.100S24.800 4.700 24 4.400z" style="fill:currentColor;opacity:.45"/></g></symbol>
+<symbol id="i-logo" viewBox="0 0 32 32"><g style="stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><circle cx="16" cy="16" r="9.500"/><path d="M6.500 16h19M16 6.500c-3.600 3.400-3.600 12.600 0 19M16 6.500c3.600 3.400 3.600 12.600 0 19"/><path d="M4 22.500C8 27.800 15 30 22 27.600" opacity=".0"/></g></symbol>
+<symbol id="ill-notes" viewBox="0 0 96 96"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="30" y="12" width="46" height="62" rx="8" transform="rotate(9 53 43)"/><rect x="18" y="18" width="48" height="62" rx="8" style="fill:var(--paper)"/><path d="M28 36h28M28 46h28M28 56h14"/><path d="M62 76l18-18 6 6-18 18-8 2z" style="stroke:var(--coral-line)"/><path d="M76 62l6 6" style="stroke:var(--coral-line)"/></g></symbol>
+<symbol id="ill-expenses" viewBox="0 0 96 96"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap round stroke-linejoin="round" style="stroke-linecap:round;stroke-linejoin:round"><path d="M22 14h46v66l-7.7-5-7.7 5-7.7-5-7.7 5-7.6-5-8 5z" style="fill:var(--paper)"/><path d="M32 30h26M32 42h26M32 54h12"/><circle cx="68" cy="66" r="14" style="stroke:var(--coral-line);fill:var(--paper)"/><path d="M72 61.5a6 6 0 1 0 0 9M62 64.5h8M62 68h8" style="stroke:var(--coral-line)"/></g></symbol>
+<symbol id="ill-docs" viewBox="0 0 96 96"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 28h72v13a7 7 0 0 0 0 14v13H12V55a7 7 0 0 0 0-14z" style="fill:var(--paper)"/><path d="M62 28v40" stroke-dasharray="3 5" style="stroke:var(--coral-line)"/><path d="M24 42h26M24 54h16"/><path d="M70 44l8 4-8 4z" style="stroke:var(--coral-line)"/></g></symbol>
+<symbol id="ill-camera-off" viewBox="0 0 96 96"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 32h12l5-8h18l5 8h12a8 8 0 0 1 8 8v30a8 8 0 0 1-8 8H22a8 8 0 0 1-8-8V40a8 8 0 0 1 8-8z" style="fill:var(--paper)"/><circle cx="48" cy="55" r="12"/><path d="M18 84L78 20" style="stroke:var(--coral-line);stroke-width:3"/></g></symbol>
+<symbol id="ill-search-x" viewBox="0 0 96 96"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="42" cy="42" r="24" style="fill:var(--paper)"/><path d="M60 60l20 20"/><path d="M34 34l16 16M50 34L34 50" style="stroke:var(--coral-line)"/></g></symbol>
+
+</defs></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="grunge" x="-6%" y="-6%" width="112%" height="112%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="3" seed="11" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  8 0 0 0 -2.05" result="m"/>
+    <feComposite in="SourceGraphic" in2="m" operator="in"/>
+  </filter>
+</defs></svg>
+
+<header class="board-head">
+  <h1>SUNRISE PASSPORT <span>v2</span> &middot; extra screens</h1>
+  <p>Add stop, Countries, Photos, Expenses, Notes, Documents, Offline maps, Auth, Settings, Recap, Trip menu, Search and the states sheet. Same tokens as the core prototype (<code>../tokens.css</code>): paper / cream / ink, coral = do and now, 44 px targets, 9 type sizes, two shadows, no blur dependence.</p>
+  <div class="theme-switch" role="group" aria-label="Theme"><button data-set-theme="light"><svg class="ic ic-20"><use href="#i-sun"/></svg>Sunrise</button><button data-set-theme="dark"><svg class="ic ic-20"><use href="#i-moon"/></svg>Nightfall</button></div>
+</header>
+
+<main class="frames" id="frames">
+<section class="slot" data-slot="add-stop"><div class="phone" id="add-stop" data-frame="add-stop"><div class="backdrop" aria-hidden="true">
+  <div class="tb-hero ph" data-ph="sintraY@center 40%"></div>
+  <div class="tb-scrim"></div>
+  <div class="tb-body">
+    <div class="sk lg" style="height:56px"></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:12px;width:40%;margin-top:var(--sp-2)"></div></div></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:50%"></div><div class="sk" style="height:12px;width:30%;margin-top:var(--sp-2)"></div></div></div>
+  </div>
+</div>
+
+<div class="dim"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-label="Add stop">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <div class="side"><button class="btn btn-text" aria-label="Cancel">Cancel</button></div>
+    <h2 class="tt t-callout">Add stop</h2>
+    <div class="side r"></div>
+  </div>
+  <div class="sheet-body">
+    <div class="field">
+      <label class="lab" for="place">Place</label>
+      <div class="input" id="place"><span class="flag" data-flag="pt"></span><span class="val t-callout"><span data-long="Vila Nova de Foz Côa">Porto</span><span class="c2 reg">, Portugal</span></span><button class="clr" aria-label="Clear place"><svg class="ic ic-16" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+      <div class="route" role="img" aria-label="Route: Lisbon, Sintra, then Porto as the new third stop, 322 kilometres from Sintra">
+        <div class="rs done"><i></i><span>LIS</span></div><div class="rl"></div>
+        <div class="rs done"><i></i><span>SNT</span></div><div class="rl dash"></div>
+        <div class="rs new"><i></i><span>OPO</span></div>
+      </div>
+      <p class="route-meta t-label c2"><b>Stop 3</b> &middot; 322 km from Sintra</p>
+    </div>
+
+    <div class="field">
+      <div class="lab" id="dates-l">Dates</div>
+      <div class="dates" role="group" aria-labelledby="dates-l">
+        <button class="dseg"><span class="t-caption c2">Arrive</span><span class="t-callout">Thu 15 Oct</span></button>
+        <span class="dline" aria-hidden="true"></span>
+        <button class="dseg r"><span class="t-caption c2">Depart</span><span class="t-callout">Mon 19 Oct</span></button>
+      </div>
+      <div class="stepper-row">
+        <div class="tx"><div class="t-callout">Nights</div><div class="t-label c2">Fits your trip, ends 19 Oct</div></div>
+        <div class="stepper" role="group" aria-label="Nights"><button class="sbtn" aria-label="Fewer nights"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button><span class="sval t-callout tnum" aria-live="polite">4</span><button class="sbtn" aria-label="More nights"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="lab" id="mode-l">Getting there <em>(optional)</em></div>
+      <div class="chips scrollx fadeR" role="radiogroup" aria-labelledby="mode-l" data-pick><button class="chip is-on" role="radio" aria-checked="true"><svg class="ic ic-20" aria-hidden="true"><use href="#i-check"/></svg>Car</button><button class="chip" role="radio" aria-checked="false"><svg class="ic ic-20" aria-hidden="true"><use href="#i-train-front"/></svg>Train</button><button class="chip" role="radio" aria-checked="false"><svg class="ic ic-20" aria-hidden="true"><use href="#i-plane"/></svg>Plane</button><button class="chip" role="radio" aria-checked="false"><svg class="ic ic-20" aria-hidden="true"><use href="#i-footprints"/></svg>Walk</button></div>
+    </div>
+
+    <div class="field">
+      <label class="lab" for="note">Note <em>(optional)</em></label>
+      <div class="input ta" id="note"><span class="val" data-long="Livraria Lello when it opens at 09:30 before the queue builds, then the Ribeira at sunset, dinner booked at Cantinho do Avillez for 20:00, ask about the port cellars across the river on Friday morning and the tram to Foz.">Livraria Lello when it opens, sunset on the Ribeira.</span></div>
+    </div>
+  </div>
+  <div class="sheet-foot"><button class="btn btn-primary lg block">Save stop</button></div>
+</div>
+<div class="status on-photo"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>01</b>Add stop<span>Form sheet, large detent. Place is searched, dates drive a nights stepper, note is optional. Save is sticky and the only coral object.</span></p></section>
+<section class="slot" data-slot="add-stop-kb"><div class="phone" id="add-stop-kb" data-frame="add-stop-kb"><div class="backdrop" aria-hidden="true">
+  <div class="tb-hero ph" data-ph="sintraY@center 40%"></div>
+  <div class="tb-scrim"></div>
+  <div class="tb-body">
+    <div class="sk lg" style="height:56px"></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:12px;width:40%;margin-top:var(--sp-2)"></div></div></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:50%"></div><div class="sk" style="height:12px;width:30%;margin-top:var(--sp-2)"></div></div></div>
+  </div>
+</div>
+
+<div class="dim"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-label="Add stop">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <div class="side"><button class="btn btn-text" aria-label="Cancel">Cancel</button></div>
+    <h2 class="tt t-callout">Add stop</h2>
+    <div class="side r"></div>
+  </div>
+  <div class="sheet-body">
+    <div class="field">
+      <label class="lab" for="place2">Place</label>
+      <div class="input is-focus" id="place2"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span class="val">Por<span class="caret"></span></span><button class="clr" aria-label="Clear search"><svg class="ic ic-16" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+    </div>
+    <ul class="sugg" role="listbox" aria-label="Places matching Por">
+      <li class="sg-row is-best" role="option" aria-selected="true"><span class="flag" data-flag="pt"></span><div class="tx"><div class="t-callout"><b>Por</b><span class="rest">to</span></div><div class="t-label c2">Porto District, Portugal</div></div><span class="pill p-neutral"><svg class="ic ic-16" aria-hidden="true"><use href="#i-history"/></svg>Recent</span></li>
+      <li class="sg-row" role="option"><span class="flag" data-flag="pt"></span><div class="tx"><div class="t-callout"><b>Por</b><span class="rest">timão</span></div><div class="t-label c2">Algarve, Portugal</div></div></li>
+      <li class="sg-row" role="option"><span class="flag" data-flag="it"></span><div class="tx"><div class="t-callout"><b>Por</b><span class="rest">tofino</span></div><div class="t-label c2">Liguria, Italy</div></div></li>
+      <li class="sg-row" role="option"><span class="flag" data-flag="gb"></span><div class="tx"><div class="t-callout"><b>Por</b><span class="rest">tsmouth</span></div><div class="t-label c2">England, United Kingdom</div></div></li>
+      <li class="sg-row" role="option"><span class="flag" data-flag="us"></span><div class="tx"><div class="t-callout"><b>Por</b><span class="rest">tland</span></div><div class="t-label c2">Oregon, United States</div></div></li>
+    </ul>
+  </div>
+</div>
+<div class="kb" aria-hidden="true">
+  <div class="pred"><span>"Por"</span><span>Porto</span><span>Portugal</span></div>
+  <div class="krow"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+  <div class="krow r2"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+  <div class="krow"><span class="k fn">&#8679;</span><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span><span class="k fn">&#9003;</span></div>
+  <div class="krow" style="margin-bottom:var(--sp-5)"><span class="k fn act">123</span><span class="k wide">space</span><span class="k fn act">search</span></div>
+</div>
+
+<div class="status on-photo"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>02</b>Add stop, keyboard up<span>Searching: the form steps aside, matches show flag, city and region. Save returns once a place is picked.</span></p></section>
+<section class="slot" data-slot="countries"><div class="phone" id="countries" data-frame="countries"><div class="backdrop sky-bg" aria-hidden="true"><div class="orb"></div></div>
+<div class="sheet" style="--top:68px" role="region" aria-label="Countries">
+  <div class="grab"></div>
+  <div class="ch-head">
+    <div class="ch-title"><h1 class="t-title">Countries</h1></div>
+    <button class="ibtn" aria-label="Collapse to globe"><svg class="ic" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+  </div>
+  <div class="ch-search"><div class="input pillfield"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span class="val ph-t">Search countries</span></div></div>
+  <div class="ch-scroll scroll-y">
+    <section class="sumcard" aria-label="14 of 195 countries visited">
+      <svg class="sring" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="31" class="tr"/><circle cx="36" cy="36" r="31" class="pg" stroke-dasharray="14 195" transform="rotate(-90 36 36)" style="stroke-dasharray:calc(var(--p) * 1.948) 195.0;--p:7.2"/></svg>
+      <div class="sc-num t-headline prop">14</div>
+      <div class="sc-tx"><div class="t-headline prop" data-long="14 of 195 countries and territories visited">14 of 195</div><div class="t-label c2">4 of 7 continents &middot; 19 trips</div></div>
+      <div class="sc-stamps" aria-hidden="true"><div data-stamp="pt" data-norot style="width:44px;height:44px;--r:-9deg"></div><div data-stamp="jp" data-norot style="width:40px;height:40px;--r:7deg;margin-left:-8px;margin-top:20px"></div></div>
+    </section>
+
+    <div class="chead"><h2 class="t-callout">Europe</h2><span class="t-label c2 tnum">9 countries</span></div>
+    <ul class="clist">
+      <li><button class="crow"><span class="flag" data-flag="pt"></span><div class="tx"><div class="nm"><span class="t-callout">Portugal</span><span class="pill p-now"><svg class="ic ic-16" aria-hidden="true"><use href="#i-circle-dot"/></svg>Now</span></div><div class="t-label c2">First visited 2021</div></div><div class="cnt"><b class="tnum">3</b> trips</div><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+      <li><button class="crow"><span class="flag" data-flag="es"></span><div class="tx"><div class="nm"><span class="t-callout">Spain</span></div><div class="t-label c2">First visited 2019</div></div><div class="cnt"><b class="tnum">3</b> trips</div><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+      <li><button class="crow"><span class="flag" data-flag="fr"></span><div class="tx"><div class="nm"><span class="t-callout">France</span></div><div class="t-label c2">First visited 2022</div></div><div class="cnt"><b class="tnum">2</b> trips</div><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+      <li><button class="crow"><span class="flag" data-flag="it"></span><div class="tx"><div class="nm"><span class="t-callout">Italy</span></div><div class="t-label c2">First visited 2023</div></div><div class="cnt"><b class="tnum">1</b> trip</div><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+      <li><button class="crow"><span class="flag" data-flag="gb"></span><div class="tx"><div class="nm"><span class="t-callout" data-long="United Kingdom of Great Britain and Northern Ireland">United Kingdom</span></div><div class="t-label c2">First visited 2023</div></div><div class="cnt"><b class="tnum">1</b> trip</div><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+      <li><button class="crow"><span class="flag" data-flag="de"></span><div class="tx"><div class="nm"><span class="t-callout">Germany</span></div><div class="t-label c2">First visited 2022</div></div><div class="cnt"><b class="tnum">1</b> trip</div><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+      <li><button class="crow"><span class="flag" data-flag="nl"></span><div class="tx"><div class="nm"><span class="t-callout">Netherlands</span></div><div class="t-label c2">First visited 2022</div></div><div class="cnt"><b class="tnum">1</b> trip</div><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+    </ul>
+  </div>
+  <div class="fade-b" style="bottom:0"></div>
+</div>
+<nav class="tabs" aria-label="Main"><button class="tab is-on" aria-current="page"><svg class="ic"><use href="#i-globe"/></svg>Globe</button><button class="tab"><svg class="ic"><use href="#i-luggage"/></svg>Trips</button><button class="tab"><svg class="ic"><use href="#i-user-round"/></svg>You</button></nav>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>03</b>Countries (Home, full detent)<span>The accessible twin of the globe: grouped by continent, flag chip, trips and first year, ring 14 of 195, search, sticky headers. Sheet top at 92 %.</span></p></section>
+<section class="slot" data-slot="photos"><div class="phone" id="photos" data-frame="photos"><div class="screen">
+<header class="nav"><button class="ibtn" aria-label="Back to trip"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg></button><div class="grp"><button class="ibtn" aria-label="Select photos"><svg class="ic" aria-hidden="true"><use href="#i-check-check"/></svg></button><button class="ibtn" aria-label="More"><svg class="ic" aria-hidden="true"><use href="#i-ellipsis"/></svg></button></div></header>
+<div class="lt"><h1 class="t-title">Photos</h1><p class="t-label sub clamp-1" data-long="Portugal Road Trip with the whole family, including the two weeks in the Alentejo">Portugal Road Trip &middot; <span class="tnum">128</span> photos</p></div>
+<div class="syncrow" role="status">
+  <span class="pring" style="--p:62;--sz:20px;--w:3px;--c:var(--coral-line);--t:var(--sand)"></span>
+  <span class="t-caption">Uploading 2 of 5</span><span class="dot"></span><span class="t-caption" style="color:var(--danger)">1 failed</span>
+  <span class="grow"></span><button class="link nou" aria-label="Retry failed upload">Retry</button>
+</div>
+<div class="scroll scroll-y pad-b">
+  <section class="day" aria-label="Wednesday 14 October, Sintra">
+    <div class="dh"><div class="dn t-display prop">14</div><div class="dt"><div class="t-callout clamp-1">Sintra</div><div class="t-label c2">Wed &middot; Oct &middot; <span class="tnum">14</span> photos</div></div></div>
+    <div class="mos">
+      <button class="pt big" aria-label="Photo 1, uploading 62 percent"><i class="ph" data-ph="sintra@center"></i><span class="ub up"><span class="pring" style="--p:62;--sz:24px;--w:3px;--c:var(--on-photo);--t:rgba(255,255,255,.3)"></span></span></button>
+      <button class="pt" aria-label="Photo 2, queued, waiting for Wi-Fi"><i class="ph" data-ph="pena@center 30%"></i><span class="ub q"><svg class="ic ic-16" aria-hidden="true"><use href="#i-cloud-upload"/></svg></span></button>
+      <button class="pt" aria-label="Photo 3, synced"><i class="ph" data-ph="sintraY@center 30%"></i><span class="ub ok"><svg class="ic ic-16" aria-hidden="true"><use href="#i-check"/></svg></span></button>
+      <button class="pt fail" aria-label="Photo 4, upload failed. Tap to retry"><i class="ph" data-ph="pena@center 70%"></i><span class="fl"><svg class="ic ic-16" aria-hidden="true"><use href="#i-triangle-alert"/></svg>Retry</span></button>
+      <button class="pt" aria-label="Photo 5"><i class="ph" data-ph="sintra@20% 60%"></i></button>
+      <button class="pt more" aria-label="9 more photos from 14 October"><i class="ph" data-ph="sintraY@center 80%"></i><span class="mo t-callout tnum">+9</span></button>
+    </div>
+  </section>
+  <section class="day" aria-label="Tuesday 13 October, Lisbon">
+    <div class="dh"><div class="dn t-display prop">13</div><div class="dt"><div class="t-callout clamp-1">Lisbon</div><div class="t-label c2">Tue &middot; Oct &middot; <span class="tnum">21</span> photos</div></div></div>
+    <div class="mos">
+      <button class="pt" aria-label="Photo 1"><i class="ph" data-ph="arco@center"></i></button>
+      <button class="pt big r" aria-label="Photo 2"><i class="ph" data-ph="lisbonRoofs@center 40%"></i></button>
+      <button class="pt" aria-label="Photo 3"><i class="ph" data-ph="street@center"></i></button>
+      <button class="pt" aria-label="Photo 4"><i class="ph" data-ph="tram@center"></i></button>
+      <button class="pt" aria-label="Photo 5"><i class="ph" data-ph="cafe@center"></i></button>
+    </div>
+  </section>
+</div>
+<div class="fade-b" style="bottom:0;height:120px"></div>
+<button class="btn btn-primary fab" aria-label="Add photos"><svg class="ic" aria-hidden="true"><use href="#i-image-plus"/></svg>Add photos</button>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>04</b>Photos (trip)<span>Grouped by day with a big date numeral, 3-column mosaic with a 2x2 lead and a +N tile. Upload state lives on the thumbnail: dashed = queued, ring = uploading, check = just synced, alert = failed.</span></p></section>
+<section class="slot" data-slot="photo-viewer"><div class="phone" id="photo-viewer" data-frame="photo-viewer"><div class="screen viewer" style="padding-top:0;background:var(--on-coral)">
+  <div class="ambient ph" data-ph="sintra@center"></div>
+  <div class="amb-scrim"></div>
+  <div class="vtop">
+    <button class="ibtn on-photo" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    <span class="pill on-photo tnum">7 of 128</span>
+    <div class="grp"><button class="ibtn on-photo" aria-label="Share"><svg class="ic" aria-hidden="true"><use href="#i-share-2"/></svg></button><button class="ibtn on-photo" aria-label="More"><svg class="ic" aria-hidden="true"><use href="#i-ellipsis"/></svg></button></div>
+  </div>
+  <figure class="vphoto ph" data-ph="sintra@center 40%" role="img" aria-label="Pena Palace in Sintra, red clock tower against a blue sky"></figure>
+  <div class="sheet auto vsheet" style="top:auto">
+    <div class="grab"></div>
+    <div class="vmeta">
+      <div class="vplace"><span class="flag" data-flag="pt"></span><div><div class="t-callout clamp-1">Sintra, Portugal</div><div class="t-label c2">Wed 14 Oct &middot; 16:42</div></div></div>
+      <span class="pill p-neutral"><span class="pring" style="--p:62;--sz:16px;--w:2.5px;--c:var(--coral-line);--t:var(--sand)"></span><span class="tnum">Uploading 62%</span></span>
+    </div>
+    <div class="vcap input"><svg class="ic" aria-hidden="true"><use href="#i-pen-line"/></svg><span class="val" data-long="Pena Palace, the clock tower and the long walk up through the gardens before the crowds arrived">Pena Palace, the clock tower at ten</span></div>
+    <div class="vact">
+      <button class="abtn"><svg class="ic" aria-hidden="true"><use href="#i-share-2"/></svg><span>Share</span></button>
+      <button class="abtn"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg><span>Save copy</span></button>
+      <button class="abtn danger"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Delete</span></button>
+    </div>
+  </div>
+</div>
+<div class="status on-photo"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind on-photo"></div></div><p class="cap"><b>05</b>Photo viewer<span>Full-screen viewer on the photo's own ambient blur (expo-image blurRadius, no backdrop-filter). Caption sheet carries place, time, upload state, caption, share and delete.</span></p></section>
+<section class="slot" data-slot="expenses"><div class="phone" id="expenses" data-frame="expenses"><div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back to trip"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg></button><h1 class="tt t-callout">Expenses</h1><div class="grp"><span class="pill p-priv"><svg class="ic ic-16" aria-hidden="true"><use href="#i-lock"/></svg>Only you</span><button class="ibtn" aria-label="More"><svg class="ic" aria-hidden="true"><use href="#i-ellipsis"/></svg></button></div></header>
+  <div class="scroll scroll-y pad-b" style="padding-top:var(--sp-3)">
+    <section class="xhero" aria-label="Total spent 842 euros">
+      <div class="t-label c2">Spent so far</div>
+      <div class="xnum tnum"><span class="cur">€</span>842</div>
+      <div class="xmeta"><span class="pill p-neutral"><svg class="ic ic-16" aria-hidden="true"><use href="#i-calendar-days"/></svg><span class="tnum" data-long="€281 per day over the first three days of eight">€281 / day</span> &middot; Day 3 of 8</span></div>
+      <p class="t-label c2 fx"><svg class="ic ic-16" aria-hidden="true"><use href="#i-info"/></svg>Converted at today's rate &middot; as of 14 Oct, 09:00</p>
+    </section>
+
+    <section class="bars" aria-label="Spending per day, budget 300 euros">
+      <div class="bh"><h2 class="t-callout">Per day</h2><span class="t-caption c2"><i class="dsh"></i>Budget <span class="tnum">€300</span></span></div>
+      <div class="chart" role="img" aria-label="Day 1 310 euros, day 2 252 euros, day 3 280 euros, today. Days 4 to 8 not yet spent.">
+        <div class="budget" style="bottom:calc(var(--pl) * 300 / 340 + 38px)"></div>
+        <div class="bcol"><i class="bar" style="height:calc(var(--pl) * 310 / 340)"></i><span class="bl tnum">12</span><span class="bv tnum">310</span></div>
+        <div class="bcol"><i class="bar" style="height:calc(var(--pl) * 252 / 340)"></i><span class="bl tnum">13</span><span class="bv tnum">252</span></div>
+        <div class="bcol today"><i class="bar" style="height:calc(var(--pl) * 280 / 340)"></i><span class="bl tnum">14</span><span class="bv tnum">280</span></div>
+        <div class="bcol fut"><i class="bar"></i><span class="bl tnum">15</span><span class="bv">&ndash;</span></div>
+        <div class="bcol fut"><i class="bar"></i><span class="bl tnum">16</span><span class="bv">&ndash;</span></div>
+        <div class="bcol fut"><i class="bar"></i><span class="bl tnum">17</span><span class="bv">&ndash;</span></div>
+        <div class="bcol fut"><i class="bar"></i><span class="bl tnum">18</span><span class="bv">&ndash;</span></div>
+        <div class="bcol fut"><i class="bar"></i><span class="bl tnum">19</span><span class="bv">&ndash;</span></div>
+      </div>
+    </section>
+
+    <section class="cats" aria-label="By category">
+      <div class="catbar" role="img" aria-label="Food 38 percent, Stay 31 percent, Transport 15 percent, Activities 11 percent, Other 5 percent"><i style="flex:38;--cc:var(--coral-line)"></i><i style="flex:31;--cc:var(--amber-line)"></i><i style="flex:15;--cc:var(--aqua-line)"></i><i style="flex:11;--cc:var(--ink)"></i><i style="flex:5;--cc:var(--success-ink)"></i></div>
+      <ul class="legend">
+        <li style="--cc:var(--coral-line)"><i class="sw"></i>Food <b class="tnum">€320</b></li>
+        <li style="--cc:var(--amber-line)"><i class="sw"></i>Stay <b class="tnum">€260</b></li>
+        <li style="--cc:var(--aqua-line)"><i class="sw"></i>Transport <b class="tnum">€126</b></li>
+        <li style="--cc:var(--ink)"><i class="sw"></i>Activities <b class="tnum">€92</b></li>
+        <li style="--cc:var(--success-ink)"><i class="sw"></i>Other <b class="tnum">€44</b></li>
+      </ul>
+    </section>
+
+    <div class="dgh"><h2 class="t-callout">Wed 14 Oct <span class="c2" style="font-weight:400">&middot; Today</span></h2><span class="t-callout tnum">€280</span></div>
+    <ul class="xl">
+      <li class="xrow"><span class="xic" style="--cc:var(--coral-line)"><svg class="ic ic-20" aria-hidden="true"><use href="#i-utensils"/></svg></span><div class="tx"><div class="t-callout clamp-2" data-long="Cervejaria Ramiro, seafood dinner for the whole family on the Avenida Almirante Reis">Pastéis de Belém</div><div class="t-label c2 clamp-1">Food &middot; Lisbon</div></div><div class="amt"><span class="t-callout tnum">€14.80</span></div></li>
+      <li class="xrow"><span class="xic" style="--cc:var(--aqua-line)"><svg class="ic ic-20" aria-hidden="true"><use href="#i-car-front"/></svg></span><div class="tx"><div class="t-callout clamp-2">Fuel, A8 to Sintra</div><div class="t-label c2 clamp-1">Transport &middot; Loures</div></div><div class="amt"><span class="t-callout tnum">€48.20</span></div></li>
+      <li class="xrow"><span class="xic" style="--cc:var(--ink)"><svg class="ic ic-20" aria-hidden="true"><use href="#i-ticket"/></svg></span><div class="tx"><div class="t-callout clamp-2">Pena Palace tickets</div><div class="t-label c2 clamp-1">Activities &middot; Sintra</div></div><div class="amt"><span class="t-callout tnum">€33.00</span><span class="t-label c2 tnum">$36.12</span></div></li>
+    </ul>
+  </div>
+  <div class="fade-b" style="bottom:0;height:120px"></div>
+  <button class="btn btn-primary fab" aria-label="Add expense"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Add expense</button>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>06</b>Expenses<span>Private by design: 'Only you' lock in the header, 56 px total, per-day chip, daily bars with a dashed budget line, one segmented category pill, rows with right-aligned tabular amounts and an FX 'as of' caption.</span></p></section>
+<section class="slot" data-slot="add-expense"><div class="phone" id="add-expense" data-frame="add-expense"><div class="backdrop" aria-hidden="true">
+  <div class="tb-hero ph" data-ph="sintraY@center 40%"></div>
+  <div class="tb-scrim"></div>
+  <div class="tb-body">
+    <div class="sk lg" style="height:56px"></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:12px;width:40%;margin-top:var(--sp-2)"></div></div></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:50%"></div><div class="sk" style="height:12px;width:30%;margin-top:var(--sp-2)"></div></div></div>
+  </div>
+</div>
+
+<div class="dim"></div>
+<div class="sheet kbpad" role="dialog" aria-modal="true" aria-label="Add expense">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <div class="side"><button class="btn btn-text">Cancel</button></div>
+    <h2 class="tt t-callout">Add expense</h2>
+    <div class="side r"><span class="pill p-priv"><svg class="ic ic-16" aria-hidden="true"><use href="#i-lock"/></svg>Only you</span></div>
+  </div>
+  <div class="sheet-body ae-body">
+    <div class="aamt" role="group" aria-label="Amount">
+      <span class="cur">€</span><span class="xnum tnum ed">24.50<span class="caret xl"></span></span>
+    </div>
+    <p class="t-label c2 aeq" style="text-align:center">&asymp; $26.62 at today's rate</p>
+
+    <div class="field">
+      <div class="lab" id="cat-l">Category</div>
+      <div class="chips scrollx fadeR" role="radiogroup" aria-labelledby="cat-l" data-pick>
+        <button class="chip is-on" role="radio" aria-checked="true"><svg class="ic ic-20" aria-hidden="true"><use href="#i-check"/></svg>Food</button><button class="chip" role="radio"><svg class="ic ic-20" aria-hidden="true"><use href="#i-car-front"/></svg>Transport</button><button class="chip" role="radio"><svg class="ic ic-20" aria-hidden="true"><use href="#i-bed-double"/></svg>Stay</button><button class="chip" role="radio"><svg class="ic ic-20" aria-hidden="true"><use href="#i-ticket"/></svg>Activities</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="lab" id="cur-l">Currency</div>
+      <div class="chips" role="radiogroup" aria-labelledby="cur-l" data-pick>
+        <button class="chip is-on" role="radio" aria-checked="true"><svg class="ic ic-20" aria-hidden="true"><use href="#i-check"/></svg>EUR</button><button class="chip" role="radio">USD</button><button class="chip" role="radio">GBP</button><button class="chip" role="radio">JPY</button><button class="chip" aria-label="More currencies"><svg class="ic ic-20" aria-hidden="true"><use href="#i-plus"/></svg></button>
+      </div>
+    </div>
+    <button class="disc" aria-expanded="false"><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-pen-line"/></svg></span><span class="tx"><span class="t-callout">Add note, date or place</span><span class="t-label c2 clamp-1">Today, 14 Oct &middot; Lisbon</span></span><svg class="ic ic-20  chev" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+  </div>
+  <div class="sheet-foot tight"><button class="btn btn-primary lg block" data-long="Save expense of €24.50 in Food for Portugal Road Trip">Save expense</button></div>
+</div>
+<div class="kb dec" aria-hidden="true">
+  <div class="krow"><span class="k">1</span><span class="k">2</span><span class="k">3</span></div>
+  <div class="krow"><span class="k">4</span><span class="k">5</span><span class="k">6</span></div>
+  <div class="krow"><span class="k">7</span><span class="k">8</span><span class="k">9</span></div>
+  <div class="krow"><span class="k fn">,</span><span class="k">0</span><span class="k fn">&#9003;</span></div>
+</div>
+
+<div class="status on-photo"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>07</b>Add expense<span>Amount-first form sheet with the decimal pad up. Giant amount, category and currency chip rows, note and date collapsed. Save is pinned above the keypad.</span></p></section>
+<section class="slot" data-slot="notes"><div class="phone" id="notes" data-frame="notes"><div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back to trip"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg></button><div class="grp"><button class="ibtn" aria-label="Search notes"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg></button></div></header>
+  <div class="lt"><h1 class="t-title">Notes</h1><p class="t-label sub clamp-1">Portugal Road Trip &middot; <span class="tnum">6</span> notes</p></div>
+  <div class="scroll scroll-y pad-b" style="padding-top:var(--sp-4)">
+    <h2 class="t-callout ngh">Today</h2>
+    <article class="note">
+      <div class="nb"><h3 class="t-callout clamp-1" data-long="Sintra in the fog, the long way round and what we should have booked">Sintra in the fog</h3>
+      <p class="t-body clamp-3">Left Lisbon at nine and the fog never lifted until we were halfway up to Pena. The yellow wall looked painted onto the sky. Book tickets online next time, the queue was forty minutes.</p></div>
+      <footer class="nm"><span class="t-caption c2 tnum">16:12</span><span class="dot"></span><span class="flag xs" data-flag="pt"></span><span class="t-caption c2">Sintra</span><span class="grow"></span><span class="sync q"><span class="sg q"><svg class="ic ic-16" aria-hidden="true"><use href="#i-cloud-upload"/></svg></span><span class="t-caption">On this device</span></span></footer>
+    </article>
+    <article class="note">
+      <div class="nrow"><div class="nb"><h3 class="t-callout clamp-1">Dinner list</h3>
+      <p class="t-body clamp-3">Ramiro on Wednesday at 21:00, Cantinho do Avillez on Friday, ask about the port cellars across the river.</p></div><i class="ph nth" data-ph="cafe@center" role="img" aria-label="Attached photo"></i></div>
+      <footer class="nm"><span class="t-caption c2 tnum">11:40</span><span class="dot"></span><span class="flag xs" data-flag="pt"></span><span class="t-caption c2">Lisbon</span><span class="grow"></span><span class="sync"><span class="sg ok"><svg class="ic ic-16" aria-hidden="true"><use href="#i-cloud-check"/></svg></span></span></footer>
+    </article>
+    <h2 class="t-callout ngh">Tue 13 Oct</h2>
+    <article class="note">
+      <div class="nb"><h3 class="t-callout clamp-1">Tram 28, never again</h3>
+      <p class="t-body clamp-3">Packed from Martim Moniz. Walked down instead and found the miradouro near Graça: better view, zero queue, and a coffee for two euros.</p></div>
+      <footer class="nm"><span class="t-caption c2 tnum">18:05</span><span class="dot"></span><span class="flag xs" data-flag="pt"></span><span class="t-caption c2">Lisbon</span><span class="grow"></span><span class="sync"><span class="sg ok"><svg class="ic ic-16" aria-hidden="true"><use href="#i-cloud-check"/></svg></span></span></footer>
+    </article>
+  </div>
+  <div class="fade-b" style="bottom:0;height:120px"></div>
+  <button class="btn btn-primary fab" aria-label="New note"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg>New note</button>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>08</b>Notes<span>Cards with preview, date, place and a per-record sync glyph. Offline-first: a note exists the moment it is typed ('Saved on this device').</span></p></section>
+<section class="slot" data-slot="note-editor"><div class="phone" id="note-editor" data-frame="note-editor"><div class="backdrop" aria-hidden="true">
+  <div class="tb-hero ph" data-ph="sintraY@center 40%"></div>
+  <div class="tb-scrim"></div>
+  <div class="tb-body">
+    <div class="sk lg" style="height:56px"></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:12px;width:40%;margin-top:var(--sp-2)"></div></div></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:50%"></div><div class="sk" style="height:12px;width:30%;margin-top:var(--sp-2)"></div></div></div>
+  </div>
+</div>
+
+<div class="dim"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-label="Note">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <div class="side"><button class="ibtn plain" aria-label="Delete note"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg></button></div>
+    <div class="tt"><h2 class="t-callout">Note</h2><div class="t-caption c2 hsync"><span class="sg q"><svg class="ic ic-16" aria-hidden="true"><use href="#i-cloud-upload"/></svg></span>Saved on this device</div></div>
+    <div class="side r"><button class="btn btn-primary sm">Done</button></div>
+  </div>
+  <div class="sheet-body ne-body">
+    <label class="sr" for="nt">Title</label>
+    <div class="ntitle t-headline" id="nt" data-long="Sintra in the fog, the long way round and what we should have booked in advance">Sintra in the fog</div>
+    <div class="chips nmeta"><span class="chip"><svg class="ic ic-20" aria-hidden="true"><use href="#i-calendar"/></svg><span class="tnum">Wed 14 Oct, 16:12</span></span><span class="chip"><span class="flag sm" data-flag="pt"></span>Sintra</span></div>
+    <div class="nbody t-body" role="textbox" aria-multiline="true" aria-label="Note text">Left Lisbon at nine and the fog never lifted until we were halfway up to Pena. The yellow wall looked painted onto the sky.<br><br>Next time:<br>&bull; book tickets online, the queue was forty minutes<br>&bull; take the 435 bus from the station<span class="caret"></span></div>
+  </div>
+  <div class="kbstack"><div class="fmt" role="toolbar" aria-label="Formatting"><button class="ibtn plain" aria-label="Bold"><svg class="ic" aria-hidden="true"><use href="#i-bold"/></svg></button><button class="ibtn plain" aria-label="Bulleted list"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg></button><button class="ibtn plain" aria-label="Checklist"><svg class="ic" aria-hidden="true"><use href="#i-list-checks"/></svg></button><button class="ibtn plain" aria-label="Add photo"><svg class="ic" aria-hidden="true"><use href="#i-image-plus"/></svg></button><button class="ibtn plain" aria-label="Tag place"><svg class="ic" aria-hidden="true"><use href="#i-map-pin"/></svg></button><span class="grow"></span><button class="ibtn plain" aria-label="Dismiss keyboard"><svg class="ic" aria-hidden="true"><use href="#i-chevron-down"/></svg></button></div>
+<div class="kb" aria-hidden="true">
+  <div class="pred"><span>"the"</span><span>the</span><span>they</span></div>
+  <div class="krow"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+  <div class="krow r2"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+  <div class="krow"><span class="k fn">&#8679;</span><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span><span class="k fn">&#9003;</span></div>
+  <div class="krow" style="margin-bottom:var(--sp-5)"><span class="k fn act">123</span><span class="k wide">space</span><span class="k fn act">return</span></div>
+</div>
+</div>
+</div>
+<div class="status on-photo"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>09</b>Note editor<span>Form sheet with autosave: no Cancel, Done is the one primary. Sync state sits under the title, the formatting bar rides above the keyboard.</span></p></section>
+<section class="slot" data-slot="documents"><div class="phone" id="documents" data-frame="documents"><div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back to trip"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg></button><div class="grp"><span class="pill p-priv"><svg class="ic ic-16" aria-hidden="true"><use href="#i-lock"/></svg>Only you</span><button class="ibtn" aria-label="More"><svg class="ic" aria-hidden="true"><use href="#i-ellipsis"/></svg></button></div></header>
+  <div class="lt"><h1 class="t-title">Documents</h1><p class="t-label sub clamp-1">Portugal Road Trip &middot; <span class="tnum">5</span> saved</p></div>
+  <p class="t-label c2 privnote"><svg class="ic ic-16" aria-hidden="true"><use href="#i-lock"/></svg><span>Encrypted on this phone and in your account. Never shared with anyone.</span></p>
+  <div class="scroll scroll-y pad-b" style="padding-top:var(--sp-3)">
+    <button class="tkt" aria-label="Flight, Porto to Madrid, Monday 19 October at 18:40">
+      <span class="tmain"><span class="tic"><svg class="ic ic-20" aria-hidden="true"><use href="#i-plane"/></svg></span><span class="ttx"><span class="t-caption c2">Flight</span><span class="t-callout clamp-2" data-long="Porto Francisco Sá Carneiro to Madrid Barajas Terminal 4S">Porto → Madrid</span><span class="t-label c2 clamp-1 tnum">IB 3105 &middot; 18:40</span></span></span>
+      <span class="tsub" aria-hidden="true"><span class="t-headline prop">19</span><span class="t-caption c2">Oct</span></span><i class="nt a"></i><i class="nt b"></i>
+    </button>
+    <button class="tkt" aria-label="Hotel, Quinta da Serra, Sintra, check-in Wednesday 14 October">
+      <span class="tmain"><span class="tic"><svg class="ic ic-20" aria-hidden="true"><use href="#i-hotel"/></svg></span><span class="ttx"><span class="t-caption c2">Stay</span><span class="t-callout clamp-2">Quinta da Serra, Sintra</span><span class="t-label c2 clamp-1">1 night &middot; Ref QS-20418</span></span></span>
+      <span class="tsub" aria-hidden="true"><span class="t-headline prop">14</span><span class="t-caption c2">Oct</span></span><i class="nt a"></i><i class="nt b"></i>
+    </button>
+    <button class="tkt" aria-label="Car rental, Lisbon Airport, pick-up Monday 12 October">
+      <span class="tmain"><span class="tic"><svg class="ic ic-20" aria-hidden="true"><use href="#i-car-front"/></svg></span><span class="ttx"><span class="t-caption c2">Car rental</span><span class="t-callout clamp-2">Lisbon Airport pick-up</span><span class="t-label c2 clamp-1">Return 19 Oct &middot; H4D8K2</span></span></span>
+      <span class="tsub" aria-hidden="true"><span class="t-headline prop">12</span><span class="t-caption c2">Oct</span></span><i class="nt a"></i><i class="nt b"></i>
+    </button>
+    <button class="tkt" aria-label="Travel insurance, valid 12 to 19 October">
+      <span class="tmain"><span class="tic"><svg class="ic ic-20" aria-hidden="true"><use href="#i-shield-check"/></svg></span><span class="ttx"><span class="t-caption c2">Insurance</span><span class="t-callout clamp-2">Travel policy</span><span class="t-label c2 clamp-1">AZ-48201-77</span></span></span>
+      <span class="tsub" aria-hidden="true"><span class="t-headline prop">12</span><span class="t-caption c2">Oct</span></span><i class="nt a"></i><i class="nt b"></i>
+    </button>
+    <button class="tkt" aria-label="Passport scan, expires 2031">
+      <span class="tmain"><span class="tic"><svg class="ic ic-20" aria-hidden="true"><use href="#i-id-card"/></svg></span><span class="ttx"><span class="t-caption c2">Passport</span><span class="t-callout clamp-2">Passport scan</span><span class="t-label c2 clamp-1">Expires 2031</span></span></span>
+      <span class="tsub" aria-hidden="true"><span class="t-headline prop">31</span><span class="t-caption c2">Exp</span></span><i class="nt a"></i><i class="nt b"></i>
+    </button>
+  </div>
+  <div class="fade-b" style="bottom:0;height:120px"></div>
+  <button class="btn btn-primary fab" aria-label="Scan a document"><svg class="ic" aria-hidden="true"><use href="#i-scan-line"/></svg>Scan document</button>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>10</b>Documents wallet<span>Ticket-style cards (two canvas-coloured notches over a plain card, no mask), type icon, date stub. Private by constitution: 'Only you' lock, never shared.</span></p></section>
+<section class="slot" data-slot="document-view"><div class="phone" id="document-view" data-frame="document-view"><div class="screen dv">
+  <header class="nav"><button class="ibtn" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button><h1 class="tt t-callout clamp-1" data-long="Flight Porto to Madrid, Iberia boarding pass for the whole family">Boarding pass</h1><div class="grp"><span class="pill p-priv"><svg class="ic ic-16" aria-hidden="true"><use href="#i-lock"/></svg>Only you</span></div></header>
+  <div class="scroll scroll-y" style="padding-top:var(--sp-3);padding-bottom:140px">
+    <figure class="scan" role="img" aria-label="Scanned boarding pass. Porto to Madrid, flight IB 3105, Monday 19 October, 18:40, seat 14A, gate B12.">
+      <div class="sc-top"><span class="s1">Boarding pass</span><span class="s1">IB 3105</span></div>
+      <div class="sc-route"><div><div class="code">OPO</div><div class="city">Porto</div></div><div class="arrow"></div><div style="text-align:right"><div class="code">MAD</div><div class="city">Madrid</div></div></div>
+      <div class="sc-grid"><div><span>Date</span><b>19 Oct</b></div><div><span>Boards</span><b>18:05</b></div><div><span>Gate</span><b>B12</b></div><div><span>Seat</span><b>14A</b></div></div>
+      <div class="sc-cut"><i></i><i class="r"></i></div>
+      <div class="sc-qr"><div data-qr="ib3105" class="qr"></div><div class="sc-pax"><span>Passenger</span><b>SOUZA / MARTA</b><span style="margin-top:12px">Reference</span><b>H4D8K2</b></div></div>
+    </figure>
+    <p class="t-caption c2 bright"><svg class="ic ic-16" aria-hidden="true"><use href="#i-sun"/></svg>Brightness is raised while the code is showing</p>
+    <div class="group" style="margin-top:var(--sp-4)">
+      <div class="lrow noic"><div class="tx"><span class="t-caption c2 t1">Reference</span><span class="t-callout t2" style="color:var(--ink)">H4D8K2</span></div><button class="ibtn plain" aria-label="Copy reference"><svg class="ic ic-20" aria-hidden="true"><use href="#i-copy"/></svg></button></div>
+      <div class="lrow noic"><div class="tx"><span class="t-caption c2 t1">Linked to</span><span class="t-callout t2" style="color:var(--ink)">Porto stop &middot; Mon 19 Oct</span></div><svg class="ic ic-20  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></div>
+      <div class="lrow noic"><div class="tx"><span class="t-caption c2 t1">Added</span><span class="t-callout t2" style="color:var(--ink)">9 Oct &middot; scan, 1 page</span></div><span class="sg ok"><svg class="ic ic-16" aria-hidden="true"><use href="#i-cloud-check"/></svg></span></div>
+    </div>
+  </div>
+  <div class="dv-foot">
+    <button class="btn btn-secondary block"><svg class="ic ic-20" aria-hidden="true"><use href="#i-share-2"/></svg>Share a copy</button>
+    <button class="btn btn-danger-text"><svg class="ic ic-20" aria-hidden="true"><use href="#i-trash-2"/></svg>Delete</button>
+  </div>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>11</b>Document view<span>The scan (or PDF) as the hero, QR kept on a fixed white plate for scanners, details with copy, Share a copy and Delete. Screen brightness is raised while the barcode is shown.</span></p></section>
+<section class="slot" data-slot="offline-maps"><div class="phone" id="offline-maps" data-frame="offline-maps"><div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg></button></header>
+  <div class="lt"><h1 class="t-title">Offline maps</h1><p class="t-label sub">Maps keep working with no signal.</p></div>
+  <div class="scroll scroll-y pad-b" style="padding-top:var(--sp-4)">
+    <section class="stor" aria-label="Storage: maps use 412 megabytes, 1.7 gigabytes free">
+      <div class="sthead"><div class="t-headline prop"><span class="tnum">412</span> MB <span class="c2 reg">used by maps</span></div><span class="t-label c2 tnum">1.7 GB free</span></div>
+      <div class="stbar" role="img" aria-label="Maps 412 MB, photos waiting to upload 1.1 GB, other apps, rest free"><i style="flex:4;background:var(--ink)"></i><i style="flex:11;background:var(--aqua-line)"></i><i style="flex:5;background:var(--ink-3)"></i><i style="flex:22;background:var(--sand)"></i></div>
+      <ul class="legend"><li style="--cc:var(--ink)"><i class="sw"></i>Maps</li><li style="--cc:var(--aqua-line)"><i class="sw"></i>Photos waiting</li><li style="--cc:var(--sand)"><i class="sw" style="box-shadow:inset 0 0 0 1px var(--ink-3)"></i>Free</li></ul>
+    </section>
+
+    <h2 class="t-callout sechead">For your trips</h2>
+    <ul class="mlist">
+      <li class="mrow">
+        <div class="mthumb" data-map="-9.6,38.4,-8.2,41.3" data-state="done" aria-hidden="true"></div>
+        <div class="mtx"><div class="mname"><span class="t-callout clamp-1">Portugal Road Trip</span></div><div class="t-label c2 clamp-1">Lisbon, Sintra, Porto &middot; <span class="tnum">186 MB</span></div>
+          <div class="mact"><a class="maplink">Map <svg class="ic ic-16" aria-hidden="true"><use href="#i-chevron-right"/></svg></a><span class="pill p-ok"><svg class="ic ic-16" aria-hidden="true"><use href="#i-circle-check"/></svg>Downloaded</span></div></div>
+      </li>
+      <li class="mrow">
+        <div class="mthumb" data-map="-24.6,63.3,-13.4,66.6" data-pad="0.6" aria-hidden="true"></div>
+        <div class="mtx"><div class="mname"><span class="t-callout clamp-1">Iceland</span><span class="pill p-plan"><svg class="ic ic-16" aria-hidden="true"><use href="#i-calendar"/></svg>Jan 2027</span></div><div class="t-label c2 clamp-1">Reykjavik &amp; the south coast</div>
+          <div class="mact"><a class="maplink">Map <svg class="ic ic-16" aria-hidden="true"><use href="#i-chevron-right"/></svg></a><button class="btn btn-secondary sm"><svg class="ic ic-20" aria-hidden="true"><use href="#i-download"/></svg>Download <span class="tnum">240 MB</span></button></div></div>
+      </li>
+    </ul>
+
+    <h2 class="t-callout sechead">Downloaded</h2>
+    <ul class="mlist">
+      <li class="mrow">
+        <div class="mthumb" data-map="-101.5,18,-97,21" data-state="done" aria-hidden="true"></div>
+        <div class="mtx"><div class="mname"><span class="t-callout clamp-1">Mexico City</span></div><div class="t-label c2 clamp-1"><span class="tnum">96 MB</span> &middot; updated Nov 2025</div></div>
+        <button class="ibtn plain" aria-label="Remove Mexico City map"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg></button>
+      </li>
+    </ul>
+  </div>
+  <div class="fade-b" style="bottom:0;height:120px"></div>
+  <button class="btn btn-primary fab" aria-label="Download a new area"><svg class="ic" aria-hidden="true"><use href="#i-map-pin-plus"/></svg>New area</button>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>12</b>Offline maps<span>Manager reached from Settings or a trip's Map link. Each trip row carries the Download pill next to 'Map'. Storage bar says what the maps cost.</span></p></section>
+<section class="slot" data-slot="auth"><div class="phone" id="auth" data-frame="auth"><div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg></button><button class="link nou" data-long="Create a new account">Create account</button></header>
+  <div class="scroll scroll-y" style="padding-top:var(--sp-2)">
+    <h1 class="t-title">Welcome <span class="t-serif">back</span></h1>
+    <div class="provs">
+      <button class="btn btn-apple block"><svg class="ic" style="fill:currentColor;stroke:none" aria-hidden="true"><use href="#i-apple"/></svg>Continue with Apple</button>
+      <button class="btn btn-google block"><svg class="ic" aria-hidden="true"><use href="#i-google"/></svg>Continue with Google</button>
+    </div>
+    <div class="or" role="separator"><span>or with email</span></div>
+
+    <div class="errsum" role="alert">
+      <div class="et"><svg class="ic ic-20" aria-hidden="true"><use href="#i-circle-alert"/></svg><b class="t-callout" style="color:var(--danger)">Fix 2 things to sign in</b></div>
+      <ul><li><a href="#em" class="link">Email: enter an address like name@example.com</a></li><li><a href="#pw" class="link">Password: enter your password</a></li></ul>
+    </div>
+
+    <div class="field">
+      <label class="lab" for="em">Email</label>
+      <div class="input is-error" id="em"><span class="val">marta@</span></div>
+      <p class="help err"><svg class="ic ic-16" aria-hidden="true"><use href="#i-circle-alert"/></svg><span>Enter an address like name@example.com</span></p>
+    </div>
+    <div class="field">
+      <div class="lab"><label for="pw">Password</label><button class="link nou fg" data-long="Forgot your password?">Forgot password?</button></div>
+      <div class="input is-error" id="pw"><span class="val ph-t">Password</span><button class="ibtn plain eye" aria-label="Show password"><svg class="ic ic-20" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+      <p class="help err"><svg class="ic ic-16" aria-hidden="true"><use href="#i-circle-alert"/></svg><span>Enter your password</span></p>
+    </div>
+  </div>
+  <div class="afoot"><button class="btn btn-primary lg block">Sign in</button></div>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>13</b>Sign in<span>Platform-compliant Continue with Apple / Google (equal weight), email and password with inline validation, an error summary (role=alert) that links to each field, Forgot password inside the label row.</span></p></section>
+<section class="slot" data-slot="register"><div class="phone" id="register" data-frame="register"><div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg></button><button class="link nou">Sign in</button></header>
+  <div class="scroll scroll-y" style="padding-top:var(--sp-2)">
+    <h1 class="t-title">Create your <span class="t-serif">passport</span></h1>
+    <div class="provs">
+      <button class="btn btn-apple block"><svg class="ic" style="fill:currentColor;stroke:none" aria-hidden="true"><use href="#i-apple"/></svg>Continue with Apple</button>
+      <button class="btn btn-google block"><svg class="ic" aria-hidden="true"><use href="#i-google"/></svg>Continue with Google</button>
+    </div>
+    <div class="or" role="separator"><span>or with email</span></div>
+    <div class="field">
+      <label class="lab" for="em2">Email</label>
+      <div class="input is-ok" id="em2"><span class="val">marta@example.com</span><span class="ok"><svg class="ic ic-20" aria-hidden="true"><use href="#i-circle-check"/></svg></span></div>
+    </div>
+    <div class="field">
+      <label class="lab" for="pw2">Password</label>
+      <div class="input is-focus" id="pw2"><span class="val">&bull;&bull;&bull;&bull;&bull;&bull;&bull;<span class="caret"></span></span><button class="ibtn plain eye" aria-label="Show password"><svg class="ic ic-20" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+      <ul class="rules" aria-label="Password rules">
+        <li class="met"><svg class="ic ic-16" aria-hidden="true"><use href="#i-circle-check"/></svg>At least 8 characters</li>
+        <li class="unmet"><svg class="ic ic-16" aria-hidden="true"><use href="#i-circle"/></svg>One number</li>
+        <li class="unmet"><svg class="ic ic-16" aria-hidden="true"><use href="#i-circle"/></svg>Not a common password</li>
+      </ul>
+    </div>
+    <p class="t-label c2 legal">By creating an account you agree to the <a class="link" style="min-height:0">Terms</a> and <a class="link" style="min-height:0">Privacy Policy</a>. <span class="lk"><svg class="ic ic-16" aria-hidden="true"><use href="#i-lock"/></svg>Expenses and documents stay private to you.</span></p>
+  </div>
+  <div class="afoot"><button class="btn btn-primary lg block is-disabled" aria-disabled="true">Create account</button></div>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>14</b>Create account<span>Same order as sign-in. Live validation uses icon + text (check / alert), password rules are a visible checklist, the privacy promise sits next to the legal line.</span></p></section>
+<section class="slot" data-slot="permission-primer"><div class="phone" id="permission-primer" data-frame="permission-primer"><div class="backdrop" aria-hidden="true">
+  <div class="tb-hero ph" data-ph="sintraY@center 40%"></div>
+  <div class="tb-scrim"></div>
+  <div class="tb-body">
+    <div class="sk lg" style="height:56px"></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:12px;width:40%;margin-top:var(--sp-2)"></div></div></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:50%"></div><div class="sk" style="height:12px;width:30%;margin-top:var(--sp-2)"></div></div></div>
+  </div>
+</div>
+
+<div class="dim"></div>
+<div class="sheet auto primer" role="dialog" aria-modal="true" aria-labelledby="pp-t">
+  <div class="grab"></div>
+  <div class="pr-ill fan" aria-hidden="true"><i class="ph pf a" data-ph="sintra@center"></i><i class="ph pf b" data-ph="porto@center"></i><i class="ph pf c" data-ph="tram@center"></i><span class="pin"><svg class="ic" aria-hidden="true"><use href="#i-map-pin"/></svg></span></div>
+  <h2 class="t-title pr-t" id="pp-t">Add photos you <span class="t-serif">already</span> took</h2>
+  <p class="t-body c2 pr-b">We sort them into your trips by date and place. You choose which ones, and nothing leaves your phone until you upload.</p>
+  <ul class="pr-list">
+    <li><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-images"/></svg></span><span class="t-body">Pick photos, or let us suggest the ones from this trip</span></li>
+    <li><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-map-pin"/></svg></span><span class="t-body">Date and place tag along, so they land on the right day</span></li>
+    <li><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-lock"/></svg></span><span class="t-body">Private until you decide to share a trip</span></li>
+  </ul>
+  <div class="pr-act"><button class="btn btn-primary lg block">Choose photos</button><button class="btn btn-text">Not now</button></div>
+  <p class="t-caption c2" style="text-align:center">Next, iPhone asks. 'Selected photos' is enough.</p>
+</div>
+<div class="status on-photo"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>15</b>Permission primer: photos<span>Value first, then the system prompt. One primary ('Choose photos'), one quiet 'Not now'. Works with limited access. Same template for location and notifications.</span></p></section>
+<section class="slot" data-slot="permission-primer-location"><div class="phone" id="permission-primer-location" data-frame="permission-primer-location"><div class="backdrop" aria-hidden="true">
+  <div class="tb-hero ph" data-ph="sintraY@center 40%"></div>
+  <div class="tb-scrim"></div>
+  <div class="tb-body">
+    <div class="sk lg" style="height:56px"></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:12px;width:40%;margin-top:var(--sp-2)"></div></div></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:50%"></div><div class="sk" style="height:12px;width:30%;margin-top:var(--sp-2)"></div></div></div>
+  </div>
+</div>
+
+<div class="dim"></div>
+<div class="sheet auto primer" role="dialog" aria-modal="true" aria-labelledby="pl-t">
+  <div class="grab"></div>
+  <div class="pr-ill loc" aria-hidden="true"><div class="mthumb big" data-map="-9.6,38.4,-8.2,41.3" data-w="350" data-h="140" data-pad="0.9"></div><span class="pulse"><i></i><b><svg class="ic ic-20" aria-hidden="true"><use href="#i-navigation"/></svg></b></span></div>
+  <h2 class="t-title pr-t" id="pl-t">Show where you <span class="t-serif">are</span> on the globe</h2>
+  <p class="t-body c2 pr-b">Only while the app is open. We never track you in the background.</p>
+  <ul class="pr-list">
+    <li><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-locate-fixed"/></svg></span><span class="t-body">Centre the globe on you with one tap</span></li>
+    <li><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-map-pin-plus"/></svg></span><span class="t-body">Suggest nearby places when you add a stop</span></li>
+    <li><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-lock"/></svg></span><span class="t-body">Your position stays on your phone</span></li>
+  </ul>
+  <div class="pr-act"><button class="btn btn-primary lg block">Continue</button><button class="btn btn-text">Not now</button></div>
+  <p class="t-caption c2" style="text-align:center">Next, iPhone asks. Choose 'Allow While Using App'.</p>
+</div>
+<div class="status on-photo"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>16</b>Permission primer: location<span>Location primer. 'While using the app' only, used to centre the globe and suggest stops.</span></p></section>
+<section class="slot" data-slot="permission-primer-notifications"><div class="phone" id="permission-primer-notifications" data-frame="permission-primer-notifications"><div class="backdrop" aria-hidden="true">
+  <div class="tb-hero ph" data-ph="sintraY@center 40%"></div>
+  <div class="tb-scrim"></div>
+  <div class="tb-body">
+    <div class="sk lg" style="height:56px"></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:12px;width:40%;margin-top:var(--sp-2)"></div></div></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:50%"></div><div class="sk" style="height:12px;width:30%;margin-top:var(--sp-2)"></div></div></div>
+  </div>
+</div>
+
+<div class="dim"></div>
+<div class="sheet auto primer" role="dialog" aria-modal="true" aria-labelledby="pn-t">
+  <div class="grab"></div>
+  <div class="pr-ill nf" aria-hidden="true">
+    <div class="notif"><span class="app"><svg class="ic ic-20" aria-hidden="true"><use href="#i-sunrise"/></svg></span><div><div class="t-caption">Portugal Road Trip starts tomorrow</div><div class="t-label c2">Docs saved offline, map downloaded.</div></div></div>
+    <div class="notif b"><span class="app"><svg class="ic ic-20" aria-hidden="true"><use href="#i-cloud-upload"/></svg></span><div><div class="t-caption">3 photos did not upload</div><div class="t-label c2">Tap to retry on Wi-Fi.</div></div></div>
+  </div>
+  <h2 class="t-title pr-t" id="pn-t">Only the <span class="t-serif">useful</span> nudges</h2>
+  <p class="t-body c2 pr-b">A reminder before a trip, and a heads-up if something could not be saved. No marketing, ever.</p>
+  <ul class="pr-list">
+    <li><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-calendar-days"/></svg></span><span class="t-body">The day before a trip begins</span></li>
+    <li><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-cloud-alert"/></svg></span><span class="t-body">When an upload needs your attention</span></li>
+    <li><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-bell-off"/></svg></span><span class="t-body">Turn them off any time in Settings</span></li>
+  </ul>
+  <div class="pr-act"><button class="btn btn-primary lg block">Turn on reminders</button><button class="btn btn-text">Not now</button></div>
+</div>
+<div class="status on-photo"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>17</b>Permission primer: notifications<span>Notifications primer: two real examples of what will arrive, and a promise of no marketing.</span></p></section>
+<section class="slot" data-slot="settings"><div class="phone" id="settings" data-frame="settings"><div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg></button><h1 class="tt t-callout">Settings</h1><span style="width:var(--tap)"></span></header>
+  <div class="scroll scroll-y" style="padding-top:var(--sp-3);padding-bottom:var(--sp-6)">
+    <div class="group g1">
+      <button class="lrow noic acc"><i class="ph ava" data-ph="marta@center 25%"></i><span class="tx"><span class="t-callout t1 clamp-1" data-long="Marta Fernanda Souza de Albuquerque Cavalcanti">Marta Souza</span><span class="t-label t2 clamp-1">marta@example.com</span></span><svg class="ic ic-20  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+    </div>
+
+    <div class="group g2">
+      <div class="lrow noic"><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-palette"/></svg></span><span class="tx"><span class="t-callout t1">Appearance</span></span></div>
+      <div class="segwrap"><div class="seg" role="radiogroup" aria-label="Appearance" data-theme-seg><button role="radio" class="is-on" aria-checked="true"><svg class="ic ic-20" aria-hidden="true"><use href="#i-sun"/></svg>Light</button><button role="radio" aria-checked="false"><svg class="ic ic-20" aria-hidden="true"><use href="#i-moon"/></svg>Dark</button><button role="radio" aria-checked="false"><svg class="ic ic-20" aria-hidden="true"><use href="#i-smartphone"/></svg>Auto</button></div></div>
+      <p class="t-label c2 note-i"><svg class="ic ic-16" aria-hidden="true"><use href="#i-info"/></svg><span>Higher contrast follows your phone's Accessibility settings.</span></p>
+    </div>
+
+    <div class="group g3">
+      <button class="lrow"><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-cloud-check"/></svg></span><span class="tx"><span class="t-callout t1">Sync</span><span class="t-label t2"><span style="color:var(--success-ink);font-weight:600">Up to date</span>, 2 min ago</span></span><svg class="ic ic-20  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+      <button class="lrow"><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-shield-check"/></svg></span><span class="tx"><span class="t-callout t1">Privacy</span><span class="t-label t2" data-long="Expenses and documents are never shared with anyone, not even people on your trips">Expenses and documents are never shared</span></span><svg class="ic ic-20  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+      <button class="lrow"><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-hard-drive"/></svg></span><span class="tx"><span class="t-callout t1">Storage</span><span class="t-label t2 tnum">412 MB of maps &middot; 1.1 GB photos</span></span><svg class="ic ic-20  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+    </div>
+
+    <div class="group g4">
+      <button class="lrow"><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-info"/></svg></span><span class="tx"><span class="t-callout t1">About TripTrackr</span><span class="t-label t2 tnum">Version 2.0 (118)</span></span><svg class="ic ic-20  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+    </div>
+
+    <div class="group g5">
+      <button class="lrow"><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-log-out"/></svg></span><span class="tx"><span class="t-callout t1">Sign out</span></span></button>
+      <div class="lrow dis" aria-disabled="true" role="button"><span class="ico"><svg class="ic ic-20" aria-hidden="true"><use href="#i-trash-2"/></svg></span><span class="tx"><span class="t-callout t1">Delete account</span></span><span class="pill p-neutral">Coming soon</span></div>
+    </div>
+  </div>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>18</b>Settings<span>Grouped list. Appearance uses text labels (Light, Dark, Auto) and says contrast follows the phone. Sync shows one status line. Delete account is visibly disabled: 'Coming soon'.</span></p></section>
+<section class="slot" data-slot="recap"><div class="phone" id="recap" data-frame="recap"><div class="screen story s1">
+  <div class="sprog" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1" aria-label="Story 1 of 3"><i class="on"></i><i></i><i></i></div>
+  <div class="shead"><div class="t-eyebrow" style="color:inherit">Your 2026 in travel</div><button class="ibtn plain" aria-label="Close story" style="color:inherit"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+  <div class="sbody">
+    <div class="echo" role="img" aria-label="63 days away from home"><span class="e e4" aria-hidden="true">63</span><span class="e e3" aria-hidden="true">63</span><span class="e e2" aria-hidden="true">63</span><span class="e e1" aria-hidden="true">63</span><span class="e e0">63</span></div>
+    <h2 class="t-headline sbig" style="color:inherit">days away from home</h2>
+    <p class="t-body" style="color:inherit">Across 6 trips and 14 countries. That is 17% of your year spent somewhere else.</p>
+  </div>
+  <div class="sfoot"><span class="t-caption" style="color:inherit">Tap to continue</span><svg class="ic ic-16" aria-hidden="true"><use href="#i-chevron-right"/></svg></div>
+</div>
+<div class="status on-oncoral"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind on-oncoral"></div></div><p class="cap"><b>19</b>Year recap, card 1<span>Story 1 of 3. Dashed story progress, one numeral echoed five times as a stacked band (63 days away). Coral full-bleed with navy ink (5.2:1). Tap right to continue, hold to pause.</span></p></section>
+<section class="slot" data-slot="recap-2"><div class="phone" id="recap-2" data-frame="recap-2"><div class="screen story s2">
+  <div class="sprog" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="2" aria-label="Story 2 of 3"><i class="on"></i><i class="on"></i><i></i></div>
+  <div class="shead"><div class="t-eyebrow" style="color:inherit">Countries</div><button class="ibtn plain" aria-label="Close story" style="color:inherit"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+  <div class="sbody center">
+    <div class="bring" role="img" aria-label="14 of 195 countries visited"><svg viewBox="0 0 240 240" aria-hidden="true"><circle cx="120" cy="120" r="104" class="tr"/><circle cx="120" cy="120" r="104" class="pg" transform="rotate(-90 120 120)" style="stroke-dasharray:47 653"/></svg><div class="bn"><span class="t-display prop big96">14</span><span class="t-callout" style="color:inherit">of 195</span></div></div>
+    <p class="t-headline" style="text-align:center;color:inherit">5 new this year</p>
+    <div class="far"><i class="ph roundel" data-ph="tokyo@center"></i><div><div class="t-caption" style="color:inherit;opacity:.9">Farthest from home</div><div class="t-headline" style="color:inherit">Tokyo</div><div class="t-label tnum" style="color:inherit">10,780 km from Madrid</div></div></div>
+  </div>
+  <div class="sfoot"><span class="t-caption" style="color:inherit">Tap to continue</span><svg class="ic ic-16" aria-hidden="true"><use href="#i-chevron-right"/></svg></div>
+</div>
+<div class="status on-story2"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind on-story2"></div></div><p class="cap"><b>20</b>Year recap, card 2<span>Story 2 of 3. Countries ring (14 of 195, 5 new in 2026) and 'farthest from home' with a photo roundel. Navy card, inverts to the Nightfall tile in dark.</span></p></section>
+<section class="slot" data-slot="recap-3"><div class="phone" id="recap-3" data-frame="recap-3"><div class="screen story s3">
+  <div class="sprog" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="3" aria-label="Story 3 of 3"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+  <div class="shead"><div class="t-eyebrow" style="color:inherit">Longest trip</div><button class="ibtn plain" aria-label="Close story" style="color:inherit"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+  <div class="sbody">
+    <div class="longph ph" data-ph="kyoto@center 60%" role="img" aria-label="Kyoto street at dusk"><div class="stp" data-stamp="jp" data-ink="navy" data-bold style="width:96px;height:96px"></div></div>
+    <h2 class="t-display" style="color:inherit;margin-top:var(--sp-5)">Japan</h2>
+    <p class="t-body" style="color:inherit">9 days, 3 cities, one very good bowl of ramen.</p>
+    <div class="s3stats"><div><span class="t-numeral prop" style="color:inherit">9</span><span class="t-caption" style="color:inherit">days</span></div><div><span class="t-numeral prop" style="color:inherit">3</span><span class="t-caption" style="color:inherit">cities</span></div><div><span class="t-numeral prop" style="color:inherit">9,640</span><span class="t-caption" style="color:inherit">km</span></div></div>
+  </div>
+  <div class="sact"><button class="btn btn-story block lg"><svg class="ic" aria-hidden="true"><use href="#i-share-2"/></svg>Share your year</button></div>
+</div>
+<div class="status on-oncoral"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind on-oncoral"></div></div><p class="cap"><b>21</b>Year recap, card 3<span>Story 3 of 3. Longest trip with a stamp, days away, and the one action: Share your year. The CTA is navy-on-amber (coral would vanish on amber).</span></p></section>
+<section class="slot" data-slot="recap-share"><div class="phone" id="recap-share" data-frame="recap-share"><div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button><h1 class="tt t-callout">Share your year</h1><span style="width:var(--tap)"></span></header>
+  <div class="scroll" style="display:flex;flex-direction:column;align-items:center;padding-top:var(--sp-3)">
+    <div class="pwrap"><div class="pscale"><div class="poster" role="img" aria-label="Your 2026 in travel: 14 countries, 61,480 kilometres, 63 days away. Marta Souza.">
+  <div class="pglobe" data-globe="-30,24,146" data-arcs="mexico>lisbon>past;lisbon>tokyo>past;london>lisbon>past;lisbon>reykjavik>plan;lisbon>marrakech>past;mexico>nyc>past" data-pins="lisbon,tokyo,mexico,reykjavik"></div>
+  <div class="ptop"><span class="pbrand"><svg class="ic ic-20" aria-hidden="true"><use href="#i-sunrise"/></svg>TripTrackr</span><span class="pyear">2026</span></div>
+  <div class="pstamps" aria-hidden="true"><div data-stamp="pt" data-ink="navy" data-bold data-norot style="width:84px;height:84px;--r:-10deg"></div><div data-stamp="jp" data-ink="navy" data-bold data-norot style="width:76px;height:76px;--r:8deg;margin-left:-20px;margin-top:40px"></div></div>
+  <div class="pbot">
+    <div class="pname">Marta&rsquo;s <span class="t-serif">year</span></div>
+    <div class="pgrid"><div><b>14</b><span>countries</span></div><div><b>61,480</b><span>km</span></div><div><b>63</b><span>days away</span></div></div>
+    <div class="pmrz" aria-hidden="true">P&lt;TRIPTRACKR&lt;&lt;SOUZA&lt;&lt;MARTA&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</div>
+  </div>
+</div>
+</div></div>
+    <p class="t-label c2" style="text-align:center;margin-top:var(--sp-3)">Only your totals are shared. Never expenses or documents.</p>
+  </div>
+  <div class="dv-foot" style="flex-direction:row;gap:var(--sp-3);background:var(--paper)">
+    <button class="btn btn-secondary" style="flex:1"><svg class="ic ic-20" aria-hidden="true"><use href="#i-download"/></svg>Save</button>
+    <button class="btn btn-primary" style="flex:2"><svg class="ic ic-20" aria-hidden="true"><use href="#i-share-2"/></svg>Share</button>
+  </div>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>22</b>Share your year<span>Share preview of the 9:16 poster (exported at 1080x1920 from a Skia/SVG canvas). Poster is theme-independent. Share is the one primary; Save image is secondary.</span></p></section>
+<section class="slot wide" data-slot="recap-poster"><div class="board-frame" id="recap-poster" data-frame="recap-poster"><div class="poster" role="img" aria-label="Your 2026 in travel: 14 countries, 61,480 kilometres, 63 days away. Marta Souza.">
+  <div class="pglobe" data-globe="-30,24,146" data-arcs="mexico>lisbon>past;lisbon>tokyo>past;london>lisbon>past;lisbon>reykjavik>plan;lisbon>marrakech>past;mexico>nyc>past" data-pins="lisbon,tokyo,mexico,reykjavik"></div>
+  <div class="ptop"><span class="pbrand"><svg class="ic ic-20" aria-hidden="true"><use href="#i-sunrise"/></svg>TripTrackr</span><span class="pyear">2026</span></div>
+  <div class="pstamps" aria-hidden="true"><div data-stamp="pt" data-ink="navy" data-bold data-norot style="width:84px;height:84px;--r:-10deg"></div><div data-stamp="jp" data-ink="navy" data-bold data-norot style="width:76px;height:76px;--r:8deg;margin-left:-20px;margin-top:40px"></div></div>
+  <div class="pbot">
+    <div class="pname">Marta&rsquo;s <span class="t-serif">year</span></div>
+    <div class="pgrid"><div><b>14</b><span>countries</span></div><div><b>61,480</b><span>km</span></div><div><b>63</b><span>days away</span></div></div>
+    <div class="pmrz" aria-hidden="true">P&lt;TRIPTRACKR&lt;&lt;SOUZA&lt;&lt;MARTA&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</div>
+  </div>
+</div>
+
+</div><p class="cap"><b>23</b>Share poster, 9:16<span>The exported image at 360x640 CSS px (1080x1920 at 3x). Great-circle arcs lifted over the globe, seeded stamps, MRZ line.</span></p></section>
+<section class="slot" data-slot="trip-menu"><div class="phone" id="trip-menu" data-frame="trip-menu"><div class="backdrop" aria-hidden="true">
+  <div class="tb-hero ph" data-ph="sintraY@center 40%"></div>
+  <div class="tb-scrim"></div>
+  <div class="tb-title"><div class="t-eyebrow" style="color:var(--on-photo)">Portugal · 3 stops</div><div class="t-title" style="color:var(--on-photo);margin-top:var(--sp-1)">Portugal Road Trip</div></div>
+  <div class="tb-body">
+    <div class="sk lg" style="height:56px"></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:12px;width:40%;margin-top:var(--sp-2)"></div></div></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:50%"></div><div class="sk" style="height:12px;width:30%;margin-top:var(--sp-2)"></div></div></div>
+  </div>
+</div>
+
+<div class="dim"></div>
+<div class="sheet auto menu" role="dialog" aria-modal="true" aria-label="Trip menu">
+  <div class="grab"></div>
+  <div class="mhead"><i class="ph mth" data-ph="sintraY@center 40%"></i><div class="tx"><div class="t-callout clamp-1" data-long="Portugal Road Trip with the whole family and a very long name that keeps going">Portugal Road Trip</div><div class="t-label c2 tnum">12&ndash;19 Oct 2026 &middot; 3 stops</div></div><button class="ibtn" aria-label="Close menu"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+  <ul class="mlist2">
+    <li><button class="mi"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg><span class="tx"><span class="t-callout">Edit trip</span><span class="t-label c2">Name, dates, cover, currency</span></span><svg class="ic ic-20  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+    <li><button class="mi"><svg class="ic" aria-hidden="true"><use href="#i-share-2"/></svg><span class="tx"><span class="t-callout">Share summary</span><span class="t-label c2">A photo card. No expenses or documents.</span></span><svg class="ic ic-20  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+    <li><button class="mi"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg><span class="tx"><span class="t-callout">Download map</span><span class="t-label c2 tnum">186 MB for offline use</span></span><svg class="ic ic-20  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+  </ul>
+  <div class="msep"></div>
+  <button class="mi del"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg><span class="tx"><span class="t-callout">Delete trip</span><span class="t-label">You can undo for 10 seconds</span></span></button>
+</div>
+<div class="status on-photo"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>24</b>Trip menu<span>'More' on the trip header. Edit, Share summary, Download map; Delete is separated, crimson with icon and verb, and asks for confirmation. On iOS this is a native action sheet / context menu; Android uses an M3 bottom sheet.</span></p></section>
+<section class="slot" data-slot="delete-confirm"><div class="phone" id="delete-confirm" data-frame="delete-confirm"><div class="backdrop" aria-hidden="true">
+  <div class="tb-hero ph" data-ph="sintraY@center 40%"></div>
+  <div class="tb-scrim"></div>
+  <div class="tb-title"><div class="t-eyebrow" style="color:var(--on-photo)">Portugal · 3 stops</div><div class="t-title" style="color:var(--on-photo);margin-top:var(--sp-1)">Portugal Road Trip</div></div>
+  <div class="tb-body">
+    <div class="sk lg" style="height:56px"></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:12px;width:40%;margin-top:var(--sp-2)"></div></div></div>
+    <div class="tb-row"><div class="sk r" style="width:40px;height:40px"></div><div style="flex:1"><div class="sk" style="height:16px;width:50%"></div><div class="sk" style="height:12px;width:30%;margin-top:var(--sp-2)"></div></div></div>
+  </div>
+</div>
+
+<div class="dim"></div>
+<div class="dlg-wrap">
+  <div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dc-t" aria-describedby="dc-d">
+    <span class="dic"><svg class="ic" aria-hidden="true"><use href="#i-trash-2"/></svg></span>
+    <h2 class="t-headline" id="dc-t" data-long="Delete Portugal Road Trip with the whole family and a very long name?">Delete &lsquo;Portugal Road Trip&rsquo;?</h2>
+    <p class="t-label c2" id="dc-d">This removes <b>3 stops, 128 photos, 6 notes, 14 expenses and 5 documents</b> from this phone and your account. You can undo for 10 seconds.</p>
+    <div class="dact"><button class="btn btn-danger block"><svg class="ic ic-20" aria-hidden="true"><use href="#i-trash-2"/></svg>Delete trip</button><button class="btn btn-secondary block">Keep trip</button></div>
+  </div>
+</div>
+<div class="status on-photo"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>25</b>Delete confirmation<span>Alert dialog (use native Alert on both platforms). Names the trip and what goes with it, one crimson verb button, a calm Keep. After Delete: an undo toast for 10 s (see states sheet).</span></p></section>
+<section class="slot" data-slot="search"><div class="phone" id="search" data-frame="search"><div class="screen">
+  <div class="sbar"><div class="input is-focus pillfield" role="search"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span class="val">lis<span class="caret"></span></span><button class="clr" aria-label="Clear"><svg class="ic ic-16" aria-hidden="true"><use href="#i-x"/></svg></button></div><button class="btn btn-text">Cancel</button></div>
+  <div class="scroll scroll-y" style="padding-top:var(--sp-2);padding-bottom:var(--sp-10)">
+    <div class="rh"><h2 class="t-callout">Trips <span class="c2 tnum" style="font-weight:400">2</span></h2><button class="link nou">See all</button></div>
+    <ul style="--lead:48px">
+      <li><button class="rrow"><i class="ph rth" data-ph="arco@center"></i><span class="tx"><span class="t-callout clamp-1"><mark>Lis</mark>bon Long Weekend</span><span class="t-label c2 clamp-1">Jun 2025 &middot; 4 days &middot; Portugal</span></span><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+      <li><button class="rrow"><i class="ph rth" data-ph="sintraY@center 40%"></i><span class="tx"><span class="t-callout clamp-1" data-long="Portugal Road Trip, Lisbon, Sintra, Porto and the Alentejo coast">Portugal Road Trip</span><span class="t-label c2 clamp-1">Stop: <mark>Lis</mark>bon &middot; 12&ndash;19 Oct &middot; Now</span></span><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+    </ul>
+    <div class="rh"><h2 class="t-callout">Places <span class="c2 tnum" style="font-weight:400">3</span></h2><button class="link nou">See all</button></div>
+    <ul style="--lead:28px">
+      <li><button class="rrow"><span class="flag" data-flag="pt"></span><span class="tx"><span class="t-callout clamp-1"><mark>Lis</mark>bon</span><span class="t-label c2 clamp-1">City &middot; 3 stops &middot; first visited 2021</span></span><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+      <li><button class="rrow"><span class="flag" data-flag="pt"></span><span class="tx"><span class="t-callout clamp-1"><mark>Lis</mark>bon Airport</span><span class="t-label c2 clamp-1">Stop 1 &middot; Portugal Road Trip</span></span><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+      <li><button class="rrow"><span class="flag" data-flag="es"></span><span class="tx"><span class="t-callout clamp-1">Ga<mark>lis</mark>ia</span><span class="t-label c2 clamp-1">Region &middot; Spain &middot; Sep 2019</span></span><svg class="ic ic-16  chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></li>
+    </ul>
+    <div class="rh"><h2 class="t-callout">Notes <span class="c2 tnum" style="font-weight:400">2</span></h2><button class="link nou">See all</button></div>
+    <ul style="--lead:24px">
+      <li><button class="rrow nr"><svg class="ic ic-20  ntic" aria-hidden="true"><use href="#i-notebook-pen"/></svg><span class="tx"><span class="t-callout clamp-1">Tram 28, never again</span><span class="t-label c2 clamp-2">&hellip;walked down from Graça to <mark>Lis</mark>bon&rsquo;s old town, better view, zero queue&hellip;</span></span></button></li>
+    </ul>
+  </div>
+</div>
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>26</b>Global search, results<span>Results across trips, places and notes, grouped, with the matched text highlighted (mark = coral tint, never colour alone: it is also the only bold run). Cancel in the thumb-reachable top row; keyboard dismisses on scroll.</span></p></section>
+<section class="slot" data-slot="search-recent"><div class="phone" id="search-recent" data-frame="search-recent"><div class="screen">
+  <div class="sbar"><div class="input is-focus pillfield" role="search"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span class="val"><span class="caret" style="margin-left:0;margin-right:var(--sp-1)"></span><span class="ph-t" data-long="Search trips, places, notes and countries">Search trips, places, notes</span></span></div><button class="btn btn-text">Cancel</button></div>
+  <div class="scroll" style="padding-top:var(--sp-2)">
+    <div class="rh"><h2 class="t-callout">Recent</h2><button class="link nou">Clear all</button></div>
+    <ul style="--lead:20px">
+      <li class="rec"><button class="rrow"><svg class="ic ic-20" aria-hidden="true"><use href="#i-history"/></svg><span class="tx"><span class="t-callout">Lisbon</span></span></button><button class="ibtn plain" aria-label="Remove Lisbon from recent"><svg class="ic ic-16" aria-hidden="true"><use href="#i-x"/></svg></button></li>
+      <li class="rec"><button class="rrow"><svg class="ic ic-20" aria-hidden="true"><use href="#i-history"/></svg><span class="tx"><span class="t-callout">Japan 2026</span></span></button><button class="ibtn plain" aria-label="Remove Japan 2026 from recent"><svg class="ic ic-16" aria-hidden="true"><use href="#i-x"/></svg></button></li>
+      <li class="rec"><button class="rrow"><svg class="ic ic-20" aria-hidden="true"><use href="#i-history"/></svg><span class="tx"><span class="t-callout">ramen</span></span></button><button class="ibtn plain" aria-label="Remove ramen from recent"><svg class="ic ic-16" aria-hidden="true"><use href="#i-x"/></svg></button></li>
+    </ul>
+    <div class="rh" style="margin-top:var(--sp-4)"><h2 class="t-callout">Jump to</h2></div>
+    <div class="chips wrapc"><button class="chip"><svg class="ic ic-20" aria-hidden="true"><use href="#i-luggage"/></svg>Past trips</button><button class="chip"><svg class="ic ic-20" aria-hidden="true"><use href="#i-globe"/></svg>Countries</button><button class="chip"><svg class="ic ic-20" aria-hidden="true"><use href="#i-notebook-pen"/></svg>Notes</button><button class="chip"><svg class="ic ic-20" aria-hidden="true"><use href="#i-image"/></svg>Photos</button></div>
+  </div>
+</div>
+<div class="kb" aria-hidden="true">
+  <div class="pred"><span>"Lisbon"</span><span>Japan</span><span>ramen</span></div>
+  <div class="krow"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+  <div class="krow r2"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+  <div class="krow"><span class="k fn">&#8679;</span><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span><span class="k fn">&#9003;</span></div>
+  <div class="krow" style="margin-bottom:var(--sp-5)"><span class="k fn act">123</span><span class="k wide">space</span><span class="k fn act">search</span></div>
+</div>
+
+<div class="status"><span>9:41</span><span class="r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="17" height="12"><use href="#i-sbwifi"/></svg><svg width="27" height="13"><use href="#i-batt"/></svg></span></div><div class="island"></div><div class="hind"></div></div><p class="cap"><b>27</b>Global search, recent<span>Empty query: recent searches (removable, one-tap clear) and quick scopes. Keyboard up, nothing is auto-run.</span></p></section>
+<section class="slot wide" data-slot="states"><div class="board-frame" id="states" data-frame="states"><div class="sgrid">
+
+  <section class="sp"><h3 class="sl">Skeleton &middot; list rows</h3>
+    <div class="sbody2" aria-busy="true" aria-label="Loading">
+      <div class="skr"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:62%"></div><div class="sk" style="height:12px;width:40%"></div></div></div>
+      <div class="skr"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:48%"></div><div class="sk" style="height:12px;width:56%"></div></div></div>
+      <div class="skr"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:70%"></div><div class="sk" style="height:12px;width:34%"></div></div></div>
+      <div class="skr"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:54%"></div><div class="sk" style="height:12px;width:46%"></div></div></div>
+    </div></section>
+
+  <section class="sp"><h3 class="sl">Skeleton &middot; trip card</h3>
+    <div class="sbody2" aria-busy="true" aria-label="Loading trip">
+      <div class="sk xl skcard"><span class="skpin"><svg class="ic" aria-hidden="true"><use href="#i-map-pin"/></svg></span></div>
+      <div class="skt" style="margin-top:var(--sp-3)"><div class="sk" style="height:20px;width:58%"></div><div class="sk" style="height:12px;width:38%"></div></div>
+      <div style="display:flex;gap:var(--sp-1);margin-top:var(--sp-4)"><div class="sk r" style="height:8px;flex:1"></div><div class="sk r" style="height:8px;flex:1"></div><div class="sk r" style="height:8px;flex:1"></div></div>
+    </div></section>
+
+  <section class="sp"><h3 class="sl">Empty &middot; photos</h3>
+    <div class="sbody2 emp"><div class="fan sm" aria-hidden="true"><i class="ph pf a" data-ph="sintra@center"></i><i class="ph pf b" data-ph="porto@center"></i><i class="ph pf c" data-ph="tram@center"></i></div>
+      <h4 class="t-callout">No photos yet</h4><p class="t-label c2">Add the first one and it lands on the right day.</p><button class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-image-plus"/></svg>Add photos</button></div></section>
+
+  <section class="sp"><h3 class="sl">Empty &middot; notes</h3>
+    <div class="sbody2 emp"><svg class="ill" aria-hidden="true"><use href="#ill-notes"/></svg>
+      <h4 class="t-callout">Nothing written yet</h4><p class="t-label c2">Notes save on your phone the moment you type.</p><button class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg>New note</button></div></section>
+
+  <section class="sp"><h3 class="sl">Empty &middot; expenses</h3>
+    <div class="sbody2 emp"><svg class="ill" aria-hidden="true"><use href="#ill-expenses"/></svg>
+      <h4 class="t-callout">No spending yet</h4><p class="t-label c2">Private to you. Start with today's coffee.</p><button class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Add expense</button></div></section>
+
+  <section class="sp"><h3 class="sl">Empty &middot; documents</h3>
+    <div class="sbody2 emp"><svg class="ill" aria-hidden="true"><use href="#ill-docs"/></svg>
+      <h4 class="t-callout">Tickets, offline</h4><p class="t-label c2">Scan a boarding pass or booking. Only you can see it.</p><button class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-scan-line"/></svg>Scan document</button></div></section>
+
+  <section class="sp"><h3 class="sl">Offline banner</h3>
+    <div class="sbody2">
+      <div class="t-headline" style="margin-bottom:var(--sp-3)">Trips</div>
+      <div role="status" class="banner"><svg class="ic" aria-hidden="true"><use href="#i-wifi-off"/></svg>Offline &middot; 3 changes waiting</div>
+      <div class="skr" style="margin-top:var(--sp-4);opacity:.55"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:62%"></div><div class="sk" style="height:12px;width:40%"></div></div></div>
+      <p class="t-caption c2" style="margin-top:var(--sp-4)">Slim pill under the header, never blocking. Amber only after 24 h offline.</p>
+    </div></section>
+
+  <section class="sp"><h3 class="sl">Sync error</h3>
+    <div class="sbody2">
+      <div class="errrow" role="alert"><span class="ei"><svg class="ic" aria-hidden="true"><use href="#i-cloud-alert"/></svg></span><div class="tx"><div class="t-callout" style="color:var(--danger)">Couldn&rsquo;t sync 2 changes</div><div class="t-label c2">Safe on this phone. We&rsquo;ll keep trying.</div></div><button class="btn btn-secondary sm"><svg class="ic ic-20" aria-hidden="true"><use href="#i-refresh-cw"/></svg>Retry</button></div>
+      <p class="t-caption c2" style="margin-top:var(--sp-4)">Appears in the Sync row and as a per-record glyph. Detail lives in Settings &rsaquo; Sync.</p>
+    </div></section>
+
+  <section class="sp"><h3 class="sl">Permission denied</h3>
+    <div class="sbody2 emp"><svg class="ill" aria-hidden="true"><use href="#ill-camera-off"/></svg>
+      <h4 class="t-callout">Photos access is off</h4><p class="t-label c2">Turn it on in Settings to add photos from your library.</p><button class="btn btn-primary">Open Settings</button><button class="btn btn-text">Choose files instead</button></div></section>
+
+  <section class="sp"><h3 class="sl">No results</h3>
+    <div class="sbody2 emp"><svg class="ill" aria-hidden="true"><use href="#ill-search-x"/></svg>
+      <h4 class="t-callout">No results for &lsquo;lisb0n&rsquo;</h4><p class="t-label c2">Check the spelling or try a city name.</p><button class="btn btn-secondary sm">Clear search</button></div></section>
+
+  <section class="sp"><h3 class="sl">Undo toast</h3>
+    <div class="sbody2 toastzone">
+      <div class="skr" style="opacity:.55"><div class="sk lg" style="width:56px;height:56px"></div><div class="skt"><div class="sk" style="height:16px;width:62%"></div><div class="sk" style="height:12px;width:40%"></div></div></div>
+      <div class="toast tst" role="status"><span class="tx">Trip deleted</span><button class="btn-text btn">Undo</button><div class="bar"><i></i></div></div>
+      <p class="t-caption c2" style="margin-top:var(--sp-4)">10 s, announces politely, Undo restores all children.</p>
+    </div></section>
+
+  <section class="sp"><h3 class="sl">Sync glyph &middot; per record</h3>
+    <div class="sbody2 gl">
+      <div class="gr"><span class="sg ok"><svg class="ic ic-16" aria-hidden="true"><use href="#i-cloud-check"/></svg></span><span class="t-callout">Synced</span><span class="t-label c2">Bytes are on the server</span></div>
+      <div class="gr"><span class="sg q"><svg class="ic ic-16" aria-hidden="true"><use href="#i-cloud-upload"/></svg></span><span class="t-callout">Waiting</span><span class="t-label c2">Saved here, no network</span></div>
+      <div class="gr"><span class="pring" style="--p:62;--sz:16px;--w:2.5px;--c:var(--coral-line);--t:var(--sand)"></span><span class="t-callout">Uploading</span><span class="t-label c2 tnum">62%</span></div>
+      <div class="gr"><span class="sg q"><svg class="ic ic-16" aria-hidden="true"><use href="#i-rotate-ccw"/></svg></span><span class="t-callout">Retrying</span><span class="t-label c2">Next try in 30 s</span></div>
+      <div class="gr"><span class="sg fail"><svg class="ic ic-16" aria-hidden="true"><use href="#i-triangle-alert"/></svg></span><span class="t-callout" style="color:var(--danger)">Failed</span><span class="t-label c2">Tap to retry</span></div>
+    </div></section>
+</div>
+</div><p class="cap"><b>28</b>States sheet<span>Generic states every list/screen reuses: skeletons that mirror the real layout, four empty states (illustration + one action), offline banner, sync error with Retry, permission denied, no results, undo toast and the per-record sync glyphs.</span></p></section>
+</main>
+<div class="foot">Prototype only. Photos: Unsplash (local copies, <code>photos.json</code>). Icons: Lucide, 1.75 stroke. Query: <code>?only=&lt;id&gt;</code> <code>&amp;theme=dark</code> <code>&amp;scale=1.5</code> <code>&amp;long=1</code> <code>&amp;contrast=more</code>.</div>
+
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
+<script src="vendor/world.js"></script>
+<script src="extra.js"></script>
+<script src="audit.js"></script>
+</body>
+</html>

@@ -117,8 +117,22 @@ the RLS policy (FR-054).
 | POST   | `/trips/:tripId/photos/upload-url` | owner           | Pre-signed PUT to a private bucket                                                 |
 | POST   | `/trips/:tripId/photos`            | owner           | Registers metadata after the bytes land; enqueues the media worker. FR-028, FR-029 |
 | GET    | `/trips/:tripId/photos`            | owner-or-public | Returns short-lived signed GET URLs, thumbnails by default. FR-030                 |
-| PATCH  | `/photos/:id`                      | owner           | Toggles `is_public`                                                                |
+| GET    | `/photos/:id/original`             | owner-or-public | **Added** — a signed GET for the original, only on deliberate viewing. FR-030      |
+| PATCH  | `/photos/:id`                      | owner           | Toggles `is_public`; refiles `city_id`                                             |
 | DELETE | `/photos/:id`                      | owner           | Tombstone                                                                          |
+
+Shapes (`@triptrackr/contracts` `api/photos.ts`; research D-34):
+
+- `upload-url` takes `{content_type}` (`image/jpeg`, `image/png`, `image/webp`) and answers
+  `{upload_url, storage_key, expires_in_seconds}`. The client PUTs with that same `Content-Type`.
+- Registration takes `{id?, storage_key, city_id?, taken_at?, exif_lat?, exif_lng?}` — the EXIF the
+  device read before re-encoding, both coordinates or neither. The server refuses a `storage_key`
+  outside the caller's own prefix (`422 VALIDATION_FAILED`), answers `409 PHOTO_UPLOAD_MISSING` when
+  the object is not there, and deletes an object over `MAX_PHOTO_BYTES` and answers
+  `413 PHOTO_TOO_LARGE`. A registered photo is `uploaded` and `moderation_state = 'pending'`; a
+  retried registration with the same client `id` answers with the stored photo.
+- A photo on the wire is the pull record without `deleted_at`, plus `thumbnail_url` — a signed GET,
+  or `null` until the worker has made the thumbnail. The list never carries an original's URL.
 
 **Contract obligation on `PATCH /photos/:id`**: setting `is_public = true` is accepted at any time and
 is **not** rejected while moderation is pending. The photo simply does not become publicly reachable
@@ -132,21 +146,43 @@ endpoint puts the guarantee in application code, where Constitution I says it mu
 
 ## 6. Documents
 
-| Method | Path                                  | Access              | Notes                                                                                |
-| ------ | ------------------------------------- | ------------------- | ------------------------------------------------------------------------------------ |
-| POST   | `/trips/:tripId/documents/upload-url` | owner, structurally | Pre-signed PUT                                                                       |
-| POST   | `/trips/:tripId/documents`            | owner, structurally | `{storage_key, type, parsed_json?}`. Server wraps a per-document key. FR-033, FR-035 |
-| GET    | `/trips/:tripId/documents`            | owner, structurally | Owner only, always, at every parameterisation                                        |
-| PATCH  | `/documents/:id`                      | owner, structurally | Confirms extracted fields — sets `parsed_confirmed_at`. Constitution IV              |
-| DELETE | `/documents/:id`                      | owner, structurally | Tombstone                                                                            |
+| Method | Path                       | Access              | Notes                                                                                  |
+| ------ | -------------------------- | ------------------- | -------------------------------------------------------------------------------------- |
+| POST   | `/trips/:tripId/documents` | owner, structurally | **Changed** — the bytes, base64, sealed by the API before storage. FR-033, FR-035      |
+| GET    | `/trips/:tripId/documents` | owner, structurally | Owner only, always, at every parameterisation. Metadata and decrypted fields, no bytes |
+| GET    | `/documents/:id/content`   | owner, structurally | **Added** — the decrypted bytes, base64, `Cache-Control: no-store`. FR-033             |
+| PATCH  | `/documents/:id`           | owner, structurally | Confirms or corrects extracted fields — sets `parsed_confirmed_at`. Constitution IV    |
+| DELETE | `/documents/:id`           | owner, structurally | Tombstone                                                                              |
+
+**Changed** 2026-09-29 (research D-32, D-33): the pre-signed `upload-url` route is **removed**. A
+pre-signed PUT would have put a boarding pass in the bucket in the clear; the API is the object
+store's client and only ciphertext reaches the bucket.
+
+Shapes (`@triptrackr/contracts` `api/documents.ts`):
+
+- Upload: `{id?, type, content_type, content_base64, parsed_json?, confirmed?}`. `content_type` is
+  `image/jpeg` or `image/png` and must match the bytes' signature; at most `MAX_DOCUMENT_BYTES`
+  decoded (`413 DOCUMENT_TOO_LARGE`). `parsed_json` is `{flight_number, flight_date,
+passenger_name}` — only on a `boarding_pass` — and `confirmed: true` means the traveller confirmed
+  them on the device before uploading. A retried upload with the same client `id` answers with the
+  stored document; an `id` owned by someone else answers `409 DOCUMENT_ID_UNAVAILABLE`.
+- A document on the wire is `{id, trip_id, type, content_type, byte_size, parsed_json,
+parsed_confirmed_at, upload_state, created_at, updated_at}` — no key, no storage key.
+- `PATCH` takes `{type?, parsed_json?, confirmed?}`. Fields sent with `confirmed: true` are stored as
+  confirmed; fields sent without it replace the proposal and clear any confirmation; `confirmed: true`
+  alone confirms the stored proposal (`409 DOCUMENT_NOTHING_TO_CONFIRM` if there is none).
 
 **Contract obligations:**
 
 - There is no visibility parameter on any document route, and no route accepts one. FR-032.
 - Documents do not appear in `/feed`, `/discover`, `/users/:id`, or any trip public view — not
   filtered out of them, but absent from the queries that build them.
-- `parsed_json` is accepted as _proposed_ data. It is not authoritative until `PATCH` confirms it
-  (FR-035, Constitution IV).
+- `parsed_json` is accepted as _proposed_ data. It is not authoritative until confirmed (FR-035,
+  Constitution IV).
+- A non-owner reaches every document route as `404 DOCUMENT_NOT_FOUND` (or `TRIP_NOT_FOUND`), the
+  same answer as for an id that does not exist.
+- The upload route alone accepts a JSON body above the 1 MB limit — just enough for
+  `MAX_DOCUMENT_BYTES` in base64.
 
 ---
 

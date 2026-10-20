@@ -19,6 +19,10 @@ describe('describeAuthError', () => {
     ['EMAIL_TAKEN', 'An account with that email already exists. Try signing in instead.'],
     ['RATE_LIMITED', 'Too many attempts. Please wait a moment and try again.'],
     ['NETWORK', 'You seem to be offline. Check your connection and try again.'],
+    [
+      'TIMEOUT',
+      'TripTrackr took too long to answer. Check your connection and try again.',
+    ],
   ])('%s has product copy', (code, copy) => {
     expect(describeAuthError(apiError(400, code))).toBe(copy);
   });

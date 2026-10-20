@@ -20,7 +20,8 @@
  *      ends the session on this device.
  *
  * Errors are one class, `ApiRequestError`, carrying the contract's
- * `{ code, message, details }`. Network failures are `status: 0, NETWORK`.
+ * `{ code, message, details }`. Network failures are `status: 0, NETWORK`;
+ * a request with no answer within `REQUEST_TIMEOUT_MS` is `status: 0, TIMEOUT`.
  */
 import { ApiError, RefreshedTokens } from '@triptrackr/contracts';
 import type { z } from 'zod';
@@ -63,6 +64,7 @@ const COPY = {
   config:
     'The app is not configured with an API address. Please reinstall or contact support.',
   network: 'You seem to be offline. Your changes are saved on this device.',
+  timeout: 'The server took too long to answer. Please try again.',
   unknown: 'Something went wrong on our side. Please try again in a moment.',
   invalidResponse:
     'The server sent something this version of the app does not understand.',
@@ -77,15 +79,45 @@ function baseUrl(): string {
   return `${configured.replace(/\/+$/, '')}/v1`;
 }
 
+/**
+ * How long one exchange may take. React Native's networking sets no timeout
+ * of its own, so a request whose answer never arrives would otherwise leave
+ * the screen that asked spinning forever with nothing to say. Its `fetch` is
+ * `whatwg-fetch` over XMLHttpRequest, which resolves in `xhr.onload` — once
+ * the whole body is in — and aborts the XHR on `signal`, so this bounds the
+ * entire exchange. Twenty seconds is generous for the slowest call, register,
+ * which hashes a password server-side in well under one. A call that is
+ * refreshed and retried after a 401 gets a fresh bound per attempt.
+ */
+export const REQUEST_TIMEOUT_MS = 20_000;
+
 async function performFetch(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+  // A caller's own cancellation still cancels; it is not reported as a timeout.
+  const callerSignal = init.signal;
+  const forwardCancel = () => controller.abort();
+  if (callerSignal?.aborted) controller.abort();
+  else callerSignal?.addEventListener('abort', forwardCancel);
+
   try {
-    return await fetch(url, init);
+    return await fetch(url, { ...init, signal: controller.signal });
   } catch (cause) {
+    if (timedOut) {
+      throw new ApiRequestError(0, { code: 'TIMEOUT', message: COPY.timeout });
+    }
     throw new ApiRequestError(0, {
       code: 'NETWORK',
       message: COPY.network,
       details: { cause: cause instanceof Error ? cause.message : String(cause) },
     });
+  } finally {
+    clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', forwardCancel);
   }
 }
 

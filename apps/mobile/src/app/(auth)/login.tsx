@@ -1,20 +1,38 @@
 /**
- * Login — email and password (T064, T065; FR-001).
+ * Login — email and password (T064, T065; FR-001; restyled for Atlas by T446; FR-005,
+ * FR-017; contract C4-11 "Welcome, Login, Register").
  *
  * Validation mirrors `LoginRequest` from the contracts; API refusals are
- * translated to plain language (`describeAuthError`) and shown as text under
- * the form, never as colour alone (FR-010). On success the session store
- * flips and the root gate swaps this group for the tabs — nothing to navigate.
+ * translated to plain language (`describeAuthError`) and shown as text above
+ * the action, never as colour alone (FR-010, FR-025). On success the session
+ * store flips and the root gate swaps this group for the tabs — nothing to
+ * navigate. Google and Apple (FR-002) are offered under the action (`SocialSignIn`).
+ *
+ * The title ("Sign in") and "Back" are the NATIVE header's (`(auth)/_layout.tsx`), so the
+ * screen draws neither. The fields sit at the top; the one primary action, "Sign in", and
+ * the secondary provider buttons sit in the lower part (`mt-auto` takes the spare room, so
+ * they are at the bottom of a tall screen and follow the fields on a short one). The form
+ * is a keyboard-aware scroller (`Screen keyboardAware`): the focused field is scrolled
+ * above the keyboard, taps on the action are kept, and the password field's return key
+ * submits, so the action is never out of reach with the keyboard up.
+ *
+ * What a credential field is told (T447, pinned by `test/app/auth-security.test.tsx`):
+ * `secureTextEntry` with no reveal toggle, the `textContentType` and `autoComplete` a
+ * password manager reads, no capitalisation or correction on the email or the password,
+ * and nothing that blocks paste. Nothing a field holds is logged, reported or put in a
+ * route.
+ *
+ * Visibility posture: the screen holds only what the traveller types, in this component's
+ * state, until the screen is gone; the mutation drops it with the screen (`gcTime: 0`).
  */
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { PressableSurface } from '@/components/ui/pressable-surface';
+import { SocialSignIn } from '@/components/auth/social-sign-in';
+import { Button } from '@/components/ui/button';
+import { Field } from '@/components/ui/field';
+import { InlineError } from '@/components/ui/inline-error';
 import { Screen } from '@/components/ui/screen';
-import { TextField } from '@/components/ui/text-field';
-import { Colors, Spacing } from '@/constants/theme';
 import { describeAuthError } from '@/features/auth/auth-errors';
 import {
   hasErrors,
@@ -23,11 +41,8 @@ import {
   type LoginFields,
 } from '@/features/auth/form-validation';
 import { useLogin } from '@/features/auth/use-session';
-import { useAppearance } from '@/hooks/use-appearance';
 
 export default function LoginScreen() {
-  const router = useRouter();
-  const { theme } = useAppearance();
   const login = useLogin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,86 +63,53 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen testID="login-screen">
-      <View style={styles.header}>
-        <PressableSurface
-          accessibilityLabel="Back"
-          treatment="flat"
-          onPress={() => router.back()}
-          style={styles.back}>
-          <ThemedText type="smallBold">Back</ThemedText>
-        </PressableSurface>
-        <ThemedText type="subtitle">Sign in</ThemedText>
+    <Screen testID="login-screen" underHeader keyboardAware>
+      <View className="gap-4">
+        <Field
+          testID="login-email"
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          autoComplete="email"
+          returnKeyType="next"
+          error={liveErrors.email}
+        />
+        <Field
+          testID="login-password"
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          textContentType="password"
+          autoComplete="current-password"
+          returnKeyType="go"
+          onSubmitEditing={submit}
+          error={liveErrors.password}
+        />
       </View>
 
-      <TextField
-        testID="login-email"
-        label="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        textContentType="emailAddress"
-        autoComplete="email"
-        returnKeyType="next"
-        error={liveErrors.email}
-      />
-      <TextField
-        testID="login-password"
-        label="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        textContentType="password"
-        autoComplete="current-password"
-        returnKeyType="go"
-        onSubmitEditing={submit}
-        error={liveErrors.password}
-      />
-
-      {login.error ? (
-        <ThemedText
+      <View testID="login-actions" className="mt-auto gap-3">
+        <InlineError
           testID="login-error"
-          type="small"
-          accessibilityRole="alert"
-          style={{ color: Colors[theme].danger }}>
-          {describeAuthError(login.error)}
-        </ThemedText>
-      ) : null}
-
-      <PressableSurface
-        testID="login-submit"
-        accessibilityLabel="Sign in"
-        depth={2}
-        busy={login.isPending}
-        onPress={submit}
-        style={styles.submit}>
-        <ThemedText type="smallBold" style={styles.centred}>
+          message={login.error ? describeAuthError(login.error) : null}
+        />
+        <Button
+          testID="login-submit"
+          variant="primary"
+          size="lg"
+          accessibilityLabel="Sign in"
+          busy={login.isPending}
+          onPress={submit}>
           {login.isPending ? 'Signing in…' : 'Sign in'}
-        </ThemedText>
-      </PressableSurface>
+        </Button>
+        <SocialSignIn disabled={login.isPending} />
+      </View>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    gap: Spacing.three,
-    marginBottom: Spacing.two,
-  },
-  back: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  submit: {
-    marginTop: Spacing.two,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-  },
-  centred: {
-    textAlign: 'center',
-  },
-});

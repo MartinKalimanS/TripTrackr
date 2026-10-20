@@ -1,0 +1,14 @@
+# Open a trip from the trips tab.
+#
+# Needs: the signed-in shell with the tab bar showing (right after a relaunch,
+# or after backing out to the tabs), and TRIP_TITLE (a literal, no regex
+# metacharacters). Leaves the trip screen open.
+appId: com.triptrackr.app
+---
+- tapOn:
+    id: 'tab-trips'
+- assertVisible:
+    id: 'trips-screen'
+- tapOn: ${TRIP_TITLE}
+- assertVisible:
+    id: 'trip-screen'

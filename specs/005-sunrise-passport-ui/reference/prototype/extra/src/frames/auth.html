@@ -1,0 +1,29 @@
+<!--frame id=auth no=13 title="Sign in" cap="Platform-compliant Continue with Apple / Google (equal weight), email and password with inline validation, an error summary (role=alert) that links to each field, Forgot password inside the label row."-->
+<div class="screen">
+  <header class="nav"><button class="ibtn" aria-label="Back">[[i:chevron-left]]</button><button class="link nou" data-long="Create a new account">Create account</button></header>
+  <div class="scroll scroll-y" style="padding-top:var(--sp-2)">
+    <h1 class="t-title">Welcome <span class="t-serif">back</span></h1>
+    <div class="provs">
+      <button class="btn btn-apple block"><svg class="ic" style="fill:currentColor;stroke:none" aria-hidden="true"><use href="#i-apple"/></svg>Continue with Apple</button>
+      <button class="btn btn-google block"><svg class="ic" aria-hidden="true"><use href="#i-google"/></svg>Continue with Google</button>
+    </div>
+    <div class="or" role="separator"><span>or with email</span></div>
+
+    <div class="errsum" role="alert">
+      <div class="et">[[i20:circle-alert]]<b class="t-callout" style="color:var(--danger)">Fix 2 things to sign in</b></div>
+      <ul><li><a href="#em" class="link">Email: enter an address like name@example.com</a></li><li><a href="#pw" class="link">Password: enter your password</a></li></ul>
+    </div>
+
+    <div class="field">
+      <label class="lab" for="em">Email</label>
+      <div class="input is-error" id="em"><span class="val">marta@</span></div>
+      <p class="help err">[[i16:circle-alert]]<span>Enter an address like name@example.com</span></p>
+    </div>
+    <div class="field">
+      <div class="lab"><label for="pw">Password</label><button class="link nou fg" data-long="Forgot your password?">Forgot password?</button></div>
+      <div class="input is-error" id="pw"><span class="val ph-t">Password</span><button class="ibtn plain eye" aria-label="Show password">[[i20:eye]]</button></div>
+      <p class="help err">[[i16:circle-alert]]<span>Enter your password</span></p>
+    </div>
+  </div>
+  <div class="afoot"><button class="btn btn-primary lg block">Sign in</button></div>
+</div>

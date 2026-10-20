@@ -105,9 +105,17 @@ whole premise:
 
 **The social layer does not begin until this passes.** Constitution II; spec "Sequencing constraint".
 
+Maestro drives one device per run and the gate needs two, so the suite is a set of phases
+dispatched by `apps/mobile/e2e/06-offline-acceptance.yaml` (tasks.md T140 + T203):
+
 ```bash
-maestro test apps/mobile/e2e/06-offline-acceptance.yaml     # tasks.md T140 + T203
+maestro --device "$A" test -e RUN_ID="$RUN_ID" -e DEVICE_ROLE=A -e PHASE=p01 \
+  apps/mobile/e2e/06-offline-acceptance.yaml
 ```
+
+The full ordered run, the preparation (the API must be reachable over the network, never through
+`adb reverse`) and the row-to-file table are in
+[apps/mobile/e2e/offline/README.md](../../apps/mobile/e2e/offline/README.md).
 
 The fifteen scenarios are specified at
 [contracts/sync-protocol.md](./contracts/sync-protocol.md) §6.

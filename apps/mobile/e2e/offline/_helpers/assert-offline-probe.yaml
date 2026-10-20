@@ -1,0 +1,36 @@
+# Proves, from INSIDE the app, that the device is really offline.
+#
+# Why this exists: `setAirplaneMode` cannot tell the flow whether it worked.
+# It does nothing on iOS, and on Android it does not cut an `adb reverse`
+# tunnel (the API would stay reachable on 127.0.0.1 while the radio is off).
+# Either way every "offline" scenario below would run online and the suite
+# would prove nothing about FR-036 to FR-043. So before relying on offline,
+# ask the app: the city picker's country step shows the designed alert
+# "Offline — showing saved places" only when its `GET /countries` request has
+# failed (use-geography.ts: `offline: true`). A freshly launched app has no
+# cached answer, so opening the picker right after a relaunch forces that
+# request.
+#
+# The dash in the copy is matched with `.` so the flow does not depend on how
+# the terminal or the editor encodes it.
+#
+# Needs: the signed-in shell on any tab (use right after `relaunch.yaml`) and a
+# trip titled 'Gate baseline' (created in phase p01, synced to B in p02).
+appId: com.triptrackr.app
+---
+- tapOn:
+    id: 'tab-trips'
+- assertVisible:
+    id: 'trips-screen'
+- tapOn: 'Gate baseline'
+- assertVisible:
+    id: 'trip-screen'
+- tapOn:
+    id: 'trip-add-stop'
+- assertVisible:
+    id: 'stop-editor'
+- assertVisible:
+    text: 'Offline . showing saved places'
+- tapOn:
+    id: 'stop-editor-cancel'
+- tapOn: 'Back'

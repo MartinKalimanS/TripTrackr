@@ -31,6 +31,21 @@ export const FX_REFRESH_SCHEDULER = {
   everyMs: 24 * 60 * 60 * 1_000,
 } as const;
 
+/**
+ * The job scheduler that keeps `tombstone-purge` running once a day
+ * (`Queue.upsertJobScheduler`, idempotent by this id), exactly as
+ * {@link FX_REFRESH_SCHEDULER} keeps the FX refresh running (sync-protocol.md
+ * §5, tasks.md T129). Unlike that one it does not ask for a run `immediately`:
+ * a fresh deployment has no tombstone old enough to purge, BullMQ already
+ * aligns an `every` schedule to multiples of the interval (so a restart never
+ * shifts the cadence, and this runs at 00:00 UTC), and the flag makes BullMQ
+ * warn on every worker start.
+ */
+export const TOMBSTONE_PURGE_SCHEDULER = {
+  id: 'tombstone-purge-daily',
+  everyMs: 24 * 60 * 60 * 1_000,
+} as const;
+
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 
 /** DI token for a queue, e.g. `@Inject(queueToken(QUEUE_NAMES.media))`. */

@@ -1,0 +1,10 @@
+# Aeroplane mode off. Deliberately does NOTHING else: no tap, no navigation,
+# no "sync now". sync-protocol.md §3 says connectivity restored pushes and then
+# pulls by itself (FR-038, "without user action"), and the callers prove it by
+# only waiting for the app to settle.
+#
+# On a physical device the Wi-Fi rejoin eats into the 30 s budget of SC-010;
+# record the observed time in gate-evidence.md rather than lengthening the wait.
+appId: com.triptrackr.app
+---
+- setAirplaneMode: disabled

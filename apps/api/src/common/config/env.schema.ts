@@ -52,6 +52,9 @@ const envSchema = z
 
     // S3-compatible object storage. Private buckets only — never a public policy.
     S3_ENDPOINT: z.string().url(),
+    // The host signed URLs are issued for, when devices reach the store by a
+    // different address than the API does (research D-31). Unset in production.
+    S3_PUBLIC_ENDPOINT: z.string().url().optional(),
     S3_REGION: z.string().default('auto'),
     S3_ACCESS_KEY_ID: z.string().min(1),
     S3_SECRET_ACCESS_KEY: z.string().min(1),

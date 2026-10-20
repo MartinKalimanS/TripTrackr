@@ -1,0 +1,19 @@
+# Add an expense in the trip's own currency on the expenses screen, and see it
+# listed.
+#
+# Needs: the expenses screen open and AMOUNT like 12.34. The assertion uses `.`
+# for the decimal separator so it holds under any English locale format
+# ("€12.34", "EUR 12.34").
+appId: com.triptrackr.app
+---
+- tapOn:
+    id: 'expenses-add'
+- assertVisible:
+    id: 'add-expense-screen'
+- tapOn:
+    id: 'add-expense-amount'
+- inputText: ${AMOUNT}
+- hideKeyboard
+- tapOn:
+    id: 'add-expense-save'
+- assertVisible: '.*${AMOUNT}.*'

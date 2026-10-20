@@ -1,0 +1,30 @@
+# Row 11, second device — both notes written around the sign-outs reached the
+# account, so a sign-out never cost the traveller content (Constitution V).
+# Device B, ONLINE, after 11-a-sign-out-unsynced.yaml.
+#
+# 'Unsynced at sign-out' was kept on A through "Sign out anyway" and synced after
+# A signed back in; 'Pushed before sign-out' was pushed by the guard itself. B can
+# only show them if the server received them, each exactly once.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+- extendedWaitUntil:
+    visible: 'Unsynced at sign-out'
+    timeout: 90000
+- extendedWaitUntil:
+    visible: 'Pushed before sign-out'
+    timeout: 90000
+- assertNotVisible:
+    text: 'Unsynced at sign-out'
+    index: 1
+- assertNotVisible:
+    text: 'Pushed before sign-out'
+    index: 1
+- tapOn: 'Back'
+- tapOn: 'Back'

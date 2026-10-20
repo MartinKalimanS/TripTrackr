@@ -1,0 +1,25 @@
+# Row 15, second device — the trip created offline over the free allowance is on
+# the account, with what was recorded against it: nothing recorded was lost
+# (Constitution V, research D-08). Device B, ONLINE, after
+# 15-a-over-allowance-offline.yaml.
+#
+# B only has it if the server KEPT it (an over-allowance trip is applied, never
+# rejected). That the server also FLAGGED it is not visible in the app yet; see
+# 15-a-over-allowance-offline.yaml and the README ("Row 15 flagged").
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- tapOn:
+    id: 'tab-trips'
+- extendedWaitUntil:
+    visible: 'Gate over allowance'
+    timeout: 90000
+- assertNotVisible: 'Not yet synced'
+- tapOn: 'Gate over allowance'
+- tapOn:
+    id: 'trip-open-expenses'
+- extendedWaitUntil:
+    visible: '.*3.33.*'
+    timeout: 60000
+- tapOn: 'Back'
+- tapOn: 'Back'

@@ -1,0 +1,26 @@
+# Row 6, on the second device — the photo exists on B only once its file landed
+# (FR-041). Device B, ONLINE, after A's bytes uploaded
+# (06-a-photo-bytes-arrive.yaml).
+#
+# Before (03-b-before-reconnect.yaml) B's gallery said "No photos yet". Now the
+# photo is there, and it is not in a pending state: B never shows a photo whose
+# bytes the server does not have. B holds only the metadata and a reference to
+# the stored object, so its tile may be the "No preview" placeholder; what is
+# asserted is the tile and the absence of any pending or failed treatment.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- tapOn:
+    id: 'tab-trips'
+- tapOn: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-photos'
+- extendedWaitUntil:
+    visible:
+      id: 'photo-tile-.*'
+    timeout: 90000
+- assertNotVisible: 'No photos yet'
+- assertNotVisible: 'Waiting to upload'
+- assertNotVisible: 'Upload failed'
+- tapOn: 'Back'
+- tapOn: 'Back'

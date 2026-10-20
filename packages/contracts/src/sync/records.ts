@@ -238,11 +238,28 @@ export const PhotoPullRecord = z.strictObject({
 export const DocumentType = z.enum(['boarding_pass', 'booking', 'other']);
 export type DocumentType = z.infer<typeof DocumentType>;
 
+/** An IATA two-character designator, or an ICAO three-letter one, then 1–4 digits and a suffix. */
+const FLIGHT_NUMBER = /^(?:[A-Z0-9]{2}|[A-Z]{3})[1-9]\d{0,3}[A-Z]?$/;
+
+/**
+ * The three fields FR-035 extracts from a boarding pass, and nothing more
+ * (research D-33): the booking reference, seat and sequence number are never
+ * kept. Sealed at rest; decrypted for the owner on the wire.
+ */
+export const DocumentParsedFields = z.strictObject({
+  flight_number: z
+    .string()
+    .regex(FLIGHT_NUMBER, 'Expected a flight number such as AC834'),
+  flight_date: IsoDate,
+  passenger_name: z.string().trim().min(1).max(64),
+});
+export type DocumentParsedFields = z.infer<typeof DocumentParsedFields>;
+
 const documentFields = {
   trip_id: Uuid,
   type: DocumentType,
   /** Extracted barcode fields (FR-035). Null when unreadable — not an error state. */
-  parsed_json: z.record(z.string(), z.unknown()).nullable(),
+  parsed_json: DocumentParsedFields.nullable(),
   /** Constitution IV: extracted-but-unconfirmed is not fact until this is set. */
   parsed_confirmed_at: IsoDateTime.nullable(),
 };

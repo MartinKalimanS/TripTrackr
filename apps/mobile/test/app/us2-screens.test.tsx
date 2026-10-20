@@ -12,7 +12,16 @@
  * swallowed.
  */
 import { SYSTEM_EXPENSE_CATEGORIES } from '@triptrackr/contracts';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
+import * as ExpoHaptics from 'expo-haptics';
+import { getLocales } from 'expo-localization';
 import { Alert } from 'react-native';
 
 import AddExpenseScreen, { stopOn } from '@/app/modal/add-expense';
@@ -22,6 +31,17 @@ import type { CategoryOption } from '@/db/repositories/expenses';
 import type { NoteWithPlace } from '@/db/repositories/notes';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import type { ExpenseRow, TripRow } from '@/db/schema';
+import { formatIsoDate } from '@/features/trips/stop-dates';
+
+import { containing, hostsWhere, scrollers } from '../helpers/host-nodes';
+import { glyphNamesIn } from '../helpers/icons';
+import {
+  PHONE_360X640,
+  expectActionAboveKeyboard,
+  resetKeyboard,
+  setWindow,
+  showKeyboard,
+} from '../helpers/keyboard';
 
 const mockBack = jest.fn();
 const mockPush = jest.fn();
@@ -187,6 +207,9 @@ const mockSummary = {
   loading: false,
   error: null,
 };
+const mockUseSpendingSummary = jest.fn(
+  (_expenses: unknown, _home: string) => mockSummary,
+);
 const mockExpenseActions = {
   createExpense: jest.fn(),
   updateExpense: jest.fn(),
@@ -197,7 +220,8 @@ const mockExpenseActions = {
 jest.mock('@/features/expenses/use-expenses', () => ({
   useExpenses: () => mockExpenses,
   useExpenseCategories: () => mockCategories,
-  useSpendingSummary: () => mockSummary,
+  useSpendingSummary: (expenses: unknown, home: string) =>
+    mockUseSpendingSummary(expenses, home),
   useFxSnapshotInfo: () => ({
     asOf: '2026-05-01',
     source: 'https://www.exchangerate-api.com',
@@ -226,14 +250,86 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
   test('shows the designed empty state and the anchor filters from the trip’s stops', async () => {
     await render(<NotesScreen />);
 
-    expect(screen.getByTestId('notes-title')).toHaveTextContent(
-      /Notes · Italy, spring 2026/,
-    );
     expect(screen.getByText('No notes yet')).toBeTruthy();
     expect(screen.getByTestId('notes-filter-all')).toBeTruthy();
     expect(screen.getByTestId('notes-filter-country:1')).toBeTruthy();
     expect(screen.getByTestId('notes-filter-city:100')).toBeTruthy();
     expect(screen.getByTestId('notes-filter-city:101')).toBeTruthy();
+  });
+
+  test('has no bar of its own: the title and Back are the native header’s (FR-007, FR-008)', async () => {
+    mockNotes.data = [note({})];
+    await render(<NotesScreen />);
+
+    // The old bar drew "Back", the title `notes-title` ("Notes · <trip>") and the controls.
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.queryByTestId('notes-title')).toBeNull();
+    expect(screen.queryByText(/^Notes/)).toBeNull();
+    // What is not title or back stays: the filters and the action, in their old order.
+    const order = screen
+      .getAllByTestId(/^notes-(filter-all|add)$/)
+      .map((node) => node.props.testID);
+    expect(order).toEqual(['notes-filter-all', 'notes-add']);
+  });
+
+  test('the empty state names its next action and offers it (FR-015, C4-10 rule 2)', async () => {
+    await render(<NotesScreen />);
+
+    expect(screen.getByText(/^Tap New note to write the first one/)).toBeTruthy();
+    const action = screen.getByTestId('notes-empty-add');
+    expect(action.props.accessibilityLabel).toBe('New note');
+    expect(action.props.variant).toBe('secondary');
+
+    await fireEvent.press(action);
+    expect(screen.getByTestId('note-editor')).toBeTruthy();
+  });
+
+  test('the empty state of a filter says which one, and "New note" files into it', async () => {
+    await render(<NotesScreen />);
+    await fireEvent.press(screen.getByTestId('notes-filter-city:101'));
+
+    expect(screen.getByText('No notes for Firenze, Italy yet')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('notes-empty-add'));
+    expect(screen.getByTestId('anchor-city:101').props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+  });
+
+  test('"New note" is the one primary control of the screen, in the empty state and with notes', async () => {
+    const primaries = () =>
+      screen
+        .getAllByRole('button')
+        .filter((node) => node.props.variant === 'primary')
+        .map((node) => node.props.testID);
+
+    await render(<NotesScreen />);
+    expect(primaries()).toEqual(['notes-add']);
+
+    mockNotes.data = [note({}), note({ id: 'note-2' })];
+    await screen.rerender(<NotesScreen />);
+    expect(primaries()).toEqual(['notes-add']);
+  });
+
+  test('the filters are one sideways radio group, each stop a chip named "Show …"', async () => {
+    await render(<NotesScreen />);
+
+    // The group is not itself a focus stop (its radios stay reachable one by one).
+    expect(
+      hostsWhere((node) => node.props.accessibilityRole === 'radiogroup'),
+    ).toHaveLength(1);
+    expect(screen.getAllByRole('radio')).toHaveLength(4);
+    const city = screen.getByTestId('notes-filter-city:100');
+    expect(city.props.accessibilityRole).toBe('radio');
+    expect(city.props.accessibilityLabel).toBe('Show Roma, Italy');
+    expect(scrollers().some((scroller) => scroller.props.horizontal === true)).toBe(true);
+  });
+
+  test('the notes are a list below the native header, with the content inset it needs (the collapse is a device check, T408)', async () => {
+    mockNotes.data = [note({})];
+    await render(<NotesScreen />);
+
+    const list = scrollers().find((scroller) => scroller.props.horizontal !== true);
+    expect(list?.props.contentInsetAdjustmentBehavior).toBe('automatic');
   });
 
   test('a filter narrows the live query to that anchor', async () => {
@@ -362,6 +458,27 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     await waitFor(() => expect(screen.getByTestId('notes-write-error')).toBeTruthy());
   });
 
+  test('Cancel closes the editor and writes nothing', async () => {
+    await render(<NotesScreen />);
+    await fireEvent.press(screen.getByTestId('notes-add'));
+    await fireEvent.changeText(screen.getByTestId('note-editor-body'), 'Never mind');
+
+    await fireEvent.press(screen.getByTestId('note-editor-cancel'));
+
+    expect(screen.queryByTestId('note-editor')).toBeNull();
+    expect(mockNoteActions.createNote).not.toHaveBeenCalled();
+  });
+
+  test('reads the trip from the first of a repeated id, and from none as no trip', async () => {
+    mockParams = { id: ['trip-42', 'trip-43'] };
+    await render(<NotesScreen />);
+    expect(mockUseNotes).toHaveBeenLastCalledWith('trip-42', {});
+
+    mockParams = {};
+    await screen.rerender(<NotesScreen />);
+    expect(mockUseNotes).toHaveBeenLastCalledWith('', {});
+  });
+
   test('a failed write keeps the editor open with the typed note and shows the error', async () => {
     mockNoteActions.createNote.mockImplementationOnce(() => {
       throw new Error('disk full');
@@ -385,36 +502,118 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     expect(mockNoteActions.createNote).toHaveBeenCalledTimes(2);
   });
 
-  test('the loading state is designed, not blank', async () => {
+  test('the loading state is placeholders shaped like notes, ONE named region, never the empty state (FR-021)', async () => {
     mockNotes.loading = true;
     await render(<NotesScreen />);
-    expect(screen.getByText('Loading notes')).toBeTruthy();
+
+    const region = screen.getByLabelText('Loading notes');
+    expect(region.props.accessibilityRole).toBe('progressbar');
+    expect(screen.queryByText('No notes yet')).toBeNull();
+    expect(screen.queryByTestId('notes-empty-add')).toBeNull();
   });
 
-  test('the error state is designed, not blank', async () => {
+  test('the error state is designed, in words and an icon, not blank', async () => {
     mockNotes.error = new Error('boom');
     await render(<NotesScreen />);
+
     expect(screen.getByText('Couldn’t read the notes')).toBeTruthy();
+    expect(screen.getByText('The local store did not answer.')).toBeTruthy();
+    expect(screen.queryByText('No notes yet')).toBeNull();
+  });
+
+  test('a read that failed is an error even while its first result never arrives', async () => {
+    // A live read that fails reports `loading` for good: the words must win over the spinner.
+    mockNotes.error = new Error('boom');
+    mockNotes.loading = true;
+    await render(<NotesScreen />);
+
+    expect(screen.getByText('Couldn’t read the notes')).toBeTruthy();
+    expect(screen.queryByLabelText('Loading notes')).toBeNull();
+  });
+
+  test('a failed delete is shown, never swallowed', async () => {
+    mockNotes.data = [note({})];
+    mockNoteActions.removeNote.mockImplementationOnce(() => {
+      throw new Error('locked');
+    });
+    jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
+      buttons?.find((b) => b.style === 'destructive')?.onPress?.();
+    });
+    await render(<NotesScreen />);
+
+    await fireEvent.press(screen.getByTestId('note-remove-note-1'));
+    expect(screen.getByTestId('notes-write-error')).toBeTruthy();
+  });
+
+  test('deleting asks first, and Cancel removes nothing', async () => {
+    mockNotes.data = [note({})];
+    jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await render(<NotesScreen />);
+
+    await fireEvent.press(screen.getByTestId('note-remove-note-1'));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Delete this note?',
+      'It is removed from this trip.',
+      expect.any(Array),
+    );
+    expect(mockNoteActions.removeNote).not.toHaveBeenCalled();
+  });
+
+  test('is composed from the adapter layer only: no retired primitive, no kit, no colour literal', () => {
+    const { readFileSync } = jest.requireActual('fs') as typeof import('fs');
+    for (const module of [
+      '@/app/trip/[id]/notes',
+      '@/components/trip/notes-header',
+      '@/components/trip/note-card',
+    ]) {
+      const source = readFileSync(require.resolve(module), 'utf8');
+      expect(source).not.toMatch(/\bSurface\b|PressableSurface|ThemedText|ThemedView/);
+      expect(source).not.toMatch(/PillGroup|TextField|@\/constants\/theme/);
+      expect(source).not.toMatch(/heroui-native|uniwind|#[0-9a-fA-F]{3,8}\b|rgba?\(/);
+    }
   });
 });
 
-describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087)', () => {
+/** A decorative icon is hidden from assistive technology, and so from a default query. */
+const HIDDEN = { includeHiddenElements: true } as const;
+
+describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
+  const primaries = () =>
+    screen
+      .getAllByRole('button')
+      .filter((node) => node.props.variant === 'primary')
+      .map((node) => node.props.testID);
+
   test('shows the summary with totals, rates and pending rows, and the empty list', async () => {
     await render(<ExpensesScreen />);
 
-    expect(screen.getByTestId('expenses-title')).toHaveTextContent(
-      /Spending · Italy, spring 2026/,
-    );
-    expect(screen.getByTestId('summary-total')).toHaveTextContent(/18.00/);
-    expect(screen.getByTestId(`summary-category-${FOOD}`)).toHaveTextContent(/Food/);
-    expect(screen.getByTestId('summary-rates')).toHaveTextContent(
-      /1 EUR = 0\.888889 CHF/,
+    expect(screen.getByTestId('summary-total')).toHaveTextContent(containing('18.00'));
+    expect(screen.getByTestId(`summary-category-${FOOD}`)).toHaveTextContent(
+      containing('Food'),
     );
     expect(screen.getByTestId('summary-rates')).toHaveTextContent(
-      /exchangerate-api\.com/,
+      containing('1 EUR = 0.888889 CHF'),
     );
-    expect(screen.getByTestId('summary-pending')).toHaveTextContent(/XTS/);
+    expect(screen.getByTestId('summary-rates')).toHaveTextContent(
+      containing('exchangerate-api.com'),
+    );
+    expect(screen.getByTestId('summary-pending')).toHaveTextContent(containing('XTS'));
     expect(screen.getByText('Nothing logged yet')).toBeTruthy();
+  });
+
+  test('has no bar of its own: the title and Back are the native header’s (FR-007, FR-008)', async () => {
+    await render(<ExpensesScreen />);
+
+    // The old bar drew "Back" and `expenses-title` ("Spending · <trip>").
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.queryByTestId('expenses-title')).toBeNull();
+    expect(screen.queryByText('Spending', { exact: false })).toBeNull();
+    // What is not title or back stays, in its old order: the action, the toggle, the summary.
+    const wanted = ['expenses-add', 'expenses-toggle-summary', 'spending-summary'];
+    const order = hostsWhere((node) => wanted.includes(String(node.props.testID))).map(
+      (node) => node.props.testID,
+    );
+    expect(order).toEqual(wanted);
   });
 
   test('the summary can be hidden, and "Add expense" opens the sheet for this trip', async () => {
@@ -428,6 +627,67 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087)', () => {
       pathname: '/modal/add-expense',
       params: { tripId: 'trip-42' },
     });
+  });
+
+  test('"Add expense" opens the sheet for the first of a repeated id, and for none as no trip', async () => {
+    mockParams = { id: ['trip-42', 'trip-43'] };
+    await render(<ExpensesScreen />);
+    await fireEvent.press(screen.getByTestId('expenses-add'));
+    expect(mockPush).toHaveBeenLastCalledWith({
+      pathname: '/modal/add-expense',
+      params: { tripId: 'trip-42' },
+    });
+
+    mockParams = {};
+    await screen.rerender(<ExpensesScreen />);
+    await fireEvent.press(screen.getByTestId('expenses-add'));
+    expect(mockPush).toHaveBeenLastCalledWith({
+      pathname: '/modal/add-expense',
+      params: { tripId: '' },
+    });
+  });
+
+  test('the summary toggle is announced as before: named for what it will do, and expanded or not', async () => {
+    await render(<ExpensesScreen />);
+
+    const toggle = () => screen.getByTestId('expenses-toggle-summary');
+    expect(toggle().props.accessibilityLabel).toBe('Hide summary');
+    expect(toggle().props.accessibilityRole).toBe('button');
+    expect(toggle().props.accessibilityState).toMatchObject({ expanded: true });
+    expect(toggle()).toHaveTextContent(containing('Summary'));
+
+    await fireEvent.press(toggle());
+    expect(toggle().props.accessibilityLabel).toBe('Show summary');
+    expect(toggle().props.accessibilityState).toMatchObject({ expanded: false });
+
+    await fireEvent.press(toggle());
+    expect(screen.getByTestId('spending-summary')).toBeTruthy();
+  });
+
+  test('the empty state names its next action and offers it, opening the same sheet (FR-015, C4-10 rule 2)', async () => {
+    await render(<ExpensesScreen />);
+
+    expect(
+      screen.getByText('Tap Add expense to log the first one', { exact: false }),
+    ).toBeTruthy();
+    const action = screen.getByTestId('expenses-empty-add');
+    expect(action.props.accessibilityLabel).toBe('Add expense');
+    expect(action.props.variant).toBe('secondary');
+
+    await fireEvent.press(action);
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/modal/add-expense',
+      params: { tripId: 'trip-42' },
+    });
+  });
+
+  test('"Add expense" is the one primary control of the screen, empty or not', async () => {
+    await render(<ExpensesScreen />);
+    expect(primaries()).toEqual(['expenses-add']);
+
+    mockExpenses.data = [expense({})];
+    await screen.rerender(<ExpensesScreen />);
+    expect(primaries()).toEqual(['expenses-add']);
   });
 
   test('rows show the amount paid, the home amount or "awaiting a rate", and delete confirms', async () => {
@@ -454,14 +714,136 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087)', () => {
     });
     await render(<ExpensesScreen />);
 
-    expect(screen.getByTestId('expense-paid-exp-1')).toHaveTextContent(/9\.00/);
-    expect(screen.getByTestId('expense-home-exp-1')).toHaveTextContent(/8\.00/);
-    expect(screen.getByTestId('expense-home-exp-2')).toHaveTextContent(/Awaiting a rate/);
+    expect(screen.getByTestId('expense-paid-exp-1')).toHaveTextContent(
+      containing('9.00'),
+    );
+    expect(screen.getByTestId('expense-home-exp-1')).toHaveTextContent(
+      containing('8.00'),
+    );
+    expect(screen.getByTestId('expense-home-exp-2')).toHaveTextContent(
+      containing('Awaiting a rate'),
+    );
     // Home-currency rows do not repeat themselves.
     expect(screen.queryByTestId('expense-home-exp-3')).toBeNull();
 
     await fireEvent.press(screen.getByTestId('expense-remove-exp-1'));
     expect(mockExpenseActions.removeExpense).toHaveBeenCalledWith('exp-1');
+  });
+
+  test('rows are grouped by the day they were spent, newest first, each group under its date (FR-014)', async () => {
+    mockExpenses.data = [
+      expense({ id: 'exp-1', spent_at: '2026-05-12' }),
+      expense({ id: 'exp-2', spent_at: '2026-05-12', note: null }),
+      expense({ id: 'exp-3', spent_at: '2026-05-11' }),
+    ];
+    await render(<ExpensesScreen />);
+
+    const first = within(screen.getByTestId('expense-day-2026-05-12'));
+    expect(first.getByTestId('expense-row-exp-1')).toBeTruthy();
+    expect(first.getByTestId('expense-row-exp-2')).toBeTruthy();
+    expect(first.queryByTestId('expense-row-exp-3')).toBeNull();
+    const second = within(screen.getByTestId('expense-day-2026-05-11'));
+    expect(second.getByTestId('expense-row-exp-3')).toBeTruthy();
+
+    // Top to bottom: each date, then the group it heads (the summary has headings of its own,
+    // and a group has separators between its rows).
+    const dates = [formatIsoDate('2026-05-12'), formatIsoDate('2026-05-11')];
+    const sequence = hostsWhere(
+      (node) =>
+        (node.props.accessibilityRole === 'header' &&
+          dates.includes(String(node.children?.join('')))) ||
+        /^expense-day-[\d-]+$/.test(String(node.props.testID ?? '')),
+    ).map((node) => node.props.testID ?? node.children?.join(''));
+    expect(sequence).toEqual([
+      formatIsoDate('2026-05-12'),
+      'expense-day-2026-05-12',
+      formatIsoDate('2026-05-11'),
+      'expense-day-2026-05-11',
+    ]);
+  });
+
+  test('a day heading is announced as a heading', async () => {
+    mockExpenses.data = [expense({ spent_at: '2026-05-12' })];
+    await render(<ExpensesScreen />);
+
+    expect(screen.getByText(formatIsoDate('2026-05-12')).props.accessibilityRole).toBe(
+      'header',
+    );
+  });
+
+  test('a category with an icon of its own leads its rows with that glyph', async () => {
+    mockExpenses.data = [expense({})];
+    await render(<ExpensesScreen />);
+
+    expect(screen.getByTestId('expense-icon-exp-1', HIDDEN)).toBeTruthy();
+    expect(glyphNamesIn().filter((name) => name === 'fork-knife')).toHaveLength(1);
+  });
+
+  test('a category the list cannot name is "Other" and still has a glyph', async () => {
+    mockExpenses.data = [expense({ category_id: 'gone-category' })];
+    await render(<ExpensesScreen />);
+
+    expect(screen.getByTestId('expense-row-exp-1').props.accessibilityLabel).toContain(
+      'Other, ',
+    );
+    expect(screen.getByTestId('expense-icon-exp-1', HIDDEN)).toBeTruthy();
+  });
+
+  test('the list is a list below the native header, with the content inset it needs (the collapse is a device check, T408)', async () => {
+    mockExpenses.data = [expense({})];
+    await render(<ExpensesScreen />);
+
+    const list = scrollers().find((scroller) => scroller.props.horizontal !== true);
+    expect(list?.props.contentInsetAdjustmentBehavior).toBe('automatic');
+  });
+
+  test('the loading state is placeholders shaped like rows, ONE named region, never the empty state (FR-021)', async () => {
+    mockExpenses.loading = true;
+    await render(<ExpensesScreen />);
+
+    const region = screen.getByLabelText('Loading expenses');
+    expect(region.props.accessibilityRole).toBe('progressbar');
+    expect(screen.queryByText('Nothing logged yet')).toBeNull();
+    expect(screen.queryByTestId('expenses-empty-add')).toBeNull();
+  });
+
+  test('the error state is designed, in words and an icon, not blank', async () => {
+    mockExpenses.error = new Error('boom');
+    await render(<ExpensesScreen />);
+
+    expect(screen.getByText('Couldn’t read the expenses')).toBeTruthy();
+    expect(screen.getByText('The local store did not answer.')).toBeTruthy();
+    expect(screen.queryByText('Nothing logged yet')).toBeNull();
+  });
+
+  test('a read that failed is an error even while its first result never arrives', async () => {
+    mockExpenses.error = new Error('boom');
+    mockExpenses.loading = true;
+    await render(<ExpensesScreen />);
+
+    expect(screen.getByText('Couldn’t read the expenses')).toBeTruthy();
+    expect(screen.queryByLabelText('Loading expenses')).toBeNull();
+  });
+
+  test('the summary waits for its figures: nothing is drawn for it while it loads', async () => {
+    mockSummary.loading = true;
+    try {
+      await render(<ExpensesScreen />);
+
+      expect(screen.queryByTestId('spending-summary')).toBeNull();
+      expect(screen.getByTestId('expenses-toggle-summary')).toBeTruthy();
+    } finally {
+      mockSummary.loading = false;
+    }
+  });
+
+  test('summarises in the trip’s home currency, and in dollars for a trip that is not on the device', async () => {
+    await render(<ExpensesScreen />);
+    expect(mockUseSpendingSummary).toHaveBeenLastCalledWith(mockExpenses, 'CHF');
+
+    mockTrip.data = null;
+    await screen.rerender(<ExpensesScreen />);
+    expect(mockUseSpendingSummary).toHaveBeenLastCalledWith(mockExpenses, 'USD');
   });
 
   test('a failed delete is shown', async () => {
@@ -476,6 +858,35 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087)', () => {
 
     await fireEvent.press(screen.getByTestId('expense-remove-exp-1'));
     expect(screen.getByTestId('expenses-write-error')).toBeTruthy();
+  });
+
+  test('deleting asks first, and Cancel removes nothing', async () => {
+    mockExpenses.data = [expense({})];
+    jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await render(<ExpensesScreen />);
+
+    await fireEvent.press(screen.getByTestId('expense-remove-exp-1'));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Delete this expense?',
+      'It is removed from this trip.',
+      expect.any(Array),
+    );
+    expect(mockExpenseActions.removeExpense).not.toHaveBeenCalled();
+  });
+
+  test('is composed from the adapter layer only: no retired primitive, no kit, no colour literal', () => {
+    const { readFileSync } = jest.requireActual('fs') as typeof import('fs');
+    for (const module of [
+      '@/app/trip/[id]/expenses',
+      '@/components/trip/expenses-header',
+      '@/components/trip/expense-row',
+      '@/components/trip/spending-summary',
+    ]) {
+      const source = readFileSync(require.resolve(module), 'utf8');
+      expect(source).not.toMatch(/\bSurface\b|PressableSurface|ThemedText|ThemedView/);
+      expect(source).not.toMatch(/PillGroup|TextField|@\/constants\/theme/);
+      expect(source).not.toMatch(/heroui-native|uniwind|#[0-9a-fA-F]{3,8}\b|rgba?\(/);
+    }
   });
 });
 
@@ -637,5 +1048,524 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
     expect(stopOn([rome, florence], '2026-05-11')?.id).toBe('stop-rome');
     expect(stopOn([rome, florence], '2026-05-14')?.id).toBe('stop-florence');
     expect(stopOn([rome, florence], '2026-06-01')).toBeNull();
+  });
+});
+
+describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-025, FR-029, FR-030)', () => {
+  const saveButton = () => screen.getByTestId('add-expense-save');
+  const press = (id: string) =>
+    act(async () => {
+      fireEvent.press(screen.getByTestId(id));
+    });
+  const isHorizontal = (node: { props: Record<string, unknown> }) =>
+    node.props.horizontal === true;
+
+  beforeEach(() => mockBack.mockClear());
+  afterEach(() => {
+    resetKeyboard();
+    mockTrip.error = null;
+  });
+
+  test('is the form-sheet pattern: a titled sheet whose root, body and footer are named from add-expense-screen', async () => {
+    await render(<AddExpenseScreen />);
+
+    expect(screen.getByTestId('add-expense-screen')).toBeTruthy();
+    const title = within(screen.getByTestId('add-expense-screen-body')).getByText(
+      'New expense',
+    );
+    expect(title.props.accessibilityRole).toBe('header');
+    const footer = within(screen.getByTestId('add-expense-screen-footer'));
+    expect(footer.getByTestId('add-expense-cancel')).toBeTruthy();
+    expect(footer.getByTestId('add-expense-save')).toBeTruthy();
+  });
+
+  test('keeps the reading order: title, amount, currency, category, day, city, note, then Cancel and Save', async () => {
+    await render(<AddExpenseScreen />);
+
+    const order = screen
+      .getAllByText(
+        /^(New expense|Amount|Home currency|Category|Paid on|City|Note \(optional\)|Cancel|Save expense)$/,
+      )
+      .map((node) => String(node.props.children));
+    expect(order).toEqual([
+      'New expense',
+      'Amount',
+      'Home currency',
+      'Category',
+      'Paid on',
+      'City',
+      'Note (optional)',
+      'Cancel',
+      'Save expense',
+    ]);
+  });
+
+  test('has ONE primary control, Save; Cancel is a text button (FR-005)', async () => {
+    await render(<AddExpenseScreen />);
+
+    expect(
+      screen
+        .getAllByRole('button')
+        .filter((button) => button.props.variant === 'primary'),
+    ).toEqual([saveButton()]);
+    expect(screen.getByTestId('add-expense-cancel').props.variant).toBe('ghost');
+    expect(saveButton().props.accessibilityLabel).toBe('Save expense');
+  });
+
+  test('the amount is a Field: label on top, its own id and name, the keypad for decimals, words under it when refused (FR-025)', async () => {
+    await render(<AddExpenseScreen />);
+
+    const input = screen.getByTestId('add-expense-amount');
+    expect(input.props.accessibilityLabel).toBe('Amount');
+    expect(input.props.keyboardType).toBe('decimal-pad');
+    expect(input.props.placeholder).toBe('12.50');
+    expect(input.props.autoFocus).toBe(true);
+    expect(input.props['aria-invalid']).toBe(false);
+    expect(screen.queryByTestId('add-expense-amount-error')).toBeNull();
+
+    await fireEvent.changeText(input, 'twelve');
+    await press('add-expense-save');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('add-expense-amount').props['aria-invalid']).toBe(true),
+    );
+    const words = screen.getByTestId('add-expense-amount-error');
+    expect(words.props.accessibilityRole).toBe('alert');
+    expect(words).toHaveTextContent('Enter an amount, like 12.50 or 12,50.');
+    expect(mockExpenseActions.createExpense).not.toHaveBeenCalled();
+  });
+
+  test('the amount placeholder follows the device decimal separator (D-27)', async () => {
+    const [locale] = getLocales();
+    jest.mocked(getLocales).mockReturnValue([{ ...locale!, decimalSeparator: ',' }]);
+    try {
+      await render(<AddExpenseScreen />);
+
+      expect(screen.getByTestId('add-expense-amount').props.placeholder).toBe('12,50');
+    } finally {
+      jest.mocked(getLocales).mockReturnValue([locale!]);
+    }
+  });
+
+  test.each([
+    ['12,50', '12.50'],
+    ['1.234,50', '1234.50'],
+    ['1,234.50', '1234.50'],
+    ['-4,5', '-4.50'],
+    ['9999999999.99', '9999999999.99'],
+    ['7', '7.00'],
+  ])(
+    'the amount typed as "%s" reaches the repository as the decimal string "%s", never a float (SC-016)',
+    async (typed, expected) => {
+      await render(<AddExpenseScreen />);
+
+      await fireEvent.changeText(screen.getByTestId('add-expense-amount'), typed);
+      await press('add-expense-save');
+
+      await waitFor(() =>
+        expect(mockExpenseActions.createExpense).toHaveBeenCalledWith(
+          expect.objectContaining({ amount: expected }),
+        ),
+      );
+    },
+  );
+
+  test('the note is a Field: its own id and name, a limit, a Done key, words under it when too long', async () => {
+    await render(<AddExpenseScreen />);
+
+    const note = screen.getByTestId('add-expense-note');
+    expect(note.props.accessibilityLabel).toBe('Note (optional)');
+    expect(note.props.placeholder).toBe('Lunch by the lake');
+    expect(note.props.maxLength).toBe(500);
+    expect(note.props.returnKeyType).toBe('done');
+
+    await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '4');
+    await fireEvent.changeText(note, 'x'.repeat(501));
+    await press('add-expense-save');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('add-expense-note-error')).toHaveTextContent(
+        'Keep the note under 500 characters.',
+      ),
+    );
+    expect(mockExpenseActions.createExpense).not.toHaveBeenCalled();
+  });
+
+  test('the currency and the category are the pickers, one sideways chip row each', async () => {
+    await render(<AddExpenseScreen />);
+
+    const currency = screen.getByTestId('currency-pills');
+    expect(currency.props.accessibilityRole).toBe('radiogroup');
+    expect(currency.queryAll(isHorizontal)).toHaveLength(1);
+    const category = screen.getByLabelText('Category');
+    expect(category.props.accessibilityRole).toBe('radiogroup');
+    expect(category.queryAll(isHorizontal)).toHaveLength(1);
+  });
+
+  test('the city is one sideways radio group named "City", "No city" first, each city once (FR-009)', async () => {
+    await render(<AddExpenseScreen />);
+
+    const group = screen.getByLabelText('City');
+    expect(group.props.accessibilityRole).toBe('radiogroup');
+    expect(group.queryAll(isHorizontal)).toHaveLength(1);
+    expect(
+      within(group)
+        .getAllByRole('radio')
+        .map((chip) => chip.props.testID),
+    ).toEqual(['add-expense-city-none', 'add-expense-city-100', 'add-expense-city-101']);
+    expect(
+      within(group)
+        .getAllByRole('radio')
+        .map((chip) => chip.props.accessibilityLabel),
+    ).toEqual(['No city', 'Roma', 'Firenze']);
+  });
+
+  test('a trip with no stops has no city row', async () => {
+    mockStops.data = [];
+    try {
+      await render(<AddExpenseScreen />);
+
+      expect(screen.queryByLabelText('City')).toBeNull();
+      expect(screen.queryByText('City')).toBeNull();
+      expect(screen.queryByTestId('add-expense-city-none')).toBeNull();
+    } finally {
+      mockStops.data = [rome, florence];
+    }
+  });
+
+  test('the day defaults to today and its stop to the city; saving without touching either files them (FR-021)', async () => {
+    // Only `Date` is faked: React, the form and `waitFor` keep their real timers.
+    jest.useFakeTimers({
+      now: new Date(2026, 4, 11, 12),
+      doNotFake: [
+        'hrtime',
+        'nextTick',
+        'performance',
+        'queueMicrotask',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+        'requestIdleCallback',
+        'cancelIdleCallback',
+        'setImmediate',
+        'clearImmediate',
+        'setInterval',
+        'clearInterval',
+        'setTimeout',
+        'clearTimeout',
+      ],
+    });
+    try {
+      await render(<AddExpenseScreen />);
+
+      expect(screen.getByTestId('add-expense-date').props.accessibilityValue).toEqual({
+        text: formatIsoDate('2026-05-11'),
+      });
+      expect(
+        screen.getByTestId('add-expense-city-100').props.accessibilityState,
+      ).toMatchObject({ selected: true, checked: true });
+
+      await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '5');
+      await press('add-expense-save');
+      await waitFor(() =>
+        expect(mockExpenseActions.createExpense).toHaveBeenCalledWith(
+          expect.objectContaining({ spent_at: '2026-05-11', city_id: 100 }),
+        ),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('"Paid on" is a calendar field: named, valued with the day, and a day in a stop files the expense under its city', async () => {
+    await render(<AddExpenseScreen />);
+
+    const date = screen.getByTestId('add-expense-date');
+    expect(date.props.accessibilityLabel).toBe('Paid on');
+    expect(date.props.accessibilityHint).toBe('Opens a calendar');
+    await fireEvent.press(date);
+    const picker = screen.getByTestId('add-expense-date-picker');
+    await act(async () => picker.props.onValueChange({}, new Date(2026, 4, 14)));
+
+    expect(screen.getByTestId('add-expense-date').props.accessibilityValue).toEqual({
+      text: formatIsoDate('2026-05-14'),
+    });
+    expect(
+      screen.getByTestId('add-expense-city-101').props.accessibilityState,
+    ).toMatchObject({ selected: true });
+  });
+
+  test('a day no stop covers keeps the city the traveller chose', async () => {
+    await render(<AddExpenseScreen />);
+    await fireEvent.press(screen.getByTestId('add-expense-city-100'));
+
+    await fireEvent.press(screen.getByTestId('add-expense-date'));
+    await act(async () =>
+      screen
+        .getByTestId('add-expense-date-picker')
+        .props.onValueChange({}, new Date(2026, 6, 1)),
+    );
+    await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '9');
+    await press('add-expense-save');
+
+    await waitFor(() =>
+      expect(mockExpenseActions.createExpense).toHaveBeenCalledWith(
+        expect.objectContaining({ spent_at: '2026-07-01', city_id: 100 }),
+      ),
+    );
+  });
+
+  test('a failed local write shows its words in the body, above the actions, as an alert', async () => {
+    mockExpenseActions.createExpense.mockImplementation(() => {
+      throw new Error('disk full');
+    });
+    await render(<AddExpenseScreen />);
+    await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '1');
+    await press('add-expense-save');
+
+    const error = await screen.findByTestId('add-expense-error');
+    expect(error.props.accessibilityRole).toBe('alert');
+    expect(error).toHaveTextContent(
+      'The expense could not be saved on this device. Please try again.',
+    );
+    expect(
+      within(screen.getByTestId('add-expense-screen-body')).getByTestId(
+        'add-expense-error',
+      ),
+    ).toBe(error);
+  });
+
+  test('files the expense under the first of a repeated trip id, and under none for a missing one', async () => {
+    mockParams = { tripId: ['trip-42', 'trip-99'] };
+    await render(<AddExpenseScreen />);
+    await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '3');
+    await press('add-expense-save');
+    await waitFor(() =>
+      expect(mockExpenseActions.createExpense).toHaveBeenLastCalledWith(
+        expect.objectContaining({ trip_id: 'trip-42' }),
+      ),
+    );
+
+    mockParams = {};
+    await screen.rerender(<AddExpenseScreen />);
+    await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '4');
+    await press('add-expense-save');
+    await waitFor(() =>
+      expect(mockExpenseActions.createExpense).toHaveBeenLastCalledWith(
+        expect.objectContaining({ trip_id: '' }),
+      ),
+    );
+  });
+
+  test('Cancel goes back and writes nothing', async () => {
+    await render(<AddExpenseScreen />);
+    await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '8');
+
+    await fireEvent.press(screen.getByTestId('add-expense-cancel'));
+
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(mockExpenseActions.createExpense).not.toHaveBeenCalled();
+  });
+
+  describe('with the keyboard up (C4-10 rule 8; the keyboard-visibility test of every form)', () => {
+    beforeEach(() => setWindow(PHONE_360X640));
+
+    test('Save is in the footer, outside the scrolling body, and the sheet is capped above the keyboard', async () => {
+      await render(<AddExpenseScreen />);
+      await showKeyboard();
+
+      expectActionAboveKeyboard('add-expense-screen', 'add-expense-save');
+    });
+
+    test('the last field can be filled and Save submits it, with the keyboard still up', async () => {
+      await render(<AddExpenseScreen />);
+      await showKeyboard();
+
+      await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '12,50');
+      await fireEvent.changeText(screen.getByTestId('add-expense-note'), 'Lunch');
+      expectActionAboveKeyboard('add-expense-screen', 'add-expense-save');
+      await press('add-expense-save');
+
+      await waitFor(() =>
+        expect(mockExpenseActions.createExpense).toHaveBeenCalledWith(
+          expect.objectContaining({ amount: '12.50', note: 'Lunch' }),
+        ),
+      );
+      expect(mockBack).toHaveBeenCalled();
+    });
+
+    test('an invalid submit with the keyboard up still says why, and Save stays where it was', async () => {
+      await render(<AddExpenseScreen />);
+      await showKeyboard();
+
+      await press('add-expense-save');
+
+      await waitFor(() =>
+        expect(screen.getByText('Enter an amount, like 12.50 or 12,50.')).toBeTruthy(),
+      );
+      expectActionAboveKeyboard('add-expense-screen', 'add-expense-save');
+    });
+
+    test('the body keeps taps with the keyboard up, so a chip is not swallowed by a dismissal', async () => {
+      await render(<AddExpenseScreen />);
+      await showKeyboard();
+
+      expect(
+        screen.getByTestId('add-expense-screen-body').props.keyboardShouldPersistTaps,
+      ).toBe('handled');
+    });
+  });
+
+  describe('when there is no form to show', () => {
+    test('a trip that is not on the device is a designed state in the sheet, with a way out', async () => {
+      mockTrip.data = null;
+      await render(<AddExpenseScreen />);
+
+      expect(screen.getByTestId('add-expense-screen')).toBeTruthy();
+      expect(screen.getByText('This trip isn’t on this device')).toBeTruthy();
+      expect(screen.queryByTestId('add-expense-save')).toBeNull();
+      const close = screen.getByTestId('add-expense-close');
+      expect(close.props.accessibilityLabel).toBe('Close');
+      expect(close.props.variant).toBe('secondary');
+
+      await fireEvent.press(close);
+      expect(mockBack).toHaveBeenCalledTimes(1);
+    });
+
+    test('a trip still being read is ONE named region, never the empty state', async () => {
+      mockTrip.data = null;
+      mockTrip.loading = true;
+      await render(<AddExpenseScreen />);
+
+      expect(screen.getByTestId('add-expense-screen')).toBeTruthy();
+      expect(screen.getByLabelText('Loading trip').props.accessibilityRole).toBe(
+        'progressbar',
+      );
+      expect(screen.queryByText('This trip isn’t on this device')).toBeNull();
+    });
+
+    test('a read that failed is an error even while its first result never arrives', async () => {
+      mockTrip.data = null;
+      mockTrip.loading = true;
+      mockTrip.error = new Error('boom');
+      await render(<AddExpenseScreen />);
+
+      expect(screen.getByText('Couldn’t read this trip')).toBeTruthy();
+      expect(screen.queryByLabelText('Loading trip')).toBeNull();
+      expect(screen.getByTestId('add-expense-close')).toBeTruthy();
+    });
+  });
+
+  test('is composed from the adapter layer only: the form-sheet pattern, Field and the chips, no retired primitive', () => {
+    const source = (jest.requireActual('fs') as typeof import('fs')).readFileSync(
+      require.resolve('@/app/modal/add-expense'),
+      'utf8',
+    );
+    expect(source).toMatch(/from '@\/components\/ui\/form-sheet'/);
+    expect(source).toMatch(/from '@\/components\/ui\/field'/);
+    expect(source).toMatch(/from '@\/components\/ui\/chip'/);
+    expect(source).not.toMatch(
+      /ThemedText|ThemedView|TextField|\bSurface\b|PressableSurface|PillGroup/,
+    );
+    expect(source).not.toMatch(/components\/ui\/screen|ui\/form-actions/);
+    expect(source).not.toMatch(/from 'heroui-native'|from 'uniwind'/);
+    expect(source).not.toMatch(
+      /@\/constants\/theme|use-appearance|Colors\[|#[0-9a-fA-F]{3,8}\b|rgba?\(/,
+    );
+  });
+});
+
+/**
+ * T460 - FR-020: a successful save and a destructive confirmation give a brief haptic, and
+ * a failed write gives none (the record is not saved). The real `useHaptics` is under
+ * these, so what is read is `expo-haptics` itself (a global stand-in, jest.setup.ts). A
+ * `Button` of the destructive kind also plays the warning as it is pressed; the native
+ * confirmation is a separate moment, so the answer is held and given by hand.
+ */
+describe('save and destructive-confirmation haptics (T460; FR-020)', () => {
+  const haptics = jest.mocked(ExpoHaptics);
+  const notified = () => haptics.notificationAsync.mock.calls.map(([kind]) => kind);
+
+  beforeEach(() => {
+    haptics.notificationAsync.mockClear();
+    haptics.selectionAsync.mockClear();
+  });
+
+  /** Holds the native confirmation open; `confirm` is the traveller pressing the destructive choice. */
+  function holdConfirmation() {
+    let destructive: (() => void) | undefined;
+    jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
+      destructive = buttons?.find((b) => b.style === 'destructive')?.onPress;
+    });
+    return { confirm: () => destructive?.() };
+  }
+
+  async function saveNote(body = 'Try the raclette.') {
+    await render(<NotesScreen />);
+    await fireEvent.press(screen.getByTestId('notes-add'));
+    await fireEvent.changeText(screen.getByTestId('note-editor-body'), body);
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('note-editor-save'));
+    });
+  }
+
+  test('a saved note plays the success haptic once', async () => {
+    await saveNote();
+    await waitFor(() => expect(mockNoteActions.createNote).toHaveBeenCalled());
+    expect(notified()).toEqual(['success']);
+  });
+
+  test('a note that failed to write, or was refused, plays no success haptic', async () => {
+    mockNoteActions.createNote.mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+    await saveNote();
+    await waitFor(() => expect(screen.getByTestId('notes-write-error')).toBeTruthy());
+    expect(notified()).not.toContain('success');
+  });
+
+  test('confirming the deletion of a note plays the warning haptic, and the question alone does not', async () => {
+    mockNotes.data = [note({})];
+    const answer = holdConfirmation();
+    await render(<NotesScreen />);
+
+    await fireEvent.press(screen.getByTestId('note-remove-note-1'));
+    haptics.notificationAsync.mockClear();
+    expect(mockNoteActions.removeNote).not.toHaveBeenCalled();
+
+    await act(async () => answer.confirm());
+    expect(mockNoteActions.removeNote).toHaveBeenCalledWith('note-1');
+    expect(notified()).toEqual(['warning']);
+  });
+
+  test('confirming the deletion of an expense plays the warning haptic', async () => {
+    mockExpenses.data = [expense({})];
+    const answer = holdConfirmation();
+    await render(<ExpensesScreen />);
+
+    await fireEvent.press(screen.getByTestId('expense-remove-exp-1'));
+    haptics.notificationAsync.mockClear();
+
+    await act(async () => answer.confirm());
+    expect(mockExpenseActions.removeExpense).toHaveBeenCalledWith('exp-1');
+    expect(notified()).toEqual(['warning']);
+  });
+
+  test('a saved expense plays the success haptic once, and a failed one none', async () => {
+    mockExpenseActions.createExpense.mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+    await render(<AddExpenseScreen />);
+    await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '4');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('add-expense-save'));
+    });
+    await waitFor(() => expect(screen.getByTestId('add-expense-error')).toBeTruthy());
+    expect(notified()).not.toContain('success');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('add-expense-save'));
+    });
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    expect(notified()).toEqual(['success']);
   });
 });

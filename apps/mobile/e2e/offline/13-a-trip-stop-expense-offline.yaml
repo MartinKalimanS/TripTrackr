@@ -1,0 +1,63 @@
+# Row 13, first half — Create a trip, a stop, and an expense against it, all in
+# aeroplane mode. Expected: all three arrive in one reconnect; the expense
+# references the right trip (research D-08, D-15, D-16). Device A, still in the
+# offline window; they reach the server in the single reconnect of
+# 03-a-reconnect.yaml, and B checks them in 13-b-trip-arrived.yaml.
+#
+# The expense's `trip_id` is the trip's own client-generated UUID from the first
+# write (D-15), so there is no server id to remap. What this flow can show is
+# that the three exist locally and are pending; what the second device then
+# shows (the expense under THIS trip, not under 'Gate baseline') is the proof of
+# "the right trip".
+#
+# The city picker works offline from the cache that phase p01's searches wrote
+# (Rome was picked online there), and says so: "Offline — showing saved places".
+# That alert is asserted again as a second, independent proof the device is
+# offline while these records are written.
+appId: com.triptrackr.app
+---
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/add-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate offline trip'
+- assertVisible: 'Not yet synced'
+
+# --- A stop against it ---------------------------------------------------------
+- tapOn:
+    id: 'trip-add-stop'
+- assertVisible:
+    id: 'stop-editor'
+- assertVisible:
+    text: 'Offline . showing saved places'
+- tapOn:
+    id: 'city-picker-country-filter'
+- inputText: 'Italy'
+- tapOn:
+    id: 'city-picker-country-IT'
+- tapOn:
+    id: 'city-picker-city-query'
+- inputText: 'Rom'
+- tapOn:
+    text: 'Rom(a|e)'
+- tapOn:
+    id: 'stop-editor-save'
+- assertVisible: 'Stop 1: Rom(a|e).*'
+
+# --- An expense against the same trip --------------------------------------------
+- runFlow:
+    file: _helpers/open-section.yaml
+    env:
+      SEGMENT: 'expenses'
+- runFlow:
+    file: _helpers/add-expense.yaml
+    env:
+      AMOUNT: '7.77'
+- assertVisible: 'Not yet synced'
+- tapOn: 'Back'
+- tapOn: 'Back'
+
+# --- All three are listed locally, pending -----------------------------------------
+- assertVisible: 'Gate offline trip'
+- assertVisible: '1 stop.*'
+- assertVisible: 'Not yet synced'

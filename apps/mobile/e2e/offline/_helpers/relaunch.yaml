@@ -1,0 +1,18 @@
+# Force-quit and relaunch, keeping the app's data and the device's network state.
+#
+# `stopApp` stops the app process without clearing its data (docs.maestro.dev,
+# stopApp): nothing in memory survives, which is what a traveller swiping the app
+# away does (sync-protocol.md §6 row 2) and the same relaunch step the other e2e
+# flows use. `launchApp` without `clearState` then starts it against the same
+# encrypted store. The app comes back on the home tab of the signed-in shell.
+#
+# `killApp` is deliberately not used: on Android it is a system-initiated
+# process death (`am kill`) that the docs say is meant for a backgrounded app.
+appId: com.triptrackr.app
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 30000

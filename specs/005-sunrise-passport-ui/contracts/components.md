@@ -1,0 +1,1736 @@
+# Contract: Component Adapter Layer (Sunrise Passport)
+
+**Feature**: `specs/005-sunrise-passport-ui` | **Consumers**: every screen | **Supersedes**: the look, sizes and
+variants in `specs/004-app-ui-redesign/contracts/components.md` C4-7 to C4-9 (its adapter boundary C4-6 and its
+"As built" accessibility guarantees are **inherited**: they are style-independent and still hold unless this
+document restates them).
+
+The adapter layer is `apps/mobile/src/components/ui/` plus, for navigation chrome, `components/navigation/`.
+Screens import UI primitives only from there. Only that folder imports `heroui-native`, `uniwind` components,
+`phosphor-react-native`, `expo-glass-effect`, `react-native-zoom-toolkit` and `react-native-view-shot`.
+
+Test identifiers: **every pre-existing `testID` and accessible name is preserved** (FR-081, SC-003). Where a
+component is new, its identifiers are listed here and per screen in `screens.md`.
+
+---
+
+## C5-13. Adapter boundary (inherits C4-6; extended)
+
+1. Screens and feature components import UI primitives **only** from `@/components/ui/*` and
+   `@/components/navigation/*`.
+2. Only those folders import the kit, Phosphor, the glass module, the zoom toolkit and view-shot; the
+   `no-restricted-imports` rule and `adapter-guards.test.ts` list them.
+3. Adapters take the app's own props, require an accessible name on every control and forward `testID` to the
+   node a test or Maestro finds it by.
+4. Fallbacks swap internals without touching a screen: glass to blur to solid (C5-21); Phosphor to the
+   platform symbols (D5-07); the zoom toolkit to a custom viewer (D5-13); view-shot roundels to dots and
+   `MarkerView` (D5-04).
+5. Every component is exercised in `app/(dev)/gallery.tsx` (T524) in four themes at font scale 1 and 2.
+
+---
+
+## C5-14. `Icon` (registry over Phosphor)
+
+```tsx
+<Icon name="globe" size={24} weight="regular" tone="ink" label? decorative? testID? />
+```
+
+`name` is a registry key (`icon-registry.ts`, about 60 deep imports, never the barrel). `size` 16, 20 or 24;
+`weight` `regular` (default), `fill` or `duotone`; `tone` a palette key (`ink`, `muted`, `accentText`, …,
+resolved per theme, so the contrast themes need no promotion). Decorative icons are hidden from assistive
+technology; a meaningful one (`label`) is announced as an image. Mirroring: a direction glyph (chevron, arrow)
+mirrors when the layout direction is reversed. Brand glyphs (Google, Apple) stay in `brand-glyph.tsx`.
+
+---
+
+## C5-15. `Tappable` and `Button`
+
+```tsx
+<Button
+  variant="primary" | "secondary" | "tonal" | "ghost" | "destructive"      // FR-006
+  size="md" | "lg" | "sm"                                                  // 52 / 56 / 44 dp minimum
+  accessibilityLabel                                                       // required
+  busy? disabled? icon? iconOnly? onPress testID? >label</Button>
+```
+
+| Variant       | Look (light)                                                                              | Pressed                       | Disabled                    |
+| ------------- | ----------------------------------------------------------------------------------------- | ----------------------------- | --------------------------- |
+| `primary`     | `accent` fill, `accentInk` label, 1.5 dp `accentLine` edge ring (2 dp in contrast themes) | `accentPress` fill, scale .97 | `sand` fill, `subtle` label |
+| `secondary`   | transparent, 1.5 dp `ink` outline, `ink` label                                            | `surfaceSecondary` fill       | outline `border`, `subtle`  |
+| `tonal`       | `surfaceSecondary` fill, hairline, `ink` label                                            | `pressed` fill                | as secondary                |
+| `ghost`       | no fill, `ink` label, 44 dp minimum                                                       | `pressed` fill                | `subtle` label              |
+| `destructive` | `dangerTint` fill, `danger` label, always icon and verb                                   | `pressed` fill                | `subtle`                    |
+
+**Guarantees (inherited from C4-7, restated)**: role `button`; `accessibilityState` carries `disabled` and
+`busy`; minimum target 44 pt (iOS) or 48 dp (Android) scaled by the font scale so large text grows the control
+(a minimum, never a fixed height); focus ring 2.5 dp with a 2 dp offset gap at 3:1 (P13); pressed within 100 ms
+(scale .97 and fill; fill only under reduced motion); busy shows a spinner, keeps its label and ignores presses;
+`busy` and `disabled` together throw in development. **Haptics**: `primary` plays the light impact,
+`destructive` the warning notification; none under reduced motion. At most one `primary` per screen state
+(review rule). The primary ring token is gated by P15. The label is `callout` (display 600, 17 / 22), `sm` is
+`label` (14 / 20). Corner radius full (Android floating `lg`: 16).
+
+`Tappable` is the bare form (no fill, `pressed` fill, the ring, the target) used by cards, rows, tabs and icon
+buttons. Icon buttons (`iconOnly`) are 44 dp circles: `paper` with `lift1` (default), `tonal`, `ghost`, `glass`
+(on photographs: `scrimButton` disc with `scrimButtonLine`, `onPhoto` icon) and `onSky` (92 percent paper, over
+the globe).
+
+---
+
+## C5-16. Chips, pills, segmented control, status and sync
+
+| Adapter         | API                                                                                      | Look and states                                                                                                                                                                                               | Accessibility and ids                                                                                                              |
+| --------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `Chip`          | `label`, `accessibilityLabel`, `selected?`, `onPress?`, `leading?`, `disabled?`          | 40 dp visible, 44 dp hit; `surfaceSecondary` + hairline; selected = `ink` fill, `onInk` label and a check; dashed variant for "add"                                                                           | role `button` (or radio inside `ChipGroup`), `selected` and `checked`; selection haptic on change, not on re-press                 |
+| `ChipGroup`     | as 004 (`options`, `selectedKey`, `onSelect`, `scroll?`)                                 | one sideways row, no scroll bar; a fade at the clipped edge                                                                                                                                                   | keeps `radiogroup` and `radio`, every existing id (`currency-<CODE>`, `currency-other-toggle`, …)                                  |
+| `SegmentedPill` | `options[{ key, label, count?, testID, accessibilityLabel }]`, `selectedKey`, `onSelect` | track radius full, padding 4, thumb = track − 8 (concentric), min 36 dp (32 small); selected = `ink` fill; counts tabular                                                                                     | `tablist` and `tab`, or `radiogroup`; counts are part of the name ("Active, 1"); used for the trips filter and the passport period |
+| `StatusChip`    | `status: 'planning' \| 'active' \| 'past'`, `dayOf?`                                     | 13 / 18 caption, icon and text; `active`: `surfaceSecondary` + hairline, coral live dot, "Active" (and "· Day 3 of 8" in the hero); `planning`: `amberTint` + `amberInk`; `past`: `surfaceSecondary`, `muted` | keeps `status-pill-<status>` and the label "Status: …"; the words stay Planning, Active, Past                                      |
+| `SyncChip`      | `state: SyncChipState`, `onRetry?`                                                       | 36 dp, 92 percent paper + `lift1`; `waiting` cloud-up and count; `syncing` spinner; `offline` wifi-off (`amberInk`) and count; `failed` `dangerTint`, `danger` edge, verb "Retry"; `synced` hidden            | one per screen; announced "3 changes waiting to sync" or "Sync failed, retry"; id `sync-chip`; 4 dp hit slop                       |
+| `SyncBadge`     | `state: 'pending' \| 'syncing' \| 'failed'` (per record)                                 | icon and text; glyph-only on photographs inside a 24 dp `scrimButton` disc, white and `danger` for failed                                                                                                     | keeps its ids and text equivalents ("Not yet synced", "Sync in progress", "Sync failed")                                           |
+| `FlagChip`      | `iso2`, `size?: 'md' \| 'lg'`                                                            | 20 by 14 (28 by 20) rounded 3 (4) box with a hairline; flag glyph, else the two letters                                                                                                                       | decorative; hidden from assistive technology (the country name is beside it)                                                       |
+| `PrivacyChip`   | `label?: 'Only you'`                                                                     | lock icon, `aquaTint`, `aquaInk`                                                                                                                                                                              | announced "Only you can see this"; id `privacy-chip`                                                                               |
+
+### As built (T518 to T520)
+
+What the code does where it differs from, or adds to, C5-14 to C5-16. The three tasks are one branch,
+`feat/005-adapters-core`; the files are under `apps/mobile/src/components/ui/`.
+
+**`Icon` (C5-14, T518).** `icon-registry.ts` imports 63 icons by deep path (`phosphor-react-native/src/icons/<Name>`,
+the only subpath the package's `exports` map serves; the bare package is refused under Jest and the registry source
+is read by `icon-registry.test.tsx` to prove it never appears) and names them with app words: `ICONS`, `ICON_KEYS`,
+`IconKey`, `isIconKey`, `DIRECTIONAL_ICONS`. The keys, by group:
+
+| Group                    | Keys                                                                                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tab bar, headers, cues   | `globe`, `suitcase`, `user`, `user-circle`, `chevron-left`, `chevron-right`, `chevron-up`, `chevron-down`, `arrow-left`, `arrow-right`                                     |
+| Actions                  | `plus`, `minus`, `x`, `check`, `search`, `pencil`, `trash`, `share`, `ellipsis`, `refresh`, `undo`, `download`, `locate`, `log-out`, `settings`, `grip`, `stop-circle`     |
+| Status and feedback      | `check-circle`, `alert` (a circle, the one "something is wrong" glyph), `warning` (a triangle), `info`, `question`, `clock`, `calendar`, `lock`, `shield-check`, `eye-off` |
+| Sync and network         | `cloud-upload`, `cloud-check`, `cloud-off`, `sync`, `wifi`, `wifi-off`                                                                                                     |
+| Content                  | `image`, `images`, `camera`, `note`, `file-text`, `wallet`, `map`, `map-pin`, `route`, `stamp`, `tag`, `mail`, `sparkle`                                                   |
+| Categories and transport | `plane`, `car`, `tram`, `bed`, `fork-knife`, `ticket`, `shopping-bag`                                                                                                      |
+
+- `DIRECTIONAL_ICONS` (mirrored when `I18nManager.isRTL`, through Phosphor's own `mirrored` prop, which is a
+  `scaleX: -1` transform): `chevron-left`, `chevron-right`, `arrow-left`, `arrow-right`, `log-out`, `undo`.
+- `IconName` is `IconKey`; `IconSize` is `16 | 20 | 24` (the values of `IconSize` in `shape.ts`); `weight` is
+  `regular` (default), `fill` or `duotone`. `tone` names a palette key (`ink` default, `muted`, `subtle`, `onInk`,
+  `onPhoto`, `accentInk`, `accentText`, `accentLine`, `aquaInk`, `aquaLine`, `amberInk`, `amberLine`, `danger`,
+  `dangerInk`, `success`). The 004 names stay as aliases until Phase 10, each on a token that passes: `default` is
+  `ink`, **`accent` is `accentText`** (never the coral fill, 2.82:1 on paper in `light`: the gap the tokens
+  task left), `onAccent` is `accentInk`, `statusActive` is `accentLine`, `statusPlanning` and `pending` are
+  `amberInk`, `statusPast` is `muted`. `icon.test.tsx` reads the generated stylesheet in all four themes and asserts
+  every tone paints its palette key and that none resolves to the coral fill.
+- **The codemod** (a one-shot node script, not committed) rewrote every `{ ios, android }` literal at 47 files to a key.
+  The mapping, for the record: `suitcase` and `luggage` to `suitcase`; `chevron.backward` and `.left` to `chevron-left`;
+  `.forward` to `chevron-right`; `.up` and `.down` to `chevron-up` and `chevron-down`; `photo`, `photo.on.rectangle` and
+  `photo.badge.plus` to `images`; `creditcard` to `wallet`; `note.text` to `note`; `doc.text` to `file-text`;
+  `rectangle.portrait.and.arrow.right` to `log-out`; `globe.europe.africa` (and `.fill`) to `globe`;
+  `person.crop.circle` (and `.fill`) to `user-circle`; `wifi.slash` to `wifi-off`; `fork.knife`, `bed.double`, `tram`,
+  `ticket`, `bag` to `fork-knife`, `bed`, `tram`, `ticket`, `shopping-bag`; `airplane` to `plane`; `icloud.slash` to
+  `cloud-off`; `arrow.down.circle` to `download`; `checkmark.circle` to `check-circle`; `arrow.clockwise` to `refresh`;
+  `icloud.and.arrow.up` to `cloud-upload`; **`exclamationmark.triangle` to `alert`** (so `ALERT_ICON` is `alert`, the
+  circle of the prototype); `xmark` to `x`; `line.3.horizontal` to `grip`; `location.fill` to `map-pin`;
+  `arrow.triangle.2.circlepath` to `sync`; `clock` to `clock`. The tab bar draws `regular` at rest and `fill` when
+  selected, and its profile tab is `user` (the signed-out card of the first-sync gate is `user-circle`).
+- Tests read a glyph by registry key, never by Phosphor name: `test/helpers/icons.ts` (`glyphsIn`, `glyphNamesIn`,
+  `glyphId`, `anyGlyph`) over `screen.toJSON()`, because RNTL 14 queries host nodes only. No source file imports
+  `expo-symbols` any more (a test scans `src/`); the dependency stays installed as the fallback of D5-07.
+
+**`Button`, `Tappable`, `IconButton` (C5-15, T519).**
+
+- `Button` is a React Native `Pressable` painted from tokens, not a wrapper over the kit's Button: the kit's variants
+  mix the coral into their labels (the five gaps of the 004 gate), fix a height per size and animate through
+  Reanimated, none of which the Sunrise variants want. The kit still supplies `Spinner`, `Text` and the theme colours.
+  `variant` is `primary | secondary | tonal | text | destructive` (**`text` is the contract's `ghost`**: the call sites
+  already say `text`); `size` `sm | md | lg` is 44, 52 and 56 dp as MINIMUMS, raised to the platform floor and scaled by
+  the font scale; the label is `callout` (`sm` is the semibold `label`).
+- `button-look.ts` is the table of palette KEYS (fill, label, edge) for each variant and state, so "only ink on a
+  pressed fill" is a property of data: `primary` rests on `accent` with `accentInk` and the `accentLine` ring (1.5 dp,
+  2 dp in the contrast themes, `PrimaryEdgeRing`) and is held on `accentPress` with `accentInk`; `secondary` is a 1.5 dp
+  `ink` outline, held on `surfaceSecondary`; `tonal` is `surfaceSecondary` with a hairline, held on `pressed`; `text`
+  and `destructive` are held on `pressed`. A held `destructive` label turns to `ink` (P6 gates `ink` on `pressed` and
+  nothing else). Busy is the pressed coral for a primary and the resting look otherwise, with the spinner; disabled is
+  flat `sand` with a `subtle` label (primary) or a `border` outline (secondary, tonal). The edge keeps its width in
+  every state (the colour goes transparent), so a press or a disabled state moves no pixel.
+- Press: the fill swaps at once and the button scales to .97 through `pressScaleOf`; reduced motion keeps the fill. The
+  scale is a transform on touch-down, not an animation (like `Tappable`'s fill): inside the 100 ms budget with nothing
+  for reduced motion to remove.
+- **Haptics.** `useHaptics` has `selection`, `success` and `warning` on this branch (T523 adds the semantic map with
+  `impact`). A `primary` press therefore plays `selection`, a `destructive` one `warning`, in one table
+  (`PRESS_HAPTIC` in `button.tsx`); switching the primary to `impact('light')` is that table's one line.
+- The host node still carries `variant`, `size` and `isIconOnly` as marks, under the kit's old names (`primary`,
+  `secondary`, `tertiary` for tonal, `ghost` for text, `danger-soft` for destructive), because some twenty screen suites
+  count a screen state's primaries by reading `button.props.variant` (review rule 2). Native ignores props a view does
+  not know.
+- Cost in a list: the font scale is `useWindowDimensions`, the two accessibility flags (reduced motion, increased
+  contrast) come from `useAccessibilityFlags` (the shared store alone, no colour-scheme subscription), and the colours are
+  ONE `useThemeColor` call by palette key: `theme-tokens.ts` (`TOKEN_OF`, `useColors`) is the table from a key to the
+  kit or app variable generated from it, read against the stylesheet in all four themes by `theme-tokens.test.tsx`.
+- `Tappable` keeps its API; its held fill is `surface-tertiary` (the palette key `pressed`) instead of the kit's 15
+  percent mix, and its ring is the shared `focus-ring.ts` (`focusRingStyle`, `useFocusRing`: 2.5 dp, 2 dp outside).
+- `IconButton` (`icon-button.tsx`, new): `variant` `default` (paper, `lift1`), `tonal` (cream, hairline), `ghost`,
+  `glass` (`scrimButton` disc, `scrimButtonLine`, `onPhoto` icon: a held press draws the focus ring and keeps the disc,
+  the `feedback="ring"` rule of 004 T442) and `onSky` (92 percent paper, `lift1`). A 44 dp circle, a fixed size, with
+  slop to the platform floor; `busy`, `disabled`, `testID`, `<testID>-icon` and `<testID>-spinner` as `Button`. `liftStyle`
+  (`lift-style.ts`) is `boxShadow` from `Lift` with the `elevation` fallback below Android 9.
+- Gate: `test/theme/adapter-pressed-fills.test.ts` now measures `Button`, `IconButton`, `Tappable`, `Chip` and
+  `SegmentedPill` in all four themes with **no exception list** (the five `LEGACY_LABEL_GAPS` and the selected-chip gap are
+  deleted); `test/ui-kit/pressed-fills-chip-row-card.test.ts` keeps only the row and the card, whose `muted on pressed`
+  gap in `light-contrast` stays enumerated for T521. `button-class-merge.test.ts` pinned kit facts the adapter no longer
+  relies on and is deleted; `button-busy.test.tsx` keeps the real-kit `Spinner` check.
+
+**Chips (C5-16, T520).** `chip-look.ts` is the table of keys (`chipLook`, `segmentLook`, `STATUS_LOOKS`,
+`SYNC_BADGE_LOOKS`, `PRIVACY_LOOK`); `soft-label.tsx` is the shared tinted capsule (internal); the pairs are measured by
+`test/theme/chip-contrast.test.ts`.
+
+| Adapter         | As built                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Chip`          | Adds `dashed` (the "add" chip: no fill, a 1.5 dp dashed `border`). 40 dp visible, slop to the floor (vertical) and 4 dp (sideways). Unselected `surfaceSecondary` and a hairline; selected `ink`, `onInk`, and a check in place of the leading glyph; held, the `pressed` fill with an `ink` label whatever the state. A chip without `onPress` is a `View` role `text`. Label `label` semibold, capped at 1.3.                                                                                                                                   |
+| `ChipGroup`     | As 004: `radiogroup`, `radio`, `{ selected, checked }`, selection haptic on a change. **Not built: the fade at the clipped edge** (it is a gradient, and only `Scrim`, T523, may draw one).                                                                                                                                                                                                                                                                                                                                                       |
+| `SegmentedPill` | `options[{ key, label, count?, testID, accessibilityLabel }]`, `selectedKey`, `onSelect`, `role` `tablist` (default) or `radiogroup`, `size` `md` (36 dp) or `sm` (32), `accessibilityLabel`, `testID`. A capsule track (padding 4, cream, hairline) of capsule segments; selected `ink` and `onInk`, unselected `muted`, held `pressed` and `ink`; counts tabular. No sliding thumb (the thumb is the selected segment's fill; an animation is T523 or later).                                                                                   |
+| `StatusChip`    | `status`, `dayOf?: { day, of }` ("Active · Day 3 of 8", announced "Status: Active, day 3 of 8"). `planning` is `amberTint`, a calendar and `amberInk`; `active` is cream with a hairline and the coral live dot (`status-pill-active-dot`, 8 dp with a 3 dp halo), `ink`; `past` is cream, a check and `muted`. Ids, role, "Status: ..." and the words kept; three shapes, not three hues.                                                                                                                                                        |
+| `SyncChip`      | `state: SyncChipState` (exported from `sync-chip.tsx` until T529's `use-sync-chip-state` takes the type), `onRetry?`. 36 dp, 92 percent `surface` with `lift1`, `failed` lays `dangerTint` over the paper (`sync-chip-tint`) with a `danger` edge. Announced "3 changes waiting to sync", "Syncing 3 changes", "Offline, 3 changes waiting to sync" or "Sync failed, retry"; `synced` renders nothing; only `failed` with `onRetry` is a button (4 dp slop, ring).                                                                                |
+| `SyncBadge`     | Keeps `SyncBadge`, `SyncBadgeProps`, `SyncState`, `sync-badge-icon`, the three announcements and the three phrases. Pending and syncing are `amberInk` on `amberTint` with a dashed `amberLine` edge, failed `danger` on `dangerTint`, dashed `danger`; the icons are `clock`, `sync`, `alert`. **`glyphOnly`** is the form for a photograph: a 24 dp disc, `scrimButton` with an `onPhoto` glyph, and for failed a `danger` disc with the `dangerInk` glyph (P5; the contract's "white and `danger`" would be white on pink in the dark themes). |
+| `FlagChip`      | `iso2`, `size` `md` (20 by 14, radius 3) or `lg` (28 by 20, radius 4), `testID`; `flagGlyph(iso2)` is the regional-indicator pair, `null` for anything that is not two letters, and the box then shows the letters (or `?`) on cream. The box is fixed (`allowFontScaling={false}`), clipped, hairline-edged and hidden from assistive technology. Whether a country's glyph exists on a device is V6 (T512).                                                                                                                                     |
+| `PrivacyChip`   | `label?: 'Only you'`; a lock on `aquaTint` in `aquaInk`; announced "Only you can see this"; ids `privacy-chip` and `privacy-chip-icon`.                                                                                                                                                                                                                                                                                                                                                                                                           |
+
+**Kit facts read from source** (`heroui-native` 1.0.10 under `node_modules`): the kit's `Button` root fixes `height` per size
+in its stylesheet (10, 12 and 14 spacing steps: 40, 48 and 56 dp), sets `border-width: 0`, and wraps a Reanimated `PressableFeedback` with a
+highlight overlay coloured from `accent-hover`, `default-hover`, `danger-hover` and `danger-soft-hover` (read with four
+`useThemeColor` calls per button); its `secondary` variant is `bg-default` with an `accent-soft-foreground` label, a mix
+of the coral. `useThemeColor` accepts an array and answers an array; Phosphor's `IconBase` takes `mirrored` and puts
+`scaleX: -1` on the `Svg`, and tags it `phosphor-react-native-<name>-<weight>`. None of this needed a device.
+
+**Device-only checks left open** (none new beyond the existing V1 to V7; each is a line in T507 to T512 and T547):
+the emoji flag glyphs at 20 by 14 dp on both platforms (V6; `flagGlyph`'s size and line height are starting values), the
+`outline` focus ring of every control at the clipped edge of a sideways chip row (V7), `boxShadow` lifts below Android 9
+(`LiftElevation`), the 44 dp icon button reaching 48 dp on Android through slop, and that the `selection` haptic reads as the
+primary press until T523 maps `impact`.
+
+---
+
+## C5-17. Fields and pickers
+
+`Field` keeps the 004 API (`label`, `value`, `onChangeText`, `error?`, `description?`, `isRequired?`, TextInput
+props; `testID` on the input; `${testID}-error` on the message). Look: label above (`label` 600), 56 dp
+minimum, `surfaceSecondary` fill, 1 dp `border` (3:1, P12), radius 12; focused: `surface` fill and a 2.5 dp
+`focus` ring with a 2 dp gap; invalid: 1.5 dp `danger` boundary, plus the words and an alert icon beneath
+(never colour alone); helper text with a leading info icon. `CurrencyPicker`, `CategoryPicker` and the
+`DateField` keep their behaviour, ids and names; they take the chip, field and sheet styles.
+
+---
+
+## C5-18. Containers and rows
+
+| Adapter                | API                                                                                          | Look                                                                                                                                       | Guarantees                                                                                                                                                                                                                                                |
+| ---------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Card`                 | `variant: 'lift' \| 'tile' \| 'flat'`, `overMap?`, `pending?`, `onPress?`, `cue?`, `radius?` | `lift`: `surface` + `lift1` + hairline; `tile`: `surfaceSecondary` + hairline, no shadow; `flat`: none                                     | A card never contains a card (development error); `overMap` is opaque with a hairline and `lift2`, never translucent; `pending` adds a dashed `amberLine` edge and the `SyncBadge` stays the marker; a pressable card is ONE `Tappable` with a cue at 3:1 |
+| `ListGroup`, `ListRow` | as 004                                                                                       | 60 dp rows on `surface`, hairline inset separator, chevron `muted`                                                                         | row-level `accessibilityActions` forwarded; `tone="destructive"` is `danger` ink plus an icon                                                                                                                                                             |
+| `StatTile`             | `value`, `of?`, `unit?`, `label`, `icon`, `onPress?`, `accessibilityLabel`                   | numeral 36 / 40 tabular, a lighter `/195` sibling on the same baseline, `label` below, 16 dp `duotone` icon                                | one control when `onPress` is set; announced "14 of 195 countries"; at font scale 1.15 and above a row (label left, figure right)                                                                                                                         |
+| `AreaPill`             | `icon`, `label`, `count`, `private?`, `warn?`, `onPress`, `testID`                           | 72 dp minimum, radius 16, `surfaceSecondary` + hairline; lock chip top right for private areas; a 1.5 dp `danger` ring and dot when `warn` | keeps `trip-open-<segment>` ids; name "Photos, 128"; 4 columns, 2 at scale 1.15 and above                                                                                                                                                                 |
+| `Panel`                | as 004                                                                                       | no fill                                                                                                                                    |                                                                                                                                                                                                                                                           |
+
+---
+
+## C5-19. Trip list components
+
+| Component        | API                                             | Layout and states                                                                                                                                                                                                        | Accessibility and ids                                                           |
+| ---------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `TripHeroCard`   | `trip: TripCardModel`, `onPress`                | radius 24, minimum 219 dp, cover with `scrim.bottom` and the caption scrim, eyebrow (flag chip, "Country · N stops"), title (2 lines), status chip "Active · Day 3 of 8", `StopStrip`, `SyncBadge` when pending; `lift1` | ONE control "title, status, N stops"; id `trip-card-<id>`; cover hidden from AT |
+| `TicketCard`     | `trip`, `onPress`                               | radius 24, 96 dp minimum; 88 dp thumb, text, then a 88 dp stub with a 2 dp dashed `sand` edge and two canvas-coloured notches (circles 16 dp, hairline); stub = days to go; stacks vertically at scale 1.15 and above    | ONE control; id `trip-card-<id>`; the stub is part of the label ("in 94 days")  |
+| `TripRow`        | `trip`, `onPress`                               | 72 dp minimum row, 64 dp thumb (56 at large text), title (1 line, 2 at large text), "Country · Mon YYYY · N days", chevron, `SyncBadge` when pending                                                                     | ONE control; id `trip-card-<id>`                                                |
+| `StopStrip`      | `dots: Array<'done'\|'now'\|'next'\|'later'>`   | 12 dp dots joined by a 2 dp line: solid between done, dashed otherwise; done filled white, now a thick ring with halo, next a ring; abbreviations (LIS, SNT, OPO) in `eyebrow`                                           | decorative; summarised in the card's label                                      |
+| `YearHeader`     | `year`, `tripCount`, `distanceKm`               | `headline` year, then "N trips · 9,380 km" in `muted`; sticky on `surface` with a hairline                                                                                                                               | role header                                                                     |
+| `YearScrubber`   | `years: number[]`, `activeYear`, `onJump`       | 28 dp wide capsule on the right edge, `eyebrow` years, active on `ink`; only with 200 or more trips; jumps with a selection haptic                                                                                       | `adjustable` with increment and decrement over years; id `trips-year-scrubber`  |
+| `GeneratedCover` | `palette`, `iso2`, `initial`, `thumb?`          | gradient, ghost code glyph at 16 percent white, dashed stamp outline, flag chip; `thumb` shows the code only (40 dp)                                                                                                     | hidden from AT                                                                  |
+| `Scrim`          | `kind: 'top' \| 'bottom' \| 'caption' \| 'sky'` | the only consumer of gradient strings (C5-1)                                                                                                                                                                             | `pointerEvents="none"`                                                          |
+
+---
+
+## C5-20. Trip detail components
+
+| Component      | API                                                           | Layout and states                                                                                                                                                                                                                                                                                        | Accessibility and ids                                                                                                                                                                              |
+| -------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TripHero`     | `cover`, `title`, `country?`, `dateRange?`, `scrollY`         | 236 dp minimum, `scrim.top` (status bar zone) and the caption scrim; eyebrow (flag, "Portugal · 12–19 Oct 2026"); title bottom-anchored, `title` role, 2 lines, growing upward; parallax .5, scale on overscroll                                                                                         | title keeps `testID="trip-title"` and is a heading; the glass Back is `HeaderBackButton` (name "Back")                                                                                             |
+| `CollapsedBar` | `title`, `onBack`                                             | 56 dp solid `surface` + hairline appears when the hero has scrolled away; title centred, `callout`; the day strip pins beneath                                                                                                                                                                           | one Back; the title is announced once                                                                                                                                                              |
+| `ProgressRow`  | `status`, `dayOf?`, `syncState`                               | 36 dp minimum: `StatusChip`, "Day 3 of 8" with dots (6 dp, `accentLine` done, ring now, `sand` rest), `SyncChip` right                                                                                                                                                                                   | id `trip-header-row` (kept)                                                                                                                                                                        |
+| `AreasStrip`   | `counts`, `spendingTotal`, `warnPhotos?`                      | four `AreaPill`s (Photos, Notes, Expenses, Documents), the `PrivacyChip` line "Expenses and Documents are only visible to you" (copy from the existing privacy lines), and an Offline maps row beneath                                                                                                   | ids `trip-links`, `trip-open-photos`, `-notes`, `-expenses`, `-documents`, `-offline-maps`                                                                                                         |
+| `DayChips`     | `days: TripDay[]`, `selected`, `onSelect`                     | 56 dp chips (`callout` "D3", `caption` "14 Oct"), "All" first; selected `ink` fill; sideways, pinned beneath the collapsed bar                                                                                                                                                                           | `radiogroup`; each name "Day 3, 14 October"; hidden with zero stops; id `trip-days`                                                                                                                |
+| `StopRow`      | `stop`, `state: 'done' \| 'here' \| 'next'`, `leg?`, handlers | rail 32 dp: node 28 dp (check on `ink`, coral with a 4 dp halo, ring), spine 3 dp `ink` solid to the next stop or `accentLine` when the next stop is current; body: place (`callout`), country, dates and nights, "Now" chip, 56 dp city thumb; per-stop controls kept as compact icon-and-label buttons | keeps `stop-row-<id>`, `stop-dates-<id>`, `stop-move-up-<id>`, `stop-move-down-<id>`, `stop-edit-<id>`, `stop-remove-<id>` and the row's `accessibilityActions` (move up, move down, edit, remove) |
+| `TransitRow`   | `km`                                                          | 36 dp: a dotted 3 dp `border` spine and "313 km" with a small icon; omitted when `km` is null                                                                                                                                                                                                            | decorative; the distance is in the stop's label ("313 km from Lisbon")                                                                                                                             |
+| `AddStopRow`   | `onPress`                                                     | 52 dp, 2 dp dashed `border` outline, plus icon and "Add stop" (`callout`); inline at the end of the timeline, no FAB                                                                                                                                                                                     | keeps `trip-add-stop` and its name                                                                                                                                                                 |
+
+---
+
+## As built (T543 to T546): the trip screen
+
+Branch `feat/005-trip-detail`. Components are in `apps/mobile/src/components/trip/`, the pure derivations in
+`apps/mobile/src/features/trips/`, the route is `src/app/trip/[id]/index.tsx` (44 lines: it reads the trip and hands it
+to `TripDetail`) with its header in `_layout.tsx`. Every derivation is private, local, never transmitted and stores
+nothing (FR-084): the traveller's own stops, counts and photographs, read from the encrypted local store.
+
+### Public API as built
+
+| Unit                                                              | API                                                                                                                                                          | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TripHero`                                                        | `title`, `cover: TripCover`, `tripId`, `country?: { iso2, name }`, `dateRange?`, `imageStyle?`, `onHeight?`                                                  | A column of minimums (236 dp, 100 dp of room above the text), bottom-anchored, so the title (2 lines) grows upward and is whole at font scale 2. `Scrim top` and `Scrim caption` carry the 4.5:1; the generated cover is on the same frame as the photograph. Ids `trip-hero`, `-image`, `-photo`, `-generated`, `-eyebrow`, `-flag`, `-scrim-top`, `-caption`; `trip-title` kept.                                                                                                     |
+| `CollapsedBar`                                                    | `title`, `style?`                                                                                                                                            | 56 dp plus the inset, `surface` and a hairline, fades in with the scroll. It draws NO Back and its copy of the title is hidden from assistive technology and takes no touches: the native header's Back and the hero's heading are the only ones announced. Id `trip-collapsed-bar`.                                                                                                                                                                                                   |
+| `ProgressRow`                                                     | `status`, `dayOf?`, `currency`, `pending?`, `syncState`, `onRetry?`                                                                                          | Keeps `trip-header-row`. The status chip says only "Planning", "Active" or "Past" (the flows assert them whole); "Day N of M" and the dots (`MAX_PROGRESS_DOTS` 14, proportional beyond) are siblings, the dots hidden from assistive technology.                                                                                                                                                                                                                                      |
+| `AreasStrip`                                                      | `counts`, `spending: { total, currency }`, `warnPhotos?`, `onOpen(segment)`                                                                                  | Four `AreaPill` tiles in 25 percent cells (50 percent from font scale 1.15, `areaColumns`), the privacy line (`trip-privacy-line`), the Offline maps `ListRow`. Ids `trip-links`, `trip-open-photos`, `-notes`, `-expenses`, `-documents`, `-offline-maps` and the names they had; routes `/trip/<id>/<segment>`.                                                                                                                                                                      |
+| `DayChips`, `PinnedStrip`                                         | `days`, `selected: number \| null`, `onSelect`; `anchorY`, `scrollY`, `pinLine`, `onHeight`                                                                  | A radio group (`trip-days`, `trip-day-all`, `trip-day-<n>`), "Day 3, 14 October"; nothing for a trip with no dated stop. ONE strip instance drawn over a placeholder of its own height (`trip-days-anchor`) at `pinnedTranslate(anchor, scroll, pinLine)`, so it scrolls with the areas and then holds under the bar.                                                                                                                                                                  |
+| `StopRow`, `StopRail`                                             | `stop`, `position`, `isFirst`, `isLast`, `state: 'done' \| 'now' \| 'next'`, `transit?`, `from?`, `thumb?`, `highlighted?`, handlers, `handle?`, `dragging?` | Node 28 dp (check on ink, number on coral with a 4 dp halo, number in a 2 dp ring), solid 3 dp spine (ink, or `accentLine` under the current stop, as the prototype), an 8 dp lead (dotted after a journey, solid for one stay). While a row is carried the node goes neutral and the rail goes. All ids, names and the four `accessibilityActions` of 004 kept; the name stays exactly 004's and "Now." and "23 kilometres from Lisbon." are its accessibility value, after the name. |
+| `TransitRow`, `AddStopRow`, `NowChip`, `StopThumb`, `DottedSpine` | `stopId`, `km` (omitted when null); `onPress`; `stopId`; `stopId`, `cityId`, `iso2`, `place`, `uri?`; `stopId`, `slot`                                       | `stop-transit-<id>`, `trip-add-stop` (a dashed row, NOT a primary), `stop-now-<id>`, `stop-thumb-<id>`; the dotted line is round dots in `react-native-svg` (a one-sided dotted border draws solid in React Native).                                                                                                                                                                                                                                                                   |
+| `TripDetail`                                                      | `{ trip: TripRow }`                                                                                                                                          | The body of the route: one `Animated.ScrollView` under the transparent header (hero, sheet, day anchor, stops), the pinned strip, the collapsed bar and the stop editor. Ids `trip-screen` (also on the skeleton, error and not-found states), `trip-scroll`, `trip-sheet`, `trip-stops-body`, `-list`, `-count`, `trip-empty`, `trip-stops`, `trip-write-error`.                                                                                                                      |
+| `TripPlaceholder`, `StopsBody`, `ZeroStops`, `StopsHeader`        | `{ loading, failed }`; `{ stops, onAdd, ...list }`; `{ onAdd }`; `{ count }`                                                                                 | Error, then loading, then empty, in both (the 004 order: a failed live read can still say `loading`). Zero stops: `GhostStamp`, "No stops yet", the one primary "Add stop" (`trip-add-stop`), zeros in the tiles and no strip.                                                                                                                                                                                                                                                         |
+| `useStopWrites`, `useStopEditor`                                  | `(tripId)`, `(stops, save)`                                                                                                                                  | Moved out of the route unchanged (writes through the repositories, Sentry AND `trip-write-error`, a confirmation before a removal); `useStopWrites` also exposes `attempt` for the Retry of the banner.                                                                                                                                                                                                                                                                                |
+| `useTripSync`, `deriveTripSync`                                   | `({ overview })`, `({ chip, failedPhotos })`                                                                                                                 | The one chip and the one banner: offline wins, then failed uploads (Photos tile `warn`, Retry puts them back in the queue through `retryUpload`), then a failed sync (Retry runs `syncNow('manual')`). Ids `trip-banner`, `-message`, `-retry`, `trip-open-photos-warn`.                                                                                                                                                                                                               |
+| `trip-days.ts`                                                    | `tripDays(stops, today?)`, `currentDay`, `stopForDay(days, index)`, `dayChipText`, `MAX_TRIP_DAYS` 366                                                       | Local calendar days (`date-fns`, one `addDays` per day, never 24 hour blocks); chips are worded by `Intl` pinned to UTC at noon. Zone suites run Auckland and Los Angeles.                                                                                                                                                                                                                                                                                                             |
+| `stop-timeline.ts`                                                | `stopStates(stops, today?)`, `stopLegs`, `hasTransit`, `stopNights`, `nightsLabel`                                                                           | Where two stops overlap the later one is "now"; a leg touching an unplaced stop has `km` null and draws nothing; under 1 km is one stay.                                                                                                                                                                                                                                                                                                                                               |
+| `trip-overview.ts`                                                | `summariseTripOverview` gains `pending` (rows of the five areas with `is_dirty`) and `failedPhotoIds`                                                        | `OverviewInput` rows carry an optional `is_dirty`, so the existing callers are unchanged.                                                                                                                                                                                                                                                                                                                                                                                              |
+
+### Behaviour per platform
+
+- **Header.** `headerTransparent` with a transparent `headerStyle` on the overview only (the sub-screens keep the opaque
+  bar); the picture runs under the status bar and the header (device check below). The one Back is the native
+  header's `headerLeft` at every scroll position; `CollapsedBar` replaces the hero's picture, not the control.
+- **Collapse.** Complete when the sheet (28 dp overlap) reaches the bottom of the bar (`collapseEnd`), fading over 48 dp;
+  the hero's height is measured, so a taller hero at large text collapses later. Parallax .5 and the overscroll stretch
+  run on the UI thread from `useScrollOffset`. Under "reduce motion" the scroll is not animated when a day is chosen.
+- **States.** Loading `TripDetailSkeleton` (`trip-skeleton`, ONE `progressbar`); trip unreadable and trip not on this
+  device are `Screen` states kept clear of the transparent header (the inset plus 72 dp); stops loading, unreadable
+  or none are inside the sheet. Offline, failed upload and failed sync are one `Banner` under the status row.
+- **Large text.** Tiles two across from font scale 1.15; the status row wraps; the eyebrow takes two lines; the hero
+  grows upward; the stop's controls wrap; chips and tiles are minimums.
+- **Drag to reorder** is unchanged (`StopList`, `react-native-sortables`, the grip handle and the buttons).
+
+### Where the build differs from the contract text
+
+1. `useHeroCollapse` stays the trip's own, in `hero-collapse.ts`: `(scrollY, heroHeight, topInset)` answering `imageStyle`,
+   `barStyle` and `progress`, because the bar is complete when the SHEET (28 dp overlap), not the picture, has reached it and
+   the height is a shared value measured on layout. It honours reduced motion (the picture stays put, the bar steps in).
+   The chrome branch's `src/hooks/use-hero-collapse.ts` (`image`, `title`, `bar`, `scrim` from a numeric height) is the
+   general form and is not used by the screen. The Back is the glass `HeaderBackButton` over `useTransparentHeaderTheme`
+   (the local `HeroBackButton` is gone), and the chip is the global `useSyncChipState` (T529).
+2. The Back disc stays a dark disc once the bar is solid (the prototype shows a bare chevron there): the control belongs
+   to the navigator and does not know the scroll. T528's version may fade it.
+3. `CollapsedBar` and the pinned strip are siblings of the scroll view, so VoiceOver and TalkBack read the day chips
+   after the stops, not between the areas and the stops. Device check below.
+4. "Add stop" is the dashed row at the END of the timeline (FR-041) and, for a trip with none, the primary under the
+   ghost stamp: both lower on the screen than 004's header button. See "Maestro flow edits" in `tasks.md`.
+5. The zero state says "Add stop" and the existing sentence, not the prototype's "Add first stop" (FR-081). The
+   prototype's share, more and List/Map controls are Tier 3 and are not drawn (FR-080).
+6. What a stop's node and journey say ("Now.", "23 kilometres from Lisbon.") is the row's accessibility value, read
+   after its name, not part of the name: the name must stay the parity baseline's (`Stop N: place, country. dates`,
+   `test/testid-parity.test.ts`; FR-081). Appended to the name it had failed that guard.
+
+### Device-only checks
+
+- The transparent header over the picture on iOS and on Android (edge to edge): the disc, the status bar
+  clock under `Scrim top`, the collapse to the bar and back, the overscroll stretch.
+- Scrolling to a chosen day (`scrollTo` of the animated ref) with the strip pinned, with reduce motion on and off.
+- The pinned strip at 60 fps, and the reading order of the strip for VoiceOver and TalkBack.
+- Dragging a stop in a long list: auto-scroll is not wired (`scrollableRef` of `Sortable.Grid` was not before either).
+- The largest text size on both platforms: the hero title whole, the tiles two across, the stop
+  controls wrapped, the day chips reachable.
+- Light, dark and the two contrast themes; the offline banner, the failed-upload banner and the ringed Photos tile.
+- The Maestro flows `01-account-and-trip`, `03-globe`, `02`, `04`, `05` and `offline/13`, `14` (see below).
+
+---
+
+## C5-21. `TabBar` as a floating pill (iOS), navigation bar (Android)
+
+```tsx
+<TabBar {...BottomTabBarProps} /> // components/navigation/tab-bar.tsx, export name kept
+```
+
+- **Geometry (iOS)**: absolute, `left` and `right` 16, `height` 64, `padding` 6, `gap` 4, radius full,
+  `bottom = max(insets.bottom − 10, 12)`; the container is `pointerEvents="box-none"` so the globe pans around
+  it; it reports `height + bottomOffset` through `BottomTabBarHeightCallbackContext` (88 dp on a 390 by 844
+  phone). A 48 dp `surface` fade sits under it so content does not collide.
+- **Surface** (`tab-surface.tsx`, one pure `tabSurface()`): iOS 26 or later with `isLiquidGlassAvailable()`,
+  transparency not reduced and a base theme gives `GlassView`; otherwise iOS `BlurView` (a `surface` tint at
+  84 percent); otherwise (Android, reduced transparency, contrast themes) opaque `surface` with a hairline and
+  `lift2`. Opacity is never animated on the glass (it would vanish); hide with `translateY`.
+- **Tab**: icon (24, `regular`; `fill` when selected) and `eyebrow`-size label (12 / 14, capped at 1.3), equal
+  widths so the capsule is `index × tabWidth`; selected: `accentTint` capsule (`translateX`, the sheet
+  spring), `ink` icon and label, heavier weight; unselected `muted`. Selection is a filled icon, a heavier label
+  AND the capsule (FR-022), so it survives greyscale.
+- **Android** (`android-nav-bar.tsx`): full width, 64 dp plus `insets.bottom`, `surfaceSecondary`, a top hairline,
+  icon with a 56 by 32 dp indicator (`accentTint` at 26 percent) and a 12 dp label beneath, no blur, no fade.
+- **Preserved**: `testID="tab-bar"`, `tab-<routeName>`, `tab-mark-<routeName>` (now on the selected capsule),
+  `accessibilityRole` `tablist` and `tab`, `selected` state, the route label as the name. Press behaviour is
+  React Navigation's (`tabPress`, then navigate; `tabLongPress`). Targets are at least 44 pt and 48 dp; labels wrap
+  at large text and the pill grows (a minimum height, not a height).
+- **Labels**: Globe, Trips, You (deliberate label change; `tab-profile` unchanged).
+
+---
+
+## C5-22. `Sheet` and `HomeSheet`
+
+```tsx
+<Sheet
+  detents={{ peek, half, full }} // heights in dp from detentHeight()
+  index
+  onIndexChange
+  onSettle
+  handleLabel="Countries and trips"
+  renderBody
+/>
+```
+
+- **Placement**: a sibling overlay of `GlobeView` in `HomeGlobe`; `position: 'absolute'`; container
+  `pointerEvents="box-none"`, sheet `pointerEvents="auto"`; bottom edge at the screen bottom, content padded by
+  the tab zone (`useBottomTabBarHeight()`), radius 28 top, `surface`, hairline and `lift2`.
+- **Gestures**: a `Gesture.Pan()` on the handle zone (a 96 by 48 dp area) and the header always, and on the body
+  only when its scroll offset is at most 0 or the sheet is below full; release picks the nearest detent by
+  velocity projection and settles with the sheet spring (C5-9); rubber-band above `full`. `activeOffsetY` and
+  `failOffsetX` let horizontal swipes win. The body scroller (FlashList or ScrollView) has `bounces={false}` and
+  its `scrollEnabled` changes only when a detent settles (once per settle, never per frame).
+- **Detents**: `detentHeight()` of data-model §7: peek = 28 + live row + tab zone + 16 (212 dp at the default
+  text size), half = max(52 percent of the window, peek + 120), full = window − (top inset + 10).
+- **Accessibility**: the handle is `accessibilityRole="adjustable"` with `accessibilityValue` "Peek", "Half" or
+  "Full" and `accessibilityActions` `increment` and `decrement` stepping the detents; Android `BackHandler`
+  (inside `useFocusEffect`) lowers full to half to peek before the route pops.
+- **Haptics**: selection on each settle. **Camera**: `onSettle(index)` calls `globeFit()` and
+  `cameraRef.setCamera({ padding, zoomLevel, animationMode: 'easeTo', animationDuration: 280 })` once, then
+  moves the map logo and attribution to `bottom: sheetVisiblePx + 8` (`logoPosition`, `attributionPosition`).
+- **`globeFit(detent, windowWidth, headerBottom, sheetTop)`** (pure, in `features/globe/globe-fit.ts`): the rule
+  of data-model §7: peek radius `clamp((band − 24) / 2, 110, 175)` centred in the band at `headerBottom +
+band / 2 + 4`, other detents radius `clamp(0.95 × band, 150, 286)` centred at `headerBottom + 28 + radius`,
+  `band = sheetTop − headerBottom`; at least 20 dp of margin to each side at peek (SC-018). At `full` the
+  camera does not move (the map is hidden) and rotation pauses.
+- **Ids**: `home-sheet`, `home-sheet-handle`, `home-sheet-body`.
+
+---
+
+## C5-23. Home content
+
+| Component        | Detent     | Content and rules                                                                                                                                                                                                                                                       | Ids (kept in bold)                                                                                                      |
+| ---------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `GreetingHeader` | peek, half | over the globe: `eyebrow` date ("WED 14 OCT"), `display` "Hello, _Marta_" (the name in the serif accent), 2 lines maximum; right: `SyncChip` and a recentre control only after the camera moved; hidden at full                                                         | `home-greeting`, `home-recentre`                                                                                        |
+| `StatsRow`       | half       | three `StatTile`s separated by hairlines (countries `/195`, trips, kilometres); `AnimatedNumber` counts up once; the countries tile opens the full detent, trips opens the Trips tab, distance does nothing but is announced; stacked rows at font scale 1.15 and above | **`globe-stats`**, **`globe-stat-countries`** (text is the plain number), **`globe-stat-distance`**, `globe-stat-trips` |
+| `NowCard`        | peek, half | a 64 dp thumb (56 at peek), title, "Day 3 of 8 · Sintra", progress dots, chevron; opens the trip; the one live trip, else the next planned, else nothing                                                                                                                | `home-now-card`                                                                                                         |
+| `NextRow`        | half       | the next planned trip as a 48 dp thumb row: title, "Jan 2027 · in 94 days"                                                                                                                                                                                              | `home-next-row`                                                                                                         |
+| `CountriesList`  | full       | header "Countries" with a collapse control, `Field` search ("Search countries"), a ring card ("14 of 195", "4 of 7 continents · 19 trips") with up to two stamps, then groups by continent (sticky `eyebrow` headers with counts); a FlashList; no results message      | `countries-list`, `countries-search`, `countries-collapse`                                                              |
+| `CountryRow`     | full       | 60 dp: `FlagChip`, name (`callout`), "First visited 2021", "Now" chip, trailing "3 trips" and a chevron; press lowers the sheet to half and flies the globe to `focus`                                                                                                  | `country-row-<iso2>`; name "Portugal, 3 trips, first visited 2021"                                                      |
+| `PlanTripFab`    | peek, half | the extended button above the pill: iOS capsule (52 dp), Android rounded square (56 dp); label "Plan a trip"; hidden at full and when no trips exist; 16 dp above the pill                                                                                              | **`home-plan-trip`** (the existing id; with no trips it is the invitation card's primary)                               |
+| `InvitationCard` | (no trips) | the existing `globe-empty-state` card: three tilted empty photo frames (84 by 108 dp, `skeleton` fill, a pin glyph, 3 dp `surface` border, `lift2`) above the headline "Your globe is waiting for its first trip" with one accent word, one line, the primary           | **`globe-empty-state`**, **`home-plan-trip`**, **`home-add-stop`**, **`home-open-trips`**, **`globe-notice`**           |
+| `HomeSkeleton`   | loading    | a disc where the globe will mount (radius from `globeFit('half')`), skeleton sheet (greeting, 3 stat blocks, one row); the greeting text comes from the previous session's cached name                                                                                  | `home-skeleton`; ONE `progressbar` named "Loading your globe"                                                           |
+
+The existing `LoadingState` "Loading your globe" is kept for the wait for the local store. Home uses no header.
+
+### As built (T534 to T536)
+
+What the code does where it differs from, or adds to, C5-22 and C5-23. The three tasks are one branch,
+`feat/005-home-sheet`; the files are under `apps/mobile/src/` and the Home integration (T537) is not part of it.
+
+**`Sheet` (T534)** is `components/ui/sheet.tsx` with three helpers beside it: `sheet-geometry.ts` (pure: `SheetDetent`,
+`detentHeight`, `sheetHeights`, `settleTarget`, `rubberBand`, `stepDetent`, `cycleDetent`, `detentLabel`),
+`sheet-motion.ts` (the shared value, the spring, the one settle) and `sheet-pans.ts` (the worklets).
+
+```tsx
+<Sheet detents={sheetHeights(geometry, rowHeight)} detent={detent} onDetentChange={setDetent}
+  onSettle={fitCamera} handleLabel="Countries and trips" header? handleBack?
+  renderBody={({ detent, settled }) => ...} />
+```
+
+- **Controlled, and by name.** The contract's `index`, `onIndexChange` and `onSettle(index)` are `detent`
+  (`'peek' | 'half' | 'full'`), `onDetentChange(detent)` and `onSettle(detent)`, because `globeFit()` takes a name.
+  Every move the traveller makes (a release, a tap on the handle, an accessibility step, Android's back) is reported
+  through `onDetentChange` at once, for the parent to pass back; a parent that changes `detent` on its own (a
+  country was chosen) moves the sheet and hears no `onDetentChange`. `onSettle` runs ONCE per move, when the spring
+  has come to rest (with the `sheetSnap` selection haptic), and not on mount; a spring that a finger or another spring
+  interrupts never reaches it. **The Home calls `globeFit` for the first frame itself.**
+- **Heights.** `detentHeight(d, g, rowHeight)` is exactly data-model section 7, rounded to whole dp: 212, 439 and 780 on the
+  390 by 844 reference phone with an 80 dp peek row (a 56 dp thumbnail in a card padded 12). `half` never comes within 120
+  dp of `peek`; every height is an integer from 640 to 932 dp windows. **If the heights change under a mounted sheet** (an inset
+  that arrives late, a resized window) the sheet is re-seated on the new height of the detent it is at or heading for, with no
+  spring and no report (nothing was chosen); until then `visible` would still hold the old height and the sheet would sit that far
+  from where it belongs. Pass `detents` as often as you like: only a change of the three numbers counts.
+- **Drawn by a transform.** The sheet is as tall as `full` plus a 64 dp skirt (the surface continues below the screen edge
+  so the rubber band never opens a gap) and sits at `translateY = full - visible`. A frame of dragging is ONE transform on the
+  UI thread and no layout; `useAnimatedStyle` is the only per-frame work.
+- **Gestures** (`sheet-pans.ts`; every callback is a worklet, and a test reads the Babel plugin's mark on each). Three pans:
+  `home-sheet-drag` (the 28 dp zone and the `header`), `home-sheet-handle-drag` (the 96 by 48 handle) and
+  `home-sheet-body-pan` (the body). A pan activates after 10 dp vertical and fails after 16 dp horizontal; the sheet
+  starts moving from where the pan activated (no jump). The release picks the nearest detent of where the sheet would rest
+  `0.2 s` ahead at the release velocity (`settleTarget`: a flick carries it on to the next detent in its direction and
+  never back), springs with `Motion.sheetSpring` handed the finger's velocity, and beyond `peek` and `full` the sheet is
+  rubber-banded (the iOS curve, never more than 48 dp).
+- **Body hand-off.** The body pan runs simultaneously with the list's own `Gesture.Native()` (`SheetScrollable` wraps the
+  scroller, `useSheetScroll()` gives its props: `scrollEnabled` (true only once the sheet has SETTLED at full, so it changes
+  once per settle), `bounces: false`, `overScrollMode: 'never'`, an `onScroll` that writes a shared value). Below full the
+  sheet takes every drag; at full it takes the finger only when the list is at its top and the finger moves DOWN, decided
+  again on every update: the drag passes to the sheet in the middle of a gesture when the list reaches its top (from that
+  point), and back to the list when the sheet is at full again and the finger keeps rising. Outside a `Sheet` both are inert,
+  so a list works on its own. **A spring in flight is stopped only when the sheet takes the finger** (`take`), never by a
+  finger that goes to the list: a flick up followed at once by a scroll leaves the spring to finish, so its settle comes and
+  `scrollEnabled` turns on (cancelled, the settle would never be reported and the list would stay switched off).
+- **Handle.** `home-sheet-handle` is a `Pressable` overlay (96 by 48 dp, over the first 48 dp, last in z-order) with the 36 by 5
+  grabber (`home-sheet-grabber`; 32 by 4 on Android), role `adjustable`, `accessibilityValue` `{ text: 'Peek' | 'Half' | 'Full' }`,
+  `accessibilityActions` increment ("More") and decrement ("Less"), the focus ring, and a press that cycles peek, half, full and
+  round to peek. **Back** (Android only, `useFocusEffect` from expo-router) steps from the detent the sheet is heading for and
+  leaves peek to the route; `handleBack={false}` switches it off.
+- **Reduced motion.** A release, a tap or a parent's change jumps with no spring and the settle still reports; the drag itself
+  still follows the finger. Ids: `home-sheet`, `home-sheet-overlay` (`pointerEvents="box-none"`), `home-sheet-handle`,
+  `home-sheet-grabber`, `home-sheet-body`; the contract's `home-sheet-body` is the body View, not the scroller.
+- **Under Jest.** RNTL 14's `render`, `rerender`, `unmount` and `fireEvent` are async: await them. `fireGestureHandler` drives the real
+  `GestureDetector` (`react-native-gesture-handler/jestSetup` at the top of the file); it always appends an END event, and a relation
+  such as `simultaneousWith` is held as the other gesture's handler tag once both are attached. `test/mocks/reanimated-live.ts` is the
+  Reanimated double for gesture suites: shared values that persist, styles read live, springs that finish on `__live.finish()`.
+- **Device only (T509, V3).** 60 fps over the live globe; the 96 by 48 hit area and a touch over the handle and the first row;
+  `Gesture.Native()` on a FlashList (the pattern is Gesture Handler's, FlashList's root is a class component that takes the ref);
+  on Android a ScrollView takes its scroll from incremental deltas, so a drag that goes down (taken by the sheet) and comes back
+  up may scroll the list by the distance the sheet is still short of full; the `increment` and `decrement` names on TalkBack;
+  the Worklets runtime accepting the captured JS callbacks (`announce`, `finish`) through `scheduleOnRN`; and one known narrow gap:
+  a finger that lands in the last dp of a spring up to full, pulls the sheet down and returns within the same gesture stops that
+  spring (the sheet took it), so `scrollEnabled` stays off until the next settle (any later drag fixes it).
+
+**`GreetingHeader`, `StatsRow`, `NowCard`, `NextRow`, `HomePeek`, `HomeHalf` (T535)** are `components/home/`; the model is
+`features/home/` (`homeTrips()`, `home-format.ts`, `home-copy.ts`, `useHomeTrips()`).
+
+- `GreetingHeader({ name, today, trailing?, onRecentre? })`: the date as an `eyebrow` (`today` is a local `YYYY-MM-DD`; the order
+  and spelling are the device's), "Hello, _name_" (`display`, the name a nested `accent` span, two lines at most, a heading), a slot
+  for the sync chip, and the 44 dp recentre control (`onSky`, "Recentre the globe") only when `onRecentre` is given. It does not hide
+  itself at full: the Home leaves it out. A Search icon is drawn in the prototype and is Tier 3: not drawn.
+- `StatsRow({ countries, trips, distanceKm, onOpenCountries, onOpenTrips })`: three `StatTile`s with a hairline between them and an
+  `AnimatedNumber` each (staggered 80 ms). `globe-stat-countries` is the plain number with "/195" beside it, `globe-stat-trips` is
+  new, **`globe-stat-distance` is the plain distance and the unit is the label ("Kilometres" or "Miles"), so a 36 dp numeral has the room**
+  (it also shrinks to fit, `adjustsFontSizeToFit`); from seven digits a figure is compact ("1.26M"). The names are "14 of 195
+  countries", "22 trips" and "61,480 kilometres travelled" (final values, from the first render). Countries and trips are buttons; the
+  kilometres are not. At a font scale of 1.15 and above the row is a column with the hairlines across. **Flow 03 reads
+  `globe-stat-distance` as `[0-9,.]+ (km|mi)`: T538 changes it to `[0-9,.]+`.**
+- `NowCard({ trip, compact?, onPress })`: ONE button (`Card`, hint "Opens the trip") named "Portugal Road Trip, active, day 3 of 8, in
+  Sintra"; a 64 dp thumbnail (56 compact), the title (`callout`, two lines, one compact), "Day 3 of 8 . Sintra" with the coral live
+  dot, and a strip of the stops in four shapes (done filled, now a ring, next a thin ring, later a grey ring; at most 12 dots around
+  the traveller and "+N"). With no live trip it is the next planned trip ("Jan 2027 . in 94 days", no strip). `NextRow({ trip,
+onPress })` is a `Tappable` with a 48 dp thumbnail, the flag chip and the same planned line. The thumbnail (`trip-thumb.tsx`) is the
+  photograph's thumbnail or the generated cover (also when the file will not draw), hidden from assistive technology.
+- **Deviation, peek:** the prototype draws a chevron-up on the peek card; the card opens the trip, so it keeps the chevron-right.
+- `HomePeek({ now, onOpenTrip })` is the compact `NowCard` with `paddingEnd` 68 for the round button, or nothing (the invitation is
+  the screen's); `HomeHalf({ totals, now, next, onOpenCountries, onOpenTrips, onOpenTrip })` is the figures, the card and the row,
+  16 dp apart. `homeTrips()` picks the live trip that began first (ties by id), else the soonest planned one as `now`, and the soonest
+  planned one beside a live one as `next`; a planned trip with no stop has no date and is never shown.
+- Local and read-only. The new queries are `stopsRepository.allWithNamesQuery` (stops with the city name and the country code, null when
+  not cached) and `geographyRepository.countriesQuery`; `lib/locale` gains `distanceFigure()` (the number and the unit apart), which
+  `formatDistance` is built on.
+
+**`country-summary.ts`, `CountriesList`, `CountryRow`, `ProgressRing` (T536).**
+
+- `features/passport/country-summary.ts`: `summariseCountries(trips, countries, today)` gives one `CountrySummary` per country with a
+  placed stop (the same predicate as `travelSummary`) named from the `countries` cache; `groupByContinent`, `continentsVisited`,
+  `worldTotals`, `filterCountries` (case and accents folded), `recentVisits`, `focusOf`. Beyond the data model: **`planned`** (every stop is
+  still ahead; the row says "Planned 2027", never "First visited"). `isNow` is the active trip's current stop (the last placed stop that
+  covers today); **a day between two stops names no country**. `focus.bounds` runs the short way round across the date line (east longitude
+  past 180). **A country this device has no `countries` row for still counts in the figure (it is `travelSummary`'s) but cannot be listed.**
+  `useCountryOverview(trips, today?)` reads the cache through one live query.
+- `CountriesList({ overview, onSelectCountry, onCollapse, contentInsetBottom? })`: the heading and the collapse control
+  (`countries-collapse`), `Field` search "Search countries" (`countries-search`; a visible label, so the field is the 56 dp of the kit's
+  Field), the ring card (`countries-summary-card.tsx`: "14 of 195", "4 of 7 continents . 19 trips", read as one element; the stamps of
+  the two newest visits are decoration and are left out at large text), then a FlashList (`getItemType` is the item's type) with `stickyHeaderIndices` on the
+  continent headers ("Europe, 9 countries", a heading; FlashList pins a SECOND copy, which is hidden from assistive technology and has no
+  id). `Unknown` is shown as "Other". States: "No countries yet", and "No countries match ..." with "Clear search". Ids: `countries-list`,
+  `countries-search`, `countries-collapse`, `countries-ring`, `countries-stamps`, `countries-stamp-<iso2>`, `countries-header-<continent>`.
+- `CountryRow({ country, onSelect })`: 60 dp minimum, `country-row-<iso2>`, named "Portugal, 3 trips, first visited 2021" (", now" at the end),
+  hint "Shows it on the globe"; pressing it calls `onSelect(summary)` and nothing more: lowering the sheet to half and the fly-to are T537's.
+- `ProgressRing` (`components/ui/progress-ring.tsx`): a `sand` track and a coral arc from the top, round caps, a middle slot, decoration.
+  **It is drawn at once, not animated** (the arc is a dash with an offset, the form an animated ring needs).
+- The unresolved-id ratchet (`test/fixtures/testid-unresolved-count.json`) went from 80 to 86 test ids and from 51 to 56 accessibility
+  labels: the new helpers forward id props and the card names are composed from data. No existing id changed.
+- Tests (all red first): 72 for the sheet (19 pure, 53 against the real `GestureDetector`), 9 for the ring, 44 for the country summary
+  (including 4 against a real SQLite database), 62 for the Home content and the list (greeting, figures, cards, rows, list, list in a
+  sheet), 38 for the Home trips model, words and hook, and one each for `distanceFigure`, `countriesQuery` and `allWithNamesQuery`.
+
+---
+
+## C5-24. Globe layers (inside `components/globe/`)
+
+All inside the ONE `MapView`; geometry code untouched (FR-082). Each has a Jest stand-in tag.
+
+| Component / hook        | Role                                                                                                                                    | Gate and tests                                                                     |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `basemap-config.ts`     | the `StyleImport` config object from `GlobeStyle` tokens and the theme; allow-listed keys only                                          | key allow-list test (T505); `colorAdminBoundaries`, `colorGreenspace`              |
+| `AtmosphereLayer`       | `<Atmosphere style>` from tokens; opaque colours                                                                                        | V2 device check                                                                    |
+| `VisitedCountriesLayer` | `VectorSource` country boundaries, `FillLayer` + keyline `LineLayer` (and the amber dashed planned keyline), worldview filter, ISO list | filter built by a pure function; asserts the worldview clause                      |
+| `GraticuleLayer`        | static GeoJSON every 30 degrees; opacity fades out above zoom 4                                                                         | pure geometry test                                                                 |
+| `GradientArcLayer`      | `lineMetrics` source, one Feature per leg, `lineGradient` over `line-progress` from the `GlobeColors` stops                             | stops gated (C5-11); the shared hit source is unchanged                            |
+| `RoundelLayer`          | `SymbolLayer` + `Images` for pins; `symbolSortKey` by status rank (active last); dots beyond about 60                                   | falls back to dots without view-shot (V2)                                          |
+| `ActiveCallout`         | ONE `MarkerView`: tag (white, radius 16, 220 dp maximum, title one line, "Day 3 of 8 · Sintra") and Reanimated pulse rings              | flips side near an edge (12 dp margin); still under reduced motion; announced once |
+| `useIdleSpin`           | `linearTo` chain, 5 s per 20 degrees, every stop condition of FR-019                                                                    | timer spied through `setInterval`, as AGENTS.md says                               |
+| `useGlobeActions`       | `accessibilityActions` of the map view: next trip, previous trip, recentre, open countries                                              | FR-017                                                                             |
+
+---
+
+## C5-25. Passport components
+
+| Component      | API                                     | Look and rules                                                                                                                                                                                               | Accessibility and ids                                                           |
+| -------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `Stamp`        | `spec: StampSpec`, `size`, `landing?`   | `react-native-svg`, viewBox 120 by 120, `TextPath` circular text, code 25 to 30 pt in display 700, wear `<Mask>`, rotation, `multiply` in light and normal in dark; `landing` plays the stamp animation once | `accessible={false}`; the parent is labelled "Stamp: Portugal, 12 October 2026" |
+| `GhostStamp`   | `size`                                  | dashed `border` outline, no text; the empty-passport and zero-stop art                                                                                                                                       | hidden from AT                                                                  |
+| `PassportCard` | `totals: PassportTotals`, `periodLabel` | radius 24, the passport gradient (C5-10), 20 dp padding, two-column grid of `numeral`s (one column at font scale 1.15 and above), "1.5× around the Earth" line, a watermark glyph, an MRZ line (decorative)  | id `passport-card`; announced as one summary in words                           |
+| `StampsPage`   | `stamps: StampSpec[]`, `visitedCount`   | `surfaceSecondary` page with a notch, hairline, two columns with the second shifted 20 dp, ghosts for the first unvisited slots, "14 of 195"; rasterised stamps past about 100                               | id `stamps-page`                                                                |
+| `PeriodSwitch` | `periods: PassportPeriod[]`, `selected` | a `SegmentedPill` ("All time", "2026", "2025")                                                                                                                                                               | id `passport-period`                                                            |
+
+---
+
+## C5-26. Photos
+
+| Component       | API                                       | Look and rules                                                                                                                                                                                                                                                               | Accessibility and ids                                                                                                                                                    |
+| --------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DayHeader`     | `day`, `place`, `count`                   | `numeral`-size date (36), `callout` place, `label` "Wed · Oct · 14 photos"                                                                                                                                                                                                   | a heading                                                                                                                                                                |
+| `PhotoMosaic`   | `photos`, `onOpen`                        | grid of three 114 dp columns (gap 4) with a 2 by 2 lead tile and, past nine, a last tile "+N"; radius 16 on the image only; `recyclingKey`; thumbnails only; **no tint and no shadow**                                                                                       | each tile named with its place and time (existing `photo-tile` naming)                                                                                                   |
+| `UploadState`   | `state`, `onRetry`                        | on the thumbnail: queued (dashed ring and cloud-up), uploading (ring spinner), uploaded (a check for 2 s then nothing), failed (`danger` pill "Retry" with an alert icon) in a 24 dp `scrimButton` disc                                                                      | keeps `photo-status-icon` and its text equivalents; a failed tile is a button                                                                                            |
+| `UploadSummary` | `uploading`, `total`, `failed`, `onRetry` | a 56 dp tonal capsule "Uploading 2 of 5 · 1 failed" with a ring spinner and "Retry"                                                                                                                                                                                          | ONE live region; id `photos-upload-summary`                                                                                                                              |
+| `PhotoViewer`   | existing props                            | full screen `Modal`; the photo on its own colour (an `expo-image` `blurRadius` backdrop, no backdrop filter), zoom, double-tap, swipe between, pull down to close; the existing detail block (place and time, refile `ChipGroup`, retry, delete with `Alert`, Close) beneath | keeps `photo-viewer`, `photo-viewer-modal`, `photo-viewer-image`, `photo-viewer-place`, `photo-viewer-mismatch`, `photo-viewer-error`, "Close photo", `photo-file-<key>` |
+
+---
+
+## C5-27. Expenses, notes, documents, offline maps
+
+| Component         | Look and rules                                                                                                                                                                                                                                                                              | Ids kept                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `SpendingHero`    | "Spent so far" `label`, the currency sign (display 28) and the total (`numeral` at 56 / 56 in display 700, tabular, may shrink with `adjustsFontSizeToFit`), a tonal capsule "€281 / day · Day 3 of 8", the rate line with an info icon ("Converted at today's rate · as of 14 Oct, 09:00") | `summary-total`, `summary-rates`, `summary-pending`, `spending-summary`, `expenses-toggle-summary` |
+| `DayBars`         | one bar per day: radius 12 top, `sand` with a `border` outline for past days, `ink` for today, dotted baseline for empty days; labels date over amount (tabular); **no budget line**                                                                                                        | `expenses-day-bars`                                                                                |
+| `CategoryBar`     | 12 dp bar, radius full, 2 dp gaps; legend of swatch, name, amount; four category inks from the stamp and accent tokens; each category also has its icon in the rows (never colour alone)                                                                                                    | `expenses-category-bar`                                                                            |
+| `ExpenseRow`      | 48 dp category roundel (icon on a tint), title (the note or the category), "Category · City", amount right-aligned tabular; group header "Wed 14 Oct · Today" with the day total                                                                                                            | `expenses-screen`, `expenses-add`, `expenses-write-error`                                          |
+| `NoteCard`        | radius 16, `surfaceSecondary` + hairline, title or preview (3 lines), "16:12 · Sintra", a `SyncBadge` glyph                                                                                                                                                                                 | `notes-screen`, `notes-add`, `notes-write-error`                                                   |
+| `DocumentTicket`  | like `TicketCard`: a 44 dp `surface` circle with the type icon (plane, bed, document), kind (`caption`), title (`callout`, 2 lines), one detail, a stub with the day numeral and month; two notches                                                                                         | `documents-screen`, `documents-add`, `documents-privacy`, `document-view-screen`                   |
+| `OfflineCityCard` | restyled: 64 dp thumb, city, size, a "Download" or "Downloaded" pill (44 dp), progress ring; `StorageBar` (12 dp, used and free in MB)                                                                                                                                                      | `offline-maps-screen`, `offline-storage`, `offline-status-<id>`, `offline-unplaced`                |
+| `AreaHeader`      | Back (`HeaderBackButton`, round), title (`title`), subtitle line `label` "Trip · N things", `PrivacyChip` on Expenses and Documents; used under the native header of each pushed screen                                                                                                     | `<area>-screen` ids as today; the title ids (`documents-title`, `photos-title`, …)                 |
+| `AreaFab`         | the screen's one primary add action, extended, 16 dp above the safe area, `lift2`; hides while the keyboard is up                                                                                                                                                                           | `photos-add`, `photos-take`, `notes-add`, `expenses-add`, `documents-add`                          |
+
+---
+
+## C5-28. States
+
+| Component                                                                | Look and rules                                                                                                                                                                               |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Skeleton`, `SkeletonGroup` (kit)                                        | `skeleton` fill, shimmer `skeletonHighlight` at 1.4 s; ONE `progressbar` region per skeleton, shapes hidden; static under reduced motion; a photograph skeleton carries a pin glyph          |
+| `TripListSkeleton`, `TripDetailSkeleton`, `AreaSkeleton`, `HomeSkeleton` | shaped from the real geometry (hero 16:10, ticket, rows; hero, status row, four tiles, day chips, three stops)                                                                               |
+| `EmptyState`                                                             | `variant: 'ghost-stamp' \| 'frames' \| 'plain' \| 'filtered'`, `title`, `detail?`, `action?`; never a primary when a screen already has one; the existing strings are kept                   |
+| `ErrorState`                                                             | words, alert icon, `danger` ink, a secondary "Try again" where a retry exists                                                                                                                |
+| `Banner`                                                                 | `tone: 'offline' \| 'error'`, a slim non-blocking row: `amberTint` and `amberInk` for offline, `dangerTint` and `danger` for error, icon, text, an underlined action; role `alert` for error |
+| `Toast`                                                                  | over the HeroUI Toast: `toastSurface`, `toastInk`, one 44 dp action in `accentPress`, a 3 dp countdown bar, radius 16, `lift2`, above the pill; announced politely; auto-dismiss 5 s         |
+| `PermissionState`                                                        | the camera and photographs denial screens restyled: icon, words, "Open Settings" secondary                                                                                                   |
+
+---
+
+## C5-29. Forms
+
+`FormSheet`, `FormModal`, `FormActions`, `InlineError` keep the 004 contracts and ids (`<id>-body`, `<id>-footer`,
+`<prefix>-cancel`, `<prefix>-save`); they take the Sunrise look: 28 dp top radius, a 36 by 5 dp `grab` handle
+(32 by 4 on Android), `Cancel` in `ink` (text variant), the title centred (`callout` in the bar, `headline` as
+the heading), the footer opaque with a hairline, `Save` the single primary. The keyboard-visibility test
+(`test/helpers/keyboard.ts`) is still written for every form (004 rule 8). The stop editor adds `RoutePreview`
+(a `StopStrip` of the trip's stops plus the new one, and "Stop 3 · 322 km from Sintra") and `NightsStepper`
+(two 44 dp circular buttons and the figure; changing it moves the departure date; ids
+`stop-editor-nights-minus`, `stop-editor-nights-plus`) beside the unchanged `stop-editor-arrive` and
+`stop-editor-depart`.
+
+---
+
+## C5-30. `AnimatedNumber`, haptics
+
+```tsx
+<AnimatedNumber value={14} format={Intl options} role="numeral" />
+```
+
+Renders the final text at once under reduced motion; otherwise counts up once per appearance (C5-9) and always
+sets `accessibilityLabel` to the FINAL formatted value. `useHaptics()` exposes `selection`, `impact(light |
+heavy)`, `success`, `warning`, `error`, each a no-op under reduced motion or where unsupported (map: D5-14).
+
+---
+
+## Review rules for new adapters
+
+1. Function under 50 lines, file under 800, nesting under 4, no debug output.
+2. A failing test first: accessible name required, `testID` forwarded, busy and disabled semantics,
+   largest-text rendering (scale 2), reduced-motion behaviour, four themes.
+3. No literal colour or gradient; no import of the kit, Phosphor, glass, zoom or view-shot outside the folders.
+4. A tappable surface names its cue (chevron, icon or label) at 3:1.
+5. No 20 percent soft fill under text (the gate measures the fixed tints).
+6. A focus ring is drawn with the 2 dp offset gap of surrounding neutral.
+7. Only `ink` text on a `pressed` fill. A soft chip sits on `surface` or `surfaceSecondary` only.
+8. Text on a photograph sits on the caption scrim and is `onPhoto`; a control on a photograph sits on a
+   `scrimButton` disc; a grid thumbnail or the viewer carries no overlay.
+9. A component with a fixed height is a bug: use a minimum and let it grow.
+10. A component never fades the glass pill by opacity.
+
+---
+
+## As built (T523): Scrim, GeneratedCover, stamps, AnimatedNumber, haptics
+
+Branch `feat/005-adapters-visual`. Everything is in `apps/mobile/src/components/ui/` except the hash
+(`src/lib/fnv1a.ts`) and the haptics (`src/hooks/use-haptics.ts`). 313 new tests, written red first.
+
+### `Scrim` (`scrim.tsx`), C5-10 and C5-19
+
+```tsx
+<Scrim kind="top" | "bottom" | "sky" style? testID? />
+<Scrim kind="caption" style? contentStyle? testID?>{text}</Scrim>
+<Scrim kind="cover" palette={0 | 1 | 2} style? testID? />
+```
+
+- **The only gradient consumer.** The values stay data in `src/theme/scrim.ts` (`scrimSpec`, `Sky`, `Passport`,
+  `withAlpha`); `scrim.tsx` writes no number of its own. It paints with React Native 0.86's
+  `experimental_backgroundImage` in its **typed object form**: an array of linear gradients (`direction`, then
+  `colorStops` of `{ color, positions: ['44%'] }`) and radial ones (`shape`, `size`, `position`, `colorStops`), so no
+  gradient _string_ exists outside `src/theme/` at all. Read in `processBackgroundImage.js` of `react-native`
+  (`Libraries/StyleSheet`): the object form needs no parsing, hex with alpha (`#RRGGBBAA`) is a valid stop, a bad stop
+  drops the whole gradient (so the tests read every stop back), and layers are listed top first, as in CSS. Uniwind
+  maps a CSS `background-image` onto this very style (`css-processor/rn.js` in `uniwind/dist/module/bundler`); the
+  adapter sets the style directly because the alphas are computed from tokens, not written into a stylesheet.
+  `expo-linear-gradient` is not installed (Batch 2, D5-19) and nothing needs it; no stacked-alpha fallback was built.
+- **Kinds.** `top` is the 120 dp band pinned to the top edge (alpha `.68` held to 44 percent, then to nothing);
+  `bottom`, `sky` and `cover` fill their parent (`StyleSheet.absoluteFill`: React Native 0.86 has no
+  `absoluteFillObject`); `caption` is a column of a 48 dp ramp and a block that **wraps the children** (a minimum,
+  never a height, so it grows with large text and the alpha under any line is at least `minUnderText` at every text
+  scale). `contentStyle` is the block's, where its padding belongs; `style` is the container's. A caller `style` is
+  applied last.
+- **`cover` is a fifth kind** (the contract lists four): `GeneratedCover` and, later, the passport card need a
+  gradient and `scrim.tsx` is the only file the ESLint rule exempts. It draws the passport's amber corner
+  (`Passport.glow`, alpha .20) over a 135 degree gradient between `cover1..3Start` and `End` of the theme's palette.
+  The prototype's cover glow is .62; that value is not a token, so it was not invented here (see "Needs from the
+  token layer").
+- **Theme.** `useAppearance()`: `prefersMoreContrast` picks the darker scrims, the colour scheme the sky (the
+  contrast themes keep the base sky), `themeName` the cover stops. Read live.
+- **Behaviour.** `pointerEvents="none"`, `accessibilityElementsHidden` and `importantForAccessibility` `"no-hide-descendants"` on every gradient View; the caption's ramp is hidden, its block is not (the text is read)
+  and its container is `box-none`. A hidden node is not found by a default query: tests use
+  `includeHiddenElements`.
+- **The contrast test** (`scrim.test.tsx`, 52 tests) reads the stops back from what the component renders and
+  composites them over the gate's `WHITE_PHOTO` (`test/theme/palette-gate-support.ts`) in all four themes: white
+  (`onPhoto`) holds 4.5:1 (7:1 in the contrast themes) in the top scrim's status-bar zone (0 to 44 percent), in the
+  bottom scrim from its 55 percent stop down, and at every position of the caption block (alpha never under
+  `minUnderText`); on the **sky** the text is `ink` and `muted` (never white), measured on every linear stop and at
+  each glow's peak over the gradient at its centre. A mutation (the block's last stop at .30) fails five tests.
+
+### `GeneratedCover` (`generated-cover.tsx`), C5-19, FR-008
+
+```tsx
+<GeneratedCover palette={coverPalette(trip.id)} iso2="PT" initial="Portugal Road Trip" thumb? style? testID? />
+coverPalette(seed: string): 0 | 1 | 2     // fnv1a32(seed) % 3: pass the trip id, or the title with no id
+coverGlyph(iso2, initial): string         // the code in upper case, else the first letter of the title
+```
+
+A `Scrim kind="cover"` gradient, the country code as a ghost glyph (120 dp Bricolage Bold, `onPhoto` at 16 percent,
+bottom corner), a dashed stamp outline (two SVG rings, top corner, tilted -10 degrees), all clipped to
+`absoluteFill` so it fills the frame of the photograph it replaces. `thumb` is the row form: the code only, 40 dp, in
+**opaque** `onPhoto` (text on a picture is never alpha). It is decoration, hidden with its descendants. **The flag
+chip is not drawn by the cover**: in the prototype frames (`trips-nocover`, `trip-nocover`) the flag sits in the
+caption row over the cover exactly as over a photograph, so the card draws it once (`FlagChip`, T520); FR-008's
+"flag chip" is met at the card. `generated-cover.test.tsx` (32 tests) re-measures white on both stops of the three
+palettes in all four themes from the rendered gradient.
+
+### `fnv1a32` (`src/lib/fnv1a.ts`)
+
+The 32-bit FNV-1a of the UTF-8 bytes of a string (a lone surrogate counts as U+FFFD instead of throwing), integer
+arithmetic only, pinned to the published vectors (`''` is `0x811c9dc5`, `'foobar'` is `0xbf9cf968`). It did not
+exist before; the stamp and the cover share it.
+
+### Stamps: `stamp-spec.ts`, `stamp-wear.ts`, `stamp-layout.ts`, `stamp.tsx`, `stamp-in.tsx`
+
+```ts
+stampSpec(iso2, firstVisit /* 'YYYY-MM-DD' */, top?): StampSpec
+// { iso2, shape, ink, rotationDeg, wear, perforated, top, date }
+stampDateText(isoDate, locale?)    // '12 OCT 2026' (en-US 'OCT 12, 2026'): upper case, Intl, local calendar day
+stampLabel(place, isoDate, locale?) // 'Stamp: Portugal, 12 October 2026': what the PARENT says
+```
+
+```tsx
+<Stamp spec size={124} testID="stamp" />
+<GhostStamp size={96} rotationDeg={0} testID="ghost-stamp" />
+<StampIn tiltDeg={spec.rotationDeg} play={true} style? testID="stamp-in"><Stamp spec={spec} /></StampIn>
+```
+
+- **`stampSpec` is `deriveStamp` of data-model section 4**, in `components/ui/` because `Stamp` consumes it and the
+  adapter layer must not import from `features/`; the passport feature (T556) chooses the country, the earliest
+  arrival and the city, and calls it. `h = fnv1a32(ISO2 + '|' + day)`, `shape = SHAPES[h % 6]`, `ink = INKS[(h >>> 3) % 4]`, `rotationDeg = ((h >>> 7) % 17) - 8` (never `-0`), `wear = (h >>> 12) % 4`, and
+  `perforated` is bit 15. `top` (a city or the country, upper case, cut to 16 whole characters, `ARRIVAL` when empty) and the
+  formatted date are **not** part of the hash. Pinned by seven golden rows computed with an independent
+  implementation of the formula, by 240 pairs asked twice and in reverse order (SC-016 asks for 200), and by 1,000
+  pairs that reach all 24 shape and ink combinations, all 17 tilts and all four wear masks.
+- **`Stamp`**: the six shapes of the prototype's `stampSVG` in a 120 by 120 `viewBox`, the ink one of
+  `stampCoral|Navy|Teal|Green`, the outer ring heavy (dashed `7 5` when perforated; the scallop's dotted ring is
+  already perforated) and the inner rings fine. The circle writes its top and its date on two arcs and the scallop
+  its top on one (`TextPath`, `startOffset` 50 percent, `textAnchor` middle); the others write on lines. Each line
+  is **fitted to its room by arithmetic** (`fitLabel`: the letter spacing closes up first, then the size shrinks,
+  never under 6.5; width is estimated as characters times 0.64 em plus the spacing), because SVG text ignores
+  Dynamic Type. The text is the embedded Bricolage Bold: the family name is read from the `--font-display-bold`
+  variable with `useCSSVariable` and `fontFamilyOf` (the name differs by platform and `global.css` spells both;
+  no name is written in the component), with `fontWeight="normal"` so a weight-named family is not emboldened
+  twice. The box is tilted by the spec's degrees and blends with `mixBlendMode` `multiply` in the light themes
+  and `normal` in the dark ones. Ids come from `useId()`, stripped to letters and digits, so two stamps never share
+  a mask or an arc.
+- **The wear is baked path data, not a PNG (a deviation from D5-08's "four grayscale PNGs").** Each of the four
+  textures is ONE path: the whole box followed by 130 specks, 26 chips, 7 blotches and 5 scratches (about 8.7 kB
+  and 4 to 5 percent of the box), cut by a seeded integer generator (`mulberry32` over `fnv1a32('stamp-wear-<n>')`),
+  clamped to the box and drawn with `fillRule="evenodd"` in `onPhoto` as the shape of an SVG `<Mask>` in user-space units. One path is one node however many holes, which answers D5-08's objection to a
+  mask of 100 circles, and it removes the risk that spike V5 was written for: a mask whose `<Image>` fails to draw
+  on a platform would hide the WHOLE stamp, whereas a mask of shapes cannot fail that way. No binary asset ships.
+  A guard test fails the build if `stamp.tsx`, `stamp-layout.ts` or `stamp-wear.ts` ever mention a filter
+  (`feTurbulence`, `feDisplacementMap`, `feMorphology`, `<Filter`), which draw nothing in 15.15.4.
+- **Decoration (FR-076).** A stamp and a ghost are `accessible={false}`, hidden with their descendants and
+  `pointerEvents="none"`. The parent is labelled with `stampLabel`. `GhostStamp` is the dashed outline of the
+  prototype (`r` 54, dash `7 6`, round caps, and a fine inner ring, in the `border` token), no text, no wear, no
+  blend.
+- **`StampIn`** (the separate wrapper the brief asks for; the contract's `landing?` prop on `Stamp` is not built):
+  a Reanimated layout animation, `entering` with a `Keyframe` from scale 1.6, rotate `-14 - tiltDeg` degrees and
+  opacity 0 to scale 1, rotate 0 and opacity 1, easing out cubic, `Motion.stampLandMs` (200 ms; the contract says
+  180 to 220). The stamp holds its own tilt in its style, so the wrapper turns from `-14 - tiltDeg` to 0 and the two
+  never fight over `transform`. At the landing it plays `useHaptics().stamp()` once (a timer cleared on unmount, not
+  restarted by a re-render, withdrawn if reduced motion comes on mid-flight). `play` is read at mount: the screen
+  decides "earned in the last seven days and not yet landed this session" and keeps its own once-per-session set.
+  With reduced motion, or `play={false}`, there is no animation, no timer and no haptic. The 2 dp settle of C5-9 is
+  not built.
+- Tests: `stamp-spec` 30, `stamp-wear` 17, `stamp-layout` 13, `stamp` 45 (over a `react-native-svg` stand-in that
+  keeps every prop), `stamp-render` 9 (the real library draws every shape in every ink, with a real `TextPath` where
+  the shape has one), `stamp-in` 12.
+
+### `AnimatedNumber` (`animated-number.tsx`, `count-up.ts`), C5-30, D5-11
+
+```tsx
+<AnimatedNumber value={14} format? locale? delay? duration? variant="numeral" containerStyle? accessibilityLabel? testID? {...Text props} />
+```
+
+- **The prop is `variant`, not the contract's `role`**: `role` is a React Native accessibility prop, and `variant`
+  is what `Text` calls it. The roles on offer are the display ones (`numeral`, `display`, `title`, `headline`,
+  `callout`) because only Bricolage has `tnum`; both texts get `fontVariant: ['tabular-nums']` whatever the role.
+- **Counts 0 to `value` once per mount** in `Motion.countUpMs` (700 ms), eased out (`1 - (1 - t)^3`, the curve of
+  `Easing.out(Easing.cubic)` written out), and on a new `value` counts on from the figure last drawn; `delay` is the
+  80 ms stagger. A value that is not a number is 0.
+- **The engine is a small interval, not a Reanimated shared value (a deviation, within the options the brief gives
+  and D5-11 names).** The digits are an ordinary `Text`, so every frame needs the JavaScript thread anyway and a
+  UI-thread clock would only add a worklet hop per frame; a `TextInput` with animated props flickers on Android
+  Fabric and announces nothing, so it is not used. The interval runs at about 30 frames a second (`FRAME_MS` 33),
+  only while a count is under way, and takes its progress from `Date.now()`, never from a tick count, so a slow
+  frame costs smoothness and not time. No Reanimated import means a screen that shows a figure needs no Reanimated
+  double in its test (the global stand-in of `jest.setup.ts` has no `useSharedValue`).
+- **Assistive technology hears the final value once.** The visible text's `accessibilityLabel` is the final
+  formatted value from the first render (`accessibilityLabel` replaces it, e.g. "14 of 195 countries"), no frame
+  changes it, and nothing is a live region.
+- **No layout shift.** While counting, the figure (absolute, over the box) lies on an invisible copy of the FINAL
+  text that sizes the box and is hidden from assistive technology (so it is read once); every text style applies to
+  both, `textAlign` included, and `containerStyle` lays the box out. Under reduced motion there is a single `Text`
+  with the final text on the first render and no timer.
+- **Figures follow the device**: `Intl.NumberFormat` with `deviceLocale().languageTag` (or `locale`), a whole
+  number unless `format` asks for more; one formatter per locale and options is cached (Hermes constructors are
+  slow); a locale `Intl` refuses is read as English. Compact notation (`notation: 'compact'`, "1.26M") is the
+  caller's `format`; Hermes support for it is a device check. For non-negative figures.
+- **Testing a screen that shows one**: `testID` is the visible figure (`<testID>-width` the keeper,
+  `<testID>-container` the box). The first render draws `0`; ask for reduced motion (`prefersLessMotion: true` in the
+  mocked `useAppearance`) to read the final text at once, or drive the clock with
+  `test/helpers/captured-interval.ts` (`captureIntervals()` captures the component's own interval and `tick()` runs
+  a frame; Jest's fake clock does not coexist with Testing Library's async `render` across the tests of a file here).
+- Tests: `count-up` 23 (easing, `countUpValue`, `formatFigure` in en, de, fr and an unknown locale, `useCountUp`
+  through a captured interval), `animated-number` 27.
+
+### `useHaptics` (`src/hooks/use-haptics.ts`), D5-14, FR-062
+
+`const haptics = useHaptics()` returns a `SemanticHaptics`: the original `selection`, `success`, `warning` plus
+`tap`, `select`, `sheetSnap`, `tabChange`, `error`, `stamp` and `impact('light' | 'heavy')`. **`Haptics` is still
+the three-name type** (`button.tsx` reads `keyof Haptics`, and three test doubles implement it), so no sibling's
+file stops compiling; `SemanticHaptics extends Haptics` is what the hook returns.
+
+| Name                       | iOS and the fallback | Android (`performAndroidHapticsAsync`) |
+| -------------------------- | -------------------- | -------------------------------------- |
+| `tap`, `impact('light')`   | `impactAsync(Light)` | `Virtual_Key`                          |
+| `select`, `selection`      | `selectionAsync()`   | `Segment_Tick`                         |
+| `sheetSnap`                | `selectionAsync()`   | `Segment_Tick`                         |
+| `tabChange`                | `selectionAsync()`   | `Virtual_Key`                          |
+| `success`                  | `notificationAsync`  | `Confirm`                              |
+| `warning`                  | `notificationAsync`  | `Long_Press`                           |
+| `error`                    | `notificationAsync`  | `Reject`                               |
+| `stamp`, `impact('heavy')` | `impactAsync(Heavy)` | `Long_Press`                           |
+
+- Android uses the platform constants where `performAndroidHapticsAsync` exists (it does in expo-haptics 57.0.3:
+  `Haptics.d.ts` and the v57 reference, "Supported platforms: Android"; it needs no VIBRATE permission and the
+  docs prefer it to the `Vibrator` the other calls simulate); an Android client without it falls back to the
+  cross-platform call. The constants are looked up when played, so a client without the `AndroidHaptics` enum cannot
+  break an import (several suites mock `expo-haptics` with their own factory). `Segment_Tick`, `Virtual_Key` and
+  the rest are the starting point of device check V6 (T512); there is no heavy-impact constant, so `warning` and
+  `stamp` share `Long_Press`.
+- **Silent under reduced motion** (read live; the object is stable while the setting does not change), every device
+  failure swallowed (a synchronous throw, a rejection, a missing enum), fire and forget.
+- **Debounced 80 ms per name, per hook instance** (D5-14 says "debounced 80 ms"): the same name asked again within
+  80 ms by the same component is dropped, `select` and `selection` are one name, and different names never silence
+  each other (a failure right after a tap is felt). It is per instance and not module-wide on purpose: a module
+  window leaks between the tests of a file and between two components that happen to fire together.
+- Tests: `use-haptics-map.test.ts` 42 (the whole map on both platforms, the fallback, silence, swallowing, the
+  debounce); the original `use-haptics.test.ts` (13) passes unchanged.
+
+### Verified from source, and what only a phone can say
+
+- Read in `node_modules`: `experimental_backgroundImage` and its object form in `react-native` 0.86.3
+  (`processBackgroundImage.js`, `StyleSheetTypes.d.ts`); `TextPath` and `Mask` props in `react-native-svg` 15.15.4;
+  `performAndroidHapticsAsync` and `AndroidHaptics` in `expo-haptics` 57.0.3; the `Keyframe` builder in
+  `react-native-reanimated` 4.5.1. All the new components and hooks (`Scrim`, `GeneratedCover`, `Stamp`,
+  `GhostStamp`, `StampIn`, `AnimatedNumber`, `useCountUp`, `useHaptics`) compile under `babel-plugin-react-compiler`
+  1.0.0 with 0 bail-outs and 0 skips (its logger, over a throwaway script that was deleted); Jest does not enable the
+  compiler itself, so the suites test the uncompiled source, as 004 and the T506 spike noted.
+- **Device-only checks** (the doubles prove the request, not the pixels): (1) **V5**: `TextPath` draws the embedded
+  Bricolage on both platforms (and the `fitLabel` estimate of 0.64 em per capital), the evenodd wear mask applies on
+  both, `mixBlendMode: 'multiply'` on Android, and a passport of 100 stamps scrolls (else rasterise, D5-08);
+  (2) **V6**: the Android haptic constants, and `Intl` `notation: 'compact'` on Hermes; (3) that layered
+  `experimental_backgroundImage` (radial over linear) draws top layer first on both platforms, the caption block
+  and ramp meet without a seam, and the cover and sky glows look like the prototype's; (4) the landing's `Keyframe`
+  with an array `transform` plays as drawn, and the thud lands with it; (5) AnimatedNumber at 30 frames a second on a
+  mid Android phone, with three figures at once.
+
+### Needs from the token layer (not changed here)
+
+- A `CoverGlow` (or a `cover` entry in `scrim.ts`) if the prototype's .62 amber corner is wanted on generated
+  covers; the cover uses the passport's .20 glow today.
+- `scrim.ts`'s `Sky`, `Passport` and `Glow` types are `readonly number[]` after `deepFreeze`, not the tuple types
+  they declare; the adapter takes the structural type it reads (`centre[0]`, `centre[1]`).
+
+## As built (T521, T522)
+
+Branch `feat/005-adapters-surfaces`. Every adapter below restyles a 004 adapter in place (same file, export names,
+props, roles, states and testIDs) or is new; the call sites are untouched. Facts about the kit are read from
+`node_modules/heroui-native/src` and re-checked against the real kit in `test/ui-kit/surfaces-real-render.test.tsx`,
+`field-chip-real-render.test.tsx` and `states-real-render.test.tsx`.
+
+### Kit facts verified from source
+
+- **Surface and Card** (`styles/components/surface.css`): the root has `padding: 16`, `border-radius: var(--radius-3xl)`,
+  `box-shadow: var(--shadow-surface)` and `overflow: hidden`; `variant` is `default`, `secondary`, `tertiary` or
+  `transparent` (fills `surface`, `surface-secondary`, `surface-tertiary` = the Sunrise `pressed`, none). The real kit
+  puts `surface__root` and `surface__root--variant-<name>` first and our classes after them. `ListGroup` is a Surface
+  too and takes the same `variant`.
+- **Input, Label, FieldError, Description**: the input draws `ios:outline` / `ios:focus:outline-accent` and, on Android,
+  `android:border-transparent` until focus, which is why `Field` keeps the focus state itself. `Label.Text` takes
+  `className`; `FieldError` and `Label` render a child that is an element as written (`childrenToString` answers `null`
+  for an element), so an alert may hold an icon and its words.
+- **Skeleton and SkeletonGroup**: the root fill is a 30 percent mix of `muted` (replaced by `bg-skeleton`); shimmer
+  defaults to 1500 ms and takes `animation.shimmer.{duration, highlightColor}`; `variant="none"` is a static bone;
+  a Bone outside a `SkeletonGroup` throws (the group's context is strict); the animation reads `ReduceMotion.System` and
+  the provider's `animation: 'disable-all'` through the kit's context.
+- **Toast**: the root is a `View` with `role="status"`, `aria-live="polite"` and `aria-atomic`; the provider's default
+  duration is 4000 ms and an explicit `id` is shown once; the root renders its children twice (the second, invisible
+  copy measures the height); the provider's `toast` object changes with its stack; `Toast.Action` is a `Button`
+  (`sm` 40 dp, `md` 48 dp); `.toast__root` is `bg-overlay`, 16 dp padding, radius 3xl, `overflow: hidden`.
+
+### API as built
+
+| Adapter                                                                                          | Public API as built                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Card`                                                                                           | `variant: 'lift' \| 'tile' \| 'flat'` (default `lift`; the 004 `raised` is `lift`), `overMap?`, `pending?`, `radius?: 'md' \| 'lg' \| 'xl' \| 'sheet'` (default 24 dp for `lift`, 16 dp for `tile` and `flat`), `onPress?`, `cue?`, `innerClassName?`, `innerStyle?` (the surface inside a pressable card), the rest as 004; `cardClasses(look)` exported |
+| `useLiftStyle`, `lift.ts`                                                                        | `useLiftStyle(name \| null)`: the device scheme and the "no lift" case over `liftStyle` of `lift-style.ts` (T519), which maps a lift to `boxShadow` from the `Lift` token, or `elevation` on Android below API 28; the only shadow an adapter draws                                                                                                       |
+| `ListGroup`, `ListRow`                                                                           | as 004; the group is a cream `tile` (24 dp, hairline, no shadow); `ROW_MIN_HEIGHT` 60 dp, scaled by the font scale; `ROW_PRESSED_CLASS` kept                                                                                                                                                                                                              |
+| `StatTile`                                                                                       | `value: string \| number \| ReactElement`, `of?`, `unit?`, `label`, `icon?: IconKey`, `onPress?`, `disabled?`, `busy?`, `accessibilityLabel?`, `testID?`, `valueTestID?`; `statTileName()` exported                                                                                                                                                       |
+| `AreaPill`                                                                                       | `icon: IconKey`, `label`, `count: number \| string`, `private?`, `warn?`, `onPress`, `disabled?`, `busy?`, `testID?`; `areaPillName()`, `AREA_MIN_HEIGHT` exported                                                                                                                                                                                        |
+| `reflow.ts`                                                                                      | `REFLOW_FONT_SCALE` (1.15), `isLargeText(fontScale)`, `areaColumns(fontScale)` (4, or 2 from 1.15)                                                                                                                                                                                                                                                        |
+| `Field`                                                                                          | the 004 props unchanged; `FIELD_MIN_HEIGHT` 56 dp; `fieldMinHeight(fontScale, lines?)` exported                                                                                                                                                                                                                                                           |
+| `FormActions`                                                                                    | as 004 (ids `<prefix>-cancel`, `<prefix>-save`); Save `grow`s, Cancel keeps to its label                                                                                                                                                                                                                                                                  |
+| `InlineError`                                                                                    | as 004                                                                                                                                                                                                                                                                                                                                                    |
+| `ShimmerGroup`, `Bone`, `PhotoBone`, `useSkeletonMotion`, `wholeCount`                           | `skeleton.tsx`: the kit's group with the 1.4 s shimmer (`variant="none"` and `animation="disable-all"` under reduced motion), one placeholder box (`bg-skeleton`), a photograph's placeholder with a pin glyph                                                                                                                                            |
+| `TripListSkeleton`, `TripDetailSkeleton`, `AreaSkeleton`, `HomeSkeleton`                         | `screen-skeletons.tsx`; `SkeletonRegionProps` (`label`, `testID`) plus `rows?` (list, area), `hero?` (detail), `discRadius?`, `discCentreY?`, `greetingName?` (home); defaults `trips-skeleton` / "Loading trips", `trip-skeleton` / "Loading trip", `area-skeleton` / "Loading", `home-skeleton` / "Loading your globe"                                  |
+| `EmptyState`                                                                                     | the 004 props plus `variant?: 'plain' \| 'ghost-stamp' \| 'frames' \| 'filtered'` (default `plain`: what every call site had) and `action.primary?`; `StateBox`, `Detail` exported                                                                                                                                                                        |
+| `ErrorState`, `LoadingState`, `LoadingRegion`, `ListSkeleton`, `TripCardSkeleton`, `RowSkeleton` | as 004 (`LoadingRegion` gains `className`); shapes now `ShimmerGroup` and `Bone`                                                                                                                                                                                                                                                                          |
+| `Banner`                                                                                         | `tone: 'offline' \| 'error'`, `message`, `action?: { label, onPress, testID?, busy? }`, `testID?`; ids `<testID>`, `<testID>-message`                                                                                                                                                                                                                     |
+| `Toast`, `useToast`                                                                              | `useToast()` returns a stable `{ show({ message, action?: { label, onPress, testID? }, id?, durationMs? }): string, hide(id?) }`; `Toast` is the body the kit renders; `TOAST_DURATION_MS` 5000; ids `toast-<id>`, `toast-<id>-countdown`                                                                                                                 |
+| `PermissionState`                                                                                | `icon: IconKey`, `title`, `detail?`, `onOpenSettings`, `settingsLabel?` ("Open Settings"), `settingsTestID?`, `alternative?: StateAction`, `testID?`, `accessibilityLiveRegion?`                                                                                                                                                                          |
+
+### Where the build differs from the contract text above
+
+1. **`ListGroup` is cream, not `surface`**: the prototype's settings groups are `surfaceSecondary` with a hairline, and a
+   white group on the white canvas of the light themes would have only its edge to stand on. The contract's "rows on
+   `surface`" is read as "rows on the group's own fill".
+2. **`Card` `flat` draws no fill** (the contract's "none"; 004's flat kept the surface fill). `overMap` is the opaque
+   `surface` with the hairline (`border-separator`) and the second lift, whatever the variant; the 004 `border-border`
+   and "no shadow over the map" are gone (C5-18). `pending` is `border-amber-line`, dashed.
+3. **A pressable card's children keep their own tones while held**, so a `muted` line on the pressed fill is 6.68:1 in
+   `light-contrast` (the pair `test/ui-kit/pressed-fills-chip-row-card.test.ts` already pins). `ListRow`, whose text the
+   adapter owns, turns its description to the ink while held, as review rule 7 asks.
+4. **`StatTile`**: `accessibilityLabel` is optional (composed as "14 of 195 countries"; required when `value` is an
+   element, such as `AnimatedNumber`); `valueTestID` lands on the numeral because `globe-stat-countries` is "the plain
+   number"; a pressable tile defaults its glyph to `chevron-right`, and the glyph (the default or the caller's `icon` key) is 16 dp in
+   the `duotone` weight, the one C5-8 gives the stat tiles.
+5. **`AreaPill` is a `Card variant="tile"`** (so its pressed fill and focus ring are the card's) named with the lock and
+   the warning in words ("Expenses, 842 EUR, only you can see this"). The lock is the `lock` key, 16 dp in the `aquaInk`
+   tone, on a 20 dp aqua-tint disc in the corner of the tile; `PrivacyChip` (T520) is the capsule for a line of words and
+   is not reused for it.
+6. **`Field`** draws its focus ring, fill and invalid boundary from state in the style (outline width 0 at rest) and does
+   not rely on the kit's platform-specific `focus:` classes; the label stays in the ink while invalid; the multiline
+   padding is 12 dp (`py-3`, 24 dp of a floor) and the floor 56 dp.
+7. **`HomeSkeleton` takes the disc as props** (`discRadius`, `discCentreY`) because `globeFit()` (T531) does not exist yet;
+   the screen passes `globeFit('half')`. The sky behind it is the screen's `Scrim`.
+8. **`EmptyState` art is drawn in `state-art.tsx` with plain views** (a dashed circle for `ghost-stamp`), not the SVG
+   `GhostStamp` (T523): an empty state does not wait for the SVG layer, and swapping it is one component.
+9. **`Toast` is 5 seconds** (the contract), not the prototype's 10; `durationMs` overrides it. How far it sits above the
+   pill is the provider's `toast.insets.bottom` in the root layout, set once, not each toast's. The action is the kit's
+   `Toast.Action` (a 48 dp ghost `Button`) with an `accent-press` label, not a `Tappable`, because a pressed fill from
+   `Tappable` would be a light patch on the navy toast.
+10. **Icon keys** (the T518 registry; no `{ ios, android }` name is left in these files): `AreaPill` `lock` (aquaInk), the
+    icon of each pill is the caller's key; `Banner` `wifi-off` (amberInk) for offline and `cloud-off` (danger) for a sync
+    error; `Field` `alert` (danger, `ALERT_ICON`) beside an error and `info` (muted) beside the helper text;
+    `StatTile` `chevron-right` (`CHEVRON`) or the caller's key, `duotone`; `PhotoBone` and the empty `frames` `map-pin`;
+    the empty `filtered` art `search`; `PermissionState`'s glyph is the caller's key (`camera`, `images`). The registry has
+    no camera with a slash, no cloud with an exclamation mark and no magnifier with a cross, which the prototype draws
+    for the denial, the sync error and no-results art: `camera`, `cloud-off` and `search` stand in (a one-line key each
+    if the owner wants them).
+11. The kit stand-in (`test/mocks/heroui-native.tsx`): `Label` is a pressable root with a `Label.Text` part; `Toast` mirrors
+    the kit's `status` role and polite live region (it was `alert`); `mockToast.show` and `hide` accept arguments.
+12. `lift.ts` is only the hook: the one mapping from a lift to a style is `lift-style.ts` (T519), which the icon buttons and the
+    sync chip already used; the first version of this branch carried its own copy, now removed.
+
+### Not done here, and why
+
+- No screen was migrated: `Banner`, `Toast`, `PermissionState`, the screen skeletons, `StatTile` and `AreaPill` have no call
+  site yet (T529, T536 to T548, T553 to T559). `components/globe/**` and `components/trip/**` are untouched except three
+  test files of the globe cards that pinned the 004 classes.
+- `Toast` still needs the provider's `insets.bottom` and the one-line `GestureHandlerRootView` check on a device.
+
+### Device-only checks
+
+- A `boxShadow` on a kit Surface that has `overflow: hidden` (the lift) is drawn outside the card on iOS and on Android
+  9 and later; the `elevation` fallback below Android 9.
+- `border-separator`, `shadow-none` and our other utilities beat the kit's component classes (`surface__root`,
+  `list-group__item`, `label__text`) in Uniwind, as `bg-surface` did in 004 (the real-render tests prove the order of the
+  strings, not the cascade).
+- The Field focus ring (2.5 dp, 2 dp gap) on both platforms, with the sheet's keyboard up; the invalid boundary and the
+  ring together.
+- The skeleton shimmer at 1.4 s in `skeletonHighlight`, still under reduced motion and under the provider's
+  `animation: 'disable-all'`; the hero pin glyph.
+- The toast: announced once by VoiceOver and TalkBack (the kit renders the root twice, the second copy invisible and
+  `pointerEvents="none"`), the countdown bar shrinking toward the start edge in a right-to-left layout, the Undo target.
+- `StatTile` at font scales 1, 1.15, 1.5 and 2 in four themes (the row layout), `AreaPill` four across at 390 dp.
+
+## As built (T531 to T533)
+
+Branch `feat/005-home-globe`. The globe stays ONE `MapView` and its geometry, connections, journey legs, statistics and
+camera rules are untouched (FR-082; SC-014): the arcs, `journey.ts`, `great-circle.ts`, `camera.ts`, `terrain-layers.tsx`,
+`use-arc-press.ts` (and so `tripIdFromPress`), the hit source `globe-arcs` with its four layers, and `globe-markers` are as
+they were. What was added is style layers, a pure fit helper, the pins and the callout, and the layout around the map
+(`logoPosition`, `attributionPosition`, a camera handle). Every Mapbox prop name below was read from the installed
+`@rnmapbox/maps` 10.3.5 typings (`src/utils/MapboxStyles.ts` and `src/components/*.tsx`), not recalled.
+
+### Mapbox facts verified from source and documentation
+
+- **`Atmosphere`** takes `style: AtmosphereLayerStyle` with `color`, `highColor`, `spaceColor`, `horizonBlend` and
+  `starIntensity` (also `range` and `verticalRange`, not set); it has no `id`, so the Jest tag is `mapbox-Atmosphere`.
+- **`VectorSource`** takes `id` and `url`; its layers (`FillLayer`, `LineLayer`) take `sourceLayerID`, `slot`
+  (`'bottom' | 'middle' | 'top'`, "v11 only"), `filter`, `aboveLayerID` and `belowLayerID`. **A layer takes its source from
+  the source that is its DIRECT parent**: `ShapeSource` and `VectorSource` clone `sourceID` into their children
+  (`cloneReactChildrenWithProps`, which flattens arrays and skips fragments), so a wrapper component between a source and
+  its layers leaves the layer on the default source. The gradient and country layers are therefore built by plain
+  functions, not by components.
+- **`ShapeSource.lineMetrics`** exists; `LineLayerStyle.lineGradient` is typed `Value<string, ['line-progress']>`. A
+  layer with `aboveLayerID` waits for that layer if it is not in the style yet (Android `RNMBXLayer.addAbove` calls
+  `mapView.waitForLayer`; the iOS counterpart was not read). The tap query of a `ShapeSource` is
+  `queryRenderedFeatures` over THAT source's own layer ids (`RNMBXMapView.handleTapInSources`), and among touchable sources
+  the one with the highest layer wins, so a second source with `onPress` (the pins) takes a tap on a pin from the sources
+  below it.
+- **Mapbox Countries v1** (`docs.mapbox.com/data/tilesets/reference/mapbox-countries-v1/`): tileset
+  `mapbox://mapbox.country-boundaries-v1`, one source layer `country_boundaries`, `iso_3166_1` the alpha-2 code (plus the
+  unofficial `XK` and `XS`), `disputed` the text `'true'` or `'false'`, `worldview` `'all'` or a comma-separated list of
+  `AR CN IN JP MA RU TR US`, "it is important to apply a worldview filter to all your style layers". The filter built is the
+  documented one: `all(disputed == 'false', any(worldview == 'all', 'US' in worldview), iso_3166_1 in [codes])`.
+- **`Images`** takes `images: { [key]: ImageEntry }`; an entry is a URI string or `ImageEntryData` (`url`, `scale`, `sdf`,
+  `stretchX`, ...), which is what a captured file needs: `{ url, scale: PixelRatio.get() }`. `SymbolLayerStyle` has
+  `iconImage`, `iconAllowOverlap`, `iconIgnorePlacement`, `symbolSortKey`, `iconSize` and `iconEmissiveStrength`;
+  `CircleLayerStyle` has `circleSortKey`.
+- **`MarkerView`** takes `coordinate`, `anchor: { x, y }` (0 to 1), `allowOverlap`, `pointerEvents` (`'none'` and
+  `'box-none'` let a touch through to the map) and ONE child element. **`MapView`** takes `logoPosition` and
+  `attributionPosition`, typed by `OrnamentPositonProp` (an unexported name, with a typo, reached through
+  `ComponentProps<typeof MapView>`), and has `async getPointInView(coordinate)`. **`CameraStop.padding`** is
+  `{ paddingTop, paddingBottom, paddingLeft, paddingRight }`, all four required.
+- **Reanimated 4.5.1 CSS animations**: `Animated.View` takes `animationName` (a keyframes object), `animationDuration`,
+  `animationTimingFunction`, `animationIterationCount: 'infinite'` and `animationPlayState: 'running' | 'paused'` in its
+  `style` (`src/css/types/animation.ts`): declarative, on the UI thread, no shared value, so the callout's pulse needs
+  nothing the Jest stand-in lacks. `expo-image` (v57 reference) has `onDisplay: () => void` ("called when the image view
+  successfully rendered the source image"), which is what the roundel capture waits for; `onError` hands over a native
+  event (`{ nativeEvent }`). `react-native-view-shot` 5.1.0 `captureRef(view, { format, result })` keeps the view's own
+  pixel size when no `width` or `height` is given.
+
+### API as built
+
+| Module                                                                       | Public API as built                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `features/globe/globe-fit.ts` (T531)                                         | `globeFit(detent, windowWidth, headerBottom, sheetTop, windowHeight): GlobeFit`; `globeFitCamera(detent, fit, { animated? }): CameraFitSettings \| null` (null at `full`); `SheetDetent`, `FitPadding`, `GlobeFit`, `CameraFitSettings`, `GlobeFitRules`, `FIT_REFERENCE_RADIUS`                                                         |
+| `constants/theme.ts` (T532, T533)                                            | `GlobeStyle[scheme]`: `water`, `greenspace`, `adminBoundaries`, `graticule`, `graticuleOpacity`, `atmosphere { color, highColor, spaceColor, horizonBlend, starIntensity }`, `callout { surface, title, detail, liveDot }`; `GlobeLayers`: `countries`, `graticule`, `worldScaleZoom`, `pins`, `callout`; `type GlobeScheme`             |
+| `components/globe/basemap-config.ts`                                         | `basemapConfig(scheme, worldScale)` (one frozen object per pair), `BasemapConfigs`, `BasemapWorldScaleLabels`, `BasemapStreetLabels`, `BasemapScheme`, `BasemapConfig`, `BasemapLabelToggles`                                                                                                                                            |
+| `AtmosphereLayer`, `GraticuleLayer`, `use-world-scale.ts`                    | `<AtmosphereLayer scheme />`, `<GraticuleLayer scheme />` (static `features/globe/graticule.ts`, `graticule(step)`), `useWorldScale(): { worldScale, onMapIdle }`                                                                                                                                                                        |
+| `VisitedCountriesLayer`, `country-filter.ts`                                 | `<VisitedCountriesLayer scheme visited planned />` (draws nothing, loads no tile, for two empty lists), `countryFilter(codes, worldview?) \| null`, `COUNTRY_WORLDVIEW_CLAUSE`; `features/globe/country-codes.ts`: `countryCodes(trips, today): { visited, planned }`                                                                    |
+| `GradientArcLayer`, `gradient-arcs.ts`                                       | `<GradientArcLayer arcs journey palette />`; `gradientCollection`, `gradientFilter`, `gradientStops`, `arcGradientStyle`, `GRADIENT_ABOVE`                                                                                                                                                                                               |
+| `pin-features.ts`, `PinLayer`, `RoundelLayer`, `useRoundels`, `RoundelStage` | `pinCollection`, `PIN_RANK`, `ROUNDEL_LIMIT`, `pinImageKey`, `roundelRequests`, `splitPins`; `<PinLayer split bitmaps palette onPress />` (the `<PinDotLayer>` and `<RoundelLayer>` it is made of are exported too); `useRoundels(pins, covers, { enabled?, scheme?, capture?, limit? }): { split, bitmaps, stage }`; `<RoundelStage />` |
+| `components/ui/view-capture.ts`                                              | `captureViewToFile(ref): Promise<string>` (`CaptureView`), the only import of `react-native-view-shot`                                                                                                                                                                                                                                   |
+| `ActiveCallout`, `callout-layout.ts`, `use-callout-placement.ts`             | `<ActiveCallout coordinate title detail side? maxWidth? ringSize? running? onCardLayout? />`; `calloutPlacement(pin, card, area, { ringSize }): { side, maxWidth }`; `useCalloutPlacement({ map, coordinate, area, ringSize }): { side, maxWidth, refresh, onCardLayout }`                                                               |
+| `GlobeView`                                                                  | the 003 props plus `logoPosition?`, `attributionPosition?`, `liveTrip?: { tripId, title, detail }`, `calloutArea?: { top, bottom }`, `covers?: Record<tripId, uri>` and `ref?: Ref<GlobeHandle>` (`GlobeHandle.setCamera(settings)`)                                                                                                     |
+
+Stacking, bottom up: Standard basemap, then in the `bottom` slot the graticule, the visited fill, the visited keyline and the
+planned keyline; terrain; the journey (casing, line, **gradient**); the arcs (casing, past, **past gradient**, planned,
+active, **active gradient**); the stop markers; the pins; the beacons; the callout. The solid past, active and journey lines
+stay under their gradient as its fallback.
+
+### Where the build differs from the contract text above
+
+1. **`globeFit` takes `windowHeight`** (a fifth parameter): the padding that centres the padded view on the planet needs
+   the window's height, which `(detent, windowWidth, headerBottom, sheetTop)` cannot give. `padding` is
+   `{ top: max(2 centreY - H, 0), bottom: max(H - 2 centreY, 0), left: 0, right: 0 }`.
+2. **`zoomDelta` is `log2(radius / FIT_REFERENCE_RADIUS)`, not `log2(freeBand / fullHeight)`**, clamped so
+   `GlobeCamera.zoomLevel + zoomDelta >= minZoomLevel`. The planet's radius doubles with each zoom level
+   (`FIT_REFERENCE_RADIUS` is `512 * 2^zoom / (2 pi)`, 215 dp at the default 1.4), so the zoom that realises a radius is the log
+   of its ratio. The contract's literal form leaves out the 0.95, the clamps and the margin cap, and on an 844 dp phone puts
+   both peek (band 522) and half (band 295) under the 1.0 floor, so the planet would be the same size at every detent.
+3. **The peek radius is also capped at `windowWidth / 2 - 20`**: the cap of 175 is the 20 dp margin on the 390 dp reference
+   phone only; at 360 dp it would leave 5 dp, which SC-018 forbids, so a narrow phone loses radius, not margin (160 at 360).
+4. **`centreX` is the middle of the window at every detent.** The prototype's 205 for half is its canvas's own offset; the
+   data model keeps horizontal padding at 0, so the camera cannot realise it.
+5. **`GlobeColors` is unchanged** (its stops were in T513/T514); the new tokens are the separate `GlobeStyle` and
+   `GlobeLayers`, because `test/theme/atlas-values.test.ts` reads every `GlobeColors` value as a hex string.
+   `constants/globe-basemap.ts` is folded into `GlobeStyle` and deleted. The callout card is navy on white in both themes (the
+   prototype's), so it does not use the adaptive text tones; the roundel's ring is that same white.
+6. **`GradientArcLayer` also draws the journey legs** (as past), with its own layers above the solid ones, and a gradient
+   status `journey` in the one `globe-arc-gradients` source. Planned connections keep their dashed layer in the hit source.
+   A leg split at the date line is a `MultiLineString` whose parts each run the whole ramp.
+7. **Stops now carry `countryIso`**: `stopsRepository.allWithPlaceQuery` joins `countries` (`country_iso`) and `GlobeStop`
+   has an optional `countryIso`. A stop is visited from the day it begins and planned before; a country both visited and
+   planned is visited. The statistics still count by `country_id` and still count a planned trip's countries (FR-082).
+8. **Planned countries have a dashed keyline and no fill** (contract C5-11 gives a fill only to visited countries).
+9. **The label toggles of D5-04 are applied from the settled zoom** (`useWorldScale`, `GlobeLayers.worldScaleZoom` 5), and
+   sent back on explicitly, because Standard's configuration keeps an omitted key's old value.
+10. **The callout's text is given, not derived**: `liveTrip: { tripId, title, detail }`, since "Day 3 of 8 · Sintra" needs the
+    trip's days (T544) and the city's name, which `GlobeTrip` does not carry. The pin is the live trip's resting stop. A card
+    that has no room on any side is NARROWED to the side with the most room (down to 96 dp, its text ellipsising) instead of
+    being shifted, so the edge of the screen never cuts it off. Its side comes from where the map says the pin is
+    (`getPointInView`, asked when the camera settles, never per frame).
+11. **The pin is a trip's resting stop and a tap on it opens the trip through the shared handler**; the roundel path is
+    `GlobeLayers.pins.roundelsEnabled`, a typed `boolean`, `false`.
+
+### Desk checks (no device, 2026-10-12)
+
+`npx jest --ci --maxWorkers=3`: 242 suites, 6,769 tests green (3 skipped), 385 of them in the files this work touched or
+added; `npx tsc --noEmit` and `npx eslint . --max-warnings=0` are clean (the React Compiler lint rule included);
+`node scripts/testid-baseline.mjs --check` holds without regenerating the unresolved-id ratchet (the callout's ids are
+written as literals the extractor reads); `npx expo export --platform android --no-minify` exits 0 with "React Compiler
+enabled", 5,312 modules (5,286 at T518: the new files) and a 13 MB Hermes bundle. The test-first red runs were observed for
+each task before its code: a missing module for T531, a missing module and a missing token group for T532 and T533.
+
+### Not done here, and why
+
+- **Home integration** (T537): nothing in `src/app/**` or `components/home/**` passes `logoPosition`, `liveTrip`,
+  `calloutArea` or `covers`, calls `globeFit` or `GlobeHandle.setCamera`, or supplies the trip covers and the "Day N of M"
+  text; `useIdleSpin` and `useGlobeActions` (contract C5-24) are T537's. The old stats and empty-state overlays are as they were.
+- The roundel path is complete and tested through the stand-ins but OFF: its badges are laid out off screen by
+  `RoundelStage`, at most `GlobeLayers.pins.captureBatch` (12) at a time, and a badge that cannot be captured stays a dot.
+
+### Device-only checks (V2, T508)
+
+- `Atmosphere` overrides Standard's own fog at globe zoom; `spaceColor` with alpha 0 is or is not see-through (it is opaque
+  here); the atmosphere, the visited fill, the keylines and the gradient arcs read in day and night, and the starting
+  `GlobeStyle` colours are tuned there.
+- A layer with `aboveLayerID` lands directly above its reference on iOS as it does on Android, and the gradient reads as one
+  ramp per leg; a dashed keyline over a vector tileset draws on both platforms.
+- The planet's real radius at a zoom against `FIT_REFERENCE_RADIUS` (the cos-latitude growth of Mapbox's globe is not
+  modelled), the camera padding and zoom at 640 and 932 dp (V3, T509), and the logo and attribution above the sheet.
+- A `MarkerView` on the far side of the planet is culled; the callout's mirror trick lays out the same on both platforms; the
+  card's lift (a `boxShadow` inside a marker); the pulse at 2.4 s while the map animates.
+- A hidden view laid out at `left: -2000` captures correctly on iOS and Android with `expo-image` inside it, with the
+  right colours and at the device's pixel density (the `scale` of the `Images` entry), a dashed ring on a circle draws
+  on Android, and sixty symbols with `symbolSortKey` keep the live trip on top. Until then the dots are what ships.
+
+## As built (T526 to T530)
+
+Branch `feat/005-chrome`. The tab pill, the Android navigation bar, the headers, the sync state and the tabs layout. Files
+are under `apps/mobile/src/components/navigation/`, `components/ui/`, `components/sync/`, `features/sync/`, `hooks/` and
+`constants/`. 432 tests in the 22 suites that were added or changed (tests and code land together in each of the five
+commits); the whole mobile suite is 242 suites and 6,673 tests green, 3 skipped as before, with `tsc`, ESLint
+and the id ratchet clean.
+
+### Public API
+
+| Module                                           | Exports                                                                                                                                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `navigation/tab-bar.tsx`                         | `TabBar(props: BottomTabBarProps)`: `AndroidNavBar` when `Platform.OS` is `android`, else `TabPill`. The one export the layout renders                                                                              |
+| `navigation/tab-pill.tsx`, `tab-capsule.tsx`     | `TabPill`, `TabCapsule` (`routeName`, `index`, `count`, `trackWidth`)                                                                                                                                               |
+| `navigation/tab-surface.tsx`                     | `tabSurface({ os, liquidGlass, reduceTransparency, increasedContrast }): 'glass' \| 'blur' \| 'solid'` (pure), `TabSurface` (`children`, `style`)                                                                   |
+| `navigation/android-nav-bar.tsx`                 | `AndroidNavBar`                                                                                                                                                                                                     |
+| `navigation/tab-metrics.ts`                      | `PillMetrics`, `AndroidBarMetrics`, `pillBottomOffset(inset)`, `pillReportedHeight(height, inset)`, `capsuleLayout(trackWidth, count)`                                                                              |
+| `navigation/tab-inset-scope.tsx`                 | `TabInsetScope`: publishes the bar's reported height to a tab scene (the navigator's `screenLayout`)                                                                                                                |
+| `hooks/use-tab-inset.ts`, `tab-inset-context.ts` | `useTabInset()` (reported height plus 16 dp; 0 above the tabs), `tabInsetOf(height)`, `TAB_CLEARANCE`, `TabInsetContext`                                                                                            |
+| `constants/platform-shapes.ts`                   | `SheetHandle`, `sheetHandleOf(os)`, `FabShape`, `fabShapeOf(os, collapsed?)`                                                                                                                                        |
+| `ui/header-back-button.tsx`                      | `HeaderBackButton({ onPress?, canGoBack?, testID?, variant?: 'default' \| 'glass' })`                                                                                                                               |
+| `ui/stack-header.ts`, `header-title-style.ts`    | `stackHeaderOptions` / `useStackHeaderOptions(title)` (restyled), `roleSize(role)`, `useHeaderTitleStyle()` (callout size added)                                                                                    |
+| `ui/header-theme.ts`                             | `useTransparentHeaderTheme()`: `headerTransparent`, a transparent `headerStyle`, `onPhoto` tint, no shadow, canvas `contentStyle`                                                                                   |
+| `hooks/use-hero-collapse.ts`                     | `HeroMetrics`, `heroCollapse(offset, { heroHeight, topInset, reducedMotion? })` (pure worklet), `useHeroCollapse(scrollY, { heroHeight, topInset })` returning the animated styles `image`, `title`, `bar`, `scrim` |
+| `ui/scrim.tsx`                                   | a sixth kind, `<Scrim kind="fade" ground="canvas" \| "surface" style={{ height }} />`                                                                                                                               |
+| `features/sync/use-sync-chip-state.ts`           | `SyncChipState` (moved from `sync-chip.tsx`), `isOffline`, `deriveSyncChipState`, `useSyncChipState()`, `useIsPushing()`                                                                                            |
+| `features/sync/record-sync-state.ts`             | `recordSyncState(record, pushing?)`: `'pending' \| 'syncing' \| 'failed' \| null` for `SyncBadge`                                                                                                                   |
+| `features/sync/sync-banner.ts`, `sync-copy.ts`   | `syncBannerOf(state)`: `{ tone, message, action? } \| null`; `SYNC_BANNER_COPY`, `describeChanges`                                                                                                                  |
+| `components/sync/sync-status.tsx`                | `SyncStatusChip`, `SyncStatusBanner` (id `sync-banner`): read the derived state, Retry is `syncNow('manual')`                                                                                                       |
+
+### Behaviour per platform
+
+| Aspect         | iOS                                                                                                                                                                                           | Android                                                                                                                                             |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tab bar        | floating pill, absolute, 16 dp from the sides, minimum 64 dp, `bottom = max(inset - 10, 12)`; surface by `tabSurface()`: glass on iOS 26, `BlurView` with an 84 percent `surface` tint, solid | full-width bar, absolute at the bottom edge, 64 dp of content plus the system inset (a minimum), `surfaceSecondary`, one hairline, no blur, no fade |
+| Selection      | one tinted capsule, `translateX` with the sheet spring (a jump under reduced motion), a filled icon, a heavier label                                                                          | a 56 by 32 dp indicator behind the icon (`accentTint`), a filled icon, a heavier label; nothing animates                                            |
+| Reports        | `height + bottomOffset` through `BottomTabBarHeightCallbackContext`                                                                                                                           | its measured height (the inset is inside it)                                                                                                        |
+| Fade           | `Scrim kind="fade"`, 48 dp, canvas (surface on Home)                                                                                                                                          | none                                                                                                                                                |
+| List header    | large title, Bold at 40, collapsing to SemiBold 17                                                                                                                                            | standard header, title Bold at 28 from the left                                                                                                     |
+| Back           | round control, 44 dp, named "Back"; `glass` over a photograph                                                                                                                                 | the same (the 44 dp disc reaches 48 dp with slop)                                                                                                   |
+| Handle and FAB | `SheetHandle.ios` 36 by 5, a 52 dp pill                                                                                                                                                       | `SheetHandle.android` 32 by 4, a 56 dp rounded square of radius 16                                                                                  |
+
+The chip state precedence (each a test): the network gone is `offline`; a cycle running with records waiting is `syncing`
+(over the failure it is retrying); a cycle that could not connect is `offline`; a server failure is `failed` (Retry is
+offered even with nothing waiting); records waiting is `waiting`; none is `synced` and the chip draws nothing. The count is
+`is_dirty` rows across the seven tables, a photograph whose bytes have not arrived and a delete still to be sent
+included (`countUnsynced` leaves the first out because the upload queue counts it; a chip asking "is everything safe"
+must not).
+
+### Kit and router facts verified from source
+
+- **The navigator's layout** (`expo-router/build/react-navigation/bottom-tabs/views/BottomTabView.js`): a column of
+  `[screens (flex: 1), tabBar]`; an ABSOLUTE bar adds no height, so the scenes run under it. The tab bar element is
+  rendered inside `BottomTabBarHeightCallbackContext.Provider` (its value is the navigator's `setTabBarHeight`), and each
+  scene inside `BottomTabBarHeightContext.Provider`, around `descriptor.render()`: a `screenLayout` (which `Tabs`
+  accepts) therefore runs inside that provider, and `useBottomTabBarHeight()` answers in it. `test/app/tabs-layout.test.tsx`
+  proves the chain over the real navigator (a scene reads `bar-height` and `inset` = height + 16).
+- **`expo-glass-effect` 57** (docs v57 `sdk/glass-effect.md`): `GlassView` props are `glassEffectStyle` (`'clear'`, `'regular'`
+  or `'none'`, or `{ style, animate, animationDuration }`), `tintColor`, `isInteractive`, `colorScheme` (`'auto'`, `'light'`,
+  `'dark'`); an `opacity` of 0 on it or an ancestor makes it vanish (expo/expo#41024); `isLiquidGlassAvailable()` says only
+  that the app was built with the design (it may be true while the traveller has limited the effect), and
+  `isGlassEffectAPIAvailable()` guards some iOS 26 betas that crash: `TabSurface` needs both, and the reduced-transparency flag.
+- **`expo-blur`** (docs v57 `sdk/blur-view.md`): `intensity` 1 to 100 and `tint`; the tint is a translucent layer over the
+  blur; on Android the blur needs a `BlurTargetView` around what it blurs, which is why the Android bar has none. Under
+  Jest `BlurView` renders a `View` with the native adapter inside.
+- **`expo-network`** (docs v57 `sdk/network.md`): `useNetworkState()` starts as `{}`, and `isConnected` is false when the type
+  is `NONE` or `UNKNOWN`; on iOS `isInternetReachable` equals `isConnected`. Offline is therefore `isConnected === false` or
+  `isInternetReachable === false` or type `NONE`, and an unanswered hook is not offline.
+- **Native stack headers**: `headerLargeTitleStyle` and `headerTitleStyle` take `fontFamily`, `fontSize`, `fontWeight` and
+  `color`; `headerTitleAlign` is Android's. `headerLargeTitleEnabled` is the option (`headerLargeTitle` is deprecated).
+- **Jest**: `expo-router/testing-library` registers its own mock for `react-native-reanimated` when imported, resolved through
+  `react-native-reanimated/mock`, which cannot load without the worklets runtime and answers `{}`; a mapper entry in
+  `jest.config.js` points that path at `test/mocks/reanimated-app.ts`, and the library's real mock stays reachable as
+  `react-native-reanimated/mock.js` (`test/mocks/reanimated-full.ts`). Jest 30's `restoreAllMocks` restores spies only, so the
+  stand-in's `withSpring` mock survives it.
+
+### Where the build differs from the contract text above
+
+1. **Tab labels are `label` (14 / 20), not 12 / 14.** There is no 12 / 14 role in `typography.ts`, and the sanctioned way to a
+   heavier label is `label` with `strong`. The pill's inside (52 dp) and the Android bar's content (64 dp) hold it at the
+   default size with no growth, capped at 1.3.
+2. **The Android indicator is `accentTint`, not `accentTint` at 26 percent**: the tint is already a tint (`#FFE9E1` on cream, 16
+   percent coral in the dark themes), and 26 percent of it would vanish; the prototype's 26 percent is of the full coral.
+3. **The fade's ground is the canvas, except on Home where it is the surface** (the contract says `surface`): the lists and You
+   are painted with the canvas and the Home sheet with the surface, and the two differ in the dark themes. The ground is read
+   from the palette; no gradient value was added to `src/theme/scrim.ts`.
+4. **The Android bar is absolute too**, so scenes run under it and use the same inset, as the prototype's lists do; it is not
+   in the navigator's flow.
+5. **Glass has no hairline and no lift** (the native glass draws its own edge); blur and solid have both. One line each if V4 says
+   otherwise.
+6. **`useTabInset` reads a light context of its own**, not `BottomTabBarHeightContext`: `expo-router/js-tabs` loads the whole
+   router, which `Screen` and `ListScreen` (imported by nearly every screen) must not pay for.
+7. **`HeaderBackButton` no longer draws the word "Back"**; the control is round (a header of any width and text size holds it)
+   and its name is unchanged. The 004 tests of the word and of the font-scale hiding were replaced by tests of the disc.
+8. **The header tint is still the `accent` fill** (`useHeaderTheme`, `useStackHeaderOptions`): it reaches only the iOS "Plan a
+   trip" header action, which T541 removes; coral as text should be `accentText`, a one-line change if that action stays.
+9. **The trip layout keeps the opaque header** until T543 supplies the hero; `useTransparentHeaderTheme` and the glass Back are
+   ready and tested.
+10. **Keyboard**: the default React Navigation bar hides itself under the keyboard (`tabBarHideOnKeyboard`); neither of ours does.
+    Tab scenes open no keyboard today (forms are sheets above the tabs); a device check on Android covers an absolute bar and
+    `adjustResize`.
+
+### Needs from the token layer (not changed here)
+
+- None blocking. If the owners want the fade as data like the other scrims, `Scrim.fade` belongs in `src/theme/scrim.ts` (two
+  stops, nothing to the ground); the shared FAB and handle shapes are in `src/constants/platform-shapes.ts`, outside `src/theme/`.
+
+### Device-only checks left open (V4, T510, and the headers)
+
+- The glass pill renders on an iOS 26 phone, adapts to a bright sky and a night globe, keeps the labels legible, and needs (or
+  does not need) the hairline and the lift; the blur at intensity 60 (a starting value) on an earlier iPhone; the opacity-0
+  trap is avoided (a style test pins it, the device proves it).
+- The capsule's spring settles within 300 ms and reads as the sheet's; reduced motion jumps.
+- The Android bar's insets with gesture and three-button navigation, and that an absolute bar is not lifted by the keyboard.
+- The large title at 40 and its collapse (T408), the Android 28 title, the display faces on both.
+- `useHeroCollapse` under the real worklets runtime (the Jest stand-in runs it on the JS thread), the parallax and stretch
+  feel, and the glass Back disc over a bright photograph.
+- `boxShadow` on a glass view, and the lift of the blur and solid pills below Android 9 (`LiftElevation`).
+
+---
+
+## As built (T539 to T542): the trips list
+
+Branch `feat/005-trips`. Test-first: every pure derivation, adapter and screen below has its test file, observed red
+before the code (a module that did not exist, or a screen that did not match). Visibility posture of everything here:
+**private, local, never transmitted, nothing new stored** (FR-084, D5-17); the filter is component state.
+
+### Files
+
+| Area               | Files                                                                                                                                                                                                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Derivations (T539) | `features/trips/trip-card-model.ts` (card model, `buildTripCards`, `stopStrip`, `dayOfTrip`, `daysToGo`, ...), `trip-sections.ts` (`composeTripList` and its lookups), `use-trips.ts` (now returns `TripCardModel[]`), `use-today.ts` (the local day as state), `db/repositories/stops.ts` (`allActiveWithCountryQuery`) |
+| Words (T540)       | `features/trips/trip-card-copy.ts`, `formatMonthYear` in `trip-date-range.ts`                                                                                                                                                                                                                                            |
+| Components (T540)  | `components/trip/`: `trip-hero-card`, `ticket-card`, `trip-row`, `stop-strip`, `year-header`, `year-scrubber`, `trip-cover-art` (replaces `trip-cover-band`)                                                                                                                                                             |
+| Screen (T541)      | `app/(tabs)/trips/index.tsx`, `components/trip/trips-list-parts.tsx`, `use-tab-zone.ts`, `features/trips/use-trips-sync.ts`, `components/ui/plan-trip-fab.tsx`, `components/ui/list-screen.tsx` (additive props)                                                                                                         |
+| Removed            | `components/trip/trip-card.tsx`, `trip-cover-band.tsx`, `plan-trip-action.tsx` and `test/components/trip-card.test.tsx` (nothing imports them; their behaviour is in the new tests)                                                                                                                                      |
+
+### `TripCardModel` and `composeTripList` (T539), data-model section 6
+
+```ts
+interface TripCardModel extends TripSummary {   // every 004 field keeps its name: trip, stopCount, status, cover, dateRange
+  id: string; title: string;                    // trip.id, trip.title, flat as the data model names them
+  generated: { palette: 0 | 1 | 2; iso2: string | null; initial: string };   // fnv1a32(id) % 3
+  country: { iso2: string; name: string } | null;   // the first stop whose city is cached
+  lengthDays: number | null;                    // end - start + 1
+  dayOf: { day: number; of: number } | null;    // active only
+  daysToGo: number | null;                      // planning with dates only
+  strip: ('done' | 'now' | 'next' | 'later')[]; // one per stop
+  stripLabels: string[];                        // three letters of the city, '' when not cached
+  distanceKm: number;                           // the globe's own placedLegs, so list and globe agree (FR-082)
+  pending: boolean;                             // the trip or any stop is_dirty
+}
+composeTripList(trips, filter): TripListItem[]  // hero | ticket | row | yearHeader { year: number | 'none', tripCount, distanceKm }
+tripFilterCounts, tripSpan, tripItemType, tripItemKey, yearOfItems, listedYears, yearHeaderIndex, YEAR_SCRUBBER_MIN_TRIPS (200)
+```
+
+Order as built: hero (earliest-arrival active trip), ticket (earliest-start planning trip WITH dates), further active trips
+as rows, then year groups: "none" first (trips with no stops, newest created first), then years newest first, inside a year
+the newest start first. A tie keeps the order `useTrips` gave (most recently changed first). A header counts the rows UNDER it
+(the hero and the ticket are not counted again under their year, as the prototype's "2026 · 1 trip · 9,380 km" shows). The
+filter is applied before composition, so "Planned" has its own ticket. On a day of transfer the later stop is `now`; an earlier
+stop that overlaps it is `done`.
+
+`useTrips` reads the stops WITH their city and country (`stopsRepository.allActiveWithCountryQuery`, in the globe's leg order)
+and, like `useGlobe`, keys that read on the city cache (`cityCountQuery`'s `updatedAt`), because `useLiveQuery` subscribes to the
+FROM table only; a city cached after the first render gives the card its flag on the next change. The cache query holds neither
+`loading` nor `error`: until a city arrives a card has no flag and the covers are generated. Referential stability: each field of a
+card is kept when deep-equal (`sameData`), a card when every field is, the list when every card is
+(`test/features/use-trips-cover.test.tsx` passes unchanged).
+
+### The cards (T540)
+
+| Component      | API                                       | As built                                                                                                                                                                                                                                                                                                                                                                                  |
+| -------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TripHeroCard` | `trip: TripCardModel`, `onPress`          | A `Tappable` (`feedback="ring"`) with the first lift; inside, a clipped 24 dp frame (`trip-card-<id>-frame`, minimum 219 dp): cover, `Scrim bottom`, a status row (`StatusChip` "Active · Day 3 of 8" and the `SyncBadge` text and icon, wrapping), and the caption scrim holding the flag and "Portugal · 3 stops" (eyebrow), the title (2 lines), the dates and nights, the `StopStrip` |
+| `TicketCard`   | `trip`, `onPress`                         | 88 dp thumb, text, 88 dp stub (`trip-card-<id>-stub`) with a 2 dp dashed `sand` edge and two canvas notches; at font scale 1.15 and above a column (thumb 88 dp high, stub a row under a dashed top edge, no notches). Pressed fill on its own surface                                                                                                                                    |
+| `TripRow`      | `trip`, `onPress`                         | 72 dp minimum, 64 dp thumb (56 at large text) with a hairline, title (1 line, 2 at large text), "Japan · Mar 2026 · 9 days" with the flag, `PressCue`; a `StatusChip` under it for an active or planned row; `SyncBadge` when pending                                                                                                                                                     |
+| `StopStrip`    | `dots`, `labels?`                         | 12 dp dots in a 16 dp halo box, a 2 dp link solid up to a done or current stop and dashed beyond; filled / thick ring with halo / ring 2 dp / ring 1.5 dp; labels only up to 5 stops; hidden from AT; ids `stop-strip`, `-dot-<i>`, `-halo-<i>`, `-link-<i>`, `-label-<i>`                                                                                                                |
+| `YearHeader`   | `year`, `tripCount`, `distanceKm`         | `headline` year + "N trips" + the distance (`formatDistance`, the device's unit); one heading "2026, 1 trip, 9,380 kilometres"; `bg-background` and a hairline for sticking; id `year-header-<year>`                                                                                                                                                                                      |
+| `YearScrubber` | `years`, `activeYear`, `onJump`, `style?` | `adjustable` ("Jump to year", value the year, `increment` = later, `decrement` = earlier); touch and drag by responder events (`locationY`), a selection haptic per year change; newest seven + a dot + the oldest above nine years; 28 dp wide, `hitSlop` to 44; ids `trips-year-scrubber`, `-year-<year>`                                                                               |
+| `TripCoverArt` | `trip`, `thumb?`                          | fills its parent (`absoluteFill`): the thumbnail through `expo-image` (`recyclingKey` = photo id, `cachePolicy` `memory-disk`, 220 ms fade, none under reduced motion) or `GeneratedCover` when there is none or `onError` fired for that thumbnail's address; ids `-cover`, `-photo`, `-generated`                                                                                       |
+
+Every card is ONE `Tappable`, role button, hint "Opens the trip", id `trip-card-<id>`, and its accessible name is the 004 one
+word for word: `${title}, ${status}, ${describeStopCount(stopCount)}`. Each card writes that template where it sets
+`accessibilityLabel` so the id parity guard still reads `<param>, <param>, <param>` (a helper would hide it: the parity run
+failed on the baseline name until it was inlined). The hero's day and the ticket's countdown are the control's
+`accessibilityValue` ("Day 3 of 8", "Starts in 94 days", "Starts tomorrow"), additive, never part of the name. Decoration (cover,
+strip, flag, cue, notches) is hidden from AT. Ids of the 004 card kept where the element still exists: `-cover`, `-photo`,
+`-cue` (row), `-status-row` (hero), `-meta-row` (all three); `-initial` is gone with the typographic cover (the generated cover's
+glyph is `-generated-glyph`).
+
+### `PlanTripFab` (T541), `components/ui/plan-trip-fab.tsx`
+
+```tsx
+<PlanTripFab screen="trips" | "home" onPress bottomInset={tabZone} hidden? />
+planTripFabHidden({ tripCount, sheetFull? }): boolean   // Home: hidden at the full detent and with no trips
+```
+
+A `Button` (`primary`, `lg`, a plus, "Plan a trip") on the second lift, `absolute`, `bottom = bottomInset + 16`, `end = 16 +
+the larger side inset`. A full pill on iOS, a rounded square (16 dp) on Android, the same words on both. The id is a table of the
+screen: `trips-plan-trip` (Trips; unique there) and `home-plan-trip-fab` (Home; `home-plan-trip` stays the invitation card's
+action). **For the Home branch**: import it, pass `screen="home"`, `bottomInset={tabZone}` and
+`hidden={planTripFabHidden({ tripCount, sheetFull })}`. Trips never hides it, in the empty, loading and error states either (flow 01
+taps it from an empty list). `hidden` draws nothing at all.
+
+### The screen (T541)
+
+`ListScreen` (additive optional props: `getItemType`, `stickyHeaderIndices`, `listRef`, `onViewableItemsChanged`,
+`viewabilityConfig`, `bottomInset`, `horizontalInset`, `endInset`, `itemGap`; with none the list is what it was) carries the mixed list. The
+screen passes `getItemType = item.type`, the header indices as sticky, `itemGap={0}` (a card item pads 16 dp under itself, a row
+12 dp, a header none), `horizontalInset` 20 (16 on Android: `ScreenMargin`), `endInset` 44 while the year strip is shown (the prototype's `padding-right: 44px`; a new optional prop of `ListScreen`), `bottomInset = useTabZone()` and a footer
+`trips-fab-clearance` of the button's minimum at this text size plus 16. Under the native title: `trips-count` ("22 trips", and
+from 200 "214 trips · since 2009"), `trips-filter` (`SegmentedPill`, `trips-filter-all|active|planned|past`, "Active, 1"; counts
+are over the whole list and do not move with the filter), and `trips-sync-banner` when there is a banner. States: `trips-skeleton`
+(`TripListSkeleton`; the filter is drawn with no counts), the 004 error words, `trips-empty` "No trips yet" with the secondary
+`trips-empty-plan-trip`, and `trips-filtered-empty` ("No planned trips", "Show all trips" = `trips-filter-reset`). `trips-list` is
+on the scroller only when the list has items. From 200 trips `YearScrubber` sits at the vertical middle of the right edge and
+jumps with `scrollToIndex` to the year's header; the year in view follows `onViewableItemsChanged`.
+
+**`useTabZone`** (`components/trip/use-tab-zone.ts`) reads React Navigation's `BottomTabBarHeightContext` (exported by
+`expo-router/js-tabs`) and answers 0 outside a navigator; `useBottomTabBarHeight()` (documented at
+docs.expo.dev/router/advanced/tabs) throws there. The pill reports its height plus its offset through it; the Plan a trip button and the year strip float above that zone, and the list
+ends above the pill because `ListScreen` reads `useTabInset` (the zone plus 16 dp), with the button's own clearance below the last item.
+
+**The sync chip** (`features/trips/use-trips-sync.ts`): `useTripsSync()` is the global `useSyncChipState` (T529: the dirty rows of
+the seven synchronised tables, the network, the runtime) and `syncBannerOf` of it, with Retry running `syncNow('manual')`. It returns
+`{ chip, banner, retry }`; the chip goes to the header (`headerRight`, only `failed` is a button) and the banner under the filter
+("Offline. 3 changes will sync when you're back online." / "Couldn't sync 2 changes. Your trips are safe on this phone." with Retry).
+
+### Where the build differs from the contract text above
+
+1. `composeTripList(trips, filter)` has no `today` parameter: the statuses, `dayOf`, `daysToGo` and `strip` are in the model, so the
+   composition has no clock. `TripCardModel` extends `TripSummary` instead of replacing it, so `cover` stays the 004 `TripCover`
+   (photo or typographic) and the generated cover is the separate `generated` field; `stripLabels` is new.
+2. The ticket's label is NOT extended with the stub ("in 94 days", C5-19): FR-075 and the parent brief fix the name; the countdown
+   is the accessibility value.
+3. The hero's sync marker is the full `SyncBadge` (icon and "Not yet synced"), not the glyph-only disc of the prototype: US2
+   scenario 6 asks for text and icon, and the Maestro flows wait on "Not yet synced" (a disc would end a `notVisible` wait early).
+4. A row shows a status chip when its trip is active or planned. The prototype draws only past rows; FR-070 forbids a planned
+   trip that reads as a past one.
+5. The count line is a caption under the native title, not a trailing caption beside it (the native large title takes no trailing view),
+   and the chip is the header's `headerRight` (iOS: top bar, not the title row).
+6. The strip's abbreviations are the first three letters of the city ("LIS", "SIN", "POR": the prototype's IATA-like codes need a data
+   source this app does not have) and are drawn only up to five stops.
+7. The year header shows nothing for a year it has no kilometres for.
+8. `useTrips` reads the day from a new `useToday` (`features/trips/use-today.ts`: a timer to just after local midnight and a re-read on
+   return to the foreground), not once when the store last changed: a tab screen never unmounts, so "Day 3 of 8" would otherwise
+   still read "Day 3" the next morning. A `today` argument still wins (the suites that pin a date).
+9. While a cycle runs with nothing waiting the sync chip says nothing (a pull is not the traveller's change): `SyncChip`'s figure for
+   `syncing` is the count, and a count of 0 would flash "0" with a spinner on every periodic cycle.
+
+### Verified from source
+
+- `react-native` 0.86 `Pressable` resolves a function `style` and `children` for the host node, and turns `accessibilityValue` into
+  `{ min, max, now, text }` (the tests read `.text`); `StyleSheet.flatten` of the host style reads the lift (`boxShadow`).
+- `@shopify/flash-list` 2.0.2: `getItemType`, `stickyHeaderIndices`, `onViewableItemsChanged`, `viewabilityConfig` and the `ref`
+  (`FlashListRef.scrollToIndex`) are list props; Jest replaces `FlashList` with `RecyclerView`, which renders a window of the items (the
+  200-trip test draws far fewer than 214 cards).
+- `expo-image` 57.0.x: `cachePolicy` accepts `memory-disk`; `onError`'s event is `{ error: string }` and names no source (so the failure
+  is kept against the address shown when it arrives, as in 004).
+- Yoga positions an absolute child from the padding edge (inside the border): the notch's `left: -9` over a 2 dp edge centres the circle
+  on the edge, as the prototype's CSS does.
+- `expo-router/js-tabs` exports `BottomTabBarHeightContext` beside `useBottomTabBarHeight` (`build/react-navigation/bottom-tabs/index.d.ts`).
+- `syncRepository.countUnsynced` is synchronous and covers the seven tables (byte-backed rows only once uploaded); `useSyncStatus` is a
+  zustand store (`phase`, `failure`, `lastSyncedAt`).
+
+### Device-only checks (add to T547)
+
+- The first lift under the hero and the ticket: it is on the transparent `Tappable` around a clipped frame (iOS and Android 9+); the
+  Android elevation fallback below 9.
+- The ticket's dashed edge: React Native draws a dashed border of one side on a view with no radius; the notches clip half a circle
+  at the card edge on both platforms.
+- The year strip: `locationY` is the strip's own because its labels are `pointerEvents="none"`; a drag across it keeps the list from
+  scrolling; sticky headers under `contentInsetAdjustmentBehavior="automatic"` with the large title collapsing.
+- The thumbnail is drawn on a 390 dp hero (a "card" derivative of D5-09 is not built): sharpness on a 3x screen.
+- The flag emoji at 20 by 14 dp over a photograph and on the generated cover (V6), the caption scrim over a bright photograph in the four
+  themes (gated by `scrim.test.tsx`, to be looked at), the chip in the iOS 26 header (it may sit in the system's glass bubble).
+- Scrolling 214 trips (SC-006) against the baseline, with the tab pill.
+- `useToday` on a device: a hero left open across midnight says "Day 4 of 8" at 00:00:01, and one resumed after a night in the
+  background says it at once (the timer sleeps in the background, the return to the foreground reads the clock).
+- The year strip beside more than nine years: the touch maps the whole height onto every year, the labels show the newest seven, a
+  dot and the oldest (a guide), so a drag through the middle lands on years that have no label. Feel it with 15 or more years.
+- The Maestro flows that assert two or three trips at once (`offline/07-b`, `10-b`: "Gate baseline", "Gate bulk", "Gate over
+  allowance") assume they share the first screen. The hero is 235 dp with its gap, a row 84 dp: count it on the smallest phone.
+- The Maestro flows themselves (not runnable here): the audit is under "Maestro flow edits" in `tasks.md`.
+
+### Maestro audit (T542): `01`, `02`, `05` and every `offline/*` that touches Trips
+
+Read against the new screen; Maestro itself cannot run here. Matching is taken as Maestro documents it: a regex over the whole of an
+element's text, accessibility text (content-desc, label) or hint, case-insensitive.
+
+| Step (flow)                                                                                                      | Resolves as                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tab-trips`, `trips-screen` (01, 02, 03, 04, 05, offline)                                                        | ids kept (the parity run holds: 205 testIDs, 64 labels)                                                                                                                                                                                                                                                                |
+| `assertVisible: 'No trips yet'` then `tapOn: trips-plan-trip` on an empty list (01)                              | the empty state's text; the button is the FAB, drawn in the empty state too (the header action of iOS is gone, one control on both platforms)                                                                                                                                                                          |
+| `tapOn: trips-plan-trip` with trips (02, 03, offline `add-trip`, `15-a`)                                         | the FAB, `trips-plan-trip`, unique on the screen                                                                                                                                                                                                                                                                       |
+| `assertVisible: 'Italy, spring 2026'` and `tapOn: 'Italy, spring 2026'` (01)                                     | the title text of a hero, a ticket or a row                                                                                                                                                                                                                                                                            |
+| `assertVisible: '2 stops.*'` (01)                                                                                | **edited** to `'.*2 stops.*'`: no text starts with it any more (see "Maestro flow edits")                                                                                                                                                                                                                              |
+| `assertVisible: 'Planning'` (01, line 156)                                                                       | **does not resolve, before or after**: the stop editor pre-fills today and tomorrow, so that trip is Active and the list shows "Active" (the Atlas chip) or "Active · Day 1 of 3" (the hero's). Not edited (a step that was wrong before, not a text this feature changed); listed under "Maestro flow edits" as found |
+| `tapOn: 'Swiss notes'`, `'Rome archive'`, `'Gate baseline'`, `'Gate bulk'` ... (02, 05, offline)                 | the title text; rows are about 84 dp, so more trips are on screen than with the 004 cards                                                                                                                                                                                                                              |
+| `assertNotVisible` and `notVisible: 'Not yet synced'` on the list (offline `00-a`, `03-a`, `07-b`, `13-b`, `15`) | every card that is waiting says the words: the ticket and the row through `SyncBadge`, **the hero too** (a glyph-only disc would have ended these waits early)                                                                                                                                                         |
+
+No other flow step reads the Trips screen. Left for T538 and T546, not Trips: `'Active'` on the trip screen (03, 04), see below.
+
+### For the other branches
+
+- Flows 03 and 04 assert `'Active'` on the trip screen. `StatusChip` with `dayOf` writes "Active · Day 3 of 8" in ONE text, so an exact
+  `'Active'` no longer matches wherever `dayOf` is passed (the trip screen's progress row, T543/T546): either keep a separate "Active" text
+  there or make the assertion `'Active.*'` and record it (T538/T546).
+- The pill's merge (T526) removes the interim padding of `useTabZone`; nothing else here knows about the bar.
+
+---
+
+## As built (T537 to T538): the Home composed
+
+Branch `feat/005-home-compose`. The building blocks of T531 to T536 (the fit, the layers, the sheet, the cards, the Countries list) and of T526
+to T530 (the chip, the banner, the tab zone) are composed into the Home route; T538 reads the Maestro flows against it. Test-first throughout:
+the red run was observed for the idle spin, the actions, the camera moves' consumers (`GlobeView`), `PlanTripFab` collapsed, the covers and the
+idle spin's no-camera tick; the Home suites were written before the components and first run once they existed, and three mutations (the
+callout stop condition, the country flight, the full-detent hiding of the button) were each caught by a test. 172 new tests in 13 suites, 7,923
+passing in the whole mobile suite. **Visibility posture: private, local, never transmitted, nothing new stored** (FR-084): the screen reads the
+signed-in traveller's own local rows and makes no request.
+
+### Files
+
+| Area                       | Files                                                                                                                                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Route                      | `app/(tabs)/index.tsx` (56 lines: the data hooks, the loading rule, `HomeGlobe`)                                                                                                                                                                         |
+| Composition                | `components/home/home-globe.tsx` (layers, FAB, motion wiring), `home-header.tsx`, `home-sheet.tsx`, `home-states.tsx` (`HomeLoading`, `BottomCard`), `invitation-card.tsx`, `use-home-layout.ts`, `use-home-camera.ts`                                   |
+| Globe                      | `components/globe/use-idle-spin.ts`, `use-globe-actions.ts`; `globe-view.tsx` gains `initialFit`, `accessibilityActions`, `onAccessibilityAction`; `camera.ts` (`useFlyToFirstPlacement` takes the zoom)                                                 |
+| Pure                       | `features/globe/idle-spin.ts` (the rule), `globe-moves.ts` (recentre, fly, country), `globe-actions.ts` (the trips to step through); `features/home/home-layout.ts`, `describe-globe.ts`; `home-trips.ts` gains `coversOf`, `use-home-trips.ts` `covers` |
+| Changed building blocks    | `ui/plan-trip-fab.tsx` (`collapsed`), `globe/empty-state.tsx` (`accent`, `topInset`)                                                                                                                                                                     |
+| Test support (not a suite) | `test/helpers/home-state.tsx` (the mocked world and its `jest.mock` factories), `home-harness.tsx` (fixtures, `renderHome`), `captured-interval.ts` (`captureIntervals(slowestMs)`)                                                                      |
+
+### How it is composed
+
+Layers, bottom up, as the contract has them: the sky `Scrim`, then `home-overlay` (the header, stacked over the globe by `zIndex` and transparent to
+every other touch), the globe (`home-globe`, the one `GlobeView`), the sheet or a card, `PlanTripFab`, and the tab pill (the navigator's). The tree
+order is header, globe, sheet, which is the reading order.
+
+- **States.** Loading (the globe, the sheet's trips and the countries have not answered, and the store has not failed) is `HomeLoading`: the sky,
+  `HomeSkeleton` with the disc of the half detent (`skeletonDisc`) and the greeting of the last session (the signed-in name, which the session store
+  holds from the keychain), ONE announced "Loading your globe" region, no globe. A failed store is the globe with ONE `globe-notice` alert in
+  `BottomCard`, no sheet, no button. No trips, or trips with no placed stop, is the globe with the `InvitationCard` in the same slot (the card has the
+  frames only for no trips, and the accent word "first"), no sheet, no button. Otherwise: the globe, the sheet and the button.
+- **The header** (`HomeHeader`): the greeting with the date, the ONE `SyncStatusChip` at the right, the ONE `SyncStatusBanner` under it, and the
+  recentre control (`home-recentre`) in a slot at `top: 100%` that takes no room, so it appearing never moves the planet. The zone reports where it
+  ends (`onMeasured`, from its own layout). It is left out at the full detent.
+- **The camera** (`useHomeCamera`, `use-home-layout.ts`). The globe mounts when the header has been measured, so its first frame is already fitted:
+  `globeFitCamera` of the current detent, without animation, is the Camera's `defaultSettings` through `GlobeView initialFit` (and the flight to the
+  first stop that appears keeps that zoom). On every settle of the sheet the camera gets `globeFitCamera` padding and zoom once (280 ms ease, a jump
+  under reduced motion; none at `full`). If the fit's inputs change under a settled sheet (the banner arrived, the window changed) the planet is
+  fitted again; the first measure is not a change. Mapbox's logo and attribution sit 8 dp above whatever covers the bottom (the sheet at its resting
+  detent, or the card of an empty state, whose height is measured), never hidden; the callout may use the space between the header and that edge.
+- **Choosing a country** lowers the sheet to half and remembers the country; when the sheet has come to rest, ONE move flies the globe there in
+  place of that settle's fit (`countryMove`: the country's `focus.center`, a zoom from its span, the padding of the free band above the sheet so it is
+  not under the sheet). The next settle fits as usual.
+- **Touches and recentre.** The globe's wrapper listens to `onTouchStart` and `onTouchMove` as they bubble from the native map: the first touch stops
+  the idle spin for good; a drag of more than 8 dp or a second finger means the globe was moved, which offers the recentre control. An action of the
+  map or a country flight counts as moved too. Recentre flies back to the globe's own centre (`cameraCenter`) with the sheet's fit, upright and flat.
+- **The idle spin** (`idleSpinAllowed`, `useIdleSpin`). ONE `setInterval` of 5 s starts the next native `linearTo` move, 20 degrees east of the last;
+  eight moves end within 45 s, and the spin never starts again after them. It stops at the first touch, with the sheet at full, under reduced motion,
+  with the app in the background, with Home not the visible screen, and while a live trip's callout is showing; being offline is no condition. The
+  count is of moves made, so time held still does not count; a tick with no camera yet spends nothing.
+- **The actions of the map** (`useGlobeActions`): "Next trip", "Previous trip" (chronological over the trips with a place, from the focus trip,
+  wrapping; they fly the camera and say the trip's name aloud), "Recentre the globe" (the Home's, announced "Globe recentred") and "Open countries"
+  (the sheet to full). The globe's one element stays "image", with the words of `describeGlobe` (unchanged), and now carries the actions.
+- **The button** is `PlanTripFab screen="home"`: `home-plan-trip-fab`, the extended button 16 dp above the tab zone, **collapsed to the plus at peek**
+  (where `HomePeek` leaves 56 dp and a gap for it), hidden at full, with no trips, and whenever a card (invitation or notice) is the screen's one
+  primary.
+
+### Where the build differs from the contract text and the brief
+
+1. **The figures are in the sheet, not in the header zone** (FR-014, C5-23; the brief's header list included the stats row): `HomeHalf` has them,
+   the header zone is the greeting, the chip and the banner.
+2. **The banner is under the greeting, over the globe** (`screens.md`), where the prototype's `home-offline.png` draws it at the top of the half
+   sheet: an empty state has no sheet, and the banner must say what is waiting in every state. The header's measured edge includes it, so the planet
+   is fitted below it.
+3. **The map mounts one frame later**, when the header has been measured (no guessed height to correct, no animation on first draw).
+4. **The recentre control is the Home's, not `GreetingHeader.onRecentre`**: that control is in the greeting's layout, so the measured edge would move
+   when it appears. `GreetingHeader.onRecentre` stays in the component and is not used by the Home.
+5. **`PlanTripFab` gained `collapsed`** (the contract draws a round button at peek and `fabShapeOf(os, true)` existed for it) and **`GlobeEmptyState`
+   gained `accent` and `topInset`** (the card is the same, the headline has its accent word, the frames hang over it).
+6. **With no trips there is no sheet**: the card takes its place (the contract's "Empty" row and the prototype), so the contract's "or the invitation
+   at peek" is the card, not a sheet position. A traveller with only past trips has a peek sheet that is the handle alone.
+7. **The idle spin counts moves** (eight) instead of time, does not run while a live trip's callout is showing (the brief), and is held until the
+   globe is mounted. It turns about the globe's centre and re-seeds from it when it changes (the first stop appearing).
+8. **The first-stop flight keeps the fit's zoom** (`useFlyToFirstPlacement` takes it), or the planet would have snapped back to the default zoom.
+9. **The flight to a country replaces the fit of the settle that follows it**, and the zoom is `countryZoom` (the span fills 70 percent of the width
+   and of the free band, at most zoom 7, a single place zoom 5): the contract says only "fly the globe to it".
+10. **No toast on Home**: nothing a Home control does can be undone.
+11. **`StatsOverlay` (`components/globe/stats-overlay.tsx`) is no longer drawn by any screen**; it and its test are for Phase 10 to remove.
+12. **`useHomeTrips` returns `covers`** (`coversOf`: each trip's cover thumbnail, by trip id) for the pins' roundels, which are still off
+    (`GlobeLayers.pins.roundelsEnabled`).
+
+### Maestro audit (T538): `03-globe`, `04-zoom`, `offline/*` that touch Home
+
+Read against the new Home; Maestro cannot run here. Two flows changed, each for a legitimately changed screen (the edits are under "Maestro flow
+edits" in `tasks.md`).
+
+| Step (flow)                                                                                                 | Resolves as                                                                                                                                                                                                                                                             |
+| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `globe-map`, `tab-bar`, `tab-index`, `home-screen` (03, 04, offline)                                        | ids kept                                                                                                                                                                                                                                                                |
+| `globe-empty-state`, `'Your globe is waiting for its first trip'`, `home-plan-trip` (03, 04, 05)            | the invitation card; the headline's accent word is a span inside the sentence, so the text is one                                                                                                                                                                       |
+| `'Your trip needs a first stop'`, `home-add-stop` (03)                                                      | the card for one trip with no stop                                                                                                                                                                                                                                      |
+| `globe-stats`, `globe-stat-countries` text `'5'`, `'2'`, `'1'` (03, `offline/03-b`, `07-b`, `14-a`, `14-b`) | the figures row of the HALF sheet, which is where Home opens and what it is at after a relaunch; the numeral counts up to the number (a figure is in the accessible name from the first render)                                                                         |
+| `assertVisible: 'countries'` (03)                                                                           | the figure's label "Countries" (matched case-insensitively over the whole text)                                                                                                                                                                                         |
+| `globe-stat-distance` text `'[0-9,.]+ (km\|mi)'` (03)                                                       | **edited** to `'[0-9,.]+'`: the unit is the label under the numeral now (T535)                                                                                                                                                                                          |
+| `tapOn globe-map point 50%,50%` to open the active trip (03)                                                | **edited**: at half the sheet covers 50 percent, and the planet's centre is not there. The flow lowers the sheet (two taps on `home-sheet-handle`: half, full, peek) and taps `50%,47%`, where the camera's padding puts the active route at peek on a 390 by 844 phone |
+| `doubleTapOn globe-map point 50%,50%`, three times (04)                                                     | **edited** the same way: the sheet is lowered once, then the taps are at `50%,47%`; each double tap zooms about the tapped point, so it must be the stop's                                                                                                              |
+| `waitForAnimationToEnd`, `takeScreenshot` (03, 04)                                                          | unchanged; the idle spin is off whenever a live trip's callout is showing, which is the state of both flows at those steps, so the map is still                                                                                                                         |
+| `setAirplaneMode`, `tab-index`, `globe-map` (04)                                                            | unchanged; Home stays mounted across tabs, so the sheet is still at peek and the map still draws from the pack                                                                                                                                                          |
+
+Not resolved here, left for the device run (T547, T566): the `47%` is the peek planet's centre on the reference phone (`headerBottom` is about
+150 dp; it is `(windowHeight - 212 + headerBottom) / 2 + 4` over the window height) and it moves by a few percent with the window and with a header
+of two lines; the arc's hit box is 44 dp, so a phone shorter than 800 dp or taller than 900 dp may need the percentage adjusted and recorded.
+
+### Device-only checks (add to T547)
+
+- **The fit** (V3, T509): the planet's real radius against `FIT_REFERENCE_RADIUS` at half and peek on 640 to 932 dp windows, the 20 dp margin at
+  peek, the first frame with no visible jump from `initialFit`'s padding on both platforms, and the camera's 280 ms ease reading as the sheet's spring.
+- **The ornaments**: the logo and attribution 8 dp above the sheet at every settle and above the card of an empty state, never hidden.
+- **Touches over the native map**: that `onTouchStart` and `onTouchMove` on the wrapper reach JavaScript over `MapView` on iOS and Android (the first
+  touch stops the spin, a drag or a pinch offers recentre), and that a tap on a connection still opens its trip.
+- **The idle spin**: the chain of `linearTo` moves reads as one smooth turn (no seam every 5 s), stops on touch, at full, in the background and on
+  another tab, and is over after 45 s; under reduced motion nothing turns and the pulses are still.
+- **The actions of the map**: VoiceOver's actions rotor and TalkBack's actions menu offer the four names on the globe, the spoken trip name, "Globe
+  recentred", and "Open countries" raising the sheet.
+- **Reading order** header, globe, sheet on both platforms (the header is first in the tree and stacked by `zIndex`; Android may order by drawing).
+- **Choosing a country**: the flight lands in the free band above the half sheet at a country scale that suits the span (Portugal, the United
+  States, Fiji over the date line, Chile), and recentre brings the planet back.
+- **The header**: a banner arriving refits the planet smoothly; two lines of greeting and the largest text size push the fit and the peek height
+  (`peekRowHeight` is an estimate from the font scale) and nothing clips; the recentre control sits under the banner, not on it.
+- **The invitation**: the frames over the card, the card above the pill at the largest text size, the notice's alert read once.
+- **The button**: the plus at peek leaves the live card its room; the extended button over the next row at half on a 640 dp phone.
+- **Maestro** `03-globe` and `04-zoom` against the new Home, as above.
+
+## As built (T524, T525): the dev gallery and the screenshot harness
+
+Branch `feat/005-gallery`, from `feat/005-sunrise-passport-ui`. The source is `apps/mobile/src/components/dev/` and
+`apps/mobile/src/app/(dev)/`; the tests are `test/dev/*` and `test/app/gallery-route.test.tsx`, plus the two suites of the
+override under `src/hooks/` and `src/components/ui/`. No screen was moved or restyled (SC-004): the only files outside the
+gallery that changed are listed under "The override" and in the gate.
+
+### Opening it
+
+- The route is **`/gallery`**. The group `(dev)` has a `Slot` layout and one route, `gallery.tsx`; the root layout admits it with
+  `<Stack.Protected guard={__DEV__}><Stack.Screen name="(dev)" /></Stack.Protected>`, one block beside `+not-found` (every
+  existing route, name and testID is untouched). It is reachable signed in or signed out. With `__DEV__` false the group does not
+  exist for the router, and a deep link is turned away exactly as for any protected group: to the tabs (signed in) or to the
+  welcome screen (signed out), not to not-found (`test/app/gallery-route.test.tsx`, through the real router).
+- Open it with the dev client running and the bundle loaded: `adb shell am start -a android.intent.action.VIEW -d
+"com.triptrackr.app.dev:///gallery"`, or `xcrun simctl openurl booted "com.triptrackr.app.dev:///gallery"` (the dev build
+  registers its package name as a scheme on both platforms). There is no button or menu item for it, because no screen was
+  touched. `apps/mobile/README.md`, "The component gallery".
+- **It is not in the release bundle.** The route loads the page with `require('@/components/dev/gallery')` inside
+  `if (__DEV__)`, not with an `import`. Read in source: `babel-preset-expo` inlines `__DEV__` as `false` in a production
+  transform (the route file transformed with `isDev: false` gives `if(false){ ... require(...) ... }`), and
+  `metro-transform-worker` runs its `constantFoldingPlugin` when `!options.dev`, before `collectDependencies`, so Metro never
+  follows the `require`. Expo Router's context still lists the two route files (a `Slot`, and a component that returns `null`).
+  The release bundle itself was not built here: searching an export for `gallery-readout` is the check (see the device-only
+  list). `test/dev/gallery-source.test.ts` holds the source side: nothing under `src/` outside `(dev)` and `components/dev`
+  imports `components/dev` (a comment may name it); the route names it only after `if (__DEV__) {`; the layout's guard is the
+  literal `__DEV__`; no dev file holds a URL, `fetch`, `uri:`, `expo-image` or a raster `require`, a `console` call, an import
+  of the kit or the native batch, or 800 lines.
+
+### The override: one device, four themes, two scales
+
+There was no override hook, so a minimal one was added. It changes no production behaviour: its context defaults to `null`, every
+hook then returns what it returned before, and every existing suite passes unchanged.
+
+- `hooks/appearance-override.ts`: `AppearanceOverrideContext` (`AppearanceOverride`: the scheme, the three flags, the font
+  scale), `useAppearanceOverride`, `overrideFlags`. It replaces the INPUTS and not the derived `AppearanceContext`, so
+  `themeName` and `tokens` stay the one resolution of `resolvePaletteName`.
+- Read from it: `use-color-scheme.ts` (now a wrapper over React Native's hook), `use-accessibility-flags.ts`, the new
+  `use-font-scale.ts` (the window's font scale, or the override's) and `use-appearance.ts` (it reads `useFontScale()` and applies
+  the override's flags; its store read is otherwise as before, because several suites mock the flags hook under the real
+  `useAppearance`). `Button`, `Tappable`, `AreaPill`, `TicketCard` and `TripRow` read `useFontScale()` where they read
+  `useWindowDimensions().fontScale`: five one-line swaps, not a restyle. `useLiftStyle` follows through `useColorScheme`.
+- `ui/appearance-scope.tsx`: `AppearanceScope({ theme?, fontScale?, reduceMotion?, reduceTransparency?, children })` provides the
+  override and wraps the subtree in Uniwind's `ScopedTheme` (1.12.0 in `node_modules`: it makes classNames and `useCSSVariable`,
+  hence the kit's `useThemeColor` and every `useColors` key, resolve in the scoped theme), so classes and hooks agree. A prop
+  that is not given is inherited from the scope above, else from the device, so a frame can change one flag and keep the
+  theme. It lives in `ui/` because only that folder imports `uniwind`. `Uniwind.setTheme` is not called: it would pin the OS
+  colour scheme for the whole app.
+- **The text scale is a layout scale.** Adapters take their minimum heights and their reflow (four areas to two columns, a stacked
+  ticket, the stat tile as a row) from `fontScale`, which the scope sets. **Glyph size follows the system text size**: React
+  Native has no per-subtree font scale. For scale 2 as a traveller sees it, set the phone's text size to the largest too; the
+  readout (`gallery-readout`) shows `theme · layout ×n · system text ×m`. Components that still read the window directly
+  (`TripHero`, `AreasStrip`, the trips FAB, `DateField`, `ProviderButton`; `FormSheet` reads its height) reflow with the system
+  size only; the swap is one line each when a screen of theirs joins the gallery. The native chrome (the keyboard, system
+  alerts) follows the device; the page sets its own `StatusBar` style.
+
+### The gallery
+
+`Gallery({ initialTheme?, initialScale? })` (`gallery.tsx`) is a canvas page with its controls pinned above one `ScrollView`: the
+theme as a `ChipGroup` (`gallery-theme-<name>`), the scale as a `SegmentedPill` (`gallery-scale-<1|2>`), the readout, then the
+fifteen sections of `SECTION_IDS` (`gallery-model.ts`), each `gallery-<id>`, registered in `gallery-sections.tsx`. The white
+photograph (`PhotoFixture`) is a view in the `onPhoto` token, white in all four themes, so there is no asset and no network;
+every cover is `GeneratedCover`.
+
+| Section (`gallery-<id>`) | Holds                                                                                                                                                                                                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`                   | the ten roles with family, weight and size (all six faces); `gallery-numerals`: four `AnimatedNumber`s right-aligned (tabular), a grouped and a money figure                                                                                                    |
+| `buttons`                | five variants by rest, held, busy and disabled; sizes; icon only; a label that wraps. "Held" is `HeldButton`, drawn from `buttonLook`, `buttonFrame`, `buttonStyle`, `buttonEdgeWidth` and `pressScaleOf`                                                       |
+| `icon-buttons`           | five variants by rest, busy and disabled over a plain surface and over the white photograph; `onSky` over the sky scrim                                                                                                                                         |
+| `chips`                  | `Chip` (rest, selected, leading, dashed, disabled, static), `ChipGroup`, `SegmentedPill` (md, sm), `StatusChip` (four), `SyncChip` (five; `synced` draws nothing), `SyncBadge` (three, and glyph-only on the photograph), `FlagChip`, `PrivacyChip`, `ToneChip` |
+| `cards`                  | lift, tile, flat, pending, pressable, overMap (over the sky); a `ListGroup` of eight rows; `StatTile` (static, pressable, counting); four `AreaPill`s in the areas strip's grid                                                                                 |
+| `trips`                  | `TripHeroCard`, `TicketCard`, `TripRow` (and a pending one), from invented `TripCardModel`s (`fixtures.ts`)                                                                                                                                                     |
+| `fields`                 | default, filled with helper text, focus, error, disabled                                                                                                                                                                                                        |
+| `skeletons`              | nine, each in `gallery-skeleton-<name>`                                                                                                                                                                                                                         |
+| `empty-states`           | the four `EmptyState` variants, `ErrorState`, `LoadingState`                                                                                                                                                                                                    |
+| `banners`                | offline, error with Retry, busy; two buttons that raise toasts (with and without Undo); the two permission states                                                                                                                                               |
+| `scrims`                 | top, bottom, caption (wrapping), sky, cover and two fades over the white photograph, each with the text it is meant for                                                                                                                                         |
+| `stamps`                 | six shapes in four inks, wear 0 to 3, perforated, the ghost, `StampIn` with a replay button                                                                                                                                                                     |
+| `covers`                 | three palettes at hero size and as 40 dp thumbs, and the letter thumb                                                                                                                                                                                           |
+| `sheet`                  | `Sheet` at peek, half and full, each in a 380 dp frame, with detents from `sheetHeights` of that frame; live (drag, tap, accessibility steps); `handleBack={false}`                                                                                             |
+| `navigation`             | `TabPill` on the surface the device gives it, the same with Reduce Transparency (opaque), `AndroidNavBar`; navigator props built by hand, a press selects the tab                                                                                               |
+
+What the tests hold (`test/dev/gallery.test.tsx`, 39 tests, over the real adapters with the stand-ins of the other suites):
+every section id in all four themes at both scales; the switchers change what the subtree reads (the readout, the chip's
+`checked`, a button's minimum height from 52 to twice the touch target, the areas from four to two across, the ticket from a row
+to a column over a window whose own scale is 2); each of the nine skeletons exposes exactly one `progressbar` (hidden
+elements included), at both scales and in a contrast theme; every variant and state of the buttons; all five icon buttons over
+the surface and the photograph; the photograph is `bg-on-photo` with no image node and no URL in the tree; the five scrim
+frames; the six stamp shapes, four wear masks, ghost and landing; the covers; three sheets whose handles say Peek, Half and
+Full and move one at a time; the pill is a blur on iOS and opaque with Reduce Transparency and in both contrast themes; a press
+selects its own bar's tab; the fields, the banners, the toast request (five seconds). `test/dev/held-button.test.tsx` presses a
+real `Button` (`touchDown`) in 5 variants by 4 themes by 2 scales and requires the style of `HeldButton` to be equal, so the
+fixture cannot drift. Jest cannot say how any of it looks: that is the phone's job.
+
+### The screenshot harness (D5-18)
+
+- `e2e/gallery.yaml` (tags `gallery` and `manual`, appId `com.triptrackr.app.dev`): `openLink` of the dev scheme, then eight
+  `runFlow`s of `e2e/gallery/pass.yaml` (one per theme by scale: tap the theme chip, tap the scale chip, assert the readout,
+  `waitForAnimationToEnd`), each ending in `e2e/gallery/assert-screenshot.yaml`, the helper: `MODE=record` runs `takeScreenshot`,
+  anything else `assertScreenshot` against `<BASELINES>/<SHOT>.png` (`gallery-<theme>-x<scale>.png`), always `cropOn` the test id
+  `gallery` so the status bar is out, at `THRESHOLD` 95 (Maestro's default; passed as a plain number because of Maestro issue
+  3337). `config.yaml` excludes `manual`, so the standing suite never runs it, and the helpers sit under `e2e/gallery/`, where
+  `e2e/*.yaml` does not reach.
+- `e2e/__baselines__/README.md` says a baseline is recorded on a device, approved by the owner and committed, never
+  generated; names the eight files; says how to record (one pinned device per platform; the system text size for scale 2) and
+  lists what only a device settles. **No image was created or invented.**
+- `test/dev/gallery-e2e.test.ts` holds the shape (eight passes covering the four themes by both scales, `manual`, ASCII, the
+  helper's two commands, every baseline named in the README); `scripts/testid-baseline.mjs --check` holds that every `id:` of the
+  flow is served by a testID in the sources.
+
+### Where the build differs from the brief or the contract
+
+1. **`assertScreenshot`, not `assertVisual`**: the command D5-18 names, and the one Maestro has (checked in its reference).
+2. **The theme is a `ScopedTheme` plus the override, not `Uniwind.setTheme`**, so the OS scheme is never pinned and the root's
+   own theme is untouched; the scale is a layout scale (above).
+3. **"Held" is a fixture for `Button` only.** A press is a state of a live `Pressable`; the fixture reuses the pure look table. A
+   held icon button, chip or row is the finger on the live one. A test ties the fixture to the real press.
+4. **The focused field is live, not held**: `Field` draws its ring from the focus event it receives, so the specimen says "tap
+   it". The ring beside the keyboard is one of the device checks.
+5. **The toast is raised by a button**, not drawn statically: it lives in the kit's portal host, above the tab bar.
+6. **Repeated ids**: `home-sheet*` (three sheets), `tab-bar`, `tab-<route>`, `tab-mark-<route>` and `scrim-*` repeat across frames,
+   because they are the adapters' fixed ids. The tests scope with `within` and a flow crops on `gallery`.
+7. **The tab pill's surface is the device's**: `TabSurface` chooses glass, blur or solid by itself, and forcing a kind would add a
+   prop to a shipped component. The frames are the pill as the device draws it, the pill with Reduce Transparency (opaque), and the
+   Android bar; the contrast themes make both pills opaque through the theme switch. Glass and blur are iOS only (V4).
+8. **A `trips` section was added** (hero, ticket, row) because the inventory names the trip and trips cards; its models are
+   invented in memory (`fixtures.ts`).
+9. **The unresolved-id count moved** (`test/fixtures/testid-unresolved-count.json`: 86 to 90 testIDs, 57 to 59 labels): new
+   forwards of a `testID` prop in `gallery-parts.tsx` (three) and `held-button.tsx`, and two labels from a table of button labels.
+   The baseline itself is untouched (it is read from the `pre-004-baseline` tag).
+
+### Gate (T525), run on the final tree
+
+All from `apps/mobile`, one process at a time (Windows):
+
+| Gate                                                                          | Result                                                                                                                                                |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npx tsc --noEmit`                                                            | 0 errors                                                                                                                                              |
+| `npx eslint . --max-warnings=0`                                               | exit 0, no warning                                                                                                                                    |
+| `npx jest --ci --maxWorkers=2`                                                | 308 suites passed, 7,893 tests passed, 3 skipped (7,896); 127 tests in 7 suites are new, all written red first                                        |
+| `npx jest --ci --coverage --maxWorkers=2` (the `test:cov` floor)              | statements 98.69 percent, branches 95.22, functions 98.51, lines 99.35 (floor 80)                                                                     |
+| `npx prettier --check` on every touched file and `specs/005-*/*.md`           | clean                                                                                                                                                 |
+| `node scripts/testid-baseline.mjs --check test/fixtures/testid-baseline.json` | "Parity holds: 205 testIDs and 64 accessibility labels, the concrete tab ids and every Maestro selector are still served" (the baseline is untouched) |
+| `node scripts/build-theme-css.mjs --check`                                    | `theme.css` is up to date                                                                                                                             |
+
+The check failed once, only on the count of ids the extractor cannot read (new forwards of a `testID` prop in the gallery's
+furniture and the held button, and two button labels from a table), so the count was regenerated with
+`--write-unresolved test/fixtures/testid-unresolved-count.json` (86 to 90 testIDs, 57 to 59 labels), as its own message and the
+procedure of `scripts/testid-baseline.mjs` allow. **No screen moved (SC-004):** outside `components/dev`, `app/(dev)`, the new
+`appearance-scope.tsx` and the new hooks, the files that changed are the root layout (the one `Stack.Protected` block), the three
+appearance hooks, and five components that read `useFontScale()` for `useWindowDimensions().fontScale` (`Button`, `Tappable`,
+`AreaPill`, `TicketCard`, `TripRow`), plus this README, the unresolved count and the specs; no file under `src/app` other than
+`_layout.tsx` changed. The branch builds on `feat/005-sunrise-passport-ui`, which already holds the merged groups A, B1, B2 and B3.
+
+### Device-only checks (add to T547)
+
+- `/gallery` on the phone, in all four themes at both scales (with the system text size at its largest for scale 2): read every
+  section and the readout; this is the first time these adapters are seen together.
+- `ScopedTheme` in a real build: the classes, the kit colours and the lifts agree below the controls in the contrast themes (the
+  lifts come from `useColorScheme`, the classes from the scope).
+- Glass on iOS 26 and the blur before it (V4); the Android bar over the sky; the sheets draggable inside their frames with the
+  page scrolling around them.
+- A release build (`eas build --profile preview`): `/gallery` is turned away to the tabs, and an export contains no
+  `gallery-readout`.
+- Maestro: that `openLink` of `com.triptrackr.app.dev:///gallery` resolves, whether `assertScreenshot` reads `path` relative to the
+  subflow or to the top-level flow (`BASELINES` says which), the first recording of the eight baselines, and whether the shimmer
+  needs Reduce Motion for them to hold at 95 percent.
+- The page is heavy by design (nine shimmers, three sheets, about twenty stamps): its scroll is not a measure of the app.

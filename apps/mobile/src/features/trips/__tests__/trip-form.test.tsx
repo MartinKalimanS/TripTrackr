@@ -109,12 +109,82 @@ describe('<CurrencyPicker>', () => {
     expect(onChange).toHaveBeenCalledWith('GBP');
   });
 
+  test('keeps the common codes on one scrolling line, not a wall of buttons (feature 003 FR-017)', async () => {
+    await render(<CurrencyPicker value="EUR" onChange={jest.fn()} />);
+
+    // `currency-pills` is the radiogroup (the ChipGroup); its one scroller is inside it.
+    const group = screen.getByTestId('currency-pills');
+    expect(group.props.accessibilityRole).toBe('radiogroup');
+    const lines = group.queryAll((node) => node.props.horizontal === true);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.props.showsHorizontalScrollIndicator).toBe(false);
+    // Every common code is still there, in the one line.
+    for (const code of [
+      'USD',
+      'EUR',
+      'GBP',
+      'JPY',
+      'CHF',
+      'CAD',
+      'AUD',
+      'CZK',
+      'PLN',
+      'SEK',
+    ]) {
+      expect(screen.getByTestId(`currency-${code}`)).toBeTruthy();
+    }
+  });
+
+  test('keeps any other code behind an "Other" control until it is asked for (feature 003 FR-017)', async () => {
+    await render(<CurrencyPicker value="EUR" onChange={jest.fn()} />);
+    expect(screen.queryByLabelText('Other currency code')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('currency-other-toggle'));
+    expect(screen.getByLabelText('Other currency code')).toBeTruthy();
+    expect(
+      screen.getByTestId('currency-other-toggle').props.accessibilityState,
+    ).toMatchObject({ selected: true });
+  });
+
+  test('opening "Other" clears a common choice, so exactly one option is ever selected', async () => {
+    const onChange = jest.fn();
+    await render(<CurrencyPicker value="EUR" onChange={onChange} />);
+
+    await fireEvent.press(screen.getByTestId('currency-other-toggle'));
+    expect(onChange).toHaveBeenCalledWith('');
+  });
+
+  test('opening "Other" keeps a code the traveller already typed', async () => {
+    const onChange = jest.fn();
+    await render(<CurrencyPicker value="THB" onChange={onChange} />);
+
+    await fireEvent.press(screen.getByTestId('currency-other-toggle'));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Other currency code').props.value).toBe('THB');
+  });
+
+  test('hides the free-text field again once a common code is chosen', async () => {
+    await render(<CurrencyPicker value="EUR" onChange={jest.fn()} />);
+    await fireEvent.press(screen.getByTestId('currency-other-toggle'));
+    await fireEvent.press(screen.getByTestId('currency-GBP'));
+    expect(screen.queryByLabelText('Other currency code')).toBeNull();
+  });
+
   test('upper-cases and caps free text at three letters', async () => {
     const onChange = jest.fn();
     await render(<CurrencyPicker value="" onChange={onChange} />);
 
+    await fireEvent.press(screen.getByTestId('currency-other-toggle'));
     await fireEvent.changeText(screen.getByLabelText('Other currency code'), 'thbx');
     expect(onChange).toHaveBeenCalledWith('THB');
+  });
+
+  test('gives a validation message its field even when "Other" was never opened (FR-010)', async () => {
+    await render(
+      <CurrencyPicker value="" onChange={jest.fn()} error="Use a 3-letter code." />,
+    );
+    expect(screen.getByLabelText('Other currency code')).toBeTruthy();
+    expect(screen.getByText('Use a 3-letter code.')).toBeTruthy();
   });
 
   test('shows an uncommon code in the free-text field, not as a pill', async () => {

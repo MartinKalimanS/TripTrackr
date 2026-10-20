@@ -1,0 +1,49 @@
+# Row 5 (3 of 4) — Device B reconnects SECOND. Expected: one version wins
+# deterministically; the loser is updated AND told (FR-040). See
+# 05a-b-edit-offline.yaml for the whole row.
+#
+# B still holds "B version." as a pending edit. Its push is answered `conflict`
+# with the server's version (A's), the local row is overwritten with it, and the
+# traveller is told. The notice lives in memory only, so this flow must not
+# restart the app between the reconnect and the assertions: it parks on the
+# notes screen and waits for the notice to appear. A silent overwrite fails here.
+appId: com.triptrackr.app
+---
+# B is offline and was left on the trips tab; a relaunch loses nothing (the edit is
+# on disk) and there is no notice to lose yet.
+- runFlow: _helpers/relaunch.yaml
+- runFlow:
+    file: _helpers/open-trip.yaml
+    env:
+      TRIP_TITLE: 'Gate baseline'
+- tapOn:
+    id: 'trip-open-notes'
+# Precondition: B's own edit is on screen and pending.
+- assertVisible: 'B version\.'
+- assertVisible: 'Not yet synced'
+- assertNotVisible:
+    id: 'conflict-notices'
+
+- runFlow: _helpers/go-online.yaml
+
+# --- Told -------------------------------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: 'conflict-notices'
+    timeout: 60000
+- assertVisible: 'Updated from another device'
+- assertVisible: 'Your change to .*Shared note.* was replaced by a newer version saved on another device\.'
+- takeScreenshot: 05c-b-conflict-notice
+
+# --- Updated: B now shows exactly the winning version -----------------------------
+- assertVisible: 'A version\.'
+- assertNotVisible: 'B version\.'
+- extendedWaitUntil:
+    notVisible: 'Not yet synced'
+    timeout: 30000
+
+# Dismissing the notice clears it, and the text is still the winner's.
+- tapOn:
+    id: 'conflict-notice-notes:.*-dismiss'
+- assertNotVisible: 'Updated from another device'
+- assertVisible: 'A version\.'

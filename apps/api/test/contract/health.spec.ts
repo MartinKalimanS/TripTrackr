@@ -1,4 +1,3 @@
-import { Module } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { ApiError } from '@triptrackr/contracts';
@@ -10,6 +9,7 @@ import { QueueModule } from '@/common/queue/queue.module';
 
 import { ensureMigrated } from '../support/db';
 import { applyDatabaseTestEnv } from '../support/env';
+import { InertQueueModule } from '../support/queues';
 
 /**
  * The HTTP surface's standing obligations (contracts/README.md), proven against
@@ -37,9 +37,6 @@ import { applyDatabaseTestEnv } from '../support/env';
 
 /** Nothing listens here; the connection is refused at once. */
 const UNREACHABLE_REDIS = 'redis://127.0.0.1:1';
-
-@Module({})
-class InertQueueModule {}
 
 describe('contract — health and the error envelope', () => {
   let app: NestExpressApplication;

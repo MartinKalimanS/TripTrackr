@@ -20,16 +20,15 @@
  * Client ids are public identifiers, read from `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID`
  * — written out in full each time, as https://docs.expo.dev/guides/environment-variables.md
  * requires for build-time inlining. When the current platform's id is absent
- * the button is not rendered at all: the hook throws on a missing client id,
- * so the check must happen BEFORE the hook is called (hence two components).
+ * the outline button shows disabled, as coming soon (`ProviderButton`): the
+ * hook throws on a missing client id, so the check must happen BEFORE the
+ * hook is called (hence two components).
  */
 import * as Google from 'expo-auth-session/providers/google';
 import { useEffect, useRef } from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { PressableSurface } from '@/components/ui/pressable-surface';
-import { Spacing } from '@/constants/theme';
+import { ProviderButton } from './provider-button';
 
 function clientIds(): {
   iosClientId: string | undefined;
@@ -51,14 +50,17 @@ export function isGoogleSignInConfigured(): boolean {
 export type GoogleSignInButtonProps = {
   onIdToken: (idToken: string) => void;
   onError: (error: unknown) => void;
-  /** The parent's mutation is in flight. */
+  /** The Google sign-in mutation is in flight. */
   busy?: boolean;
+  /** Something else on the screen is in flight. */
+  disabled?: boolean;
 };
 
 function ConfiguredGoogleSignInButton({
   onIdToken,
   onError,
   busy = false,
+  disabled = false,
 }: GoogleSignInButtonProps) {
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest(clientIds());
   const handled = useRef<typeof response>(null);
@@ -78,30 +80,16 @@ function ConfiguredGoogleSignInButton({
   }, [response, onIdToken, onError]);
 
   return (
-    <PressableSurface
-      testID="welcome-google-sign-in"
-      accessibilityLabel="Continue with Google"
-      depth={2}
+    <ProviderButton
+      provider="google"
       busy={busy || request === null}
+      disabled={disabled}
       onPress={() => void promptAsync()}
-      style={styles.action}>
-      <ThemedText type="smallBold" style={styles.centred}>
-        Continue with Google
-      </ThemedText>
-    </PressableSurface>
+    />
   );
 }
 
 export function GoogleSignInButton(props: GoogleSignInButtonProps) {
-  if (!isGoogleSignInConfigured()) return null;
+  if (!isGoogleSignInConfigured()) return <ProviderButton provider="google" />;
   return <ConfiguredGoogleSignInButton {...props} />;
 }
-
-const styles = StyleSheet.create({
-  action: {
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-  },
-  centred: { textAlign: 'center' },
-});

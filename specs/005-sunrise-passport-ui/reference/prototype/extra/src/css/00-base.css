@@ -1,0 +1,48 @@
+/* =====================================================================
+   Per-screen styles (extra screens). Tokens only.
+   ===================================================================== */
+
+/* ---- trip backdrop under sheets ---- */
+.tb-hero { position: absolute; left: 0; right: 0; top: 0; height: 300px; }
+.tb-scrim { position: absolute; left: 0; right: 0; top: 0; height: 300px; background: var(--scrim-bottom); }
+.tb-title { position: absolute; left: var(--sp-5); right: var(--sp-5); top: 170px; }
+.tb-body { position: absolute; left: var(--sp-5); right: var(--sp-5); top: 320px; display: flex; flex-direction: column; gap: var(--sp-4); }
+.tb-row { display: flex; gap: var(--sp-3); align-items: center; }
+
+/* ---- add stop ---- */
+.input.ta { align-items: flex-start; min-height: 96px; padding-top: var(--sp-3); padding-bottom: var(--sp-3); }
+.route { position: relative; display: flex; align-items: flex-start; margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4) var(--sp-3); border-radius: var(--r-lg); background: var(--cream); box-shadow: inset 0 0 0 1px var(--hairline); }
+.route .rs { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); width: 40px; flex: none; font: 600 calc(var(--fs-cap) * 13px)/calc(var(--fs-cap) * 18px) var(--font-body); color: var(--ink-2); }
+.route .rs i { width: 12px; height: 12px; border-radius: 50%; background: var(--ink); margin-top: 2px; display: block; }
+.route .rs.new { color: var(--ink); }
+.route .rs.new i { width: 16px; height: 16px; margin-top: 0; background: var(--paper); box-shadow: 0 0 0 2.5px var(--coral-line); }
+.route .rl { flex: 1; height: 2px; margin-top: 7px; background: var(--ink-3); min-width: 16px; }
+.route .rl.dash { background: none; border-top: 2px dashed var(--coral-line); height: 0; margin-top: 7px; }
+.route .rm { margin-left: var(--sp-4); display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.route .rm b { font: 600 calc(var(--fs) * 14px)/calc(var(--fs) * 20px) var(--font-body); color: var(--ink); }
+.route .rm span { font: 400 calc(var(--fs) * 13px)/calc(var(--fs) * 18px) var(--font-body); color: var(--ink-2); }
+.dates { display: flex; align-items: stretch; min-height: var(--field-h); border-radius: var(--r-md); background: var(--cream); box-shadow: inset 0 0 0 1.5px var(--field-border); }
+.dseg { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: var(--sp-2) var(--sp-4); min-width: 0; text-align: left; }
+.dseg.r { text-align: right; align-items: flex-end; }
+.dline { align-self: center; width: 24px; border-top: 2px dashed var(--ink-3); flex: none; }
+.stepper-row { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4); min-height: 64px; border-radius: var(--r-md); background: var(--cream); box-shadow: inset 0 0 0 1px var(--hairline); }
+.stepper-row .tx { flex: 1; min-width: 0; }
+.stepper { display: flex; align-items: center; gap: var(--sp-1); flex: none; }
+.sbtn { width: var(--tap); height: var(--tap); border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--ink); display: grid; place-items: center; color: var(--ink); }
+.sval { min-width: 36px; text-align: center; font-size: calc(var(--fs-cap) * 22px) !important; line-height: calc(var(--fs-cap) * 28px) !important; font-family: var(--font-display); font-weight: 700; }
+.sugg { margin: var(--sp-2) calc(var(--sp-5) * -1) 0; }
+.sg-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 64px; padding: var(--sp-2) var(--sp-5); position: relative; }
+.sg-row + .sg-row::before { content: ''; position: absolute; top: 0; left: calc(var(--sp-5) + 28px + var(--sp-3)); right: var(--sp-5); height: 1px; background: var(--hairline); }
+.sg-row .tx { flex: 1; min-width: 0; }
+.sg-row.is-best { background: var(--cream); }
+.sg-row b { font-weight: 700; background: var(--coral-tint); border-radius: 3px; padding: 0 1px; }
+.reg { font-family: var(--font-body); font-weight: 400; font-size: calc(var(--fs) * 16px); }
+.route { background: none; box-shadow: none; padding: var(--sp-4) var(--sp-2) 0; }
+.route-meta { margin-top: var(--sp-2); padding: 0 var(--sp-2); }
+.route-meta b { color: var(--ink); font-weight: 600; }
+.scrollx { overflow: hidden; }
+.sg-row b { background: none; padding: 0; color: var(--ink); font-weight: 700; }
+.sg-row .rest { color: var(--ink-2); }
+
+.fadeR { position: relative; }
+.fadeR::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 32px; background: linear-gradient(90deg, transparent, var(--paper)); pointer-events: none; }

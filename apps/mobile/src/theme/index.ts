@@ -2,10 +2,10 @@
  * Public surface of the token layer — contract C7.
  *
  * Token NAMES are stable. Token VALUES may be retuned provided the contrast
- * gate still passes. `SurfaceTreatment` is a closed union: adding a member is a
- * minor change, removing or repurposing one is breaking.
+ * gate still passes.
  */
 export {
+  blend,
   contrastRatio,
   relativeLuminance,
   meetsFloor,
@@ -14,19 +14,14 @@ export {
 } from './contrast';
 
 export {
-  resolveElevationProfile,
-  type ElevationProfile,
-  type ElevationInput,
-} from './elevation-profile';
-
-export {
-  surfaceStyle,
-  type SurfaceTreatment,
-  type SurfaceOptions,
+  PaletteKeys,
+  PaletteNames,
+  Palettes,
+  resolvePaletteName,
+  type Palette,
+  type PaletteName,
   type ThemeName,
-} from './surfaces';
-
-export { resolveInk, type InkRole, type Palette } from './ink';
+} from './palette';
 
 export {
   appearanceChangeEvents,
@@ -36,3 +31,83 @@ export {
   platformQueries,
   type AccessibilityQueries,
 } from './accessibility';
+
+export {
+  CappableInContext,
+  CappedFontScale,
+  LegacyRoleMap,
+  TextRoleNames,
+  TextRoles,
+  TypeRoleNames,
+  TypeRoles,
+  fontClassOf,
+  maxFontScaleOf,
+  numericStyle,
+  textStyle,
+  typeExtras,
+  typeStyle,
+  type FontFamilyRole,
+  type FontWeight,
+  type TextRole,
+  type TextSize,
+  type TextStyleToken,
+  type TypeFamily,
+  type TypeRole,
+  type TypeSize,
+  type TypeToken,
+  type TypeWeight,
+} from './typography';
+
+export {
+  AtlasRadius,
+  AtlasSpacing,
+  FocusRing,
+  IconSize,
+  IconWeights,
+  Lift,
+  LiftElevation,
+  PrimaryEdgeRing,
+  Radii,
+  ScreenMargin,
+  Space,
+  cornerOf,
+  cornerStyle,
+  innerRadius,
+  liftOf,
+  type AtlasRadiusName,
+  type AtlasSpacingName,
+  type IconWeight,
+  type LiftLayer,
+  type LiftName,
+  type RadiiName,
+} from './shape';
+
+export {
+  Motion,
+  MotionDurationNames,
+  MotionProperties,
+  isMotionProperty,
+  motionDuration,
+  pressScaleOf,
+  springOf,
+  type MotionDurationName,
+  type MotionName,
+  type MotionProperty,
+  type Spring,
+} from './motion';
+
+export {
+  Passport,
+  Scrim,
+  Sky,
+  colourAt,
+  scrimSpec,
+  withAlpha,
+  type Glow,
+  type GradientStop,
+  type ScrimSpec,
+  type ScrimStop,
+  type SkySpec,
+} from './scrim';
+
+export { deepFreeze, type DeepReadonly } from './freeze';

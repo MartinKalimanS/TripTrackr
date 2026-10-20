@@ -20,12 +20,10 @@ import {
   type UserProfile,
 } from '@triptrackr/contracts';
 import { useMutation } from '@tanstack/react-query';
-import { z } from 'zod';
 
 import { useSessionStore } from '@/features/auth/session-store';
-import { ApiRequestError, apiFetch } from '@/lib/api-client';
-import { clearSession, getSession, setSession } from '@/lib/secure-store';
-import { Sentry } from '@/lib/sentry';
+import { apiFetch } from '@/lib/api-client';
+import { setSession } from '@/lib/secure-store';
 
 async function establishSession(tokens: AuthTokens): Promise<UserProfile> {
   await setSession({
@@ -42,9 +40,20 @@ async function authenticate(path: string, body: unknown): Promise<UserProfile> {
   return establishSession(tokens);
 }
 
+/**
+ * A mutation keeps its variables, here the password, for as long as it is cached, and by
+ * default it stays cached for five minutes after its last observer, which is the screen
+ * the session gate unmounts the moment sign-in succeeds. `gcTime: 0` drops the mutation,
+ * and the password in it, as soon as nothing observes it (T447; the retry of a refused
+ * attempt drops the previous attempt the same way). Pinned by
+ * `test/features/use-session-retention.test.tsx`.
+ */
+const DROP_WITH_ITS_SCREEN = { gcTime: 0 } as const;
+
 /** FR-001 — `POST /auth/register`. The input is validated by the form with `RegisterRequest`. */
 export function useRegister() {
   return useMutation({
+    ...DROP_WITH_ITS_SCREEN,
     mutationFn: (input: RegisterRequest) =>
       authenticate('/auth/register', RegisterRequest.parse(input)),
   });
@@ -53,6 +62,7 @@ export function useRegister() {
 /** FR-001 — `POST /auth/login`. */
 export function useLogin() {
   return useMutation({
+    ...DROP_WITH_ITS_SCREEN,
     mutationFn: (input: LoginRequest) =>
       authenticate('/auth/login', LoginRequest.parse(input)),
   });
@@ -86,37 +96,10 @@ export function useAppleSignIn() {
   });
 }
 
-/** Failures that are expected on the way out and change nothing about the outcome. */
-function isExpectedSignOutFailure(error: unknown): boolean {
-  return (
-    error instanceof ApiRequestError &&
-    (error.code === 'NETWORK' || error.code === 'SESSION_EXPIRED')
-  );
-}
-
 /**
- * FR-004 — sign out on this device. `POST /auth/logout` revokes the presented
- * refresh token; if the device is offline the local session is still ended
- * (the server-side token simply ages out) and anything unexpected is reported
- * rather than swallowed. The traveller's local database is left in place —
- * see `db/client.ts` for why.
+ * FR-004 — sign out on this device. The hook lives in `use-sign-out.ts` (T137),
+ * beside the guard that pushes first and warns before leaving anything
+ * unsynced behind; it is re-exported here so every existing import keeps
+ * working.
  */
-export function useSignOut() {
-  return useMutation({
-    mutationFn: async () => {
-      const session = await getSession();
-      if (session) {
-        try {
-          await apiFetch(z.unknown(), '/auth/logout', {
-            method: 'POST',
-            body: { refresh_token: session.refreshToken },
-          });
-        } catch (error) {
-          if (!isExpectedSignOutFailure(error)) Sentry.captureException(error);
-        }
-      }
-      await clearSession();
-      useSessionStore.getState().signOut();
-    },
-  });
-}
+export { useSignOut } from '@/features/auth/use-sign-out';
