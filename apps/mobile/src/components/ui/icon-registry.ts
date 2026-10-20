@@ -47,7 +47,7 @@ import { ExportIcon } from 'phosphor-react-native/src/icons/Export';
 import { FileTextIcon } from 'phosphor-react-native/src/icons/FileText';
 import { ForkKnifeIcon } from 'phosphor-react-native/src/icons/ForkKnife';
 import { GearSixIcon } from 'phosphor-react-native/src/icons/GearSix';
-import { GlobeHemisphereEastIcon } from 'phosphor-react-native/src/icons/GlobeHemisphereEast';
+import { GlobeIcon } from 'phosphor-react-native/src/icons/Globe';
 import { ImageIcon } from 'phosphor-react-native/src/icons/Image';
 import { ImagesIcon } from 'phosphor-react-native/src/icons/Images';
 import { InfoIcon } from 'phosphor-react-native/src/icons/Info';
@@ -68,6 +68,7 @@ import { SparkleIcon } from 'phosphor-react-native/src/icons/Sparkle';
 import { StampIcon } from 'phosphor-react-native/src/icons/Stamp';
 import { StopCircleIcon } from 'phosphor-react-native/src/icons/StopCircle';
 import { SuitcaseIcon } from 'phosphor-react-native/src/icons/Suitcase';
+import { SuitcaseRollingIcon } from 'phosphor-react-native/src/icons/SuitcaseRolling';
 import { TagIcon } from 'phosphor-react-native/src/icons/Tag';
 import { TicketIcon } from 'phosphor-react-native/src/icons/Ticket';
 import { TrashIcon } from 'phosphor-react-native/src/icons/Trash';
@@ -83,8 +84,9 @@ import { XIcon } from 'phosphor-react-native/src/icons/X';
 
 export const ICONS = {
   // Tab bar, headers, row cues
-  globe: GlobeHemisphereEastIcon,
+  globe: GlobeIcon,
   suitcase: SuitcaseIcon,
+  'suitcase-rolling': SuitcaseRollingIcon,
   user: UserIcon,
   'user-circle': UserCircleIcon,
   'chevron-left': CaretLeftIcon,

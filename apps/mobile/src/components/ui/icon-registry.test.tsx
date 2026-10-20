@@ -94,6 +94,7 @@ describe('the vocabulary the screens need - D5-07', () => {
     // tab bar, headers, row cues
     'globe',
     'suitcase',
+    'suitcase-rolling',
     'user',
     'user-circle',
     'chevron-left',

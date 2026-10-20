@@ -54,7 +54,7 @@ const ROUTES = [
 ] as const;
 
 /** The glyph each tab asks for (a registry key): `regular` at rest, `fill` when selected. */
-const ICONS = { index: 'globe', trips: 'suitcase', profile: 'user' } as const;
+const ICONS = { index: 'globe', trips: 'suitcase-rolling', profile: 'user' } as const;
 
 function makeProps(focusedIndex = 0, bottomInset = 34): BottomTabBarProps {
   const emit = jest.fn(() => ({ defaultPrevented: false }));
@@ -376,18 +376,17 @@ describe('<TabBar> the capsule - C5-21, FR-022, FR-027', () => {
 });
 
 describe('<TabBar> selection - FR-022', () => {
-  test('the selected label is the ink and heavier; the others are muted and regular', async () => {
+  // `home.png` and the prototype's `.tab` (font 600 on every tab): the label is semibold in
+  // every state, so the selection is the capsule, the filled glyph and the ink.
+  test('the selected label is the ink; the others are muted; all are semibold', async () => {
     await render(<TabBar {...makeProps(1)} />);
 
-    const selected = classesOf(labelOf('Trips'));
-    expect(selected).toEqual(
-      expect.arrayContaining(['text-foreground', 'font-body-semibold']),
-    );
+    expect(classesOf(labelOf('Trips'))).toContain('text-foreground');
+    for (const title of ['Globe', 'Trips', 'You']) {
+      expect(classesOf(labelOf(title))).toContain('font-body-semibold');
+    }
     for (const title of ['Globe', 'You']) {
-      const rest = classesOf(labelOf(title));
-      expect(rest).toContain('text-muted');
-      expect(rest).toContain('font-body');
-      expect(rest).not.toContain('font-body-semibold');
+      expect(classesOf(labelOf(title))).toContain('text-muted');
     }
   });
 

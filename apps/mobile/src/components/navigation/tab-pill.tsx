@@ -21,14 +21,16 @@
  * - SURFACE. `TabSurface` is glass on iOS 26, a blur before it, and opaque where transparency
  *   is reduced or contrast increased (`tabSurface()`); nothing here animates an opacity.
  * - SELECTION is a tinted capsule behind the tab (`TabCapsule`, id `tab-mark-<name>`, one
- *   spring), the FILLED variant of the icon and a HEAVIER label, so it survives greyscale and
- *   is never colour alone. The label is `label` (14 / 20), semibold when selected, capped at
- *   1.3 times (Q-1), and it wraps instead of clipping; the tab is at least 52 dp tall (the
+ *   spring), the FILLED variant of the icon and the ink (the others are outline and muted),
+ *   so it survives greyscale and is never colour alone. The label is DM Sans 600 at 12 / 14
+ *   in every state (the prototype's `.tab`: `label` strong, sized by `PillMetrics`), capped
+ *   at 1.3 times (Q-1), and it wraps instead of clipping; the tab is at least 52 dp tall (the
  *   inside of the pill) and grows with its content.
  * - EACH TAB is a `Tappable`: touch target, pressed fill (a capsule here), focus ring and the
  *   name come from it. It is announced as a `tab` named by the route's label, `selected` for
  *   the focused one, inside a `tablist`. Press behaviour is React Navigation's (`tabPress`,
- *   then navigate; `tabLongPress`): `tab-shared.ts`.
+ *   then navigate; `tabLongPress`): `tab-shared.ts`. A press that changes the tab plays the
+ *   selection haptic (`tabChange`); one on the focused tab or one a listener vetoes plays none.
  */
 import {
   BottomTabBarHeightCallbackContext,
@@ -41,6 +43,7 @@ import { Icon } from '@/components/ui/icon';
 import { Scrim, type FadeGround } from '@/components/ui/scrim';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
+import { useHaptics } from '@/hooks/use-haptics';
 import { Radii } from '@/theme';
 
 import { TabCapsule } from './tab-capsule';
@@ -71,7 +74,10 @@ interface TabButtonProps {
 function TabButton({ route, options, focused, navigation }: TabButtonProps) {
   const label = tabLabel(options, route.name);
   const icon = TAB_ICONS[route.name];
-  const { onPress, onLongPress } = tabPressHandlers(route, navigation, focused);
+  const haptics = useHaptics();
+  const { onPress, onLongPress } = tabPressHandlers(route, navigation, focused, () =>
+    haptics.tabChange(),
+  );
 
   return (
     <Tappable
@@ -93,9 +99,10 @@ function TabButton({ route, options, focused, navigation }: TabButtonProps) {
       ) : null}
       <Text
         variant="label"
-        strong={focused}
+        strong
         capped
         tone={focused ? 'default' : 'muted'}
+        style={styles.label}
         className="text-center">
         {label}
       </Text>
@@ -155,6 +162,8 @@ export function TabPill({ state, descriptors, navigation, insets }: BottomTabBar
 
 const styles = StyleSheet.create({
   fade: { height: PillMetrics.fadeHeight },
+  // 12 / 14, not the `label` role's 14 / 20: the tab label of the pictures.
+  label: { fontSize: PillMetrics.labelSize, lineHeight: PillMetrics.labelLine },
   bar: {
     position: 'absolute',
     left: PillMetrics.sideMargin,
