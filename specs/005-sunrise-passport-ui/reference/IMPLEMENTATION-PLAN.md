@@ -40,22 +40,22 @@ starts. A feature lives on `feat/fN-<name>` (from `feat/005-sunrise-passport-ui`
 The owner tests a feature by checking out `feat/fN-<name>`. Pictured controls with no capability behind them are
 drawn as pictured and are "coming soon" controls (`UI-SPEC.md` section 10, `spec.md` FR-080 as amended by Q-11).
 
-| #   | Feature (approval gate)                                                          | Pictures                                      | State                          |
-| --- | -------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------ |
-| F1  | **Map**: the Home globe look, pins and photo roundels, callout, header, recentre | `core/home*`                                  | Approved                       |
-| F2  | **Home sheet**: three positions, Now card, figures, Countries, invitation        | `core/home*`, `more/countries`                | Approved                       |
-| F3  | **Tab bar**: the floating pill and the Android bar                               | every frame with a bar                        | In progress (`feat/f3-tabbar`) |
-| F4  | **Trips cards and list**: hero, ticket, rows, filter, button, states             | `core/trips*`                                 | Not started                    |
-| F5  | **Trip screen**: hero, areas, day chips, stops and spine                         | `core/trip*`                                  | Not started                    |
-| F6  | **Forms**: New trip, stop editor, add expense                                    | `core/form`, `more/add-stop*`, `add-expense*` | Not started                    |
-| F7  | **Photos** and the photo viewer                                                  | `more/photos*`, `photo-viewer`                | Not started                    |
-| F8  | **Spending**                                                                     | `more/expenses*`                              | Not started                    |
-| F9  | **Notes** and the note editor                                                    | `more/notes*`, `note-editor`                  | Not started                    |
-| F10 | **Documents** and the document viewer                                            | `more/documents*`, `document-view`            | Not started                    |
-| F11 | **Offline maps**                                                                 | `more/offline-maps*`                          | Not started                    |
-| F12 | **Welcome, sign in, create account**                                             | `core/welcome*`, `more/auth*`, `register`     | Not started                    |
-| F13 | **You**: passport, stamps                                                        | `core/profile*`                               | Not started                    |
-| F14 | **Sweeps, retire Atlas, release gates** (Phases 9 to 11)                         | all                                           | Not started                    |
+| #   | Feature (approval gate)                                                          | Pictures                                      | State                                |
+| --- | -------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------ |
+| F1  | **Map**: the Home globe look, pins and photo roundels, callout, header, recentre | `core/home*`                                  | Approved                             |
+| F2  | **Home sheet**: three positions, Now card, figures, Countries, invitation        | `core/home*`, `more/countries`                | Approved                             |
+| F3  | **Tab bar**: the floating pill and the Android bar                               | every frame with a bar                        | Awaiting approval (`feat/f3-tabbar`) |
+| F4  | **Trips cards and list**: hero, ticket, rows, filter, button, states             | `core/trips*`                                 | Not started                          |
+| F5  | **Trip screen**: hero, areas, day chips, stops and spine                         | `core/trip*`                                  | Not started                          |
+| F6  | **Forms**: New trip, stop editor, add expense                                    | `core/form`, `more/add-stop*`, `add-expense*` | Not started                          |
+| F7  | **Photos** and the photo viewer                                                  | `more/photos*`, `photo-viewer`                | Not started                          |
+| F8  | **Spending**                                                                     | `more/expenses*`                              | Not started                          |
+| F9  | **Notes** and the note editor                                                    | `more/notes*`, `note-editor`                  | Not started                          |
+| F10 | **Documents** and the document viewer                                            | `more/documents*`, `document-view`            | Not started                          |
+| F11 | **Offline maps**                                                                 | `more/offline-maps*`                          | Not started                          |
+| F12 | **Welcome, sign in, create account**                                             | `core/welcome*`, `more/auth*`, `register`     | Not started                          |
+| F13 | **You**: passport, stamps                                                        | `core/profile*`                               | Not started                          |
+| F14 | **Sweeps, retire Atlas, release gates** (Phases 9 to 11)                         | all                                           | Not started                          |
 
 ### Progress (checked = done; updated at every approval)
 
@@ -65,7 +65,7 @@ drawn as pictured and are "coming soon" controls (`UI-SPEC.md` section 10, `spec
 - [x] Owner decision Q-11: pictured controls without a capability are "coming soon" controls (2026-10-19)
 - [x] **F1 Map**: style, pins and callout, header and search (approved 2026-10-19; merged)
 - [x] **F2 Home sheet**: shell and states, peek and half content, Countries list (approved 2026-10-20; merged)
-- [ ] **F3 Tab bar** (in progress)
+- [ ] **F3 Tab bar**: iOS pill and Android bar done, awaiting approval (`feat/f3-tabbar`)
 - [ ] F4 Trips cards and list
 - [ ] F5 Trip screen
 - [ ] F6 Forms
