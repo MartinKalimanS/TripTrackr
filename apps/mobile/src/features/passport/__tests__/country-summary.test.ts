@@ -159,7 +159,7 @@ describe('summariseCountries: one entry per visited country', () => {
 });
 
 describe('first and last visit', () => {
-  test('the earliest arrival and the latest departure, over every trip and stop', () => {
+  test('the earliest arrival and the latest departure that has happened, over every trip and stop', () => {
     const globe = trips(
       ['early', 'late'],
       [
@@ -172,6 +172,23 @@ describe('first and last visit', () => {
       firstVisit: '2021-02-03',
       lastVisit: '2025-08-14',
     });
+  });
+
+  test('the last visit is the last day that has happened, never one still to come', () => {
+    const globe = trips(
+      ['past', 'ahead', 'now'],
+      [
+        stop('past', LISBON, '2023-01-01', '2023-01-04'),
+        stop('ahead', LISBON, '2027-05-01', '2027-05-04'),
+        stop('now', PARIS, '2026-10-10', '2026-10-20'),
+        stop('past', PARIS, '2024-02-01', '2024-02-03'),
+        stop('ahead', TOKYO, '2027-02-01', '2027-02-09'),
+      ],
+    );
+    const summaries = summariseCountries(globe, COUNTRIES, TODAY);
+    expect(byIso(summaries, 'PT')?.lastVisit).toBe('2023-01-04');
+    expect(byIso(summaries, 'FR')?.lastVisit).toBe(TODAY);
+    expect(byIso(summaries, 'JP')?.lastVisit).toBe('2027-02-09');
   });
 
   test('is a calendar date, not an instant', () => {
