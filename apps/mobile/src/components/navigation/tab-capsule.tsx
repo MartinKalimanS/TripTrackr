@@ -9,6 +9,10 @@
  * animates a transform and nothing else: an opacity above or on the glass would make it
  * vanish (expo/expo#41024), and movement and fade are all FR-027 allows anyway.
  *
+ * ITS COLOUR is the `accentTint` in the light themes and white at 14 percent in the dark ones
+ * (`.tab.is-on` in the prototype; `home-dark.png`): the one white token is `onPhoto`, which is
+ * pure white in every theme.
+ *
  * It carries the id `tab-mark-<routeName>` of the SELECTED route, so the id the 004 mark
  * had still exists in the selected tab's place only (`tab-mark-index` while Globe is
  * selected). It is decoration: hidden from assistive technology and from touches, the
@@ -28,7 +32,7 @@ import Animated, {
 
 import { useColors } from '@/components/ui/theme-tokens';
 import { useAppearance } from '@/hooks/use-appearance';
-import { Radii, springOf } from '@/theme';
+import { Radii, springOf, withAlpha } from '@/theme';
 
 import { PillMetrics, capsuleLayout } from './tab-metrics';
 
@@ -43,12 +47,16 @@ export interface TabCapsuleProps {
   trackWidth: number | null;
 }
 
-const COLOR_KEYS = ['accentTint'] as const;
+const COLOR_KEYS = ['accentTint', 'onPhoto'] as const;
 
 export function TabCapsule({ routeName, index, count, trackWidth }: TabCapsuleProps) {
-  const { prefersLessMotion } = useAppearance();
+  const { prefersLessMotion, theme } = useAppearance();
   const colors = useColors(COLOR_KEYS);
   const { width: windowWidth } = useWindowDimensions();
+  const fill =
+    theme === 'dark'
+      ? withAlpha(colors.onPhoto, PillMetrics.darkCapsuleAlpha)
+      : colors.accentTint;
   const { tabWidth, offsetOf } = capsuleLayout(
     trackWidth ?? windowWidth - 2 * PillMetrics.sideMargin,
     count,
@@ -69,11 +77,7 @@ export function TabCapsule({ routeName, index, count, trackWidth }: TabCapsulePr
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[
-        styles.capsule,
-        { width: tabWidth, backgroundColor: colors.accentTint },
-        moving,
-      ]}
+      style={[styles.capsule, { width: tabWidth, backgroundColor: fill }, moving]}
     />
   );
 }

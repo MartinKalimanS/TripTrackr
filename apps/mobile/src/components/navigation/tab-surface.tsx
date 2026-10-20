@@ -19,12 +19,18 @@
  * input, and some iOS 26 betas lack the API and crash, hence `isGlassEffectAPIAvailable()`
  * (both are read from the module's documentation; the stand-in under Jest answers `false`).
  *
+ * Every kind has the hairline ring and the second lift of the pictures (`.tabbar`:
+ * `0 0 0 1px hairline, shadow-2`). The TINT is the `surface` in the light themes and the
+ * cream (`surfaceSecondary`, rgba 24 46 74 in the prototype) in the dark ones, which is why
+ * the dark pill is lighter than its ground (`home-dark.png`); the increased-contrast themes
+ * are opaque `surface` ("var(--paper)"), light or dark. `tabTint()` is that rule.
+ *
  * Opacity is NEVER set on the glass or on anything above it: `GlassView` renders nothing
  * under an opacity of 0 (expo/expo#41024). Nothing here animates anything.
  *
  * Whether the real glass renders, adapts to what is behind it and keeps the labels legible
- * on a bright sky is device check V4 (tasks T510); the glass draws no hairline and no lift
- * of its own, which is a one-line change if the device wants them.
+ * on a bright sky is device check V4 (tasks T510); the glass gets the hairline and the lift
+ * too, which is one line (`edge`) to take off if the device shows a doubled rim.
  */
 import { BlurView } from 'expo-blur';
 import {
@@ -64,12 +70,22 @@ export function tabSurface({
   return liquidGlass ? 'glass' : 'blur';
 }
 
+export type TabTintKey = 'surface' | 'surfaceSecondary';
+
+/**
+ * Which palette key tints the pill: the cream in the dark theme (and when its transparency
+ * is reduced), the paper everywhere else, including both increased-contrast themes.
+ */
+export function tabTint(themeName: PaletteName): TabTintKey {
+  return themeName === 'dark' ? 'surfaceSecondary' : 'surface';
+}
+
 /** The opacity of the `surface` tint over the blur (C5-21: 84 percent). */
 const TINT_OPACITY = 0.84;
 /** 1 to 100; a starting value, a device check (V4). */
 const BLUR_INTENSITY = 60;
 
-const COLOR_KEYS = ['surface', 'hairline'] as const;
+const COLOR_KEYS = ['surface', 'surfaceSecondary', 'hairline'] as const;
 
 export interface TabSurfaceProps {
   children?: ReactNode;
@@ -79,7 +95,7 @@ export interface TabSurfaceProps {
 
 const SHAPE: ViewStyle = { borderRadius: Radii.full };
 
-/** The hairline and the second lift of every surface that is not glass. */
+/** The hairline and the second lift of every surface. */
 function edge(hairline: string, theme: PaletteName): ViewStyle {
   return {
     borderWidth: StyleSheet.hairlineWidth,
@@ -99,18 +115,19 @@ export function TabSurface({ children, style }: TabSurfaceProps) {
     increasedContrast: prefersMoreContrast,
   });
 
+  const ring = edge(colors.hairline, themeName);
+  const tint = colors[tabTint(themeName)];
   if (kind === 'glass') {
     return (
       <GlassView
         testID="tab-surface-glass"
         glassEffectStyle="regular"
         colorScheme={theme}
-        style={[SHAPE, style]}>
+        style={[SHAPE, ring, style]}>
         {children}
       </GlassView>
     );
   }
-  const ring = edge(colors.hairline, themeName);
   if (kind === 'blur') {
     return (
       <BlurView
@@ -123,7 +140,7 @@ export function TabSurface({ children, style }: TabSurfaceProps) {
           pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
-            { backgroundColor: withAlpha(colors.surface, TINT_OPACITY) },
+            { backgroundColor: withAlpha(tint, TINT_OPACITY) },
           ]}
         />
         {children}
@@ -133,7 +150,7 @@ export function TabSurface({ children, style }: TabSurfaceProps) {
   return (
     <View
       testID="tab-surface-solid"
-      style={[SHAPE, ring, { backgroundColor: colors.surface }, style]}>
+      style={[SHAPE, ring, { backgroundColor: tint }, style]}>
       {children}
     </View>
   );

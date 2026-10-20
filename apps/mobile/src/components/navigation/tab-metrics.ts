@@ -27,6 +27,11 @@ export const PillMetrics = {
   iconSize: 24,
   /** Between the icon and the label. */
   iconLabelGap: 2,
+  /** The label: DM Sans 600 at 12 over 14 (the prototype's `.tab`), capped at 1.3 times. */
+  labelSize: 12,
+  labelLine: 14,
+  /** The selected capsule in the dark themes: white at this opacity (`.tab.is-on`). */
+  darkCapsuleAlpha: 0.14,
   /** 64 - 2 x 6: a tab is at least this tall, above 44 pt and 48 dp (FR-071). */
   tabMinHeight: 64 - 2 * 6,
 } as const;

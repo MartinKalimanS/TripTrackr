@@ -18,7 +18,7 @@ export type TabNavigation = BottomTabBarProps['navigation'];
  */
 export const TAB_ICONS: Record<string, IconName> = {
   index: 'globe',
-  trips: 'suitcase',
+  trips: 'suitcase-rolling',
   profile: 'user',
 };
 
@@ -40,12 +40,14 @@ export interface TabPressHandlers {
  * focused one; `tabLongPress` on a long press. The focused tab still emits `tabPress`, which a
  * stack nested in the tab answers by popping to its root, and dispatches nothing: a
  * `navigate` to the tab that is already there would race that pop and could re-push a deep
- * link carried in the route's params.
+ * link carried in the route's params. `onNavigate` runs just before the navigation, and only
+ * then (the pill plays its selection haptic from it).
  */
 export function tabPressHandlers(
   route: TabRoute,
   navigation: TabNavigation,
   focused: boolean,
+  onNavigate?: () => void,
 ): TabPressHandlers {
   return {
     onPress: () => {
@@ -55,6 +57,7 @@ export function tabPressHandlers(
         canPreventDefault: true,
       });
       if (!focused && !event.defaultPrevented) {
+        onNavigate?.();
         navigation.navigate(route.name, route.params);
       }
     },
