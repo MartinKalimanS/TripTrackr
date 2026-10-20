@@ -29,7 +29,7 @@ import {
 
 import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
-import { Motion } from '@/theme';
+import { Motion, Palettes } from '@/theme';
 
 import * as themeTokens from './theme-tokens';
 import { Sheet, SheetScrollable, useSheetScroll, type SheetProps } from './sheet';
@@ -206,12 +206,12 @@ describe('the shell as pictured (UI-SPEC 3.6; prototype .sheet, .grab-zone, .gra
       .spyOn(themeTokens, 'useColors')
       .mockImplementation(
         (keys) =>
-          Object.fromEntries(keys.map((key) => [key, Colors.light[key]])) as never,
+          Object.fromEntries(keys.map((key) => [key, Palettes.light[key]])) as never,
       );
     await render(sheet());
     const style = StyleSheet.flatten(screen.getByTestId('home-sheet').props.style);
-    expect(style.backgroundColor).toBe(Colors.light.surface);
-    expect(style.borderColor).toBe(Colors.light.hairline);
+    expect(style.backgroundColor).toBe(Palettes.light.surface);
+    expect(style.borderColor).toBe(Palettes.light.hairline);
     expect(style.borderTopWidth).toBe(1);
     expect(style.borderBottomWidth ?? 0).toBe(0);
   });
