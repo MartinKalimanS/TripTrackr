@@ -11,8 +11,9 @@
  * pale photograph from the sheet. It is decoration: the card or row that holds it names the
  * trip, so it is hidden from assistive technology on both platforms.
  *
- * `size` is a fixed dp box (64 on the card, 56 at peek, 48 on the row): the picture does not
- * scale with the text size; the text beside it does. The ids are written out at the call site
+ * `size` is a fixed dp box (64 on the card, 56 at peek, 48 on the row and on the card at large
+ * text): the picture does not scale with the text size; the text beside it does. The corner is
+ * 16 dp (`lg`) except on the row, 12 dp (`md`); `corner` says which when the size does not. The ids are written out at the call site
  * (`home-now-card-photo`, ...), so the id extractor reads each with its literal and the
  * unresolved-id ratchet does not grow.
  */
@@ -40,6 +41,8 @@ export interface TripThumbProps {
   /** The country's code: the generated cover's big mark. */
   iso2: string | null;
   size: 48 | 56 | 64;
+  /** The corner: 12 dp on a 48 dp row (the default for 48), 16 dp otherwise. */
+  corner?: 'md' | 'lg';
   ids: TripThumbIds;
 }
 
@@ -48,12 +51,15 @@ const DECORATIVE = {
   importantForAccessibility: 'no-hide-descendants',
 } as const;
 
-/** 12 dp corners on the 48 dp row thumbnail, 16 dp on the larger ones (C5-8). */
-function cornerOfSize(size: TripThumbProps['size']) {
-  return cornerOf(size === 48 ? 'md' : 'lg');
-}
-
-export function TripThumb({ tripId, title, cover, iso2, size, ids }: TripThumbProps) {
+export function TripThumb({
+  tripId,
+  title,
+  cover,
+  iso2,
+  size,
+  corner = size === 48 ? 'md' : 'lg',
+  ids,
+}: TripThumbProps) {
   // The address whose thumbnail failed to draw: kept against the address, so a card reused for
   // another trip, or a new photograph, tries again instead of inheriting the failure.
   const [failed, setFailed] = useState<string | null>(null);
@@ -64,7 +70,7 @@ export function TripThumb({ tripId, title, cover, iso2, size, ids }: TripThumbPr
     <View
       testID={ids.thumb}
       className="overflow-hidden border border-separator"
-      style={[{ width: size, height: size }, cornerOfSize(size)]}
+      style={[{ width: size, height: size }, cornerOf(corner)]}
       {...DECORATIVE}>
       {uri !== null && cover.kind === 'photo' ? (
         <Image

@@ -10,15 +10,18 @@
  * technology. A trip with no photograph shows the generated cover, never an empty box.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import * as HeroUI from 'heroui-native';
 import { StyleSheet } from 'react-native';
 
 import type { HomeTrip } from '@/features/home/home-trips';
 
 import { appearance } from '../../../../test/helpers/appearance';
+import { glyphsIn } from '../../../../test/helpers/icons';
 import { HomeHalf } from '../home-half';
 import { HomePeek } from '../home-peek';
 import { NextRow } from '../next-row';
-import { NowCard } from '../now-card';
+import { NowCard, thumbSize } from '../now-card';
+import { DOT } from '../stop-dots';
 
 jest.mock('@/hooks/use-appearance');
 // A View that carries every prop, so a test reads the source and fires `error`.
@@ -97,21 +100,39 @@ describe('<NowCard> a live trip', () => {
     );
   });
 
-  test('draws one dot per stop, in the shapes of done, now, next and later', async () => {
+  test('draws one dot per stop, in the three looks of the picture: done, now, ahead', async () => {
     await render(<NowCard trip={LIVE} onPress={jest.fn()} />);
     const dots = screen.getAllByTestId('home-now-card-dot', hidden);
     expect(dots).toHaveLength(8);
-    expect(new Set(dots.map((dot) => dot.props.className)).size).toBe(4);
+    // The picture has no fourth look: the next stop is drawn like the ones after it.
+    expect(new Set(dots.map((dot) => dot.props.className)).size).toBe(3);
+    expect(dots[3]!.props.className).toBe(dots[4]!.props.className);
   });
 
-  test('the dots of a done and a later stop differ by shape, not by colour alone', async () => {
+  test('the dots are 6 dp: done solid coral, now a surface dot with a 2 dp coral ring, ahead sand with a 1 dp border ring', async () => {
     await render(<NowCard trip={LIVE} onPress={jest.fn()} />);
     const [done, , now, , later] = screen.getAllByTestId('home-now-card-dot', hidden);
-    const filled = (dot: typeof done) =>
-      tokens(dot!.props.className).some((c) => /^bg-/.test(c));
-    expect(filled(done)).toBe(true);
-    expect(filled(later)).toBe(false);
-    expect(tokens(now!.props.className)).toEqual(expect.arrayContaining(['border-2']));
+    expect(tokens(done!.props.className)).toEqual(
+      expect.arrayContaining(['size-1.5', 'rounded-full', 'bg-accent-line']),
+    );
+    expect(tokens(now!.props.className)).toEqual(
+      expect.arrayContaining([
+        'size-1.5',
+        'border-2',
+        'border-accent-line',
+        'bg-surface',
+      ]),
+    );
+    expect(tokens(later!.props.className)).toEqual(
+      expect.arrayContaining(['size-1.5', 'border', 'border-border', 'bg-sand']),
+    );
+    expect(DOT.done).not.toContain('border');
+  });
+
+  test('the dots sit 4 dp apart', async () => {
+    await render(<NowCard trip={LIVE} onPress={jest.fn()} />);
+    const strip = screen.getAllByTestId('home-now-card-dot', hidden)[0]!.parent!;
+    expect(tokens(strip.props.className)).toEqual(expect.arrayContaining(['gap-1']));
   });
 
   test('a long trip shows a window of dots and says how many are left out', async () => {
@@ -170,16 +191,118 @@ describe('<NowCard> a live trip', () => {
     });
   });
 
-  test('the title is two lines, one at peek; nothing is clipped at large text', async () => {
+  test('the thumbnail is 48 dp from a font scale of 1.15, its corner still 16', async () => {
+    useAppearance.mockReturnValue(
+      appearance({ fontScale: 1.15, prefersLessMotion: true }),
+    );
     await render(<NowCard trip={LIVE} onPress={jest.fn()} />);
-    expect(screen.getByText('Portugal Road Trip').props.numberOfLines).toBe(2);
+    const thumb = () =>
+      StyleSheet.flatten(screen.getByTestId('home-now-card-thumb', hidden).props.style);
+    expect(thumb()).toMatchObject({ width: 48, height: 48, borderRadius: 16 });
     await screen.rerender(<NowCard trip={LIVE} compact onPress={jest.fn()} />);
-    expect(screen.getByText('Portugal Road Trip').props.numberOfLines).toBe(1);
+    expect(thumb()).toMatchObject({ width: 48, height: 48 });
+    expect([
+      thumbSize(false, false),
+      thumbSize(true, false),
+      thumbSize(true, true),
+    ]).toEqual([64, 56, 48]);
   });
 
-  test('carries a chevron as its cue, so it reads as tappable', async () => {
+  test('the corner of the 64 dp thumbnail is 16', async () => {
+    await render(<NowCard trip={LIVE} onPress={jest.fn()} />);
+    expect(
+      StyleSheet.flatten(screen.getByTestId('home-now-card-thumb', hidden).props.style),
+    ).toMatchObject({ borderRadius: 16 });
+  });
+
+  test('the title is one line with an ellipsis, two lines from a font scale of 1.15', async () => {
+    await render(<NowCard trip={LIVE} onPress={jest.fn()} />);
+    expect(screen.getByText('Portugal Road Trip').props.numberOfLines).toBe(1);
+    expect(screen.getByText('Day 3 of 8 \u00b7 Sintra').props.numberOfLines).toBe(1);
+    await screen.rerender(<NowCard trip={LIVE} compact onPress={jest.fn()} />);
+    expect(screen.getByText('Portugal Road Trip').props.numberOfLines).toBe(1);
+    useAppearance.mockReturnValue(
+      appearance({ fontScale: 1.15, prefersLessMotion: true }),
+    );
+    await screen.rerender(<NowCard trip={LIVE} onPress={jest.fn()} />);
+    expect(screen.getByText('Portugal Road Trip').props.numberOfLines).toBe(2);
+    expect(screen.getByText('Day 3 of 8 \u00b7 Sintra').props.numberOfLines).toBe(2);
+  });
+
+  test('is the cream tile with 24 dp corners, 8 dp padding and a hairline', async () => {
+    await render(<NowCard trip={LIVE} onPress={jest.fn()} />);
+    expect(
+      StyleSheet.flatten(screen.getByTestId('home-now-card').props.style),
+    ).toMatchObject({ borderRadius: 24 });
+    const surface = screen.getByTestId('home-now-card-surface', hidden);
+    expect(tokens(surface.props.className)).toEqual(
+      expect.arrayContaining([
+        'bg-surface-secondary',
+        'border',
+        'border-separator',
+        'p-2',
+      ]),
+    );
+  });
+
+  test('the live line is the muted label with a coral dot: 8 dp, a 3 dp tint halo', async () => {
+    await render(<NowCard trip={LIVE} onPress={jest.fn()} />);
+    expect(tokens(screen.getByText('Day 3 of 8 \u00b7 Sintra').props.className)).toEqual(
+      expect.arrayContaining(['text-muted']),
+    );
+    const halo = screen.getByTestId('home-now-card-live-dot', hidden);
+    expect(tokens(halo.props.className)).toEqual(
+      expect.arrayContaining(['size-3.5', 'rounded-full', 'bg-accent-tint']),
+    );
+    expect(StyleSheet.flatten(halo.props.style)).toMatchObject({ margin: -3 });
+    expect(halo.props.importantForAccessibility).toBe('no-hide-descendants');
+  });
+
+  test('a planned trip has no live dot', async () => {
+    await render(<NowCard trip={PLANNED} onPress={jest.fn()} />);
+    expect(screen.queryByTestId('home-now-card-live-dot', hidden)).toBeNull();
+  });
+
+  test('carries a 20 dp chevron in the subtle ink as its cue, 8 dp from the edge', async () => {
+    jest
+      .spyOn(HeroUI, 'useThemeColor')
+      .mockImplementation(((token: string) =>
+        token === 'subtle' ? 'red' : 'blue') as never);
     await render(<NowCard trip={LIVE} onPress={jest.fn()} />);
     expect(screen.getByTestId('home-now-card-cue', hidden)).toBeTruthy();
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({
+        name: 'chevron-right',
+        size: 20,
+        color: 'red',
+      }),
+    ]);
+    const cue = screen.getByTestId('home-now-card-cue', hidden).parent!;
+    expect(StyleSheet.flatten(cue.props.style)).toMatchObject({ marginEnd: 8 });
+  });
+
+  test('at peek, with onExpand, the cue points up, 2 dp from the edge, and the press raises the sheet', async () => {
+    const onPress = jest.fn();
+    const onExpand = jest.fn();
+    await render(<NowCard trip={LIVE} compact onPress={onPress} onExpand={onExpand} />);
+    expect(glyphsIn()).toEqual([
+      expect.objectContaining({ name: 'chevron-up', size: 20 }),
+    ]);
+    const cue = screen.getByTestId('home-now-card-cue', hidden).parent!;
+    expect(StyleSheet.flatten(cue.props.style)).toMatchObject({ marginEnd: 2 });
+    const card = screen.getByTestId('home-now-card');
+    expect(card.props.accessibilityHint).toBe('Shows more');
+    await fireEvent.press(card);
+    expect(onExpand).toHaveBeenCalledTimes(1);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  test('onExpand is for peek only: the half card still opens the trip with a right chevron', async () => {
+    const onPress = jest.fn();
+    await render(<NowCard trip={LIVE} onPress={onPress} onExpand={jest.fn()} />);
+    expect(glyphsIn()).toEqual([expect.objectContaining({ name: 'chevron-right' })]);
+    await fireEvent.press(screen.getByTestId('home-now-card'));
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -243,12 +366,48 @@ describe('<NextRow>', () => {
     );
   });
 
-  test('the title is one line, and wraps at the largest text size', async () => {
+  test('the title and the line are one line, and two lines from a font scale of 1.15', async () => {
     await render(<NextRow trip={PLANNED} onPress={jest.fn()} />);
     expect(screen.getByText('Iceland Ring Road').props.numberOfLines).toBe(1);
+    expect(screen.getByText('Jan 2027 \u00b7 in 94 days').props.numberOfLines).toBe(1);
     useAppearance.mockReturnValue(appearance({ fontScale: 2, prefersLessMotion: true }));
     await screen.rerender(<NextRow trip={PLANNED} onPress={jest.fn()} />);
-    expect(screen.getByText('Iceland Ring Road').props.numberOfLines).toBeUndefined();
+    expect(screen.getByText('Iceland Ring Road').props.numberOfLines).toBe(2);
+    expect(screen.getByText('Jan 2027 \u00b7 in 94 days').props.numberOfLines).toBe(2);
+    // The 48 dp thumbnail does not shrink further.
+    expect(
+      StyleSheet.flatten(screen.getByTestId('home-next-row-thumb', hidden).props.style),
+    ).toMatchObject({ width: 48, height: 48 });
+  });
+
+  test('the thumbnail has 12 dp corners, the row is at least 56 dp and the line is muted', async () => {
+    await render(<NextRow trip={PLANNED} onPress={jest.fn()} />);
+    expect(
+      StyleSheet.flatten(screen.getByTestId('home-next-row-thumb', hidden).props.style),
+    ).toMatchObject({ borderRadius: 12 });
+    const content = screen.getByTestId('home-next-row-thumb', hidden).parent!;
+    expect(tokens(content.props.className)).toEqual(
+      expect.arrayContaining(['min-h-14', 'gap-3']),
+    );
+    expect(
+      tokens(screen.getByText('Jan 2027 \u00b7 in 94 days').props.className),
+    ).toEqual(expect.arrayContaining(['text-muted']));
+  });
+
+  test('the cue is a 20 dp chevron in the subtle ink', async () => {
+    jest
+      .spyOn(HeroUI, 'useThemeColor')
+      .mockImplementation(((token: string) =>
+        token === 'subtle' ? 'red' : 'blue') as never);
+    await render(<NextRow trip={PLANNED} onPress={jest.fn()} />);
+    const chevron = glyphsIn().find((glyph) => glyph.name === 'chevron-right');
+    expect(chevron).toMatchObject({ size: 20, color: 'red' });
+    expect(screen.getByTestId('home-next-row-cue', hidden)).toBeTruthy();
+  });
+
+  test('draws no section label above it: the pictures have none', async () => {
+    await render(<NextRow trip={PLANNED} onPress={jest.fn()} />);
+    expect(screen.queryByText(/up next/i)).toBeNull();
   });
 });
 
@@ -259,6 +418,15 @@ describe('<HomePeek> the peek content', () => {
     await fireEvent.press(screen.getByTestId('home-now-card'));
     expect(onOpenTrip).toHaveBeenCalledWith('live');
     expect(screen.getByText('Portugal Road Trip').props.numberOfLines).toBe(1);
+  });
+
+  test('raises the sheet from the card when it is given onExpand, as pictured', async () => {
+    const onOpenTrip = jest.fn();
+    const onExpand = jest.fn();
+    await render(<HomePeek now={LIVE} onOpenTrip={onOpenTrip} onExpand={onExpand} />);
+    await fireEvent.press(screen.getByTestId('home-now-card'));
+    expect(onExpand).toHaveBeenCalledTimes(1);
+    expect(onOpenTrip).not.toHaveBeenCalled();
   });
 
   test('is the next planned trip when nothing is live', async () => {
@@ -309,6 +477,12 @@ describe('<HomeHalf> the half content', () => {
     expect(props.onOpenCountries).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByLabelText('22 trips'));
     expect(props.onOpenTrips).toHaveBeenCalledTimes(1);
+  });
+
+  test('is 16 dp between the figures, the card and the row, with no label above the row', async () => {
+    await render(<HomeHalf {...props} now={LIVE} next={PLANNED} />);
+    expect(tokens(screen.getByTestId('home-half').props.className)).toContain('gap-4');
+    expect(screen.queryByText(/up next|happening now/i)).toBeNull();
   });
 
   test('has only the figures when there is no trip to show', async () => {
