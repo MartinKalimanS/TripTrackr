@@ -1,18 +1,27 @@
 /**
  * `CountriesList` - the full detent of the Home sheet and the screen reader's alternative to
- * the globe (feature 005, T536; contract C5-23; FR-016, FR-017, FR-064, FR-084; owner question
- * Q-2). From the top: the heading "Countries" with a collapse control, a search field, a ring
- * card ("14 of 195", "4 of 7 continents . 19 trips") with the stamps of the two newest visits,
- * then the countries under continent headers that stay in view, in a FlashList.
+ * the globe (feature 005, T536 and F2; contract C5-23; FR-016, FR-017, FR-064, FR-084; owner
+ * question Q-2; pictures `home-full.png` and `countries-scale1.5.png`). From the top: the
+ * heading "Countries" (`headline`) over "14 of 195 . 4 continents" (`label`, `muted`) with the
+ * round search button at the right, then the countries under sticky continent labels
+ * ("EUROPE . 9", `eyebrow`, `muted`, a hairline under), in a FlashList.
  *
  *   <CountriesList overview={overview} onSelectCountry={flyTo} onCollapse={() => setDetent('half')}
  *     contentInsetBottom={tabZone + 16} />
  *
- * - The list is flat: one item per header and per country, `getItemType` is the item's type (so
- *   a header and a row recycle apart), and the headers' indices are `stickyHeaderIndices`. Each
- *   header is one element named "Europe, 9 countries" and announced as a header.
+ * - **Search.** The pictured round button reveals the filter field that already exists
+ *   (`countries-search`, "Search countries") under the heading and focuses it; pressed again
+ *   ("Close search") it hides the field and clears the query. It is the real filter, not a
+ *   coming-soon control (no capability is invented). With no countries there is nothing to
+ *   search: no button and no field.
+ * - **Collapse.** The picture has no collapse control (the handle lowers the sheet), but the one
+ *   that was reachable stays so (FR-081): `countries-collapse` is an invisible, focusable button
+ *   named "Collapse the countries list", for screen readers and switch access.
+ * - The list is flat: one item per label and per country, `getItemType` is the item's type (so
+ *   a label and a row recycle apart), and the labels' indices are `stickyHeaderIndices`. Each
+ *   label is one element named "Europe, 9 countries" and announced as a header.
  * - Search filters by name, ignoring case and accents (`filterCountries`); a continent with no
- *   match loses its header and the counts are those of what is shown. It filters the LIST and not
+ *   match loses its label and the counts are those of what is shown. It filters the LIST and not
  *   the figures above it. The query is component state: it resets when the sheet leaves the full
  *   detent (the screen unmounts the list), and nothing is stored.
  * - States (FR-064): no countries yet says how one appears; a search with no match says so in
@@ -22,35 +31,39 @@
  *   Outside one it is a plain list.
  * - The countries figure is `travelSummary`'s statistic, so planned trips and countries this
  *   device has no name for are counted there but cannot all be listed (`country-summary.ts`).
- *   It reads the traveller's own local records only and shows nobody else's (FR-084).
+ *   195 is the fixed reference. It reads the traveller's own local records only (FR-084).
+ * - Margins: 20 dp at the sides, 16 dp on Android (`ScreenMargin`); the list ends
+ *   `contentInsetBottom` above the bottom so the last row clears the tab pill.
  *
- * Ids: `countries-list`, `countries-search` (the input), `countries-collapse`, `countries-ring`,
- * `countries-stamps` with `countries-stamp-<iso2>`, `countries-header-<continent>`.
+ * Ids: `countries-list`, `countries-search` (the input), `countries-search-toggle` (the round
+ * button), `countries-collapse`, `countries-header-<continent>`.
  */
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 
 import { Field } from '@/components/ui/field';
 import { IconButton } from '@/components/ui/icon-button';
-import { isLargeText } from '@/components/ui/reflow';
 import { SheetScrollable, useSheetScroll } from '@/components/ui/sheet';
 import { EmptyState } from '@/components/ui/state-view';
 import { Text } from '@/components/ui/text';
 import { countOf } from '@/features/home/home-format';
 import {
+  continentLabel,
+  continentName,
+  countriesSubtitle,
+} from '@/features/passport/country-copy';
+import {
   filterCountries,
   groupByContinent,
-  recentVisits,
   type ContinentGroup,
   type ContinentName,
   type CountrySummary,
 } from '@/features/passport/country-summary';
 import type { CountryOverview } from '@/features/passport/use-country-overview';
-import { useAppearance } from '@/hooks/use-appearance';
 import { deviceLocale } from '@/lib/locale';
+import { ScreenMargin } from '@/theme';
 
-import { CountriesSummaryCard } from './countries-summary-card';
 import { CountryRow } from './country-row';
 
 export interface CountriesListProps {
@@ -67,13 +80,11 @@ type ListItem =
   | { type: 'header'; key: string; continent: ContinentName; count: number }
   | { type: 'country'; key: string; country: CountrySummary };
 
-/** The header text of a group of countries that is not on a continent. */
-const OTHER = 'Other';
+/** The side margin of the list: 20 dp, 16 dp on an Android list. */
+const MARGIN =
+  Platform.OS === 'android' ? ScreenMargin.androidList : ScreenMargin.default;
 
-const headerName = (continent: ContinentName) =>
-  continent === 'Unknown' ? OTHER : continent;
-
-/** One item per header and per country, in order. */
+/** One item per label and per country, in order. */
 function listItems(groups: readonly ContinentGroup[]): ListItem[] {
   return groups.flatMap((group): ListItem[] => [
     {
@@ -91,9 +102,10 @@ function listItems(groups: readonly ContinentGroup[]): ListItem[] {
 }
 
 /**
- * A continent's header. FlashList draws the header that is pinned to the top as a SECOND copy
- * over the list (`target` is `'StickyHeader'`); that copy is decoration, hidden from assistive
- * technology and without the id, so the header is read, and found, once.
+ * A continent's sticky label, "EUROPE . 9", with a hairline under it inset by the margin.
+ * FlashList draws the label that is pinned to the top as a SECOND copy over the list (`target`
+ * is `'StickyHeader'`); that copy is decoration, hidden from assistive technology and without
+ * the id, so the label is read, and found, once.
  */
 function ContinentHeader({
   continent,
@@ -105,63 +117,86 @@ function ContinentHeader({
   pinned: boolean;
 }) {
   const { languageTag } = deviceLocale();
-  const name = headerName(continent);
   const words = countOf(count, 'country', 'countries', languageTag);
   return (
     <View
       testID={pinned ? undefined : `countries-header-${continent}`}
       accessible={pinned ? undefined : true}
       accessibilityRole={pinned ? undefined : 'header'}
-      accessibilityLabel={pinned ? undefined : `${name}, ${words}`}
+      accessibilityLabel={pinned ? undefined : `${continentName(continent)}, ${words}`}
       accessibilityElementsHidden={pinned || undefined}
       importantForAccessibility={pinned ? 'no-hide-descendants' : undefined}
-      className="flex-row items-baseline justify-between border-b border-separator bg-surface px-5 pb-2 pt-4">
-      <Text variant="eyebrow" tone="muted">
-        {name}
-      </Text>
-      <Text variant="label" tone="muted">
-        {words}
-      </Text>
+      className="bg-surface"
+      style={{ paddingHorizontal: MARGIN }}>
+      <View className="border-b border-separator py-2">
+        <Text variant="eyebrow" tone="muted">
+          {continentLabel(continent, count, languageTag)}
+        </Text>
+      </View>
     </View>
   );
 }
 
-/** The heading with its collapse control, and the search field once there is something to search. */
-function CountriesHeader({
-  searchable,
-  query,
-  onQueryChange,
-  onCollapse,
-}: {
+/** An invisible, focusable stand-in for the control the picture does not draw (FR-081). */
+function CollapseControl({ onCollapse }: { onCollapse: () => void }) {
+  return (
+    <Pressable
+      testID="countries-collapse"
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel="Collapse the countries list"
+      onPress={onCollapse}
+      style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1 }}
+    />
+  );
+}
+
+interface CountriesHeaderProps {
+  subtitle: string;
   searchable: boolean;
+  searching: boolean;
   query: string;
   onQueryChange: (query: string) => void;
+  onToggleSearch: () => void;
   onCollapse: () => void;
-}) {
+}
+
+/** The heading, its second line, the round search button and, when open, the filter field. */
+function CountriesHeader(props: CountriesHeaderProps) {
+  const { subtitle, searchable, searching, query, onQueryChange } = props;
   return (
-    <View className="gap-3 px-5 pb-1">
+    <View style={{ paddingHorizontal: MARGIN }} className="gap-3 pb-3">
       <View className="flex-row items-center justify-between gap-3">
-        <Text variant="title">Countries</Text>
-        <IconButton
-          icon="chevron-down"
-          variant="tonal"
-          accessibilityLabel="Collapse the countries list"
-          onPress={onCollapse}
-          testID="countries-collapse"
-        />
+        <View className="min-w-0 flex-1">
+          <Text variant="headline">Countries</Text>
+          <Text variant="label" tone="muted">
+            {subtitle}
+          </Text>
+        </View>
+        {searchable ? (
+          <IconButton
+            icon="search"
+            variant="tonal"
+            accessibilityLabel={searching ? 'Close search' : 'Search countries'}
+            onPress={props.onToggleSearch}
+            testID="countries-search-toggle"
+          />
+        ) : null}
       </View>
-      {searchable ? (
+      {searchable && searching ? (
         <Field
           label="Search countries"
           value={query}
           onChangeText={onQueryChange}
           testID="countries-search"
+          autoFocus
           autoCorrect={false}
           autoCapitalize="none"
           returnKeyType="search"
           clearButtonMode="while-editing"
         />
       ) : null}
+      <CollapseControl onCollapse={props.onCollapse} />
     </View>
   );
 }
@@ -175,7 +210,7 @@ function NoCountries({
   onClear: (() => void) | null;
 }) {
   return (
-    <View className="px-5 pt-2">
+    <View style={{ paddingHorizontal: MARGIN }} className="pt-2">
       {onClear === null ? (
         <EmptyState
           variant="ghost-stamp"
@@ -194,7 +229,7 @@ function NoCountries({
   );
 }
 
-/** The flat list: a header and its countries, per continent, filtered by the search. */
+/** The flat list: a label and its countries, per continent, filtered by the search. */
 function useCountryItems(overview: CountryOverview, query: string) {
   const { summaries, groups } = overview;
   return useMemo(() => {
@@ -207,7 +242,7 @@ function useCountryItems(overview: CountryOverview, query: string) {
   }, [summaries, groups, query]);
 }
 
-/** How each item is drawn: a header (or its pinned copy), or a country's row. */
+/** How each item is drawn: a label (or its pinned copy), or a country's row. */
 function itemRenderer(
   onSelect: (country: CountrySummary) => void,
 ): ListRenderItem<ListItem> {
@@ -219,7 +254,7 @@ function itemRenderer(
         pinned={target === 'StickyHeader'}
       />
     ) : (
-      <View className="px-5">
+      <View style={{ paddingHorizontal: MARGIN }}>
         <CountryRow country={item.country} onSelect={onSelect} />
       </View>
     );
@@ -232,19 +267,26 @@ export function CountriesList({
   onCollapse,
   contentInsetBottom = 0,
 }: CountriesListProps) {
-  const { fontScale } = useAppearance();
   const sheet = useSheetScroll();
+  const { languageTag } = deviceLocale();
   const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
   const { summaries, totals } = overview;
   const { items, sticky } = useCountryItems(overview, query);
-  const stamps = useMemo(() => recentVisits(summaries, 2), [summaries]);
+  const toggleSearch = () => {
+    if (searching) setQuery('');
+    setSearching(!searching);
+  };
 
   return (
     <View testID="countries-list" className="flex-1">
       <CountriesHeader
+        subtitle={countriesSubtitle(totals, languageTag)}
         searchable={summaries.length > 0}
+        searching={searching}
         query={query}
         onQueryChange={setQuery}
+        onToggleSearch={toggleSearch}
         onCollapse={onCollapse}
       />
       <SheetScrollable>
@@ -255,13 +297,6 @@ export function CountriesList({
           keyExtractor={(item) => item.key}
           getItemType={(item) => item.type}
           stickyHeaderIndices={sticky}
-          ListHeaderComponent={
-            <CountriesSummaryCard
-              totals={totals}
-              stamps={stamps}
-              stacked={isLargeText(fontScale)}
-            />
-          }
           ListEmptyComponent={
             <NoCountries
               query={query}
