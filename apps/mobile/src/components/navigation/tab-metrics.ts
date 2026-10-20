@@ -36,18 +36,36 @@ export const PillMetrics = {
   tabMinHeight: 64 - 2 * 6,
 } as const;
 
-/** The Android navigation bar (D5-21): full width, with the system inset BELOW the content. */
+/**
+ * The Android navigation bar (D5-21), measured from the reference (`reference/prototype/styles.css`,
+ * `:root[data-platform='android'] .tabbar`: padding 12 8 24, a 64 dp bar and the 24 dp gesture
+ * inset below it, edge to edge). The 24 is the system's own bottom inset, never a constant.
+ */
 export const AndroidBarMetrics = {
-  /** A MINIMUM above the system inset: it grows with the text size. */
+  /**
+   * A MINIMUM above the system inset, the top hairline and the 12 dp padding included: the bar
+   * grows with the text size, it is never given a height.
+   */
   height: 64,
+  /** The hairline on the bar's top edge (1 dp, the reference's `0 -1px 0`). */
+  hairline: 1,
+  /** Above the indicator. */
+  paddingTop: 12,
+  /** Left and right, added to the system's side insets. */
+  paddingX: 8,
+  /** The least a tab is tall, the Android touch target. */
+  tabMinHeight: 48,
   /** The indicator behind the selected icon. */
   indicatorWidth: 56,
   indicatorHeight: 32,
   /** Between the indicator and the label. */
   indicatorLabelGap: 4,
-  /** Above the indicator and below the label: 4 + 32 + 4 + 20 + 4 = 64. */
-  paddingY: 4,
   iconSize: 24,
+  /** The label: 12 / 14, semibold on every tab, capped at 1.3 times. */
+  labelSize: 12,
+  labelLineHeight: 14,
+  /** The indicator is the accent at this opacity: 26% in light, 28% in dark. */
+  indicatorOpacity: { light: 0.26, dark: 0.28 },
 } as const;
 
 /**
