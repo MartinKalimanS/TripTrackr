@@ -32,7 +32,7 @@
  * is deliberately NOT merged, exactly as before: its title, its reason and its button
  * are separate stops, and the button must stay individually focusable and pressable.
  */
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { ALERT_ICON } from '@/components/ui/alert-icon';
@@ -41,6 +41,7 @@ import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Spacing } from '@/constants/theme';
+import { ScreenMargin } from '@/theme';
 
 export type GlobeEmptyReason = 'no-trips' | 'no-stops';
 
@@ -93,23 +94,39 @@ type OverlayCardProps = PropsWithChildren<{
   testID: string;
   /** Extra padding above the content, for art that overhangs the card (the invitation). */
   topInset?: number;
+  /** The pictured invitation (`home-empty.png`): 20 at the sides, centred, 8 dp apart. */
+  invite?: boolean;
 }>;
+
+/** The invitation's content: 20 dp at the sides, 16 below, centred (prototype `.invite`). */
+const INVITE_CONTENT = {
+  paddingHorizontal: ScreenMargin.default,
+  paddingBottom: OVERLAY_CARD_INSET,
+  gap: Spacing.two,
+  alignItems: 'center',
+} as const;
 
 /**
  * The one card both messages use: opaque over the map, a capped width, and a
  * scroller that only matters when the traveller's text is large enough for the
  * words to outgrow their share of the window.
  */
-function OverlayCard({ testID, topInset = 0, children }: OverlayCardProps) {
+function OverlayCard({
+  testID,
+  topInset = 0,
+  invite = false,
+  children,
+}: OverlayCardProps) {
   const { height } = useWindowDimensions();
   return (
     <Card overMap testID={testID} className={CARD_WIDTH} style={styles.card}>
       <ScrollView
         style={{ maxHeight: overlayMaxHeight(height) }}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: OVERLAY_CARD_INSET + topInset },
-        ]}
+        contentContainerStyle={
+          invite
+            ? { ...INVITE_CONTENT, paddingTop: OVERLAY_CARD_INSET + topInset }
+            : [styles.content, { paddingTop: OVERLAY_CARD_INSET + topInset }]
+        }
         alwaysBounceVertical={false}>
         {children}
       </ScrollView>
@@ -118,11 +135,25 @@ function OverlayCard({ testID, topInset = 0, children }: OverlayCardProps) {
 }
 
 /** The headline, with its accent word (if the title has it) in the serif accent face. */
-function Headline({ title, accent }: { title: string; accent?: string }) {
+function Headline({
+  title,
+  accent,
+  className,
+}: {
+  title: string;
+  accent?: string;
+  className?: string;
+}) {
   const at = accent ? title.indexOf(accent) : -1;
-  if (!accent || at === -1) return <Text type="title">{title}</Text>;
+  if (!accent || at === -1) {
+    return (
+      <Text type="title" className={className}>
+        {title}
+      </Text>
+    );
+  }
   return (
-    <Text type="title">
+    <Text type="title" className={className}>
       {title.slice(0, at)}
       <Text variant="accent">{accent}</Text>
       {title.slice(at + accent.length)}
@@ -139,6 +170,10 @@ export type GlobeEmptyStateProps = {
   /** With exactly one trip waiting for a stop: its title, and `onAction` opens it. */
   tripTitle?: string;
   onAction: () => void;
+  /** The pictured layout (centred words, a full-width primary): the Home's first invitation. */
+  invite?: boolean;
+  /** A secondary control under the primary (the pictured text button); `invite` only. */
+  secondary?: ReactNode;
 };
 
 export function GlobeEmptyState({
@@ -147,12 +182,15 @@ export function GlobeEmptyState({
   accent,
   topInset,
   onAction,
+  invite = false,
+  secondary,
 }: GlobeEmptyStateProps) {
   const copy = copyFor(reason, tripTitle);
+  const centred = invite ? 'text-center' : undefined;
   return (
-    <OverlayCard testID="globe-empty-state" topInset={topInset}>
-      <Headline title={copy.title} accent={accent} />
-      <Text type="callout" tone="muted">
+    <OverlayCard testID="globe-empty-state" topInset={topInset} invite={invite}>
+      <Headline title={copy.title} accent={accent} className={centred} />
+      <Text type="callout" tone="muted" className={centred}>
         {copy.detail}
       </Text>
       <Button
@@ -161,9 +199,10 @@ export function GlobeEmptyState({
         accessibilityLabel={copy.action}
         // The press event is dropped on purpose: `onAction` takes no arguments.
         onPress={() => onAction()}
-        className="mt-2 self-start">
+        className={invite ? 'mt-3 self-stretch' : 'mt-2 self-start'}>
         {copy.action}
       </Button>
+      {invite ? secondary : null}
     </OverlayCard>
   );
 }

@@ -22,9 +22,13 @@ import {
 } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
+import { ComingSoonButton } from '@/components/ui/coming-soon-button';
 import { Scrim } from '@/components/ui/scrim';
 import { HomeSkeleton } from '@/components/ui/screen-skeletons';
 import { skeletonDisc } from '@/features/home/home-layout';
+import { eyebrowDate } from '@/features/home/home-format';
+import { todayIso } from '@/features/trips/stop-dates';
+import { deviceLocale } from '@/lib/locale';
 import { ScreenMargin, Space } from '@/theme';
 
 import { useHomeLayout } from './use-home-layout';
@@ -44,7 +48,13 @@ export function HomeLoading({ name }: { name: string | null }) {
           discRadius={discRadius}
           discCentreY={discCentreY - insets.top}
           greetingName={name?.trim() || undefined}
+          greetingDate={eyebrowDate(todayIso(), deviceLocale().languageTag)}
+          sheetHeight={detents.half}
         />
+      </View>
+      {/* The pictured search disc: a real coming-soon control, outside the announced region. */}
+      <View style={[styles.search, { top: insets.top }]}>
+        <ComingSoonButton name="search" label="Search" icon="search" />
       </View>
     </View>
   );
@@ -75,6 +85,7 @@ export function BottomCard({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  search: { position: 'absolute', end: ScreenMargin.default },
   card: {
     position: 'absolute',
     left: ScreenMargin.default,

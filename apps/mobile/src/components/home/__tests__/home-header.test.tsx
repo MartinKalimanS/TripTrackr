@@ -243,3 +243,33 @@ describe('<HomeHeader> - as pictured: 54 dp inset, 20 dp margins, tools at the r
     ).toMatchObject({ left: 20, top: '100%', marginTop: 20 });
   });
 });
+
+describe('<HomeHeader> - as the pictures place it', () => {
+  test('banner={false}: the banner is not under the greeting (the half sheet carries it), the chip stays', async () => {
+    mockState.current = { kind: 'offline', count: 3 };
+    await renderHeader({ banner: false });
+    expect(screen.queryByTestId('sync-banner')).toBeNull();
+    expect(screen.getAllByTestId('sync-chip')).toHaveLength(1);
+  });
+
+  test('the banner is under the greeting by default (peek, empty and unreadable states have no half sheet)', async () => {
+    mockState.current = { kind: 'offline', count: 3 };
+    await renderHeader();
+    expect(screen.getAllByTestId('sync-banner')).toHaveLength(1);
+  });
+
+  test('welcome (no trips): "0 of 195 countries" over "Welcome, Marta", and no search disc', async () => {
+    await renderHeader({ welcome: { countries: 0 } });
+    expect(screen.getByTestId('home-greeting')).toHaveTextContent('Welcome, Marta');
+    expect(screen.getByTestId('home-greeting-date')).toHaveTextContent(
+      '0 of 195 countries',
+    );
+    expect(screen.queryByTestId('coming-soon-search')).toBeNull();
+  });
+
+  test('welcome still shows what waits to sync: the chip is not dropped', async () => {
+    mockState.current = { kind: 'waiting', count: 2 };
+    await renderHeader({ welcome: { countries: 0 } });
+    expect(screen.getAllByTestId('sync-chip')).toHaveLength(1);
+  });
+});
