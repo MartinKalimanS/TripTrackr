@@ -9,8 +9,8 @@
  *   of a passport stamp not yet earned: a trip with no stops, an empty passport. (The
  *   `GhostStamp` of `stamp.tsx` is the same idea drawn in SVG; this one needs nothing but a
  *   `View`, so an empty state never waits on the SVG layer.)
- * - `frames` is three tilted empty photo frames, 84 by 108 dp: the `skeleton` fill, a pin
- *   glyph, a 3 dp `surface` border and the second lift; the left one turned -9 degrees about
+ * - `frames` is three tilted empty photo frames, 84 by 108 dp: the cream `surface-secondary`
+ *   fill, a photo glyph, a 3 dp `surface` border and the second lift; the left one turned -9 degrees about
  *   its bottom right, the right one 8 degrees about its bottom left, the middle one straight
  *   and 8 dp higher, on top. No stock photographs.
  * - `filtered` is a magnifier in a 64 dp cream roundel: a filter or a search with no result.
@@ -36,7 +36,7 @@ const HIDDEN = {
   pointerEvents: 'none',
 } as const;
 
-const PIN: IconName = 'map-pin';
+const PHOTO: IconName = 'image';
 const MAGNIFIER: IconName = 'search';
 
 /** Position, tilt and stacking of the three frames, in dp. */
@@ -54,9 +54,9 @@ function Frames({ testID }: { testID?: string }) {
         <View
           key={index}
           testID={testID ? `${testID}-frame-${index}` : undefined}
-          className="absolute h-[108px] w-[84px] items-center justify-center rounded-2xl border-[3px] border-surface bg-skeleton"
+          className="absolute h-[108px] w-[84px] items-center justify-center rounded-2xl border-[3px] border-surface bg-surface-secondary"
           style={[cornerOf('lg'), placement, lift]}>
-          <Icon name={PIN} size={24} tone="muted" />
+          <Icon name={PHOTO} size={24} tone="muted" />
         </View>
       ))}
     </View>

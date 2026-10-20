@@ -143,9 +143,14 @@ describe('Home states: the globe is always there, but while loading (FR-021, 003
     ).toBeTruthy();
     expect(screen.queryByTestId('home-plan-trip-fab')).toBeNull();
     expect(screen.queryByTestId('home-sheet')).toBeNull();
-    // home-empty.png draws no search disc in the header: the card is the only control.
+    // home-empty.png draws no search disc in the header; the card has the primary and the
+    // pictured text button, which is a coming-soon control, never a second primary.
     const buttons = screen.getAllByRole('button');
-    expect(buttons.map((b) => b.props.testID)).toEqual(['home-plan-trip']);
+    expect(buttons.map((b) => b.props.testID)).toEqual([
+      'home-plan-trip',
+      'coming-soon-find-trips',
+    ]);
+    expect(buttons.filter((b) => b.props.variant === 'primary')).toHaveLength(1);
     await fireEvent.press(screen.getByTestId('home-plan-trip'));
     expect(router.push).toHaveBeenCalledWith('/modal/add-trip');
   });
