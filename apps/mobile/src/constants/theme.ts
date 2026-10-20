@@ -135,10 +135,12 @@ export const GlobeColors = {
     planning: '#B86E00', // 3.99:1
     past: '#E04A33', // 4.04:1
     pastEnd: '#B86E00', // 3.99:1
-    visitedFill: '#FFCFBF',
-    visitedKeyline: '#E04A33', // 3.94:1 vs land, 3.37:1 vs the shaded land
-    plannedKeyline: '#B86E00', // 3.89:1 vs land
-    land: '#FFFCF5',
+    // The middle of the prototype's two-stop tint (#FFCFBF to #FFB29B).
+    visitedFill: '#FFC0AD',
+    visitedKeyline: '#E04A33', // 3.64:1 vs land, 3.37:1 vs the shaded land
+    plannedKeyline: '#B86E00', // 3.59:1 vs land
+    // The middle of the prototype's land gradient (#FFFCF5 to #F6E9D2): the picture's cream.
+    land: '#FBF2E3',
     landShade: '#F6E9D2',
   },
   dark: {
@@ -167,8 +169,12 @@ export const GlobeColors = {
  * `Atmosphere` layer, opaque on purpose (an alpha below 1 on `color` loads more tiles) and
  * without stars; `graticule` is the faint grid over the planet, a colour and the opacity it
  * is drawn at (decoration, so the gate asks only that it shows over the sea and is never a
- * mark that could carry meaning); `callout` is the white card of the live trip, navy on
- * white in BOTH themes as in the prototype (so it does not follow the adaptive text tones).
+ * mark that could carry meaning); `visitedCasing` is the solid stroke under each country
+ * keyline (the prototype's white edge by day, a navy one by night) at `visitedCasingOpacity`
+ * (a number, so no alpha is written into a colour Mapbox may parse differently); `callout` is
+ * the white card of the live trip, navy on white in BOTH themes as in the prototype (so it
+ * does not follow the adaptive text tones); `pin` is the roundel's ring and the cluster disc
+ * (the prototype's `--ring`, `--ink` and `--on-ink`: navy on white by day, a light disc by night).
  * These are STARTING values, tuned over day and night on a device (V2, T508); every one is
  * measured in `test/theme/globe-contrast-gate.test.ts`, and the greeting text that sits over
  * the atmosphere is measured against it in all four palettes.
@@ -179,44 +185,60 @@ export const GlobeColors = {
  */
 export const GlobeStyle = {
   light: {
-    water: '#8FD6EC',
+    // Mapbox paints ONE flat sea colour; the prototype's sphere runs #DDF3FA (highlight) to
+    // #2E9CC4 (limb), so this is the part of that ramp most of the disc shows in the picture.
+    water: '#74C6E4',
     greenspace: '#F6E9D2',
-    adminBoundaries: '#EBDCC9',
+    // The prototype's rgba(205,176,130,.55) hairline, flattened over the cream land.
+    adminBoundaries: '#DCC7A4',
     graticule: '#FFFFFF',
     graticuleOpacity: 0.34,
+    // The halo is the prototype's (rgba(96,196,236,.62) at the rim to rgba(190,233,247,.16)),
+    // flattened over the sky and lightened to keep the greeting readable (gate); space is
+    // fully transparent (Mapbox: "opacity 0 is a transparent background") so the sky shows.
     atmosphere: {
-      color: '#FFF1DF',
-      highColor: '#D7F0F6',
-      spaceColor: '#FFE6D0',
-      horizonBlend: 0.1,
+      color: '#9ADCF3',
+      highColor: '#BCE8F5',
+      spaceColor: '#FFE6D000',
+      horizonBlend: 0.24,
       starIntensity: 0,
     },
+    visitedCasing: '#FFFFFF',
+    visitedCasingOpacity: 0.9,
     callout: {
       surface: '#FFFFFF',
       title: '#0E2A47',
       detail: '#4A5B6E',
       liveDot: '#E04A33',
     },
+    pin: { ring: '#FFFFFF', clusterFill: '#0E2A47', clusterLabel: '#FFFFFF' },
   },
   dark: {
-    water: '#0E3465',
+    // The prototype's night sphere runs #2C74AE to #08224A: this is where most of it sits.
+    water: '#143F72',
     greenspace: '#2A557E',
-    adminBoundaries: '#2B4466',
+    // The prototype's rgba(170,215,245,.20) hairline, flattened over the blue land.
+    adminBoundaries: '#4F7BA3',
     graticule: '#AAD7FF',
     graticuleOpacity: 0.11,
+    // The prototype's teal halo, darkened until the greeting (muted, 7:1 in the contrast
+    // theme) reads on it: the gate, not the picture, caps its brightness.
     atmosphere: {
-      color: '#0B1D36',
-      highColor: '#0C2442',
-      spaceColor: '#0A1626',
-      horizonBlend: 0.1,
+      color: '#134760',
+      highColor: '#0F3A52',
+      spaceColor: '#0A162600',
+      horizonBlend: 0.2,
       starIntensity: 0,
     },
+    visitedCasing: '#0A1626',
+    visitedCasingOpacity: 0.55,
     callout: {
       surface: '#F4F7FB',
       title: '#0E2A47',
       detail: '#4A5B6E',
       liveDot: '#E04A33',
     },
+    pin: { ring: '#F4F7FB', clusterFill: '#F4F7FB', clusterLabel: '#0A1626' },
   },
 } as const;
 
@@ -241,12 +263,14 @@ export const GlobeLayers = {
     worldview: 'US',
     keylineWidth: 1.5,
     plannedKeylineWidth: 2,
+    /** Dp the casing under a keyline is wider than the keyline (the prototype's 1.6). */
+    casingExtra: 1.6,
     /** Dash and gap, in line widths. */
     plannedDash: [3, 2],
   },
   graticule: {
-    /** Degrees between lines; must divide 90. */
-    step: 30,
+    /** Degrees between lines; must divide 90. The prototype's `d3.geoGraticule10`. */
+    step: 10,
     width: 0.8,
     /** Fully drawn up to the first zoom, gone from the second. */
     fadeStartZoom: 3,
@@ -254,32 +278,45 @@ export const GlobeLayers = {
   },
   worldScaleZoom: 5,
   /**
-   * The pins (T533, FR-011). A pin is a dot by default; the photo roundel (a bitmap baked from
-   * a hidden laid-out view with `react-native-view-shot` and drawn by a `SymbolLayer`) is OFF
-   * until the device check V2 (T508) says the capture works on both platforms, hence a typed
-   * `boolean` and not the literal `false`. Beyond `roundelLimit` the rest are dots; at most
-   * `captureBatch` badges are laid out at once, so sixty photographs are not decoded together.
+   * The pins (T533, FR-011; F1 pins). A pin is a photo roundel: a bitmap baked from a hidden
+   * laid-out view with `react-native-view-shot` and drawn by a `SymbolLayer` (a trip with no
+   * photograph is drawn as its generated cover). `roundelsEnabled` is the one switch back to
+   * plain dots: set it to `false` and nothing is laid out, captured or registered. A pin
+   * whose capture fails stays a dot, and dots beyond `roundelLimit` cluster into an ink disc
+   * with a count; at most `captureBatch` badges are laid out at once, so sixty photographs
+   * are not decoded together.
+   *
    * Sizes are dp: the roundel of the live trip is the largest, a planned one smaller, a past
-   * one smallest (the prototype's 56, 44 and 40).
+   * one smallest (the prototype's 56, 44 and 40; `clusterSize` is its 40). The white ring is
+   * `roundelRing` wide (the `ring` of the palette, `lift2` under it). The status ring is
+   * `statusRing` wide and sits `statusRingOutset` dp outside the roundel's edge (the
+   * prototype's `inset: -8px` and `-7px` from the padding box, less the 2 dp border). A
+   * planned ring is dashed, solid on Android, where a dashed border on a circle is not
+   * reliable. `shadowPad` is the transparent margin a bitmap keeps for the lift.
    */
   pins: {
-    roundelsEnabled: false as boolean,
+    roundelsEnabled: true as boolean,
     roundelLimit: 60,
     captureBatch: 12,
     dotRadius: { past: 5, planning: 6, active: 8 },
     dotRing: 2,
     roundelSize: { past: 40, planning: 44, active: 56 },
-    /** The white ring of a roundel, and the coral or dashed amber ring round it. */
+    clusterSize: 40,
     roundelRing: 2,
     statusRing: 2.5,
-    statusRingGap: 3,
+    statusRingOutset: { active: 6, planning: 5 },
+    shadowPad: 24,
+    /** Dots this close (px) join one disc, and stop joining from `maxZoom` in. */
+    cluster: { radius: 44, maxZoom: 5, textSize: 14 },
     /** The symbol is a little smaller while the whole planet is in view. */
     iconSize: { farZoom: 1, farScale: 0.8, nearZoom: 5, nearScale: 1 },
   },
   /**
    * The callout of the live trip (T533, FR-011): a white card, 220 dp at most, 12 dp inside
-   * the sides of the screen, `gap` from the ring; the ring is `ringSize` wide (round the dot,
-   * or round the roundel). The card is never narrowed below `minWidth`.
+   * the sides of the screen, `gap` from the pin; `ringSize` is the pin's width (the dot's
+   * ring, or the active roundel, whose own status ring is baked into its bitmap). The pulse
+   * of a roundel is `roundelPulse` wide, the outer edge of that baked ring (56 + 2 x 6).
+   * The card is never narrowed below `minWidth`.
    */
   callout: {
     maxWidth: 220,
@@ -288,9 +325,13 @@ export const GlobeLayers = {
     verticalMargin: 6,
     gap: 14,
     arrow: 12,
-    ringSize: { dot: 32, roundel: 72 },
+    ringSize: { dot: 32, roundel: 56 },
+    roundelPulse: 68,
     ringWidth: 2.5,
     pulseWidth: 2,
+    /** The live dot's soft ring: the prototype's `0 0 0 2px rgba(224,74,51,.22)`. */
+    dotHalo: 2,
+    dotHaloAlpha: 0.22,
     /** The prototype's still pulse under reduced motion. */
     stillScale: 1.25,
     stillOpacity: 0.28,

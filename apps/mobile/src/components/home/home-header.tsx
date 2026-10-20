@@ -1,19 +1,21 @@
 /**
  * `HomeHeader` - the transparent zone over the globe (feature 005, T537; contract C5-32 "Home";
- * FR-014, FR-015, FR-021, FR-026): the greeting with the date and, at the right, the ONE global
- * sync chip; under them the ONE `SyncStatusBanner` (a slim, non-blocking note when the phone is
- * offline or a sync failed), and, only after the traveller has moved the globe, a recentre
+ * FR-014, FR-015, FR-021, FR-026): the greeting with the date and, at the right, the tools
+ * (`HomeTools`: the ONE global sync chip and the coming-soon search button); under them
+ * the ONE `SyncStatusBanner` (a slim, non-blocking note when the phone is offline or a sync
+ * failed), and, only after the traveller has moved the globe, a recentre
  * control below it.
  *
  *   <HomeHeader name={user.display_name} today={today} moved={moved} onRecentre={recentre}
  *     onMeasured={setHeaderBottom} />
  *
  * The zone is `absolute` over the whole top of the screen, with `pointerEvents="box-none"`, so
- * a touch anywhere outside the greeting, the chip and the banner reaches the globe. It reports
+ * a touch anywhere outside the greeting, the tools and the banner reaches the globe. It reports
  * where it ENDS in whole dp (`onMeasured`, from its own layout): the globe is fitted to the free
  * space under that edge (`globeFit`, FR-013), and fitted again if the banner comes or goes. The
  * recentre control is drawn BELOW that edge and takes no room in the zone (an absolute slot at
- * `top: 100%`), so it appearing never moves the planet.
+ * `top: 100%`, 20 dp under the edge as the prototype draws it), so it appearing never moves
+ * the planet.
  *
  * The chip and the banner are the global ones of `components/sync/sync-status.tsx`: both read
  * the one derived state, so a screen shows one answer to one question and nothing here queries
@@ -29,10 +31,11 @@ import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/ui/icon-button';
-import { SyncStatusBanner, SyncStatusChip } from '@/components/sync/sync-status';
+import { SyncStatusBanner } from '@/components/sync/sync-status';
 import { ScreenMargin, Space } from '@/theme';
 
 import { GreetingHeader } from './greeting-header';
+import { HomeTools } from './home-tools';
 
 export interface HomeHeaderProps {
   /** The traveller's name; blank or `null` greets without one. */
@@ -65,8 +68,8 @@ export function HomeHeader({
       testID="home-header"
       pointerEvents="box-none"
       onLayout={onLayout}
-      style={[styles.zone, { paddingTop: insets.top + Space[2] }]}>
-      <GreetingHeader name={name} today={today} trailing={<SyncStatusChip />} />
+      style={[styles.zone, { paddingTop: insets.top }]}>
+      <GreetingHeader name={name} today={today} trailing={<HomeTools />} />
       <SyncStatusBanner />
       {moved ? (
         <View testID="home-recentre-slot" style={styles.recentre}>
@@ -98,6 +101,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '100%',
     left: ScreenMargin.default,
-    marginTop: Space[2],
+    marginTop: Space[5],
   },
 });

@@ -1,9 +1,9 @@
 /**
  * The graticule — feature 005, T532 (research D5-04, contract C5-24).
  *
- * One static GeoJSON of meridians and parallels (`features/globe/graticule.ts`, every 30
- * degrees) under one thin `LineLayer` in the bottom slot, so the visited fill, the keylines
- * and the connections all sit above it. It fades out as the traveller comes in: fully drawn
+ * One static GeoJSON of meridians and parallels (`features/globe/graticule.ts`, every 10
+ * degrees, the prototype's `d3.geoGraticule10`) under one thin `LineLayer` in the bottom
+ * slot, so the visited fill, the keylines and the connections all sit above it. It fades out as the traveller comes in: fully drawn
  * up to zoom 3, gone from zoom 4, because a grid is for the planet and not for a street.
  * Decoration, not a mark: the gate asks only that it shows over the sea (finding in
  * `test/theme/globe-contrast-gate.test.ts`). It sets full emissive strength, like every

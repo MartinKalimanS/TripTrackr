@@ -297,6 +297,12 @@ describe('basemap-config.ts (the Sunrise globe)', () => {
     }
   });
 
+  test('the borders are switched ON explicitly (Standard draws them by default; the picture has them)', () => {
+    for (const [, config] of configs) {
+      expect(config.showAdminBoundaries).toBe(true);
+    }
+  });
+
   test('the light globe is lit by day and the dark one by night', () => {
     expect(BasemapConfigs.light.lightPreset).toBe('day');
     expect(BasemapConfigs.dark.lightPreset).toBe('night');
@@ -385,7 +391,16 @@ describe('basemapConfig(scheme, worldScale): what the globe hands the basemap (T
       showPointOfInterestLabels: true,
       showTransitLabels: true,
       showRoadLabels: true,
+      showPlaceLabels: true,
     });
+  });
+
+  test('the world view has no labels at all, as the pictures: place names too', () => {
+    // The prototype globe draws no text; Standard would print country and ocean names on it.
+    expect(basemapConfig('light', true)).toMatchObject({ showPlaceLabels: false });
+    expect(basemapConfig('dark', true)).toMatchObject({ showPlaceLabels: false });
+    expect(unknownKeys(BasemapWorldScaleLabels)).toEqual([]);
+    expect(Object.keys(BasemapWorldScaleLabels)).toContain('showPlaceLabels');
   });
 
   test('keeps the faded theme, the lighting and the 3D objects of the basemap at both scales', () => {

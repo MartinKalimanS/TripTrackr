@@ -143,7 +143,12 @@ describe('Home states: the globe is always there, but while loading (FR-021, 003
     ).toBeTruthy();
     expect(screen.queryByTestId('home-plan-trip-fab')).toBeNull();
     expect(screen.queryByTestId('home-sheet')).toBeNull();
-    expect(screen.getAllByRole('button')).toHaveLength(1);
+    // The pictured search disc is a coming-soon control, never a primary.
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.map((b) => b.props.testID)).toEqual([
+      'coming-soon-search',
+      'home-plan-trip',
+    ]);
     await fireEvent.press(screen.getByTestId('home-plan-trip'));
     expect(router.push).toHaveBeenCalledWith('/modal/add-trip');
   });

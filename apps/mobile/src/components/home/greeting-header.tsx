@@ -50,7 +50,7 @@ export function GreetingHeader({
   return (
     <View className="gap-3">
       <View className="flex-row items-start justify-between gap-3">
-        <View className="min-w-0 flex-1 gap-1">
+        <View className="min-w-0 flex-1 gap-0.5 pt-1">
           <Text variant="eyebrow" tone="muted" testID="home-greeting-date">
             {eyebrowDate(today, languageTag)}
           </Text>
@@ -59,7 +59,10 @@ export function GreetingHeader({
               'Hello'
             ) : (
               <>
-                Hello, <Text variant="accent">{who}</Text>
+                Hello,{' '}
+                <Text variant="accent" tone="accent">
+                  {who}
+                </Text>
               </>
             )}
           </Text>

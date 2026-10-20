@@ -13,7 +13,7 @@ import { AccessibilityInfo, StyleSheet } from 'react-native';
 
 import { Colors, GlobeColors, GlobeLayers, GlobeStyle } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
-import { Motion } from '@/theme';
+import { Motion, TypeRoles } from '@/theme';
 
 import { ActiveCallout, type ActiveCalloutProps } from '../active-callout';
 
@@ -32,6 +32,7 @@ function mockAppearance(overrides: Partial<AppearanceContext> = {}) {
     prefersLessTransparency: false,
     ready: true,
     fontScale: 1,
+    themeName: theme,
     tokens: Colors[theme],
     ...overrides,
   } as AppearanceContext);
@@ -249,5 +250,116 @@ describe('<ActiveCallout> — screen readers', () => {
     });
     expect(layout.props.importantForAccessibility).toBe('no-hide-descendants');
     expect(layout.props.accessibilityElementsHidden).toBe(true);
+  });
+});
+
+describe('<ActiveCallout> — the roundel and the picture (F1 pins)', () => {
+  test('over a roundel it draws NO solid ring (the bitmap carries it): the ring box is the roundel, the pulse the outer edge of the baked ring', async () => {
+    await render(
+      <ActiveCallout
+        {...PROPS}
+        ring={false}
+        ringSize={GlobeLayers.callout.ringSize.roundel}
+        pulseSize={GlobeLayers.callout.roundelPulse}
+      />,
+    );
+    expect(flat('globe-callout-ring')).toMatchObject({
+      width: 56,
+      height: 56,
+      borderWidth: 0,
+    });
+    // 68 dp, centred on the 56 dp pin: 6 dp out on every side.
+    expect(flat('globe-callout-pulse')).toMatchObject({
+      width: 68,
+      height: 68,
+      top: -6,
+      left: -6,
+      borderWidth: GlobeLayers.callout.pulseWidth,
+    });
+  });
+
+  test('over a dot the pulse is at the ring, 2.5 dp out because it sits inside the border', async () => {
+    await render(<ActiveCallout {...PROPS} />);
+    expect(flat('globe-callout-pulse')).toMatchObject({ top: -2.5, left: -2.5 });
+  });
+
+  test('a roundel keeps the still pulse under reduced motion', async () => {
+    mockAppearance({ prefersLessMotion: true });
+    await render(<ActiveCallout {...PROPS} ring={false} pulseSize={68} ringSize={56} />);
+    expect(flat('globe-callout-pulse')).toMatchObject({
+      width: 68,
+      opacity: GlobeLayers.callout.stillOpacity,
+      transform: [{ scale: GlobeLayers.callout.stillScale }],
+    });
+  });
+});
+
+describe('<ActiveCallout> — the card as drawn in the prototype (.tag)', () => {
+  test('the type roles match the prototype: title 17/22 semibold display, detail 13/18 semibold body', () => {
+    expect(TypeRoles.callout).toMatchObject({
+      family: 'display',
+      size: 17,
+      lineHeight: 22,
+      weight: 600,
+    });
+    expect(TypeRoles.caption).toMatchObject({ size: 13, lineHeight: 18, weight: 600 });
+  });
+
+  test('padding 8 by 12, radius 16, drawn in those two roles', async () => {
+    await render(<ActiveCallout {...PROPS} />);
+    expect(flat('globe-callout')).toMatchObject({
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
+    });
+    expect(screen.getByTestId('globe-callout-title').props.numberOfLines).toBe(1);
+    expect(screen.getByTestId('globe-callout-detail').props.numberOfLines).toBe(1);
+  });
+
+  test('the live dot is 7 dp with a 2 dp soft ring of the same coral at 22 percent', async () => {
+    await render(<ActiveCallout {...PROPS} />);
+    const dot = flat('globe-callout-dot');
+    expect(dot).toMatchObject({ width: 7, height: 7, borderRadius: 3.5 });
+    expect(dot.boxShadow).toEqual([
+      expect.objectContaining({
+        offsetX: 0,
+        offsetY: 0,
+        blurRadius: 0,
+        spreadDistance: 2,
+      }),
+    ]);
+    const [halo] = dot.boxShadow as { color: string }[];
+    expect(halo!.color.toLowerCase()).toContain('e04a33');
+  });
+
+  test.each([
+    ['left', { right: -5 }],
+    ['right', { left: -5 }],
+    ['above', { bottom: -5 }],
+    ['below', { top: -5 }],
+  ] as const)(
+    '%s: a 12 dp square turned 45 degrees on the card edge that faces the pin',
+    async (side, edge) => {
+      await render(<ActiveCallout {...PROPS} side={side} />);
+      const card = screen.getByTestId('globe-callout');
+      const arrow = card.children[card.children.length - 1] as unknown as {
+        props: { style: unknown };
+      };
+      expect(StyleSheet.flatten(arrow.props.style as never)).toMatchObject({
+        width: 12,
+        height: 12,
+        borderRadius: 2,
+        backgroundColor: GlobeStyle.light.callout.surface,
+        transform: [{ rotate: '45deg' }],
+        ...edge,
+      });
+    },
+  );
+
+  test('the card is #F4F7FB by night, with the same navy text', async () => {
+    mockAppearance({ theme: 'dark' });
+    await render(<ActiveCallout {...PROPS} />);
+    expect(flat('globe-callout')).toMatchObject({ backgroundColor: '#F4F7FB' });
+    expect(flat('globe-callout-title')).toMatchObject({ color: '#0E2A47' });
   });
 });

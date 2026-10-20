@@ -80,6 +80,7 @@ beforeEach(() => {
     prefersLessTransparency: false,
     ready: true,
     fontScale: 1,
+    themeName: 'light',
     tokens: Colors.light,
   } as AppearanceContext);
 });

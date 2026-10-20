@@ -214,20 +214,23 @@ describe('the graticule is decoration (D5-04)', () => {
 
 describe('the atmosphere and the sea (D5-04, finding M-6)', () => {
   test.each(THEMES)(
-    '%s: opaque colours, no stars, a horizon blend of .08 to .14',
+    '%s: an opaque halo over a fully transparent space, no stars, a horizon blend of .2 to .3',
     (theme) => {
       const { atmosphere } = GlobeStyle[theme];
-      for (const colour of [
-        atmosphere.color,
-        atmosphere.highColor,
-        atmosphere.spaceColor,
-      ]) {
+      for (const colour of [atmosphere.color, atmosphere.highColor]) {
         // Six digits: no alpha, which would load more tiles (research D5-04).
         expect(colour).toMatch(/^#[0-9A-F]{6}$/);
       }
+      // Space is the one transparent stop: Mapbox documents "the opacity can be set to 0
+      // to have a transparent background", which lets the sky (`Scrim` `sky`) show behind
+      // the map as in the pictures. Its colour is the sky's, so a failed see-through still
+      // looks like the sky.
+      expect(atmosphere.spaceColor).toMatch(/^#[0-9A-F]{6}00$/);
       expect(atmosphere.starIntensity).toBe(0);
-      expect(atmosphere.horizonBlend).toBeGreaterThanOrEqual(0.08);
-      expect(atmosphere.horizonBlend).toBeLessThanOrEqual(0.14);
+      // The prototype halo is a third of the radius wide (1.0 to 1.34 R): wider than the
+      // .08 to .14 of the first tuning, which was a guess, not the picture.
+      expect(atmosphere.horizonBlend).toBeGreaterThanOrEqual(0.2);
+      expect(atmosphere.horizonBlend).toBeLessThanOrEqual(0.3);
     },
   );
 
@@ -236,7 +239,7 @@ describe('the atmosphere and the sea (D5-04, finding M-6)', () => {
     const { atmosphere, water } = GlobeStyle[scheme];
     const floor = textFloor(name);
 
-    test.each(['color', 'highColor', 'spaceColor'] as const)(
+    test.each(['color', 'highColor'] as const)(
       'the greeting (ink and muted) reads on the atmosphere %s',
       (stop) => {
         expect(contrastRatio(ink, atmosphere[stop])).toBeGreaterThanOrEqual(floor);
@@ -247,6 +250,45 @@ describe('the atmosphere and the sea (D5-04, finding M-6)', () => {
     test('a map label over the sea is ink (the muted tone is 4.31:1 there in light)', () => {
       expect(contrastRatio(ink, water)).toBeGreaterThanOrEqual(floor);
     });
+  });
+});
+
+describe('the keyline casing (prototype: a 1.6 dp wider stroke under each outline)', () => {
+  test.each(THEMES)(
+    '%s: a hex colour at an opacity that is a tint, not a wall',
+    (theme) => {
+      const { visitedCasing, visitedCasingOpacity } = GlobeStyle[theme];
+      expect(visitedCasing).toMatch(/^#[0-9A-F]{6}$/);
+      expect(visitedCasingOpacity).toBeGreaterThan(0.4);
+      expect(visitedCasingOpacity).toBeLessThanOrEqual(1);
+    },
+  );
+
+  test('light casts a white edge on the cream land; dark a navy edge on the blue land', () => {
+    expect(
+      contrastRatio(GlobeStyle.light.visitedCasing, GlobeColors.light.land),
+    ).toBeLessThan(1.2);
+    expect(
+      contrastRatio(GlobeStyle.dark.visitedCasing, GlobeColors.dark.land),
+    ).toBeGreaterThan(1.2);
+  });
+});
+
+describe('the land, the sea and the borders read as in the pictures (F1)', () => {
+  test.each(THEMES)(
+    '%s: the border is findable on the land and the sea, and still decoration',
+    (theme) => {
+      const { adminBoundaries, water } = GlobeStyle[theme];
+      const { land } = GlobeColors[theme];
+      expect(contrastRatio(adminBoundaries, land)).toBeGreaterThanOrEqual(1.1);
+      expect(contrastRatio(adminBoundaries, land)).toBeLessThan(ContrastFloor.nonText);
+      expect(contrastRatio(adminBoundaries, water)).toBeGreaterThanOrEqual(1.1);
+    },
+  );
+
+  test('the light land is cream (the prototype gradient’s middle), not white', () => {
+    expect(GlobeColors.light.land).not.toBe('#FFFFFF');
+    expect(contrastRatio(GlobeColors.light.land, '#FFFFFF')).toBeGreaterThan(1.03);
   });
 });
 
@@ -268,6 +310,15 @@ describe('the callout of the live trip (FR-011)', () => {
   );
 });
 
+describe('the pins: the cluster count reads on its disc', () => {
+  test.each(THEMES)('%s: the count is text on the ink disc', (theme) => {
+    const { clusterFill, clusterLabel } = GlobeStyle[theme].pin;
+    expect(contrastRatio(clusterLabel, clusterFill)).toBeGreaterThanOrEqual(
+      ContrastFloor.normalText,
+    );
+  });
+});
+
 describe('GlobeStyle is classified, like GlobeColors', () => {
   const CLASSIFIED = new Set([
     'water',
@@ -276,7 +327,10 @@ describe('GlobeStyle is classified, like GlobeColors', () => {
     'graticule',
     'graticuleOpacity',
     'atmosphere',
+    'visitedCasing',
+    'visitedCasingOpacity',
     'callout',
+    'pin',
   ]);
 
   test('both themes expose the same tokens and every one is classified above', () => {

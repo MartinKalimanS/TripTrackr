@@ -182,10 +182,14 @@ export function focusTripIds(trips: readonly GlobeTrip[]): string[] {
  * stop. On a travel day two stops cover today — the one being left and the one
  * being reached — and the later one wins: that is where the day ends.
  */
-export function restingCoordinate(trip: GlobeTrip, today: string): LngLat | null {
+export function restingStop(trip: GlobeTrip, today: string): PlacedStop | null {
   const placed = trip.stops.filter(isPlaced);
   const current = placed
     .filter((stop) => stop.arriveDate <= today && today <= stop.departDate)
     .at(-1);
-  return (current ?? placed[0])?.coordinate ?? null;
+  return current ?? placed[0] ?? null;
+}
+
+export function restingCoordinate(trip: GlobeTrip, today: string): LngLat | null {
+  return restingStop(trip, today)?.coordinate ?? null;
 }

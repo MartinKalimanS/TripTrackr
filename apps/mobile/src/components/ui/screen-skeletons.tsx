@@ -230,7 +230,9 @@ function Greeting({ name }: { name?: string }) {
       {name ? (
         <Text variant="display">
           {'Hello, '}
-          <Text variant="accent">{name}</Text>
+          <Text variant="accent" tone="accent">
+            {name}
+          </Text>
         </Text>
       ) : (
         <Bone className="h-10 w-56 rounded-xl" />

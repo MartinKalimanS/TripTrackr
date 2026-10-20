@@ -1,11 +1,11 @@
 /**
  * The pins — feature 005, T533 (FR-011; research D5-04, contract C5-24).
  *
- * The DEFAULT is plain `CircleLayer` dots, one per trip, with the live trip's callout on top
- * (`ActiveCallout`): that is what ships. Photo roundels (a `SymbolLayer` over bitmaps baked
- * from a hidden laid-out view with `react-native-view-shot`) are behind
- * `GlobeLayers.pins.roundelsEnabled`, OFF until the device check V2 (T508) says the capture
- * works on both platforms; here the whole path runs through the view-shot stand-in.
+ * A pin is a photo roundel (a `SymbolLayer` over bitmaps baked from a hidden laid-out view
+ * with `react-native-view-shot`; a trip with no photograph is its generated cover), behind
+ * `GlobeLayers.pins.roundelsEnabled`, which is ON. Every pin without a bitmap is a
+ * `CircleLayer` dot, and the dots cluster. Here the whole path runs through the view-shot
+ * stand-in.
  *
  * The press is the shared one: a pin answers a tap with `tripIdFromPress`, unchanged.
  */
@@ -78,7 +78,7 @@ describe('<PinLayer> — the default: dots', () => {
   const dots = pinCollection(MIXED, TODAY);
   const none = { type: 'FeatureCollection' as const, features: [] };
 
-  test('one source of pins and one circle layer, nothing else', async () => {
+  test('one source of pins and its layers: the dot and the cluster, no roundels', async () => {
     await render(
       <PinLayer
         split={{ roundels: none, dots }}
@@ -276,10 +276,10 @@ describe('<PinLayer> — roundels', () => {
   });
 });
 
-describe('the roundel path is OFF by default (typed constant)', () => {
-  test('GlobeLayers.pins.roundelsEnabled is a boolean, and false', () => {
+describe('the roundel path is ON by default (the typed one-line switch back to dots)', () => {
+  test('GlobeLayers.pins.roundelsEnabled is a boolean, and true', () => {
     const enabled: boolean = GlobeLayers.pins.roundelsEnabled;
-    expect(enabled).toBe(false);
+    expect(enabled).toBe(true);
   });
 });
 
@@ -312,8 +312,8 @@ const displayAll = async () => {
 };
 
 describe('useRoundels — the pipeline, through the view-shot stand-in', () => {
-  test('disabled (the default): no stage, no capture, every pin a dot', async () => {
-    await render(<Harness pins={MIXED} covers={COVERS} />);
+  test('disabled (the switch back to dots): no stage, no capture, every pin a dot', async () => {
+    await render(<Harness pins={MIXED} covers={COVERS} enabled={false} />);
     expect(imageNodes()).toEqual([]);
     expect(captureRef).not.toHaveBeenCalled();
     expect(
@@ -394,10 +394,14 @@ describe('useRoundels — the pipeline, through the view-shot stand-in', () => {
     ).toHaveLength(1);
   });
 
-  test('a trip with no cover is a dot: there is nothing to crop', async () => {
+  test('a trip with no cover still gets a roundel (its generated cover), but no picture to load', async () => {
     const { old: _old, ...someCovers } = COVERS;
     await render(<Harness pins={MIXED} covers={someCovers} enabled />);
     expect(imageNodes()).toHaveLength(2);
+    expect(
+      screen.getAllByTestId(/^roundel-cover-/, { includeHiddenElements: true }),
+    ).toHaveLength(1);
+    expect(screen.getAllByTestId(/^roundel-badge-/)).toHaveLength(3);
   });
 
   test('beyond about sixty the rest are dots: 61 pins, 60 roundels, a batch of badges laid out at a time', async () => {
@@ -446,7 +450,8 @@ describe('useRoundels — the pipeline, through the view-shot stand-in', () => {
 
   test('the badge is the roundel as the globe draws it: a ring, the status ring, dashed when planned', async () => {
     await render(<Harness pins={MIXED} covers={COVERS} enabled />);
-    const badges = screen.getAllByTestId(/^roundel-badge-/);
+    // The status ring is the badge's child; the badge itself is the transparent margin.
+    const badges = screen.getAllByTestId(/^roundel-ring-/);
     const byStatus = Object.fromEntries(
       badges.map((b) => {
         const style = StyleSheet.flatten(b.props.style) as Record<string, unknown>;

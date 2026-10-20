@@ -8,8 +8,8 @@
  * under a calmer one.
  *
  * A photo roundel is for the trips that matter most, to about sixty (`ROUNDEL_LIMIT`): the
- * live trip first, then planned ones, then past ones, a trip needing a cover to be cropped.
- * Every other pin is a plain dot. `roundelRequests` says which pins want a bitmap and under
+ * live trip first, then planned ones, then past ones; a trip with no photograph gets its
+ * generated cover. Every other pin is a dot, and the dots cluster (`pin-layer.tsx`). `roundelRequests` says which pins want a bitmap and under
  * what name; `splitPins` says which of them have one by now, so a pin whose bitmap has not
  * been captured (or could not be) is simply a dot.
  *
@@ -18,7 +18,7 @@
  * pin carries).
  */
 import { GlobeLayers, type GlobeScheme } from '@/constants/theme';
-import { restingCoordinate, type GlobeTrip } from '@/features/globe/globe-data';
+import { restingStop, type GlobeTrip } from '@/features/globe/globe-data';
 import type { TripStatus } from '@/features/trips/trip-status';
 import { fnv1a32 } from '@/lib/fnv1a';
 
@@ -40,18 +40,32 @@ export type PinCollection<P extends PinProperties = PinProperties> = FeatureColl
   P
 >;
 
-/** One trip's picture, wanted as a bitmap named `key`. */
+/** One of the three generated-cover palettes, picked by `fnv1a32(trip id) % 3`. */
+export type FacePalette = 0 | 1 | 2;
+
+/**
+ * One trip's picture, wanted as a bitmap named `key`. A trip with no photograph has a null
+ * `cover` and is drawn as its generated cover: `palette` and the country code `iso`.
+ */
 export interface RoundelRequest {
   key: string;
   tripId: string;
   status: TripStatus;
-  cover: string;
+  cover: string | null;
+  iso: string | null;
+  palette: FacePalette;
 }
+
+const facePalette = (tripId: string): FacePalette => (fnv1a32(tripId) % 3) as FacePalette;
+const isoOf = (iso: string | null | undefined): string | null => {
+  const code = (iso ?? '').trim().toUpperCase();
+  return code === '' ? null : code;
+};
 
 /** One pin per trip with a placed stop, in rank order (a stable sort: the trips' own order within a rank). */
 export function pinCollection(trips: readonly GlobeTrip[], today: string): PinCollection {
   const pins = trips.flatMap((trip): Feature<PointGeometry, PinProperties>[] => {
-    const at = restingCoordinate(trip, today);
+    const at = restingStop(trip, today)?.coordinate;
     if (!at) return [];
     return [
       {
@@ -72,36 +86,62 @@ export function pinCollection(trips: readonly GlobeTrip[], today: string): PinCo
   };
 }
 
+/** The country of the stop each pin rests at, by trip id; null while it is not cached. */
+export function pinCountries(
+  trips: readonly GlobeTrip[],
+  today: string,
+): Record<string, string | null> {
+  return Object.fromEntries(
+    trips.map((trip) => [trip.id, isoOf(restingStop(trip, today)?.countryIso)]),
+  );
+}
+
 /**
  * The name of a trip's bitmap. It changes with the cover, the status and the scheme because
  * the rings are baked into the picture: a new cover, a trip that has become active, or the
- * night theme is a new bitmap, and the old one stops drawing.
+ * night theme is a new bitmap, and the old one stops drawing. With no photograph (`cover`
+ * null) it names the generated cover: the palette of the trip id and the country code.
  */
 export function pinImageKey(
   tripId: string,
   status: TripStatus,
-  cover: string,
+  cover: string | null,
   scheme: GlobeScheme = 'light',
+  iso: string | null = null,
 ): string {
-  return `roundel:${tripId}:${status}:${scheme}:${fnv1a32(cover).toString(16)}`;
+  const face =
+    cover === null
+      ? `g${facePalette(tripId)}${isoOf(iso) ?? ''}`
+      : fnv1a32(cover).toString(16);
+  return `roundel:${tripId}:${status}:${scheme}:${face}`;
 }
 
-/** The pins that get a roundel, most important first, at most `limit`. */
+/**
+ * The pins that get a roundel, most important first, at most `limit`. A trip with no
+ * photograph gets its generated cover (`countries` gives the code), never a bare dot.
+ */
 export function roundelRequests(
   pins: PinCollection,
   covers: Readonly<Record<string, string>>,
   limit: number = ROUNDEL_LIMIT,
   scheme: GlobeScheme = 'light',
+  countries: Readonly<Record<string, string | null>> = {},
 ): RoundelRequest[] {
   return [...pins.features]
     .sort((a, b) => b.properties.rank - a.properties.rank)
-    .flatMap(({ properties: { trip_id: tripId, status } }): RoundelRequest[] => {
-      const cover = covers[tripId];
-      return cover
-        ? [{ key: pinImageKey(tripId, status, cover, scheme), tripId, status, cover }]
-        : [];
-    })
-    .slice(0, limit);
+    .slice(0, limit)
+    .map(({ properties: { trip_id: tripId, status } }): RoundelRequest => {
+      const cover = covers[tripId] || null;
+      const iso = cover === null ? isoOf(countries[tripId]) : null;
+      return {
+        key: pinImageKey(tripId, status, cover, scheme, iso),
+        tripId,
+        status,
+        cover,
+        iso,
+        palette: facePalette(tripId),
+      };
+    });
 }
 
 export interface PinSplit {

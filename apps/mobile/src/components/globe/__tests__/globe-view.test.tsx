@@ -7,7 +7,7 @@
  * the props of each Mapbox component, stood in for by tagged views in
  * jest.setup.ts. Pixels are the Maestro flow's job (e2e/03-globe.yaml).
  */
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { createRef } from 'react';
 import { StyleSheet } from 'react-native';
 
@@ -85,6 +85,7 @@ function mockAppearance(overrides: Partial<AppearanceContext> = {}) {
     prefersLessTransparency: false,
     ready: true,
     fontScale: 1,
+    themeName: theme,
     tokens: Colors[theme],
     ...overrides,
   } as AppearanceContext);
@@ -787,7 +788,7 @@ describe('<GlobeView> — pins and the callout (T533; FR-011)', () => {
     expect(screen.getByTestId('mapbox-CircleLayer-globe-pin-dot')).toBeTruthy();
   });
 
-  test('the dots are the default: no roundel source, no bitmap, nothing captured', async () => {
+  test('before any capture every pin is a dot: no roundel source, no bitmap, nothing captured; the badges wait off screen', async () => {
     const { captureRef } = jest.requireMock('react-native-view-shot') as {
       captureRef: jest.Mock;
     };
@@ -803,8 +804,41 @@ describe('<GlobeView> — pins and the callout (T533; FR-011)', () => {
     );
     expect(screen.queryByTestId('mapbox-ShapeSource-globe-roundels')).toBeNull();
     expect(screen.queryByTestId('mapbox-Images')).toBeNull();
-    expect(screen.queryByTestId('roundel-stage')).toBeNull();
+    expect(screen.getByTestId('roundel-stage')).toBeTruthy();
     expect(captureRef).not.toHaveBeenCalled();
+  });
+
+  test('over a roundel the callout draws only the pulse, 68 dp round the 56 dp roundel; the baked ring is the ring', async () => {
+    await render(
+      <GlobeView
+        trips={sampleTrips()}
+        focus={['italy']}
+        accessibilityLabel={LABEL}
+        today={TODAY}
+        liveTrip={LIVE}
+        covers={{ italy: 'file:///italy.jpg', france: 'file:///france.jpg' }}
+      />,
+    );
+    const ring = () =>
+      StyleSheet.flatten(
+        screen.getByTestId('globe-callout-ring', { includeHiddenElements: true }).props
+          .style,
+      ) as Record<string, number>;
+    expect(ring()).toMatchObject({ width: 32, borderWidth: 2.5 });
+
+    for (const image of screen.getAllByTestId(/^roundel-image-/)) {
+      await fireEvent(image, 'display');
+    }
+    await waitFor(() =>
+      expect(screen.getByTestId('mapbox-ShapeSource-globe-roundels')).toBeTruthy(),
+    );
+    expect(ring()).toMatchObject({ width: 56, borderWidth: 0 });
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('globe-callout-pulse', { includeHiddenElements: true }).props
+          .style,
+      ),
+    ).toMatchObject({ width: 68, height: 68 });
   });
 
   test('a tap on a pin opens the trip, through the same handler as an arc', async () => {
