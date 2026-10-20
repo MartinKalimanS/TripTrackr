@@ -8,9 +8,10 @@
  *   <PlanTripFab screen="home" onPress={openAddTrip} bottomInset={tabZone}
  *                hidden={planTripFabHidden({ tripCount, sheetFull })} />
  *
- * It is a `Button`: `primary` (the screen's one, FR-006), size `lg` (56 dp at least, growing with
- * the text size), a plus and the words "Plan a trip", on the second lift. A full pill on iOS; on
- * Android a rounded square of 16 dp (FR-028). It is `absolute`, 16 dp from the end (and clear
+ * It is a `Button`: `primary` (the screen's one, FR-006), a plus and the words "Plan a trip" (capped
+ * at 1.3 times the text size, FR-074), on the second lift, padded 16 dp before the plus and 20
+ * after the words. A full pill 52 dp tall on iOS; on Android a rounded square of 16 dp, 56 dp tall
+ * (FR-028); both are minimums, so a label that wraps makes it taller. It is `absolute`, 16 dp from the end (and clear
  * of a side inset, a notch in landscape) and 16 dp above `bottomInset`, which is the zone the
  * floating pill takes (`useBottomTabBarHeight()`; 88 dp on a 390 by 844 phone), so it never sits
  * behind the pill (FR-024). It takes no room in the layout: the list reserves it with its own
@@ -35,7 +36,7 @@ import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
 import { fabShapeOf } from '@/constants/platform-shapes';
-import { cornerOf } from '@/theme';
+import { Space, cornerOf } from '@/theme';
 
 import { Button } from './button';
 import { useLiftStyle } from './lift';
@@ -117,8 +118,13 @@ export function PlanTripFab({
       accessibilityLabel="Plan a trip"
       testID={FAB_IDS[screen]}
       onPress={onPress}
+      // The label stops at 1.3 times the text size (FR-074; home-scale2.png).
+      capped
       style={[
         placement,
+        // The pictured size (52 dp pill on iOS, 56 dp on Android) and the .fab padding.
+        { minHeight: fabShapeOf(Platform.OS).minHeight },
+        { paddingStart: Space[4], paddingEnd: Space[5] },
         // A rounded square on Android (FR-028): the button is a full pill otherwise.
         Platform.OS === 'android' ? cornerOf('lg') : null,
         lift,

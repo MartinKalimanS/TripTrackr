@@ -30,6 +30,7 @@ import { GlobeNotice } from '@/components/globe/empty-state';
 import { GlobeView, type LiveTrip } from '@/components/globe/globe-view';
 import { useGlobeActions, type GlobeActions } from '@/components/globe/use-globe-actions';
 import { useIdleSpin } from '@/components/globe/use-idle-spin';
+import { SyncStatusBanner } from '@/components/sync/sync-status';
 import { PlanTripFab, planTripFabHidden } from '@/components/ui/plan-trip-fab';
 import { Scrim } from '@/components/ui/scrim';
 import {
@@ -208,6 +209,9 @@ export function HomeGlobe(props: HomeGlobeProps) {
   const live = liveTripOf(home.now, data.trips);
   const actions = useGlobeMotion(props, camera, layout, sheetShown, live !== undefined);
   const full = sheetShown && camera.detent === 'full';
+  // The banner is the top of the half sheet; elsewhere it stays under the greeting.
+  const bannerInSheet = sheetShown && camera.detent === 'half';
+  const welcome = !failed && data.trips.length === 0;
 
   return (
     <View testID="home-screen" className="flex-1 bg-background">
@@ -220,6 +224,8 @@ export function HomeGlobe(props: HomeGlobeProps) {
             moved={camera.moved}
             onRecentre={camera.recentre}
             onMeasured={layout.setHeaderBottom}
+            banner={!bannerInSheet}
+            welcome={welcome ? { countries: 0 } : undefined}
           />
         )}
       </View>
@@ -242,6 +248,7 @@ export function HomeGlobe(props: HomeGlobeProps) {
           onOpenTrip={(tripId) => router.push(`/trip/${tripId}`)}
           onOpenTrips={() => router.navigate('/trips')}
           onSelectCountry={camera.selectCountry}
+          banner={<SyncStatusBanner />}
         />
       ) : (
         <BottomCard bottom={layout.tabZone} onHeight={setCardHeight}>

@@ -136,6 +136,8 @@ const HANDLE_ACTIONS = [
 ] as const;
 const COLORS = ['surface', 'hairline', 'focus'] as const;
 const SCROLL_THROTTLE_MS = 16;
+/** The top edge of the surface: the prototype's `0 -1px 0 hairline`. */
+const SHEET_EDGE = 1;
 
 function usePanState(): PanState {
   return {
@@ -241,7 +243,7 @@ function paperStyle(
   return {
     backgroundColor: colors.surface,
     borderColor: colors.hairline,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: SHEET_EDGE,
     borderTopLeftRadius: Radii.sheet,
     borderTopRightRadius: Radii.sheet,
     borderCurve: 'continuous',
@@ -272,7 +274,7 @@ export function Sheet(props: SheetProps) {
         style={[styles.sheet, surface, animated]}>
         <GestureDetector gesture={sheetPan('home-sheet-drag', ui, state, false)}>
           <View collapsable={false}>
-            <View style={styles.zone} />
+            <View testID="home-sheet-zone" style={styles.zone} />
             {header}
           </View>
         </GestureDetector>

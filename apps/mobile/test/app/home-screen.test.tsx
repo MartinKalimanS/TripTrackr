@@ -111,6 +111,21 @@ describe('Home states: the globe is always there, but while loading (FR-021, 003
     expect(screen.queryByTestId('globe-notice')).toBeNull();
   });
 
+  test('loading is drawn as home-loading.png: the day over the greeting, the search disc, a half-height sheet', async () => {
+    globe.loading = true;
+    await render(ui());
+    expect(screen.getByText(/^[A-Za-z]{3} [0-9]{1,2} [A-Za-z]{3}$/, HIDDEN)).toBeTruthy();
+    // The pictured search disc is real and stays out of the announced region.
+    expect(screen.getByTestId('coming-soon-search')).toBeTruthy();
+    expect(screen.getByTestId('home-skeleton')).not.toContainElement(
+      screen.getByTestId('coming-soon-search'),
+    );
+    const sheet = screen.getByTestId('home-skeleton-sheet', HIDDEN);
+    expect(StyleSheet.flatten(sheet.props.style)).toMatchObject({
+      height: DETENTS.half,
+    });
+  });
+
   test('stays the skeleton until the sheet\u2019s trips and the countries have also answered', async () => {
     homeTrips.loading = true;
     await render(ui());
@@ -143,12 +158,14 @@ describe('Home states: the globe is always there, but while loading (FR-021, 003
     ).toBeTruthy();
     expect(screen.queryByTestId('home-plan-trip-fab')).toBeNull();
     expect(screen.queryByTestId('home-sheet')).toBeNull();
-    // The pictured search disc is a coming-soon control, never a primary.
+    // home-empty.png draws no search disc in the header; the card has the primary and the
+    // pictured text button, which is a coming-soon control, never a second primary.
     const buttons = screen.getAllByRole('button');
     expect(buttons.map((b) => b.props.testID)).toEqual([
-      'coming-soon-search',
       'home-plan-trip',
+      'coming-soon-find-trips',
     ]);
+    expect(buttons.filter((b) => b.props.variant === 'primary')).toHaveLength(1);
     await fireEvent.press(screen.getByTestId('home-plan-trip'));
     expect(router.push).toHaveBeenCalledWith('/modal/add-trip');
   });
@@ -227,6 +244,44 @@ describe('Home layers and reading order (FR-010, FR-017)', () => {
     expect(screen.getAllByTestId('sync-chip')).toHaveLength(1);
     expect(screen.getAllByTestId('sync-banner')).toHaveLength(1);
     expect(screen.getAllByTestId('globe-map')).toHaveLength(1);
+  });
+
+  test('offline at half: the banner is the first thing in the sheet, as home-offline.png draws it', async () => {
+    withPastTrip();
+    sync.current = { kind: 'offline', count: 3 };
+    await renderHome();
+    const banner = screen.getByTestId('sync-banner');
+    expect(screen.getByTestId('home-sheet')).toContainElement(banner);
+    expect(screen.getByTestId('home-header')).not.toContainElement(banner);
+    expect(screen.getAllByTestId('sync-banner')).toHaveLength(1);
+  });
+
+  test('offline at peek: the banner is under the greeting (the peek sheet has no room), still ONE', async () => {
+    withLiveTrip();
+    sync.current = { kind: 'offline', count: 3 };
+    await renderHome();
+    await changeDetent('peek');
+    expect(screen.getByTestId('home-header')).toContainElement(
+      screen.getByTestId('sync-banner'),
+    );
+    expect(screen.getAllByTestId('sync-banner')).toHaveLength(1);
+  });
+
+  test('offline with no trips (no sheet): the banner is under the greeting', async () => {
+    sync.current = { kind: 'offline', count: 3 };
+    await renderHome();
+    expect(screen.getByTestId('home-header')).toContainElement(
+      screen.getByTestId('sync-banner'),
+    );
+  });
+
+  test('with no trips the header welcomes, over "0 of 195 countries", and has no search disc', async () => {
+    await renderHome();
+    expect(screen.getByTestId('home-greeting')).toHaveTextContent('Welcome, Ana');
+    expect(screen.getByTestId('home-greeting-date')).toHaveTextContent(
+      '0 of 195 countries',
+    );
+    expect(screen.queryByTestId('coming-soon-search')).toBeNull();
   });
 });
 

@@ -1,12 +1,14 @@
 /**
- * T536 - the Countries list, the full detent of the Home sheet and the screen-reader
- * alternative to the globe (feature 005; FR-016, FR-017, FR-064, FR-084; contract C5-23; owner
- * question Q-2): a header with a collapse control, a search field, a ring card ("14 of 195",
- * "4 of 7 continents . 19 trips") with up to two stamps, then the countries under continent
- * headers that stay in view, in a FlashList with `getItemType`, and a message when the search
- * finds nothing. It is built from data already on the device and shows nobody else's.
+ * T536 and F2 - the Countries list, the full detent of the Home sheet and the screen-reader
+ * alternative to the globe (feature 005; FR-016, FR-017, FR-064, FR-081, FR-084; contract
+ * C5-23; owner question Q-2; picture `home-full.png`): the heading "Countries" over "14 of 195
+ * · 4 continents" with a round search button that reveals the existing filter field, an
+ * invisible collapse control, then the countries under sticky continent labels ("EUROPE · 9")
+ * in a FlashList with `getItemType`, and a message when the search finds nothing. It is built
+ * from data already on the device and shows nobody else's.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import {
   groupByContinent,
@@ -70,7 +72,11 @@ function country(
 }
 
 const SUMMARIES = [
-  country('FR', 'France', 'Europe', { tripCount: 2, firstVisit: '2022-06-01' }),
+  country('FR', 'France', 'Europe', {
+    tripCount: 2,
+    firstVisit: '2021-06-01',
+    lastVisit: '2022-06-09',
+  }),
   country('PT', 'Portugal', 'Europe', {
     tripCount: 3,
     firstVisit: '2021-02-03',
@@ -115,11 +121,29 @@ async function show(ui: React.ReactElement) {
   await act(() => new Promise<void>((resolve) => setTimeout(resolve, 30)));
 }
 
-describe('<CountriesList> header and ring card', () => {
+describe('<CountriesList> header', () => {
   test('is a list named Countries, under a heading', async () => {
     await show(list());
     expect(screen.getByTestId('countries-list')).toBeOnTheScreen();
     expect(screen.getByText('Countries').props.accessibilityRole).toBe('header');
+  });
+
+  test('says "14 of 195 · 4 continents" under the heading, with the fixed 195', async () => {
+    await show(list());
+    expect(screen.getByText('14 of 195 \u00b7 4 continents')).toBeOnTheScreen();
+  });
+
+  test('one continent is singular', async () => {
+    const one = overview();
+    await show(list({ overview: { ...one, totals: { ...one.totals, continents: 1 } } }));
+    expect(screen.getByText('14 of 195 \u00b7 1 continent')).toBeOnTheScreen();
+  });
+
+  test('has no ring card or stamps: the picture shows none', async () => {
+    await show(list());
+    expect(screen.queryByTestId('countries-ring', hidden)).toBeNull();
+    expect(screen.queryByTestId('countries-stamps', hidden)).toBeNull();
+    expect(screen.queryByText(/of 7 continents/)).toBeNull();
   });
 
   test('has a collapse control that says what it does and calls back', async () => {
@@ -132,37 +156,28 @@ describe('<CountriesList> header and ring card', () => {
     expect(onCollapse).toHaveBeenCalledTimes(1);
   });
 
-  test('the ring card says "14 of 195" and the continents and trips, with the fixed denominators', async () => {
+  test('the collapse control is not drawn: it is one dp, with nothing in it', async () => {
     await show(list());
-    expect(screen.getByText('14 of 195')).toBeOnTheScreen();
-    expect(screen.getByText('4 of 7 continents \u00b7 19 trips')).toBeOnTheScreen();
-  });
-
-  test('the ring card is read once, whole, and its ring is decoration', async () => {
-    await show(list());
-    expect(
-      screen.getByLabelText('14 of 195 countries, 4 of 7 continents, 19 trips'),
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByTestId('countries-ring', hidden).props.accessibilityElementsHidden,
-    ).toBe(true);
-  });
-
-  test('shows the stamps of the two newest visits, as decoration', async () => {
-    await show(list());
-    const stamps = screen.getByTestId('countries-stamps', hidden);
-    expect(stamps.props.importantForAccessibility).toBe('no-hide-descendants');
-    expect(
-      screen.getAllByTestId(/^countries-stamp-/, hidden).map((s) => s.props.testID),
-    ).toEqual(['countries-stamp-JP', 'countries-stamp-US']);
-  });
-
-  test('one continent and one trip are singular', async () => {
-    const one = overview();
-    await show(
-      list({ overview: { ...one, totals: { ...one.totals, continents: 1, trips: 1 } } }),
+    const style = StyleSheet.flatten(
+      screen.getByTestId('countries-collapse').props.style,
     );
-    expect(screen.getByText('1 of 7 continents \u00b7 1 trip')).toBeOnTheScreen();
+    expect(style).toMatchObject({ position: 'absolute', width: 1, height: 1 });
+  });
+
+  test('has the round search button, named Search countries', async () => {
+    await show(list());
+    const button = screen.getByTestId('countries-search-toggle');
+    expect(button.props.accessibilityRole).toBe('button');
+    expect(button.props.accessibilityLabel).toBe('Search countries');
+    expect(screen.getByTestId('countries-search-toggle-icon', hidden)).toBeTruthy();
+  });
+
+  test('is NOT a coming-soon control: the filter it opens is real', async () => {
+    await show(list());
+    expect(screen.queryByTestId('coming-soon-countries-search')).toBeNull();
+    expect(screen.getByTestId('countries-search-toggle').props.accessibilityHint).toBe(
+      undefined,
+    );
   });
 });
 
@@ -179,6 +194,23 @@ describe('<CountriesList> the countries', () => {
     expect(screen.getByTestId('countries-header-Europe').props.accessibilityRole).toBe(
       'header',
     );
+  });
+
+  test('each sticky label reads "EUROPE · 3": the eyebrow role over the continent and count', async () => {
+    await show(list());
+    const europe = screen.getByTestId('countries-header-Europe');
+    expect(screen.getByText('Europe \u00b7 3')).toBeOnTheScreen();
+    expect(europe.props.accessibilityLabel).toBe('Europe, 3 countries');
+    expect(screen.queryByText(/countries$/)).toBeNull();
+  });
+
+  test('a label has a hairline under it and the surface behind it', async () => {
+    await show(list());
+    const label = screen.getByTestId('countries-header-Asia');
+    expect(label.props.className).toContain('bg-surface');
+    const inner = label.children[0] as unknown as { props: { className: string } };
+    expect(inner.props.className).toContain('border-b');
+    expect(inner.props.className).toContain('border-separator');
   });
 
   test('every country is a row, in the order of its group', async () => {
@@ -221,21 +253,36 @@ describe('<CountriesList> the countries', () => {
     );
   });
 
-  test('a row names its country, trips and first year, and the live one says now', async () => {
+  test('a row names its country, trips and last visit, and the live one says now', async () => {
     await show(list());
     expect(screen.getByTestId('country-row-FR').props.accessibilityLabel).toBe(
-      'France, 2 trips, first visited 2022',
+      'France, 2 trips, last visited Jun 2022',
+    );
+    expect(screen.getByTestId('country-row-FR-meta')).toHaveTextContent(
+      '2 trips \u00b7 last Jun 2022',
     );
     expect(screen.getByTestId('country-row-PT').props.accessibilityLabel).toMatch(/now$/);
   });
 });
 
 describe('<CountriesList> search', () => {
+  const open = () => fireEvent.press(screen.getByTestId('countries-search-toggle'));
   const search = (text: string) =>
     fireEvent.changeText(screen.getByTestId('countries-search'), text);
 
+  test('the field is hidden until the round button reveals it, then focused', async () => {
+    await show(list());
+    expect(screen.queryByTestId('countries-search')).toBeNull();
+    await open();
+    expect(screen.getByTestId('countries-search').props.autoFocus).toBe(true);
+    expect(screen.getByTestId('countries-search-toggle').props.accessibilityLabel).toBe(
+      'Close search',
+    );
+  });
+
   test('is a field named Search countries', async () => {
     await show(list());
+    await open();
     const field = screen.getByTestId('countries-search');
     expect(field.props.accessibilityLabel).toBe('Search countries');
     expect(field.props.autoCorrect).toBe(false);
@@ -244,23 +291,27 @@ describe('<CountriesList> search', () => {
 
   test('keeps the countries whose name contains the text, ignoring case and accents', async () => {
     await show(list());
+    await open();
     await search('FRAN');
     expect(screen.getByTestId('country-row-FR')).toBeOnTheScreen();
     expect(screen.queryByTestId('country-row-PT')).toBeNull();
     expect(screen.queryByTestId('country-row-JP')).toBeNull();
   });
 
-  test('drops a continent header when none of its countries match, and counts the rest', async () => {
+  test('drops a continent label when none of its countries match, and counts the rest', async () => {
     await show(list());
+    await open();
     await search('o');
     expect(screen.queryByTestId('countries-header-North America')).toBeNull();
     expect(screen.getByTestId('countries-header-Europe').props.accessibilityLabel).toBe(
       'Europe, 1 country',
     );
+    expect(screen.getByText('Europe \u00b7 1')).toBeOnTheScreen();
   });
 
   test('says so in words when nothing matches, and Clear search brings everything back', async () => {
     await show(list());
+    await open();
     await search('zzz');
     expect(screen.getByText(/No countries match/)).toBeOnTheScreen();
     expect(screen.queryByTestId('country-row-FR')).toBeNull();
@@ -269,10 +320,23 @@ describe('<CountriesList> search', () => {
     expect(screen.getByTestId('countries-search').props.value).toBe('');
   });
 
+  test('closing the search clears the query and shows every country again', async () => {
+    await show(list());
+    await open();
+    await search('fra');
+    expect(screen.queryByTestId('country-row-PT')).toBeNull();
+    await open();
+    expect(screen.queryByTestId('countries-search')).toBeNull();
+    expect(screen.getByTestId('country-row-PT')).toBeOnTheScreen();
+    await open();
+    expect(screen.getByTestId('countries-search').props.value).toBe('');
+  });
+
   test('searching changes the list and not the figures above it', async () => {
     await show(list());
+    await open();
     await search('fra');
-    expect(screen.getByText('14 of 195')).toBeOnTheScreen();
+    expect(screen.getByText('14 of 195 \u00b7 4 continents')).toBeOnTheScreen();
   });
 });
 
@@ -288,8 +352,8 @@ describe('<CountriesList> with no countries', () => {
     );
     expect(screen.getByText('No countries yet')).toBeOnTheScreen();
     expect(screen.queryByTestId('countries-search')).toBeNull();
-    expect(screen.getByText('0 of 195')).toBeOnTheScreen();
-    expect(screen.queryByTestId('countries-stamps', hidden)).toBeNull();
+    expect(screen.queryByTestId('countries-search-toggle')).toBeNull();
+    expect(screen.getByText('0 of 195 \u00b7 0 continents')).toBeOnTheScreen();
   });
 });
 
@@ -299,5 +363,22 @@ describe('<CountriesList> in a sheet', () => {
     const props = flash.__seen.props as Record<string, unknown>;
     expect(props.scrollEnabled).toBeUndefined();
     expect(props.bounces).toBeUndefined();
+  });
+
+  test('ends contentInsetBottom above the bottom so the last row clears the tab pill', async () => {
+    await show(list({ contentInsetBottom: 112 }));
+    const props = flash.__seen.props as {
+      contentContainerStyle: { paddingBottom: number };
+    };
+    expect(props.contentContainerStyle.paddingBottom).toBe(112);
+  });
+
+  test('the rows keep their flag size and wrap their second line at large text', async () => {
+    useAppearance.mockReturnValue(appearance({ fontScale: 1.5 }));
+    await show(list());
+    expect(screen.getByTestId('country-row-FR-meta').props.numberOfLines).toBeUndefined();
+    expect(
+      StyleSheet.flatten(screen.getByTestId('country-row-FR-flag', hidden).props.style),
+    ).toMatchObject({ width: 28, height: 20 });
   });
 });

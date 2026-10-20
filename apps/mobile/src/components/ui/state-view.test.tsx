@@ -178,7 +178,7 @@ describe('<EmptyState variant> - the art above the words (C5-28)', () => {
     expect(screen.queryByTestId('empty-art')).toBeNull();
   });
 
-  test('frames is three tilted empty photo frames with a pin each, the middle one raised', async () => {
+  test('frames is three tilted empty photo frames with a photo glyph each, the middle one raised', async () => {
     await render(<EmptyState variant="frames" title="No photos yet" testID="empty" />);
     const frames = [0, 1, 2].map((index) =>
       screen.getByTestId(`empty-art-frame-${index}`, hidden),
@@ -187,7 +187,8 @@ describe('<EmptyState variant> - the art above the words (C5-28)', () => {
       expect(classesIn(frame.props.className)).toEqual(
         expect.arrayContaining([
           'absolute',
-          'bg-skeleton',
+          // Cream, as home-empty.png's frames stand in for photographs (F2 sheet shell).
+          'bg-surface-secondary',
           'border-surface',
           'rounded-2xl',
         ]),
@@ -199,7 +200,7 @@ describe('<EmptyState variant> - the art above the words (C5-28)', () => {
     expect(style(frames[1]).top).toBeLessThan(style(frames[0]).top as number);
     expect(style(frames[2]).transform).toEqual([{ rotate: '8deg' }]);
     for (const frame of frames) expect(style(frame).boxShadow).toBeDefined();
-    expect(glyphNamesIn()).toEqual(['map-pin', 'map-pin', 'map-pin']);
+    expect(glyphNamesIn()).toEqual(['image', 'image', 'image']);
     expect(art().props.accessibilityElementsHidden).toBe(true);
   });
 

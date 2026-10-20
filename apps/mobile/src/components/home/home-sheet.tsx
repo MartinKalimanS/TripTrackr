@@ -14,6 +14,7 @@
  * - **full**: the Countries list; choosing a country lowers the sheet to half and flies the globe
  *   there (the Home's), and the collapse control lowers it to half too.
  *
+ * Half starts with the sync banner when there is one (`banner`, the screen's `SyncStatusBanner`).
  * Peek and half are padded 20 dp at the sides and end above the tab pill (the tab zone plus 16 dp),
  * so nothing sits behind it (FR-024); the list pads itself. The handle is the sheet's own: an
  * `adjustable` control named "Countries and trips" with "Peek", "Half" or "Full" as its value and
@@ -21,6 +22,7 @@
  * before it leaves the screen. What is shown follows the detent the sheet is GOING to, so the
  * content changes as it springs, never before the finger lets go.
  */
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Sheet, type SheetDetent, type SheetHeights } from '@/components/ui/sheet';
@@ -44,14 +46,17 @@ export interface HomeSheetProps extends HomeTrips {
   onOpenTrip: (tripId: string) => void;
   onOpenTrips: () => void;
   onSelectCountry: (country: CountrySummary) => void;
+  /** The offline or sync-failed banner: the first thing in the half sheet (`home-offline.png`). */
+  banner?: ReactNode;
 }
 
 type BodyProps = Omit<HomeSheetProps, 'detents' | 'onDetentChange' | 'onSettle'> & {
   onOpenCountries: () => void;
   onCollapse: () => void;
+  onExpand: () => void;
 };
 
-function Body({ detent, tabZone, overview, now, next, ...rest }: BodyProps) {
+function Body({ detent, tabZone, overview, now, next, banner, ...rest }: BodyProps) {
   if (detent === 'full') {
     return (
       <CountriesList
@@ -64,6 +69,7 @@ function Body({ detent, tabZone, overview, now, next, ...rest }: BodyProps) {
   }
   return (
     <View style={[styles.content, { paddingBottom: tabZone + Space[4] }]}>
+      {detent === 'half' ? banner : null}
       {detent === 'half' ? (
         <HomeHalf
           totals={overview.totals}
@@ -74,7 +80,7 @@ function Body({ detent, tabZone, overview, now, next, ...rest }: BodyProps) {
           onOpenTrip={rest.onOpenTrip}
         />
       ) : (
-        <HomePeek now={now} onOpenTrip={rest.onOpenTrip} />
+        <HomePeek now={now} onOpenTrip={rest.onOpenTrip} onExpand={rest.onExpand} />
       )}
     </View>
   );
@@ -99,6 +105,7 @@ export function HomeSheet({
           detent={detent}
           onOpenCountries={() => onDetentChange('full')}
           onCollapse={() => onDetentChange('half')}
+          onExpand={() => onDetentChange('half')}
         />
       )}
     />
@@ -106,5 +113,10 @@ export function HomeSheet({
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: ScreenMargin.default, paddingTop: Space[1] },
+  // The prototype's `.sheet-body`: 20 at the sides, 16 between the banner and the content.
+  content: {
+    paddingHorizontal: ScreenMargin.default,
+    paddingTop: Space[1],
+    gap: Space[4],
+  },
 });

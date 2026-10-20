@@ -74,7 +74,11 @@ export interface CountrySummary {
   tripCount: number;
   /** YYYY-MM-DD, the earliest arrival. */
   firstVisit: string;
-  /** YYYY-MM-DD, the latest departure. */
+  /**
+   * YYYY-MM-DD, the last day spent there that has happened (a stop that is under way counts
+   * up to today); a country with only trips still to come has no visit yet, so this is the
+   * latest planned departure and the row says "planned" instead.
+   */
   lastVisit: string;
   /** The active trip's current stop is here. */
   isNow: boolean;
@@ -104,6 +108,8 @@ interface Accumulated {
   tripIds: Set<string>;
   first: string;
   last: string;
+  /** The latest day already spent there, or `null` while every stop is still ahead. */
+  lastSpent: string | null;
   places: LngLat[];
   isNow: boolean;
 }
@@ -130,12 +136,17 @@ function accumulate(
         tripIds: new Set<string>(),
         first: stop.arriveDate,
         last: stop.departDate,
+        lastSpent: null,
         places: [],
         isNow: false,
       };
       entry.tripIds.add(trip.id);
       if (stop.arriveDate < entry.first) entry.first = stop.arriveDate;
       if (stop.departDate > entry.last) entry.last = stop.departDate;
+      if (stop.arriveDate <= today) {
+        const spent = stop.departDate < today ? stop.departDate : today;
+        if (entry.lastSpent === null || spent > entry.lastSpent) entry.lastSpent = spent;
+      }
       entry.places.push(stop.coordinate);
       if (now !== null && now.id === stop.id) entry.isNow = true;
       into.set(stop.countryId, entry);
@@ -218,7 +229,7 @@ export function summariseCountries(
       continent: continentOf(info.continent),
       tripCount: entry.tripIds.size,
       firstVisit: entry.first,
-      lastVisit: entry.last,
+      lastVisit: entry.lastSpent ?? entry.last,
       isNow: entry.isNow,
       planned: entry.first > today,
       focus: focusOf(entry.places),

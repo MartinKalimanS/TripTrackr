@@ -9,7 +9,7 @@
 import 'react-native-gesture-handler/jestSetup';
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import type { HomeTrip } from '@/features/home/home-trips';
 import {
@@ -166,6 +166,39 @@ describe('<HomeSheet> three positions (FR-012, FR-014, FR-015, FR-016)', () => {
   });
 });
 
+describe('<HomeSheet> the content as pictured (prototype .sheet-body)', () => {
+  test('is padded 20 dp at the sides, 16 dp apart, 4 dp under the grab zone and ends above the pill', async () => {
+    await render(<HomeSheet {...props()} />);
+    const content = screen.getByTestId('home-half').parent!;
+    expect(StyleSheet.flatten(content.props.style)).toMatchObject({
+      paddingHorizontal: 20,
+      paddingTop: 4,
+      paddingBottom: TAB_ZONE + 16,
+      gap: 16,
+    });
+  });
+
+  test('the banner slot is the first thing in the half sheet, above the figures', async () => {
+    await render(
+      <HomeSheet {...props({ banner: <Text testID="slot-banner">Offline</Text> })} />,
+    );
+    const banner = screen.getByTestId('slot-banner');
+    const half = screen.getByTestId('home-half');
+    expect(banner.parent).toBe(half.parent);
+    expect(banner.parent!.children.indexOf(banner as never)).toBeLessThan(
+      banner.parent!.children.indexOf(half as never),
+    );
+  });
+
+  test('the banner is not in the peek or the full sheet (the header carries it at peek)', async () => {
+    const banner = <Text testID="slot-banner">Offline</Text>;
+    const view = await render(<HomeSheet {...props({ banner, detent: 'peek' })} />);
+    expect(screen.queryByTestId('slot-banner')).toBeNull();
+    await view.rerender(<HomeSheet {...props({ banner, detent: 'full' })} />);
+    expect(screen.queryByTestId('slot-banner')).toBeNull();
+  });
+});
+
 describe('<HomeSheet> the handle and the parent (FR-017)', () => {
   test('the handle is the one adjustable control "Countries and trips", valued by the detent', async () => {
     const view = await render(<HomeSheet {...props()} />);
@@ -179,6 +212,17 @@ describe('<HomeSheet> the handle and the parent (FR-017)', () => {
     ).toMatchObject({
       text: 'Peek',
     });
+  });
+
+  test('at peek the live trip card raises the sheet to half, as its up chevron says', async () => {
+    const onDetentChange = jest.fn();
+    const onOpenTrip = jest.fn();
+    await render(
+      <HomeSheet {...props({ detent: 'peek', onDetentChange, onOpenTrip })} />,
+    );
+    await fireEvent.press(screen.getByTestId('home-now-card'));
+    expect(onDetentChange).toHaveBeenCalledWith('half');
+    expect(onOpenTrip).not.toHaveBeenCalled();
   });
 
   test('a tap on the handle reports the next detent for the parent to pass back', async () => {
