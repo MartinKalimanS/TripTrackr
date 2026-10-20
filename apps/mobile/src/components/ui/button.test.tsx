@@ -460,6 +460,13 @@ describe('<Button> touch target and wrapping - FR-026, FR-029, C5-15', () => {
     );
   });
 
+  test('`capped` limits the label to 1.3 times the text size (the FAB, FR-074); otherwise it is not capped', async () => {
+    await renderButton();
+    expect(screen.getByText('Save').props.maxFontSizeMultiplier).toBeUndefined();
+    await renderButton({ capped: true, accessibilityLabel: 'Other' });
+    expect(screen.getAllByText('Save').at(-1)!.props.maxFontSizeMultiplier).toBe(1.3);
+  });
+
   test('is a full capsule', async () => {
     await renderButton();
     expect(styleOf().borderRadius).toBeGreaterThanOrEqual(MinTouchTarget);

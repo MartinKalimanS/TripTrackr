@@ -95,6 +95,8 @@ export type ButtonProps = ButtonContent & {
   onFocus?: PressableProps['onFocus'];
   onBlur?: PressableProps['onBlur'];
   hitSlop?: PressableProps['hitSlop'];
+  /** Stop the label at 1.3 times the text size (chrome, FR-074: the FAB). Default false. */
+  capped?: boolean;
   testID?: string;
   /** Layout classes only (`self-stretch`): never colour. */
   className?: string;
@@ -328,6 +330,7 @@ function ButtonControl({
   children,
   style,
   testID,
+  capped = false,
   ...rest
 }: ButtonProps) {
   const press = usePressHandler(variant, onPress);
@@ -356,6 +359,7 @@ function ButtonControl({
           icon={icon}
           iconOnly={iconOnly}
           size={size}
+          capped={capped}
           testID={testID}>
           {children}
         </ButtonBody>
@@ -371,11 +375,13 @@ interface BodyProps {
   icon?: IconName;
   iconOnly: boolean;
   size: ButtonSize;
+  capped: boolean;
   testID?: string;
   children?: string;
 }
 
-function ButtonBody({ surface, pressed, iconOnly, size, children, ...rest }: BodyProps) {
+function ButtonBody(props: BodyProps) {
+  const { surface, pressed, iconOnly, size, capped, children, ...rest } = props;
   const look = surface.lookFor(pressed);
   return (
     <>
@@ -390,6 +396,7 @@ function ButtonBody({ surface, pressed, iconOnly, size, children, ...rest }: Bod
           variant={size === 'sm' ? 'label' : 'callout'}
           strong={size === 'sm'}
           tone={LABEL_TONE[look.label]}
+          capped={capped}
           className="shrink text-center">
           {children}
         </Text>

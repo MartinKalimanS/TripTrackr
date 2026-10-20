@@ -70,11 +70,32 @@ describe('<PlanTripFab> says "Plan a trip" on both platforms', () => {
     ).toBeTruthy();
   });
 
-  test('is at least 56 dp tall: a minimum, so the largest text grows it', async () => {
+  // The pictures: a 52 dp pill on iOS, a 56 dp rounded square on Android (UI-SPEC 2.4;
+  // prototype --fab-h), as a minimum, so the largest text grows it by wrapping.
+  test.each([
+    ['ios', 52],
+    ['android', 56],
+  ] as const)(
+    'is %s: at least %i dp tall, a minimum and never a height',
+    async (os, dp) => {
+      await renderFab({}, { os });
+      const style = flat(screen.getByTestId('trips-plan-trip'));
+      expect(style.minHeight).toBe(dp);
+      expect(style.height).toBeUndefined();
+    },
+  );
+
+  test('pads 16 dp before the plus and 20 dp after the words, as .fab does', async () => {
     await renderFab();
-    const style = flat(screen.getByTestId('trips-plan-trip'));
-    expect(style.minHeight).toBeGreaterThanOrEqual(56);
-    expect(style.height).toBeUndefined();
+    expect(flat(screen.getByTestId('trips-plan-trip'))).toMatchObject({
+      paddingStart: 16,
+      paddingEnd: 20,
+    });
+  });
+
+  test('its words stop growing at 1.3 times the text size (FR-074; home-scale2.png)', async () => {
+    await renderFab();
+    expect(screen.getByText('Plan a trip').props.maxFontSizeMultiplier).toBe(1.3);
   });
 });
 
