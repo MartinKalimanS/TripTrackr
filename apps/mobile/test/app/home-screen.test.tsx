@@ -111,6 +111,21 @@ describe('Home states: the globe is always there, but while loading (FR-021, 003
     expect(screen.queryByTestId('globe-notice')).toBeNull();
   });
 
+  test('loading is drawn as home-loading.png: the day over the greeting, the search disc, a half-height sheet', async () => {
+    globe.loading = true;
+    await render(ui());
+    expect(screen.getByText(/^[A-Za-z]{3} [0-9]{1,2} [A-Za-z]{3}$/, HIDDEN)).toBeTruthy();
+    // The pictured search disc is real and stays out of the announced region.
+    expect(screen.getByTestId('coming-soon-search')).toBeTruthy();
+    expect(screen.getByTestId('home-skeleton')).not.toContainElement(
+      screen.getByTestId('coming-soon-search'),
+    );
+    const sheet = screen.getByTestId('home-skeleton-sheet', HIDDEN);
+    expect(StyleSheet.flatten(sheet.props.style)).toMatchObject({
+      height: DETENTS.half,
+    });
+  });
+
   test('stays the skeleton until the sheet\u2019s trips and the countries have also answered', async () => {
     homeTrips.loading = true;
     await render(ui());

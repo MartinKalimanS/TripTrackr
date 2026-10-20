@@ -249,7 +249,9 @@ describe('<HomeSkeleton> - a disc where the globe will mount, and a sheet', () =
 
   test('the sheet holds a handle, three figures and two rows', async () => {
     await render(<HomeSkeleton />);
-    expect(withClasses('h-12', 'w-3/4', 'rounded-2xl')).toHaveLength(3);
+    // home-loading.png: a 40 dp numeral bone over a 14 dp label bone, in each of the three columns.
+    expect(withClasses('h-10', 'w-2/3', 'rounded-2xl')).toHaveLength(3);
+    expect(withClasses('h-3.5', 'w-full', 'rounded-lg')).toHaveLength(3);
     expect(withClasses('size-16', 'rounded-2xl')).toHaveLength(1);
     expect(withClasses('size-12', 'rounded-xl')).toHaveLength(1);
     expect(withClasses('bg-grab', 'rounded-full')).toHaveLength(1);
@@ -262,6 +264,34 @@ describe('<HomeSkeleton> - a disc where the globe will mount, and a sheet', () =
     expect(classesIn(sheet)).not.toContain('bg-surface/80');
     const style = JSON.stringify(sheet.props.style);
     expect(style).toContain('boxShadow');
+  });
+
+  test('the sheet is as tall as the half detent it is given, flush with the bottom edge', async () => {
+    await render(<HomeSkeleton sheetHeight={439} />);
+    const [sheet] = withClasses('bg-surface', 'border-separator');
+    expect(classesIn(sheet)).toEqual(expect.arrayContaining(['absolute', 'bottom-0']));
+    expect(StyleSheet.flatten(sheet.props.style)).toMatchObject({ height: 439 });
+  });
+
+  test('the handle is the 36 by 5 grabber, 10 dp into a 28 dp zone, with 4 dp before the figures', async () => {
+    await render(<HomeSkeleton />);
+    const [grab] = withClasses('bg-grab', 'rounded-full');
+    expect(classesIn(grab)).toEqual(
+      expect.arrayContaining(['mt-[10px]', 'h-[5px]', 'w-9']),
+    );
+    const [zone] = withClasses('h-7', 'items-center');
+    expect(elementsOf(zone.children).map(classesIn)).toEqual([
+      expect.arrayContaining(['bg-grab']),
+    ]);
+    const [sheet] = withClasses('bg-surface', 'border-separator');
+    expect(classesIn(sheet)).toEqual(expect.arrayContaining(['px-5', 'gap-4']));
+    expect(classesIn(sheet)).not.toContain('pt-3');
+  });
+
+  test('shows the date of the day over the greeting when it is given one, in place of a bone', async () => {
+    await render(<HomeSkeleton greetingName="Marta" greetingDate="WED 14 OCT" />);
+    expect(texts(shapes())).toEqual(expect.arrayContaining(['WED 14 OCT']));
+    expect(withClasses('h-4', 'w-24')).toHaveLength(0);
   });
 
   test('says hello with the name from the last session when it has one', async () => {

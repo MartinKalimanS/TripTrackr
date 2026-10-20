@@ -217,16 +217,22 @@ export function AreaSkeleton({
 function StatBones({ first }: { first: boolean }) {
   return (
     <View className={`flex-1 gap-2 px-3 ${first ? 'ps-0' : 'border-s border-separator'}`}>
-      <Bone className="h-12 w-3/4 rounded-2xl" />
-      <Bone className="h-4 w-full rounded-lg" />
+      <Bone className="h-10 w-2/3 rounded-2xl" />
+      <Bone className="h-3.5 w-full rounded-lg" />
     </View>
   );
 }
 
-function Greeting({ name }: { name?: string }) {
+function Greeting({ name, date }: { name?: string; date?: string }) {
   return (
-    <View className="gap-2 px-5 pt-3">
-      <Bone className="h-4 w-24 rounded-lg" />
+    <View className="gap-0.5 px-5 pt-1">
+      {date ? (
+        <Text variant="eyebrow" tone="muted">
+          {date}
+        </Text>
+      ) : (
+        <Bone className="h-4 w-24 rounded-lg" />
+      )}
       {name ? (
         <Text variant="display">
           {'Hello, '}
@@ -241,13 +247,21 @@ function Greeting({ name }: { name?: string }) {
   );
 }
 
-function HomeSheetBones() {
+/**
+ * The sheet at the half detent as `home-loading.png` draws it: as tall as the real one when it is
+ * given the height, the 36 by 5 grabber 10 dp into a 28 dp zone, 4 dp before the figures, 20 dp
+ * at the sides and 16 dp between the rows.
+ */
+function HomeSheetBones({ height }: { height?: number }) {
   const lift = useLiftStyle('lift2');
   return (
     <View
-      className="absolute inset-x-0 bottom-0 gap-4 border border-b-0 border-separator bg-surface px-5 pb-26 pt-3"
-      style={[SHEET_TOP, lift]}>
-      <View className="h-[5px] w-9 self-center rounded-full bg-grab" />
+      className="absolute inset-x-0 bottom-0 gap-4 border border-b-0 border-separator bg-surface px-5 pb-26"
+      testID="home-skeleton-sheet"
+      style={[SHEET_TOP, lift, height === undefined ? null : { height }]}>
+      <View className="-mb-3 h-7 items-center">
+        <View className="mt-[10px] h-[5px] w-9 rounded-full bg-grab" />
+      </View>
       <View className="flex-row">
         <StatBones first />
         <StatBones first={false} />
@@ -278,12 +292,18 @@ export type HomeSkeletonProps = SkeletonRegionProps & {
   discCentreY?: number;
   /** The name from the previous session, for the greeting; a bone stands in without one. */
   greetingName?: string;
+  /** The day's eyebrow ("WED 14 OCT"), shown over the greeting; a bone stands in without one. */
+  greetingDate?: string;
+  /** The height of the half detent, so the skeleton sheet is as tall as the real one. */
+  sheetHeight?: number;
 };
 
 export function HomeSkeleton({
   discRadius = 175,
   discCentreY = 330,
   greetingName,
+  greetingDate,
+  sheetHeight,
   label = 'Loading your globe',
   testID = 'home-skeleton',
 }: HomeSkeletonProps) {
@@ -291,13 +311,13 @@ export function HomeSkeleton({
   return (
     <LoadingRegion label={label} testID={testID} className="flex-1" gap="flex-1">
       <ShimmerGroup className="flex-1">
-        <Greeting name={greetingName} />
+        <Greeting name={greetingName} date={greetingDate} />
         <View
           className="absolute inset-x-0 items-center"
           style={{ top: discCentreY - discRadius }}>
           <Bone className="rounded-full" style={{ width: size, height: size }} />
         </View>
-        <HomeSheetBones />
+        <HomeSheetBones height={sheetHeight} />
       </ShimmerGroup>
     </LoadingRegion>
   );
