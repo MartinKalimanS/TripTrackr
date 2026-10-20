@@ -20,10 +20,10 @@ import {
 } from 'expo-router/js-tabs';
 import { Dimensions, Platform, StyleSheet } from 'react-native';
 
-import { AndroidNavBar } from '@/components/navigation/android-nav-bar';
+import { AndroidNavBar, indicatorFill } from '@/components/navigation/android-nav-bar';
 import { TabBar } from '@/components/navigation/tab-bar';
 import { AndroidBarMetrics } from '@/components/navigation/tab-metrics';
-import { Radii, Palettes } from '@/theme';
+import { Radii, Palettes, withAlpha, type PaletteName } from '@/theme';
 
 import { appearanceOf } from '../helpers/appearance';
 import { glyphsIn } from '../helpers/icons';
@@ -87,6 +87,8 @@ beforeEach(() => {
   mockThemeColors('light');
 });
 afterEach(() => jest.restoreAllMocks());
+
+const FILLS = { tint: 'tint', held: 'held' };
 
 type Node = { props: Record<string, unknown> };
 const styleOf = (node: Node) =>
@@ -202,14 +204,57 @@ describe('<AndroidNavBar> geometry - FR-022, D5-21', () => {
       bottom: 0,
     });
     expect(AndroidBarMetrics.height).toBe(64);
+    // The picture's bar is 64 dp ABOVE the inset: 12 dp padding, hairline and tab inside it.
+    expect(styleOf(bar()).minHeight).toBe(64 + 24);
     for (const tab of screen.getAllByRole('tab')) {
-      expect(styleOf(tab).minHeight).toBe(AndroidBarMetrics.height);
-      // 64 dp is above the 48 dp Android touch target, and a tab is a third of the width.
+      // The picture's padding is 12 on top (not 4 per tab), so the tab's own minimum is the
+      // Android 48 dp touch target and the bar's 64 dp minimum sits on the bar itself.
+      expect(styleOf(tab).minHeight).toBe(AndroidBarMetrics.tabMinHeight);
       expect(styleOf(tab).minHeight).toBeGreaterThanOrEqual(48);
       expect(styleOf(tab).minWidth).toBeGreaterThanOrEqual(48);
+      expect(styleOf(tab).justifyContent).toBe('flex-start');
+      expect(styleOf(tab).paddingVertical).toBeUndefined();
     }
     expect(styleOf(bar()).height).toBeUndefined();
     expect(styleOf(bar()).maxHeight).toBeUndefined();
+  });
+
+  test('the reference numbers: padding 12 8 and a 1 dp hairline, tabs 4 dp apart', async () => {
+    expect(AndroidBarMetrics).toMatchObject({
+      height: 64,
+      hairline: 1,
+      paddingTop: 12,
+      paddingX: 8,
+      indicatorLabelGap: 4,
+      iconSize: 24,
+      labelSize: 12,
+      labelLineHeight: 14,
+    });
+    await render(<AndroidNavBar {...makeProps()} />);
+
+    expect(styleOf(bar())).toMatchObject({
+      paddingTop: 12,
+      paddingLeft: 8,
+      paddingRight: 8,
+      borderTopWidth: 1,
+    });
+    for (const tab of screen.getAllByRole('tab')) {
+      expect(styleOf(tab)).toMatchObject({ gap: 4, borderRadius: 0 });
+      expect(classesOf(tab)).toContain('flex-1');
+    }
+  });
+
+  test('the side insets (a cutout, three buttons in landscape) are added to the 8 dp', async () => {
+    const props = makeProps(0, 24);
+    (props as { insets: unknown }).insets = { top: 0, left: 40, right: 12, bottom: 24 };
+    await render(<AndroidNavBar {...props} />);
+
+    expect(styleOf(bar())).toMatchObject({ paddingLeft: 48, paddingRight: 20 });
+  });
+
+  test('the minimum is 64 dp ABOVE the inset for a gesture bar and for three buttons', async () => {
+    await render(<AndroidNavBar {...makeProps(0, 48)} />);
+    expect(styleOf(bar()).minHeight).toBe(64 + 48);
   });
 
   test.each([0, 16, 24, 48])(
@@ -225,7 +270,8 @@ describe('<AndroidNavBar> geometry - FR-022, D5-21', () => {
 
     const style = styleOf(bar());
     expect(style.backgroundColor).toBe(Palettes.light.surfaceSecondary.toLowerCase());
-    expect(style.borderTopWidth).toBe(StyleSheet.hairlineWidth);
+    // 1 dp, as in the picture (the reference's `0 -1px 0`), not the device's thinnest line.
+    expect(style.borderTopWidth).toBe(AndroidBarMetrics.hairline);
     expect(style.borderTopColor).toBe(Palettes.light.hairline.toLowerCase());
     for (const key of ['borderWidth', 'borderBottomWidth', 'borderLeftWidth']) {
       expect(style[key]).toBeUndefined();
@@ -280,7 +326,7 @@ describe('<AndroidNavBar> the indicator - FR-022', () => {
       width: AndroidBarMetrics.indicatorWidth,
       height: AndroidBarMetrics.indicatorHeight,
       borderRadius: Radii.full,
-      backgroundColor: Palettes.light.accentTint.toLowerCase(),
+      backgroundColor: withAlpha(Palettes.light.accent, 0.26),
     });
     expect([AndroidBarMetrics.indicatorWidth, AndroidBarMetrics.indicatorHeight]).toEqual(
       [56, 32],
@@ -297,6 +343,42 @@ describe('<AndroidNavBar> the indicator - FR-022', () => {
     }
   });
 
+  test.each(['light', 'dark', 'light-contrast', 'dark-contrast'] as PaletteName[])(
+    'the indicator is the accent at 26%% (28%% in dark) in %s, not the 16%% chip tint',
+    async (theme) => {
+      useAppearance.mockReturnValue(appearanceOf(theme));
+      mockThemeColors(theme);
+      await render(<AndroidNavBar {...makeProps(1)} />);
+
+      const opacity = theme.startsWith('dark') ? 0.28 : 0.26;
+      expect(opacity).toBe(
+        AndroidBarMetrics.indicatorOpacity[theme.split('-')[0] as 'light'],
+      );
+      expect(styleOf(marks()[0]!).backgroundColor).toBe(
+        withAlpha(Palettes[theme].accent, opacity),
+      );
+      expect(styleOf(marks()[0]!).backgroundColor).not.toBe(
+        Palettes[theme].accentTint.toLowerCase(),
+      );
+      expect(styleOf(bar()).backgroundColor).toBe(
+        Palettes[theme].surfaceSecondary.toLowerCase(),
+      );
+      expect(styleOf(bar()).borderTopColor).toBe(Palettes[theme].hairline.toLowerCase());
+    },
+  );
+
+  test('the whole tab paints no fill; a held press fills the INDICATOR (Material state layer)', async () => {
+    await render(<AndroidNavBar {...makeProps(1)} />);
+
+    for (const tab of screen.getAllByRole('tab')) {
+      expect(styleOf(tab).backgroundColor).toBe('transparent');
+    }
+    expect(indicatorFill({ focused: false, pressed: true }, FILLS)).toBe('held');
+    expect(indicatorFill({ focused: false, pressed: false }, FILLS)).toBeUndefined();
+    expect(indicatorFill({ focused: true, pressed: false }, FILLS)).toBe('tint');
+    expect(indicatorFill({ focused: true, pressed: true }, FILLS)).toBe('tint');
+  });
+
   test('is decoration: hidden from assistive technology and from touches', async () => {
     await render(<AndroidNavBar {...makeProps(0)} />);
     const mark = marks()[0]!;
@@ -305,7 +387,7 @@ describe('<AndroidNavBar> the indicator - FR-022', () => {
     expect(mark.props.importantForAccessibility).toBe('no-hide-descendants');
   });
 
-  test('the selected tab shows a filled glyph and a heavier label; the others are regular and muted', async () => {
+  test('the selected tab shows a filled glyph in ink; the others are regular and muted', async () => {
     await render(<AndroidNavBar {...makeProps(2)} />);
 
     expect(glyphsIn().map((glyph) => glyph.weight)).toEqual([
@@ -316,16 +398,24 @@ describe('<AndroidNavBar> the indicator - FR-022', () => {
     for (const glyph of glyphsIn()) {
       expect(glyph.size).toBe(AndroidBarMetrics.iconSize);
     }
-    const selected = classesOf(screen.getByText('You'));
-    expect(selected).toEqual(
-      expect.arrayContaining(['text-foreground', 'font-body-semibold']),
-    );
+    expect(classesOf(screen.getByText('You'))).toContain('text-foreground');
     for (const title of ['Globe', 'Trips']) {
-      const rest = classesOf(screen.getByText(title));
-      expect(rest).toContain('text-muted');
-      expect(rest).not.toContain('font-body-semibold');
+      expect(classesOf(screen.getByText(title))).toContain('text-muted');
     }
   });
+
+  test.each([0, 1, 2])(
+    'every label is 12 / 14, weight 600, as the picture draws it, whichever tab %i is on',
+    async (i) => {
+      await render(<AndroidNavBar {...makeProps(i)} />);
+
+      for (const route of ROUTES) {
+        const label = screen.getByText(route.title);
+        expect(classesOf(label)).toContain('font-body-semibold');
+        expect(styleOf(label)).toMatchObject({ fontSize: 12, lineHeight: 14 });
+      }
+    },
+  );
 
   test('the label sits beneath the indicator, wraps, and is capped at 1.3 times', async () => {
     await render(<AndroidNavBar {...makeProps(0)} />);
