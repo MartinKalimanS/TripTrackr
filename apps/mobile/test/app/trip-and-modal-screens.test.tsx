@@ -624,32 +624,33 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
       ).toMatchObject({ disabled: true });
     });
 
-    test('shows the chosen city as one flat card: the city, the country beneath it, and a secondary "Change city" button', async () => {
+    // F6 (add-stop.png): the place is the pictured cream field with the flag, "Firenze" in
+    // bold and ", Italy" after it, and a ROUND clear button, not a "Change" text button; it
+    // keeps its id and its name "Change city" (pinned in stop-editor-pictured.test.tsx).
+    test('shows the chosen place as one field: the city, the country after it, and a clear button named "Change city"', async () => {
       await renderEditor();
       await fireEvent.press(screen.getByTestId('pick-florence'));
 
-      expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Firenze');
-      expect(screen.getByText('Italy')).toBeTruthy();
+      expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Firenze, Italy');
       const change = screen.getByTestId('stop-editor-change-city');
       expect(change.props.accessibilityLabel).toBe('Change city');
       expect(change.props.accessibilityRole).toBe('button');
-      expect(change.props.variant).toBe('secondary');
-      expect(within(change).getByText('Change')).toBeTruthy();
       expect(screen.queryByTestId('pick-florence')).toBeNull();
     });
 
-    test('reads title, city, country, Change, Cancel, Save in that order', async () => {
+    test('reads title, place, dates, nights, Cancel, Save in that order', async () => {
       await renderEditor();
       await fireEvent.press(screen.getByTestId('pick-florence'));
 
       const order = screen
-        .getAllByText(/^(Add stop|Firenze|Italy|Change|Cancel|Save stop)$/)
-        .map((node) => String(node.props.children));
+        .getAllByText(/^(Add stop|Place|Firenze, Italy|Dates|Nights|Cancel|Save stop)$/)
+        .map((node) => (node.props.accessibilityLabel ?? node.props.children).toString());
       expect(order).toEqual([
         'Add stop',
-        'Firenze',
-        'Italy',
-        'Change',
+        'Place',
+        'Firenze, Italy',
+        'Dates',
+        'Nights',
         'Cancel',
         'Save stop',
       ]);
