@@ -42,13 +42,14 @@ const SHEET_TOP: ViewStyle = {
 
 // ------------------------------------------------------------------ trips
 
+/** The prototype's `.trip-row`: 72 dp tall, a 64 dp thumb, 16 dp to a 20 dp and a 14 dp line. */
 function TripRowBones() {
   return (
-    <View className="flex-row items-center gap-4">
+    <View className="min-h-[72px] flex-row items-center gap-4">
       <Bone className="size-16 rounded-2xl" />
       <View className="flex-1 gap-2">
-        <Bone className="h-5 w-3/4 rounded-lg" />
-        <Bone className="h-4 w-1/2 rounded-lg" />
+        <Bone className="h-5 w-[60%] rounded-lg" />
+        <Bone className="h-3.5 w-[80%] rounded-lg" />
       </View>
     </View>
   );
@@ -69,12 +70,11 @@ export function TripListSkeleton({
       <ShimmerGroup className="gap-4">
         <PhotoBone className="aspect-[16/10] w-full rounded-3xl" />
         <Bone className="h-24 w-full rounded-3xl" />
-        <Bone className="mt-2 h-5 w-24 rounded-lg" />
-        <View className="gap-3">
-          {Array.from({ length: wholeCount(rows, 3) }, (_, index) => (
-            <TripRowBones key={index} />
-          ))}
-        </View>
+        {/* The prototype's 8 dp spacer between two 16 dp gaps (24 here, 40 in all), then the 90 dp year line. */}
+        <Bone className="mt-6 h-5 w-[90px] rounded-lg" />
+        {Array.from({ length: wholeCount(rows, 3) }, (_, index) => (
+          <TripRowBones key={index} />
+        ))}
       </ShimmerGroup>
     </LoadingRegion>
   );
