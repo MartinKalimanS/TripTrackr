@@ -181,8 +181,8 @@ describe('trip/[id]/_layout - the header is on for the overview and the migrated
   });
 
   test('the sub-screens keep an opaque bar of the canvas colour', async () => {
-    await openTrip(anchored, '/trip/abc/expenses');
-    const header = tripHeaders().expenses;
+    await openTrip(anchored, '/trip/abc/offline-maps');
+    const header = tripHeaders()['offline-maps'];
     expect(header?.translucent).toBe(false);
     expect(header?.backgroundColor).toBe(COLOURS.background);
   });
