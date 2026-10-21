@@ -97,6 +97,13 @@ export type FormSheetProps = {
   host?: FormSheetHost;
   /** What stands at the header's right ("Only you" on a private form); dropped at large text. */
   headerTrailing?: ReactNode;
+  /** A line under the title (the note editor's sync state), centred with it. */
+  headerSubtitle?: ReactNode;
+  /**
+   * A strip above the footer's buttons, inside the part that rides up with the keyboard (the
+   * note editor's formatting bar). Opaque, like the footer.
+   */
+  footerAccessory?: ReactNode;
   /** The space between the fields, in dp. Default 16; New trip's roomier form passes 24. */
   gap?: number;
   /** A hairline above the footer (New trip draws one, Add expense none). */
@@ -166,6 +173,7 @@ type HeaderProps = {
   title: string;
   actions: FormActionsProps;
   trailing?: ReactNode;
+  subtitle?: ReactNode;
 };
 
 /**
@@ -173,7 +181,7 @@ type HeaderProps = {
  * 1fr / auto / 1fr grid, 56 dp tall). From 1.5 times the text size the chip is dropped and
  * the title takes the room between Cancel and the edge (the prototype's `data-bigtext`).
  */
-function Header({ parent, title, actions, trailing }: HeaderProps) {
+function Header({ parent, title, actions, trailing, subtitle }: HeaderProps) {
   const big = useFontScale() >= HEADER_BIG_TEXT;
   const heading = (
     <Text
@@ -182,6 +190,14 @@ function Header({ parent, title, actions, trailing }: HeaderProps) {
       className={big ? 'shrink' : 'shrink text-center'}>
       {title}
     </Text>
+  );
+  const block = subtitle ? (
+    <View className="shrink items-center">
+      {heading}
+      {subtitle}
+    </View>
+  ) : (
+    heading
   );
   const cancel = <FormCancel {...actions} />;
   return (
@@ -192,12 +208,12 @@ function Header({ parent, title, actions, trailing }: HeaderProps) {
       {big ? (
         <>
           {cancel}
-          <View className="flex-1 items-center">{heading}</View>
+          <View className="flex-1 items-center">{block}</View>
         </>
       ) : (
         <>
           <View className="flex-1 items-start">{cancel}</View>
-          {heading}
+          {block}
           <View className="flex-1 items-end">{trailing}</View>
         </>
       )}
@@ -212,15 +228,29 @@ type FooterProps = {
   rule: boolean;
   onLayout: (event: LayoutChangeEvent) => void;
   actions: FormActionsProps;
+  accessory?: ReactNode;
 };
 
 /** Save on an opaque strip; a modal's rides the keyboard up (see the header). */
-function Footer({ parent, host, bottomInset, rule, onLayout, actions }: FooterProps) {
+function Footer({
+  parent,
+  host,
+  bottomInset,
+  rule,
+  onLayout,
+  actions,
+  accessory,
+}: FooterProps) {
   const sticks = host === 'modal';
   const content = (
     <View
       className={rule ? 'border-t border-separator bg-background' : 'bg-background'}
-      style={[styles.footer, { paddingBottom: FOOTER_GAP + (sticks ? bottomInset : 0) }]}>
+      style={[
+        styles.footer,
+        accessory ? styles.footerWithAccessory : null,
+        { paddingBottom: FOOTER_GAP + (sticks ? bottomInset : 0) },
+      ]}>
+      {accessory}
       <FormActions {...actions} />
     </View>
   );
@@ -248,6 +278,8 @@ export function FormSheet({
   actions,
   host = 'form-sheet',
   headerTrailing,
+  headerSubtitle,
+  footerAccessory,
   gap = FOOTER_GAP,
   footerRule = false,
   children,
@@ -273,7 +305,13 @@ export function FormSheet({
   return (
     <View testID={testID} className="bg-background" style={root}>
       {!inModal && Platform.OS === 'android' ? <SheetHandle parent={testID} /> : null}
-      <Header parent={testID} title={title} actions={actions} trailing={headerTrailing} />
+      <Header
+        parent={testID}
+        title={title}
+        actions={actions}
+        trailing={headerTrailing}
+        subtitle={headerSubtitle}
+      />
       <KeyboardAwareScrollView
         testID={bodyTestID ?? (testID ? `${testID}-body` : undefined)}
         keyboardShouldPersistTaps="handled"
@@ -289,6 +327,7 @@ export function FormSheet({
         rule={footerRule}
         onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}
         actions={actions}
+        accessory={footerAccessory}
       />
     </View>
   );
@@ -311,6 +350,7 @@ const styles = StyleSheet.create({
     gap: Space[2],
   },
   footer: { paddingHorizontal: GUTTER, paddingTop: Space[3] },
+  footerWithAccessory: { gap: Space[2] },
   /** The Android sheet's own handle: 32 x 4 (the prototype's Android `.grab`). */
   handle: { width: 32, height: 4, marginTop: AtlasSpacing.twelve },
 });

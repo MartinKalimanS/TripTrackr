@@ -72,6 +72,9 @@ import { StopCircleIcon } from 'phosphor-react-native/src/icons/StopCircle';
 import { SuitcaseIcon } from 'phosphor-react-native/src/icons/Suitcase';
 import { SuitcaseRollingIcon } from 'phosphor-react-native/src/icons/SuitcaseRolling';
 import { TagIcon } from 'phosphor-react-native/src/icons/Tag';
+import { ListBulletsIcon } from 'phosphor-react-native/src/icons/ListBullets';
+import { ListChecksIcon } from 'phosphor-react-native/src/icons/ListChecks';
+import { TextBIcon } from 'phosphor-react-native/src/icons/TextB';
 import { TicketIcon } from 'phosphor-react-native/src/icons/Ticket';
 import { TrashIcon } from 'phosphor-react-native/src/icons/Trash';
 import { TramIcon } from 'phosphor-react-native/src/icons/Tram';
@@ -147,6 +150,10 @@ export const ICONS = {
   stamp: StampIcon,
   tag: TagIcon,
   mail: EnvelopeIcon,
+  // Writing (the note editor's pictured formatting bar)
+  bold: TextBIcon,
+  list: ListBulletsIcon,
+  'list-checks': ListChecksIcon,
   sparkle: SparkleIcon,
   // Categories and transport
   plane: AirplaneIcon,
