@@ -368,9 +368,10 @@ describe('<PhotosScreen> — the photo view', () => {
     expect(
       within(viewer).getByText('Private — only you can see your photos.'),
     ).toBeTruthy();
-    // Private by default: nothing offers to share or publish (User Story 7).
-    expect(within(viewer).queryByLabelText(/share|public/i)).toBeNull();
-    expect(within(viewer).queryByText(/share|make public/i)).toBeNull();
+    // Private by default: nothing offers to publish (User Story 7). The pictured Share is a
+    // coming-soon control (owner answer Q-11), pinned in `photo-viewer.test.tsx`.
+    expect(within(viewer).queryByLabelText(/public|visibility/i)).toBeNull();
+    expect(within(viewer).queryByText(/make public/i)).toBeNull();
   });
 
   test('a pending photo is not presented as saved (FR-041)', async () => {

@@ -249,7 +249,10 @@ describe('<PhotosScreen> — nothing is laid across a photograph (FR-033, 002 C1
     const viewer = screen.getByTestId('photo-viewer');
     const image = within(viewer).getByTestId('photo-viewer-image');
 
-    const frame = hostAncestors(image)[0]!;
+    // The card the zoom runs in is the photo's frame: a hairline edge, no fill.
+    const frame = hostAncestors(image).find(
+      (ancestor) => styleOf(ancestor).borderWidth !== undefined,
+    )!;
     expect(styleOf(frame).borderWidth).toBe(StyleSheet.hairlineWidth);
     expect(styleOf(frame).backgroundColor).toBeUndefined();
     for (const ancestor of hostAncestors(image)) {
@@ -305,29 +308,30 @@ describe('<PhotosScreen> — the photo view on Atlas (FR-005, FR-024, FR-025, FR
     return screen.getByTestId('photo-viewer');
   }
 
-  test('Close is a secondary button with its words and an icon; the way out is never colour alone', async () => {
+  test('Close is the glass 44 dp disc of the picture, named "Close photo", with its glyph', async () => {
     const viewer = await openPhoto(uploaded);
     const close = within(viewer).getByLabelText('Close photo');
 
     expect(close.props.accessibilityRole).toBe('button');
-    expect(variantOf(close)).toBe('secondary');
-    expect(within(close).getByText('Close')).toBeTruthy();
+    expect(close).toBe(within(viewer).getByTestId('photo-viewer-close'));
     expect(within(close).getByTestId(glyphId('x'), hidden)).toBeTruthy();
+    expect(within(viewer).queryByText('Close')).toBeNull();
   });
 
-  test('Delete is the one destructive control, in words and with an icon, and no control is primary', async () => {
+  test('Delete is the one destructive action, in words and with an icon, and no control is primary', async () => {
     const viewer = await openPhoto(failed);
     const remove = within(viewer).getByLabelText('Delete this photo');
 
-    expect(variantOf(remove)).toBe('destructive');
+    expect(remove.props.accessibilityRole).toBe('button');
     expect(within(remove).getByText('Delete')).toBeTruthy();
     expect(within(remove).getByTestId(glyphId('trash'), hidden)).toBeTruthy();
-    // Close and the retry are secondary: nothing in the view competes for primary.
+    // The retry is secondary; nothing in the view competes for primary or is a second delete.
     const inViewer = within(viewer).getAllByRole('button', hidden);
     expect(inViewer.filter((button) => variantOf(button) === 'primary')).toHaveLength(0);
     expect(inViewer.filter((button) => variantOf(button) === 'destructive')).toHaveLength(
-      1,
+      0,
     );
+    expect(within(viewer).getAllByLabelText(/delete/i, hidden)).toHaveLength(1);
   });
 
   test('the retry beside a failed photo’s status is a secondary button', async () => {
