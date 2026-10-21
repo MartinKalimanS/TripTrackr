@@ -403,6 +403,37 @@ describe('<FormSheet> - the Sunrise form sheet (F6; UI-SPEC 3.6, form.png, add-e
     expect(String(save.props.className)).toContain('self-stretch');
   });
 
+  test('a subtitle stands under the title and stays at large text (F9: the note editor’s state line)', async () => {
+    setWindow({ width: 390, height: 844 });
+    await renderSheet({ headerSubtitle: <NativeText>On this device</NativeText> });
+    const header = within(screen.getByTestId('demo-sheet-header'));
+    expect(
+      header.getAllByText(/Cancel|New demo|On this device/).map((n) => n.props.children),
+    ).toEqual(['Cancel', 'New demo', 'On this device']);
+
+    await screen.unmount();
+    setWindow({ width: 390, height: 844, fontScale: HEADER_BIG_TEXT });
+    await renderSheet({ headerSubtitle: <NativeText>On this device</NativeText> });
+    expect(screen.getByText('On this device')).toBeTruthy();
+  });
+
+  test('a footer accessory is in the footer, above Save, outside the scrolling body', async () => {
+    await renderSheet({
+      footerAccessory: <NativeText testID="strip">strip</NativeText>,
+    });
+    const footer = within(screen.getByTestId('demo-sheet-footer'));
+    expect(footer.getByTestId('strip')).toBeTruthy();
+    expect(footer.getByTestId('demo-save')).toBeTruthy();
+    expect(
+      within(screen.getByTestId('demo-sheet-body')).queryByTestId('strip'),
+    ).toBeNull();
+  });
+
+  test('without a subtitle or an accessory nothing extra is drawn', async () => {
+    await renderSheet();
+    expect(screen.queryByTestId('strip')).toBeNull();
+  });
+
   test('from text scale 1.5 the trailing chip is dropped and the title keeps its room', async () => {
     setWindow({ width: 390, height: 844, fontScale: HEADER_BIG_TEXT });
     await renderSheet({ headerTrailing: <NativeText>Only you</NativeText> });

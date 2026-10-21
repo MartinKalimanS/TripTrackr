@@ -18,7 +18,7 @@
  */
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { readFileSync } from 'node:fs';
-import { StyleSheet } from 'react-native';
+import { Keyboard, StyleSheet } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { NoteEditor, type NoteEditorProps } from '@/components/trip/note-editor';
@@ -27,6 +27,7 @@ import { FOOTER_GAP } from '@/components/ui/form-sheet';
 import type { AnchorTarget } from '@/features/notes/use-move-note';
 
 import { hostsWhere } from '../helpers/host-nodes';
+import { glyphNamesIn } from '../helpers/icons';
 import {
   PHONE_360X640,
   expectActionAboveKeyboard,
@@ -468,6 +469,127 @@ describe('<NoteEditor> with the keyboard up (C4-10 rule 8; the keyboard-visibili
     const sheet = flat(screen.getByTestId('note-editor'));
     expect(sheet.flex).toBe(1);
     expect(sheet.maxHeight).toBeUndefined();
+  });
+});
+
+describe('<NoteEditor> - the pictured extras (F9, T551; Q-11)', () => {
+  const { mockToast } = jest.requireMock('heroui-native') as {
+    mockToast: { show: jest.Mock };
+  };
+  beforeEach(() => mockToast.show.mockClear());
+
+  const TOOLS = [
+    ['coming-soon-note-bold', 'Bold'],
+    ['coming-soon-note-list', 'Bulleted list'],
+    ['coming-soon-note-checklist', 'Checklist'],
+    ['coming-soon-note-photo', 'Add photo'],
+    ['coming-soon-note-place', 'Tag place'],
+  ] as const;
+
+  test('the formatting strip is in the footer, so it rides the keyboard up with Save', async () => {
+    await renderEditor();
+    await showKeyboard();
+
+    const footer = within(screen.getByTestId('note-editor-footer'));
+    const bar = footer.getByTestId('note-editor-format');
+    expect(bar.props.accessibilityRole).toBe('toolbar');
+    for (const [id] of TOOLS) expect(within(bar).getByTestId(id)).toBeTruthy();
+    expect(
+      within(screen.getByTestId(BODY)).queryByTestId('note-editor-format'),
+    ).toBeNull();
+    expectActionAboveKeyboard('note-editor', 'note-editor-save', { bodyTestID: BODY });
+  });
+
+  test.each(TOOLS)(
+    '%s is a coming-soon button: named, hinted, one toast, and never touches the note',
+    async (id, name) => {
+      const { onSubmit } = await renderEditor();
+      await fireEvent.changeText(screen.getByTestId('note-editor-body'), 'Plain words');
+
+      const control = screen.getByTestId(id);
+      expect(control.props.accessibilityLabel).toBe(name);
+      expect(control.props.accessibilityHint).toBe('Not available yet');
+      expect(control.props.accessibilityRole).toBe('button');
+
+      await fireEvent.press(control);
+      expect(mockToast.show).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('note-editor-body').props.value).toBe('Plain words');
+      expect(onSubmit).not.toHaveBeenCalled();
+    },
+  );
+
+  test('Dismiss keyboard is real: it puts the keyboard away and does nothing else', async () => {
+    const dismiss = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => undefined);
+    const { onSubmit, onCancel } = await renderEditor();
+    await fireEvent.press(screen.getByLabelText('Dismiss keyboard'));
+
+    expect(dismiss).toHaveBeenCalledTimes(1);
+    expect(mockToast.show).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+    dismiss.mockRestore();
+  });
+
+  test('keeps Cancel and Save, with no Done and no autosave', async () => {
+    const { onSubmit } = await renderEditor();
+    await fireEvent.changeText(
+      screen.getByTestId('note-editor-body'),
+      'Typed, not saved',
+    );
+
+    expect(screen.getByTestId('note-editor-cancel')).toBeTruthy();
+    expect(screen.getByTestId('note-editor-save')).toBeTruthy();
+    expect(screen.queryByText('Done')).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  test('a new note has no state line (nothing is saved yet) and no date chip', async () => {
+    await renderEditor();
+    expect(screen.queryByTestId('note-editor-sync')).toBeNull();
+    expect(screen.queryByTestId('note-editor-date')).toBeNull();
+  });
+
+  test('an edit says "On this device" or "Synced" under the title, in words and a glyph, and shows when it was written', async () => {
+    const note = {
+      ...(editMode.kind === 'edit' ? editMode.note : ({} as never)),
+      created_at: '2026-10-14T16:12:00',
+    };
+    await renderEditor({ mode: { kind: 'edit', note: { ...note, is_dirty: true } } });
+    const sync = screen.getByTestId('note-editor-sync');
+    expect(within(sync).getByText('On this device')).toBeTruthy();
+    expect(glyphNamesIn(sync)).toEqual(['cloud-upload']);
+    expect(
+      within(screen.getByTestId('note-editor-header')).getByTestId('note-editor-sync'),
+    ).toBeTruthy();
+    expect(screen.getByTestId('note-editor-date')).toHaveTextContent('Wed 14 Oct, 16:12');
+
+    await screen.unmount();
+    await renderEditor({ mode: { kind: 'edit', note: { ...note, is_dirty: false } } });
+    expect(screen.getByTestId('note-editor-sync').props.accessibilityLabel).toBe(
+      'Synced',
+    );
+    expect(glyphNamesIn(screen.getByTestId('note-editor-sync'))).toEqual(['cloud-check']);
+  });
+
+  test('an edit of a note that does not say whether it is synced is conservative: "On this device"', async () => {
+    await renderEditor({ mode: editMode });
+    expect(
+      within(screen.getByTestId('note-editor-sync')).getByText('On this device'),
+    ).toBeTruthy();
+  });
+
+  test('an anchor chip leads with the country flag when the stop has one (the chosen chip shows its check instead)', async () => {
+    await renderEditor({
+      targets: [targets[0], { ...targets[1], iso2: 'IT' } as AnchorTarget],
+    });
+    const chip = screen.getByTestId('anchor-city:100');
+    expect(within(chip).getByText('Roma, Italy')).toBeTruthy();
+    expect(within(chip).getByText('🇮🇹', { includeHiddenElements: true })).toBeTruthy();
+    expect(
+      within(screen.getByTestId('anchor-country:1')).queryByText(/^[A-Z?]{2}$/, {
+        includeHiddenElements: true,
+      }),
+    ).toBeNull();
   });
 });
 

@@ -153,6 +153,9 @@ describe('the vocabulary the screens need - D5-07', () => {
     'stamp',
     'tag',
     'mail',
+    'bold',
+    'list',
+    'list-checks',
     'sparkle',
     // categories and transport
     'plane',

@@ -214,16 +214,19 @@ describe('the notes screen over the real kit', () => {
     expect(screen.getByTestId('note-card-n2')).toBeTruthy();
   });
 
-  test('a note only on this device has the dashed pending edge on the real card, a saved one has none', async () => {
+  test('a note only on this device says so in words and a glyph on the real card; neither card has a dashed edge', async () => {
     await inKit(<NotesScreen />);
 
     expect(classesOf(screen.getByTestId('note-surface-n1'))).toEqual(
-      expect.arrayContaining(['bg-surface', 'border-dashed', 'border-amber-line']),
+      expect.arrayContaining(['bg-surface-secondary', 'border-separator']),
+    );
+    expect(classesOf(screen.getByTestId('note-surface-n1'))).not.toContain(
+      'border-dashed',
     );
     expect(classesOf(screen.getByTestId('note-surface-n2'))).not.toContain(
       'border-dashed',
     );
-    expect(screen.getByText('Not yet synced')).toBeTruthy();
+    expect(screen.getByText('On this device')).toBeTruthy();
   });
 
   test('Edit and Delete are buttons the kit names and presses', async () => {

@@ -240,42 +240,47 @@ describe('<NoteCard> - a note in the list (T440; FR-006, FR-013, FR-030, FR-034)
     );
   });
 
-  test('is a lift card: a hairline, no dashed edge while the note is saved (FR-002, FR-006)', async () => {
+  test('is a cream tile with a hairline and no dashed edge, saved or not (T551: the state is a glyph and words)', async () => {
     await renderCard();
 
     const classes = classesOf(screen.getByTestId('note-surface-n1'));
-    expect(classes).toContain('bg-surface');
+    expect(classes).toContain('bg-surface-secondary');
     expect(classes).toContain('border-separator');
     expect(classes).not.toContain('border-dashed');
-    expect(screen.queryByText('Not yet synced')).toBeNull();
+    expect(screen.queryByText('On this device')).toBeNull();
+    expect(screen.getByLabelText('Synced')).toBeTruthy();
   });
 
-  test('a note only on this device has the dashed edge AND the marker in words (FR-034, FR-025)', async () => {
+  test('a note only on this device says "On this device" with the upload cloud, in words and a glyph (FR-034, FR-025)', async () => {
     await renderCard({ is_dirty: true });
 
-    expect(classesOf(screen.getByTestId('note-surface-n1'))).toEqual(
-      expect.arrayContaining(['border-dashed', 'border-amber-line']),
+    expect(classesOf(screen.getByTestId('note-surface-n1'))).not.toContain(
+      'border-dashed',
     );
-    expect(screen.getByText('Not yet synced')).toBeTruthy();
-    expect(screen.getByLabelText('Sync pending')).toBeTruthy();
+    expect(screen.getByText('On this device')).toBeTruthy();
+    expect(screen.getByLabelText('On this device, not yet synced')).toBeTruthy();
+    expect(glyphNamesIn(screen.getByTestId('note-sync-n1'))).toEqual(['cloud-upload']);
   });
 
-  test('says where it is filed in words (muted), then shows the title and the body', async () => {
+  test('says the place in the foot row (muted), then the title and the body', async () => {
     await renderCard();
 
-    expect(screen.getByTestId('note-anchor-n1')).toHaveTextContent('Roma, Italy');
+    expect(screen.getByTestId('note-anchor-n1')).toHaveTextContent('Roma');
     expect(classesOf(screen.getByTestId('note-anchor-n1'))).toContain('text-muted');
     expect(screen.getByText('Cheese')).toBeTruthy();
     expect(screen.getByTestId('note-body-n1')).toHaveTextContent('Try the raclette.');
   });
 
-  test('previews at most 160 characters of a long body, and says it is cut', async () => {
-    await renderCard({ body: 'x'.repeat(200) });
+  test('carries at most 240 characters of a long body and says it is cut; the announced name keeps 160', async () => {
+    await renderCard({ body: 'x'.repeat(300) });
 
-    expect(screen.getByTestId('note-body-n1')).toHaveTextContent(`${'x'.repeat(160)}…`);
+    expect(screen.getByTestId('note-body-n1')).toHaveTextContent(`${'x'.repeat(240)}…`);
+    expect(screen.getByTestId('note-card-n1').props.accessibilityLabel).toBe(
+      `Cheese, filed under Roma, Italy. ${'x'.repeat(160)}…`,
+    );
   });
 
-  test('Edit and Delete keep their ids, names, words and handlers; Delete is the destructive one (FR-005, FR-037)', async () => {
+  test('Edit is the card’s body and Delete the trash, each with its id, name and handler (FR-005, FR-037)', async () => {
     const onEdit = jest.fn();
     const onRemove = jest.fn();
     await renderCard({}, { onEdit, onRemove });
@@ -284,10 +289,9 @@ describe('<NoteCard> - a note in the list (T440; FR-006, FR-013, FR-030, FR-034)
     const remove = screen.getByTestId('note-remove-n1');
     expect(edit.props.accessibilityLabel).toBe('Edit Cheese');
     expect(remove.props.accessibilityLabel).toBe('Delete Cheese');
-    expect(edit).toHaveTextContent('Edit');
-    expect(remove).toHaveTextContent('Delete');
-    expect(edit.props.variant).toBe('ghost');
-    expect(remove.props.variant).toBe('danger-soft');
+    expect(edit.props.accessibilityRole).toBe('button');
+    expect(remove.props.accessibilityRole).toBe('button');
+    expect(glyphNamesIn(remove)).toEqual(['trash']);
 
     await fireEvent.press(edit);
     await fireEvent.press(remove);

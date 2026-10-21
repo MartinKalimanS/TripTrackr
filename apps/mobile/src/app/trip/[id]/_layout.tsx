@@ -46,8 +46,8 @@
  * Photos (feature 005, T549; FR-044) is the first of the everyday areas to draw the pictured
  * header itself: Back, the title with the trip's name and a count under it, and the pictured
  * controls (`AreaHeader`, `components/ui/area-header.tsx`), so the navigator's header is hidden
- * for it (`headerShown: false`) and its title is the screen's. The other areas adopt the same
- * header one by one and drop their `titled` entry here as they do.
+ * for it (`headerShown: false`) and its title is the screen's. Notes (T551) does the same; the
+ * other areas adopt the header one by one and drop their `titled` entry here as they do.
  *
  * No `unstable_settings` and no `initialParams` here: the root layout keeps the anchor
  * (`(tabs)`) and the route's params and deep links are exactly what they were.
@@ -94,7 +94,7 @@ export default function TripLayout() {
               headerRight: renderHeroTools,
             }}
           />
-          <Stack.Screen name="notes" options={titled('Notes')} />
+          <Stack.Screen name="notes" options={{ headerShown: false }} />
           <Stack.Screen name="expenses" options={{ headerShown: false }} />
           <Stack.Screen name="photos" options={{ headerShown: false }} />
           <Stack.Screen name="documents" options={titled('Documents')} />
