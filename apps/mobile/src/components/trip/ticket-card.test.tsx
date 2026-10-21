@@ -183,6 +183,32 @@ describe('<TicketCard> as a row (default text size)', () => {
     expect(flat(screen.getByTestId('trip-card-t1-stub')).width).toBe(88);
   });
 
+  // Prototype `.stub .v` is `t-title tnum` (28 / 32), not the 36 / 40 numeral.
+  test('the stub figure is the 28 / 32 title in tabular figures, over a 13 / 18 unit', async () => {
+    await renderTicket();
+    const stub = within(screen.getByTestId('trip-card-t1-stub'));
+    const figure = stub.getByText('94');
+    expect(classesOf(figure)).toEqual(
+      expect.arrayContaining(['text-[28px]', 'leading-[32px]']),
+    );
+    expect(flat(figure).fontVariant).toEqual(['tabular-nums']);
+    expect(figure.props.accessibilityRole).toBe('text');
+    expect(classesOf(stub.getByText('days'))).toEqual(
+      expect.arrayContaining(['text-[13px]', 'text-muted']),
+    );
+  });
+
+  test('the text block is padded 12, 4 dp apart, the title 2 dp lower, the flag line 6 dp apart', async () => {
+    await renderTicket();
+    expect(flat(screen.getByText('Iceland Ring Road')).marginTop).toBe(2);
+    expect(flat(screen.getByTestId('trip-card-t1-meta-row')).gap).toBe(6);
+    const body = screen.getByTestId('trip-card-t1-meta-row').parent!;
+    expect(flat(body)).toMatchObject({ padding: 12 });
+    expect(classesOf(body)).toEqual(
+      expect.arrayContaining(['items-start', 'justify-center', 'gap-1']),
+    );
+  });
+
   test('the stub has a 2 dp dashed sand edge and two notches on it', async () => {
     mockThemeColors('light');
     await renderTicket();
@@ -229,6 +255,22 @@ describe('<TicketCard> stacked (a font scale of 1.15 and above, FR-074)', () => 
     expect(flat(screen.getByTestId('trip-card-t1-stub')).borderLeftWidth).toBeUndefined();
     expect(screen.queryByTestId('trip-card-t1-notch-top', hidden)).toBeNull();
     expect(screen.queryByTestId('trip-card-t1-notch-bottom', hidden)).toBeNull();
+  });
+
+  test('the stub row is centred, 8 dp apart, 12 dp in from the sides with 8 dp above and below', async () => {
+    await renderTicket();
+    expect(flat(screen.getByTestId('trip-card-t1-stub'))).toMatchObject({
+      alignItems: 'center',
+      gap: 8,
+      marginHorizontal: 12,
+      paddingVertical: 8,
+    });
+  });
+
+  test('the title and the line under it may take two lines, and the notches are gone', async () => {
+    await renderTicket();
+    expect(screen.getByText('Iceland Ring Road').props.numberOfLines).toBe(2);
+    expect(screen.getByText('Iceland · Jan 2027').props.numberOfLines).toBe(2);
   });
 
   test('still says the countdown', async () => {

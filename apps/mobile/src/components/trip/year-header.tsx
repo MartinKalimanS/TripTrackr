@@ -6,7 +6,8 @@
  * yet".
  *
  * It is a sticky header of the list (`stickyHeaderIndices`), so rows scroll beneath it: it paints
- * the canvas and a hairline under itself. It is one heading for a screen reader, with the distance
+ * the ground of the list (and no line: the prototype's `.year-head` has none), 12 dp above the
+ * year and 4 below it (the list puts 8 dp between the header and the first row). It is one heading for a screen reader, with the distance
  * spelled out ("2026, 1 trip, 9,380 kilometres": "km" is read letter by letter).
  *
  * Distances and counts follow the device locale and measurement system (FR-077).
@@ -31,7 +32,7 @@ export function YearHeader({ year, tripCount, distanceKm }: YearHeaderProps) {
       accessible
       accessibilityRole="header"
       accessibilityLabel={`${copy.title}, ${copy.count}${copy.spoken === null ? '' : `, ${copy.spoken}`}`}
-      className="flex-row items-baseline justify-between gap-3 border-b border-separator bg-background pb-2 pt-3">
+      className="flex-row items-baseline justify-between gap-3 bg-background pb-1 pt-3">
       <View className="shrink flex-row items-baseline gap-2">
         <Text variant="headline" accessibilityRole="text" className="shrink">
           {copy.title}
@@ -41,7 +42,7 @@ export function YearHeader({ year, tripCount, distanceKm }: YearHeaderProps) {
         </Text>
       </View>
       {copy.distance ? (
-        <Text variant="caption" tone="muted">
+        <Text variant="caption" tone="subtle">
           {copy.distance}
         </Text>
       ) : null}

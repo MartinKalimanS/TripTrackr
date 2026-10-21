@@ -6,12 +6,13 @@
  * year (`increment` and `decrement`), its value the year in words.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import { useAccessibilityFlags } from '@/hooks/use-accessibility-flags';
 import type { Haptics } from '@/hooks/use-haptics';
 
 import { classesOf } from '../../../test/helpers/host-nodes';
-import { YearScrubber } from './year-scrubber';
+import { YEAR_SCRUBBER_PLACEMENT, YearScrubber } from './year-scrubber';
 
 jest.mock('@/hooks/use-accessibility-flags');
 jest.mock('@/hooks/use-haptics');
@@ -34,6 +35,8 @@ beforeEach(() => {
 const YEARS = [2026, 2025, 2024, 2023];
 const HEIGHT = 200;
 const hidden = { includeHiddenElements: true };
+const flat = (element: { props: { style?: unknown } }) =>
+  (StyleSheet.flatten(element.props.style as never) ?? {}) as Record<string, unknown>;
 
 async function renderScrubber(
   props: { years?: number[]; activeYear?: number | null } = {},
@@ -143,6 +146,12 @@ describe('<YearScrubber> as drawn', () => {
         'min-w-[28px]',
       ]),
     );
+  });
+
+  test('draws its years untracked (prototype `.year-scrub` sets none) and offers the placement of the picture', async () => {
+    await renderScrubber();
+    expect(flat(screen.getByText('25', hidden)).letterSpacing).toBe(0);
+    expect(YEAR_SCRUBBER_PLACEMENT).toEqual({ position: 'absolute', right: 4, top: 250 });
   });
 
   test('reaches 44 dp wide by hit area, whatever its visible width', async () => {

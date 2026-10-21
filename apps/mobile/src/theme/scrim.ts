@@ -171,6 +171,21 @@ export const Passport = deepFreeze({
   secondaryAlpha: { base: 0.78, contrast: 1 },
 });
 
+/**
+ * The amber corner of a GENERATED TRIP COVER (prototype `.cover-gen::after`: an ellipse of 85% by
+ * 95% of the box at its top right, 62% amber fading to nothing at 62% of its radius). Stronger
+ * than the passport's (the pictures `trips-nocover` and `trip-nocover` show about 55% in the
+ * corner). It sits away from the caption, whose block is opaque enough under the text; the gate
+ * measures white text on the cover's two stops (P9).
+ */
+export const CoverGlow = deepFreeze({
+  colour: '#FFB547',
+  alpha: 0.62,
+  centre: [1, 0],
+  radius: [0.85, 0.95],
+  fadeAt: 0.62,
+} satisfies Glow);
+
 function clamp(value: number): number {
   return Math.min(Math.max(value, 0), 1);
 }
