@@ -7,6 +7,9 @@
  * also fail against the device.
  */
 import '@testing-library/react-native';
+// A Gesture Handler root renders under Jest only with the library's own native-module double
+// (the photo viewer mounts one inside its Modal; suites that need the gestures import it too).
+import 'react-native-gesture-handler/jestSetup';
 
 // expo-secure-store is backed by the iOS Keychain / Android Keystore. In tests it
 // becomes an in-memory map so that token-refresh logic (T039/T040) is exercisable.
