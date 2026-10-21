@@ -79,6 +79,8 @@ type StateViewProps = SurfaceProps & {
 
 export type StateAction = {
   label: string;
+  /** What a screen reader says when it is more than the visible `label`. */
+  accessibilityLabel?: string;
   onPress: () => void;
   testID?: string;
   /** The action is under way: announced busy, presses are ignored. */
@@ -148,7 +150,7 @@ export function EmptyState({
       {action ? (
         <Button
           variant={action.primary ? 'primary' : 'secondary'}
-          accessibilityLabel={action.label}
+          accessibilityLabel={action.accessibilityLabel ?? action.label}
           testID={action.testID}
           busy={action.busy}
           onPress={() => action.onPress()}

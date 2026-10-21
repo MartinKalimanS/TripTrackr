@@ -108,6 +108,7 @@ describe('the vocabulary the screens need - D5-07', () => {
     'minus',
     'x',
     'check',
+    'checks',
     'search',
     'pencil',
     'trash',
