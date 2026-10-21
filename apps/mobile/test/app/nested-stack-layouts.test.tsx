@@ -8,6 +8,7 @@
  * hands the navigator, per platform, not the navigator itself (which needs a router).
  */
 import { render } from '@testing-library/react-native';
+import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { Platform } from 'react-native';
@@ -85,6 +86,20 @@ describe('<TripsLayout> - a large title on iOS, a standard header on Android', (
   test('shows the header (the tab bar has none of its own)', async () => {
     await render(<TripsLayout />);
     expect(screenOptions().headerShown).not.toBe(false);
+  });
+
+  // trips-toast.png: a toast of this stack (the header's Search too) stands 8 dp above the zone
+  // the pill takes, so the layout owns the toast zone for the header and every screen below.
+  test('wraps the stack in the toast zone of the pill (the header and the screen share it)', async () => {
+    await render(
+      <BottomTabBarHeightContext.Provider value={88}>
+        <TripsLayout />
+      </BottomTabBarHeightContext.Provider>,
+    );
+    expect(Stack).toHaveBeenCalled();
+    expect(readFileSync(path.join(APP, 'trips', '_layout.tsx'), 'utf8')).toMatch(
+      /<ToastZone bottom=\{tabZone\}>/,
+    );
   });
 });
 

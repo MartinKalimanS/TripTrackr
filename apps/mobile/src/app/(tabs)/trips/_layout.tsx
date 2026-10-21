@@ -16,13 +16,25 @@
  * platforms (feature 005, T541), no longer a header action. The options are asserted in the
  * tests; the large title's collapse as the list scrolls is native behaviour, a device check
  * (T408).
+ *
+ * The stack sits in a `ToastZone` (F4, trips-toast.png): a toast of the header's Search or of the
+ * screen stands 16 dp from the sides and 8 dp above the zone the tab pill takes, and the screen
+ * lifts its button above it. The header is rendered by the navigator, below this layout, so the
+ * zone is here and not in the screen.
  */
 import { Stack } from 'expo-router';
 
+import { useTabZone } from '@/components/trip/use-tab-zone';
 import { useStackHeaderOptions } from '@/components/ui/stack-header';
+import { ToastZone } from '@/components/ui/toast-zone';
 
 export default function TripsLayout() {
   const options = useStackHeaderOptions('Trips');
+  const tabZone = useTabZone();
 
-  return <Stack screenOptions={options} />;
+  return (
+    <ToastZone bottom={tabZone}>
+      <Stack screenOptions={options} />
+    </ToastZone>
+  );
 }

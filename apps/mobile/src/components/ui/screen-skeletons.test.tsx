@@ -163,12 +163,29 @@ describe('<TripListSkeleton> - a hero, a ticket and rows (screens.md Trips)', ()
     expect(withClasses('h-24', 'rounded-3xl')).toHaveLength(1);
   });
 
-  test('then a year header and three rows, a 64 dp thumb and two lines each', async () => {
+  // trips-loading.png and the prototype: a 90 dp year line, rows that are 72 dp tall (a 64 dp
+  // thumb, a 20 dp line at 60 percent and a 14 dp line at 80 percent), every item 16 dp apart.
+  // They were 96 dp, 75 / 50 percent, a 16 dp line and rows 12 dp apart in their own group.
+  test('then a year line and three rows, a 64 dp thumb and two lines each', async () => {
     await render(<TripListSkeleton />);
-    expect(withClasses('h-5', 'w-24')).toHaveLength(1);
+    expect(withClasses('h-5', 'w-[90px]')).toHaveLength(1);
     expect(withClasses('size-16', 'rounded-2xl')).toHaveLength(3);
-    expect(withClasses('h-5', 'w-3/4')).toHaveLength(3);
-    expect(withClasses('h-4', 'w-1/2')).toHaveLength(3);
+    expect(withClasses('h-5', 'w-[60%]')).toHaveLength(3);
+    expect(withClasses('h-3.5', 'w-[80%]')).toHaveLength(3);
+  });
+
+  test('each row is 72 dp tall and the rows are items of the list, 16 dp apart', async () => {
+    await render(<TripListSkeleton />);
+    const all = flatten(root());
+    const rows = all.filter((node) =>
+      ['min-h-[72px]', 'flex-row'].every((c) => classesIn(node).includes(c)),
+    );
+    expect(rows).toHaveLength(3);
+    expect(all.filter((node) => classesIn(node).includes('gap-3'))).toHaveLength(0);
+    const parent = all.find((node) => node.children?.includes(rows[0]));
+    expect(parent).toBeDefined();
+    expect(classesIn(parent as JsonElement)).toContain('gap-4');
+    expect(elementsOf(parent?.children).filter((c) => rows.includes(c))).toHaveLength(3);
   });
 
   test.each([
