@@ -24,6 +24,10 @@
  *   Navigation passes to `headerLeft` are not forwarded: `canGoBack` is false for a trip
  *   opened with nothing beneath it, and the button then goes home instead of vanishing. The
  *   sub-screens keep the plain `HeaderBackButton` below.
+ * - `headerRight` is SHARE and MORE as pictured (`trip.png`): glass discs that are coming-soon
+ *   controls (owner answer Q-11; `coming-soon-trip-share`, `coming-soon-trip-more`), one toast and
+ *   nothing else. Once the solid bar has replaced the picture the three controls lose their disc
+ *   (`trip-collapsed.png`; `TripHeaderProvider`).
  * - `title: ''`: the hero title is the screen's content (FR-007 exempts it) and a second
  *   copy in the bar would be read twice.
  * - The colours of the sub-screens' bars come from `useHeaderTheme` (tokens, never a literal).
@@ -48,9 +52,15 @@ import { RequireLocalStore } from '@/components/require-local-store';
 import { HeaderBackButton } from '@/components/ui/header-back-button';
 import { useHeaderTheme, useTransparentHeaderTheme } from '@/components/ui/header-theme';
 import { useHeaderTitleStyle } from '@/components/ui/header-title-style';
+import {
+  TripHeaderBack,
+  TripHeaderProvider,
+  TripHeaderTools,
+} from '@/components/trip/trip-header-controls';
 
 const renderBack = () => <HeaderBackButton />;
-const renderHeroBack = () => <HeaderBackButton variant="glass" />;
+const renderHeroBack = () => <TripHeaderBack />;
+const renderHeroTools = () => <TripHeaderTools />;
 
 export default function TripLayout() {
   const theme = useHeaderTheme();
@@ -66,23 +76,26 @@ export default function TripLayout() {
 
   return (
     <RequireLocalStore>
-      <Stack screenOptions={{ headerShown: false, contentStyle: theme.contentStyle }}>
-        <Stack.Screen
-          name="index"
-          options={{
-            ...transparent,
-            headerShown: true,
-            title: '',
-            headerLeft: renderHeroBack,
-          }}
-        />
-        <Stack.Screen name="notes" options={titled('Notes')} />
-        <Stack.Screen name="expenses" options={titled('Spending')} />
-        <Stack.Screen name="photos" options={titled('Photos')} />
-        <Stack.Screen name="documents" options={titled('Documents')} />
-        <Stack.Screen name="document-view" options={titled('Document')} />
-        <Stack.Screen name="offline-maps" options={titled('Offline maps')} />
-      </Stack>
+      <TripHeaderProvider>
+        <Stack screenOptions={{ headerShown: false, contentStyle: theme.contentStyle }}>
+          <Stack.Screen
+            name="index"
+            options={{
+              ...transparent,
+              headerShown: true,
+              title: '',
+              headerLeft: renderHeroBack,
+              headerRight: renderHeroTools,
+            }}
+          />
+          <Stack.Screen name="notes" options={titled('Notes')} />
+          <Stack.Screen name="expenses" options={titled('Spending')} />
+          <Stack.Screen name="photos" options={titled('Photos')} />
+          <Stack.Screen name="documents" options={titled('Documents')} />
+          <Stack.Screen name="document-view" options={titled('Document')} />
+          <Stack.Screen name="offline-maps" options={titled('Offline maps')} />
+        </Stack>
+      </TripHeaderProvider>
     </RequireLocalStore>
   );
 }

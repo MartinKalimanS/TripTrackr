@@ -241,6 +241,56 @@ describe('trip/[id]/_layout - Back (FR-008, research "Items to verify" item 7)',
   });
 });
 
+describe('trip/[id]/_layout - Share and More as pictured, coming soon (Q-11; UI-SPEC 6 and 10)', () => {
+  const { mockToast } = jest.requireMock('heroui-native') as {
+    mockToast: { show: jest.Mock };
+  };
+
+  beforeEach(() => mockToast.show.mockClear());
+
+  test('the overview header draws Share and More at the end, as buttons named from the picture', async () => {
+    await openTrip(anchored, '/trip/abc');
+    for (const [id, name] of [
+      ['coming-soon-trip-share', 'Share'],
+      ['coming-soon-trip-more', 'More'],
+    ] as const) {
+      const button = screen.getByTestId(id);
+      expect(button.props.accessibilityRole).toBe('button');
+      expect(button.props.accessibilityLabel).toBe(name);
+      expect(button.props.accessibilityHint).toBe('Not available yet');
+      expect(StyleSheet.flatten(button.props.style)).toMatchObject({
+        width: 44,
+        height: 44,
+      });
+    }
+  });
+
+  test('only the overview has them: the sub-screens keep Back alone', async () => {
+    await openTrip(anchored, '/trip/abc/notes');
+    expect(screen.queryByTestId('coming-soon-trip-share')).toBeNull();
+    expect(screen.queryByTestId('coming-soon-trip-more')).toBeNull();
+  });
+
+  test('each press is ONE toast and navigates nowhere', async () => {
+    const { app } = await openTrip(anchored, '/trip/abc');
+    await fireEvent.press(screen.getByTestId('coming-soon-trip-share'));
+    await fireEvent.press(screen.getByTestId('coming-soon-trip-more'));
+    expect(mockToast.show).toHaveBeenCalledTimes(2);
+    expect(mockToast.show.mock.calls.map(([call]) => call.id)).toEqual([
+      'coming-soon',
+      'coming-soon',
+    ]);
+    expect(app.getPathname()).toBe('/trip/abc');
+  });
+
+  test('Back, Share and More are still one of each', async () => {
+    await openTrip(anchored, '/trip/abc');
+    expect(screen.getAllByLabelText('Back')).toHaveLength(1);
+    expect(screen.getAllByLabelText('Share')).toHaveLength(1);
+    expect(screen.getAllByLabelText('More')).toHaveLength(1);
+  });
+});
+
 describe('trip/[id]/_layout - the header leaves the route alone (FR-030)', () => {
   test('hands the screen the same params as before', async () => {
     await openTrip(anchored, '/trip/abc');
