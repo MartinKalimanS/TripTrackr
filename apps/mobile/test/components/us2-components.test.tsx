@@ -361,6 +361,7 @@ describe('<AnchorPicker> and <CategoryPicker>', () => {
     await fireEvent.press(screen.getByTestId('category-custom-1'));
     expect(onChange).toHaveBeenCalledWith('custom-1');
 
+    await fireEvent.press(screen.getByTestId('category-new-toggle'));
     expect(screen.getByTestId('category-new-add').props.accessibilityState).toMatchObject(
       {
         disabled: true,
@@ -373,6 +374,8 @@ describe('<AnchorPicker> and <CategoryPicker>', () => {
     await fireEvent(screen.getByTestId('category-new-name'), 'submitEditing');
     expect(onCreate).toHaveBeenCalledWith('Museums');
     expect(onChange).toHaveBeenLastCalledWith('new-id');
+    expect(screen.queryByTestId('category-new-name')).toBeNull();
+    await fireEvent.press(screen.getByTestId('category-new-toggle'));
     expect(screen.getByTestId('category-new-name').props.value).toBe('');
   });
 });

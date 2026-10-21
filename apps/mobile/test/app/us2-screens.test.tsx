@@ -217,6 +217,10 @@ const mockExpenseActions = {
   createCategory: jest.fn(() => ({ id: COFFEE, name: 'Coffee' })),
 };
 
+const mockFxSnapshot: {
+  current: null | { asOf: string; rates: Record<string, string> };
+} = { current: null };
+
 jest.mock('@/features/expenses/use-expenses', () => ({
   useExpenses: () => mockExpenses,
   useExpenseCategories: () => mockCategories,
@@ -227,6 +231,7 @@ jest.mock('@/features/expenses/use-expenses', () => ({
     source: 'https://www.exchangerate-api.com',
   }),
   useExpenseActions: () => mockExpenseActions,
+  useFxSnapshot: () => mockFxSnapshot.current,
 }));
 
 jest.mock('@/features/expenses/use-fx-rates', () => ({ useFxRates: jest.fn() }));
@@ -890,9 +895,13 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
   });
 });
 
+/** F6: the day, the city and the note sit behind the pictured "Add note, date or place" row. */
+const openExtras = () => fireEvent.press(screen.getByTestId('add-expense-more'));
+
 describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
   test('defaults to the home currency, Food, and the stop of the day', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     expect(screen.getByTestId('currency-CHF').props.accessibilityState).toMatchObject({
       selected: true,
@@ -925,6 +934,7 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
 
     await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '12,50');
     await fireEvent.press(screen.getByTestId('currency-EUR'));
+    await openExtras();
     await fireEvent.press(screen.getByTestId('add-expense-city-101'));
     await fireEvent.changeText(screen.getByTestId('add-expense-note'), '  Lunch  ');
     await act(async () => {
@@ -949,6 +959,7 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
 
   test('the city pills are one radio group, and "No city" files the expense without one', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     await fireEvent.press(screen.getByTestId('add-expense-city-101'));
     expect(
@@ -988,6 +999,7 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
     mockStops.data = [rome, florence, romeAgain];
     try {
       await render(<AddExpenseScreen />);
+      await openExtras();
 
       expect(screen.getAllByTestId('add-expense-city-100')).toHaveLength(1);
       expect(screen.getAllByLabelText('Roma')).toHaveLength(1);
@@ -1003,6 +1015,7 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
   test('a new custom category is created on the spot and selected (FR-024)', async () => {
     await render(<AddExpenseScreen />);
 
+    await fireEvent.press(screen.getByTestId('category-new-toggle'));
     await fireEvent.changeText(screen.getByTestId('category-new-name'), 'Coffee');
     await fireEvent.press(screen.getByTestId('category-new-add'));
 
@@ -1070,34 +1083,35 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
     await render(<AddExpenseScreen />);
 
     expect(screen.getByTestId('add-expense-screen')).toBeTruthy();
-    const title = within(screen.getByTestId('add-expense-screen-body')).getByText(
-      'New expense',
-    );
-    expect(title.props.accessibilityRole).toBe('header');
+    const header = within(screen.getByTestId('add-expense-screen-header'));
+    expect(header.getByText('New expense').props.accessibilityRole).toBe('header');
+    expect(header.getByTestId('add-expense-cancel')).toBeTruthy();
     const footer = within(screen.getByTestId('add-expense-screen-footer'));
-    expect(footer.getByTestId('add-expense-cancel')).toBeTruthy();
     expect(footer.getByTestId('add-expense-save')).toBeTruthy();
   });
 
-  test('keeps the reading order: title, amount, currency, category, day, city, note, then Cancel and Save', async () => {
+  test('keeps the reading order: Cancel, title, category, currency, the extras row, day, city, note, then Save (amount first, as pictured)', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     const order = screen
       .getAllByText(
-        /^(New expense|Amount|Home currency|Category|Paid on|City|Note \(optional\)|Cancel|Save expense)$/,
+        /^(Cancel|New expense|Category|Currency|Add note, date or place|Paid on|City|Note \(optional\)|Save expense)$/,
       )
       .map((node) => String(node.props.children));
     expect(order).toEqual([
+      'Cancel',
       'New expense',
-      'Amount',
-      'Home currency',
       'Category',
+      'Currency',
+      'Add note, date or place',
       'Paid on',
       'City',
       'Note (optional)',
-      'Cancel',
       'Save expense',
     ]);
+    const tree = JSON.stringify(screen.toJSON());
+    expect(tree.indexOf('add-expense-amount')).toBeLessThan(tree.indexOf('"Category"'));
   });
 
   test('has ONE primary control, Save; Cancel is a text button (FR-005)', async () => {
@@ -1112,7 +1126,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
     expect(saveButton().props.accessibilityLabel).toBe('Save expense');
   });
 
-  test('the amount is a Field: label on top, its own id and name, the keypad for decimals, words under it when refused (FR-025)', async () => {
+  test('the amount is the pictured figure: its own id and name, the keypad for decimals, words under it when refused (FR-025)', async () => {
     await render(<AddExpenseScreen />);
 
     const input = screen.getByTestId('add-expense-amount');
@@ -1172,6 +1186,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
 
   test('the note is a Field: its own id and name, a limit, a Done key, words under it when too long', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     const note = screen.getByTestId('add-expense-note');
     expect(note.props.accessibilityLabel).toBe('Note (optional)');
@@ -1204,6 +1219,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
 
   test('the city is one sideways radio group named "City", "No city" first, each city once (FR-009)', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     const group = screen.getByLabelText('City');
     expect(group.props.accessibilityRole).toBe('radiogroup');
@@ -1224,6 +1240,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
     mockStops.data = [];
     try {
       await render(<AddExpenseScreen />);
+      await openExtras();
 
       expect(screen.queryByLabelText('City')).toBeNull();
       expect(screen.queryByText('City')).toBeNull();
@@ -1256,6 +1273,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
     });
     try {
       await render(<AddExpenseScreen />);
+      await openExtras();
 
       expect(screen.getByTestId('add-expense-date').props.accessibilityValue).toEqual({
         text: formatIsoDate('2026-05-11'),
@@ -1278,6 +1296,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
 
   test('"Paid on" is a calendar field: named, valued with the day, and a day in a stop files the expense under its city', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     const date = screen.getByTestId('add-expense-date');
     expect(date.props.accessibilityLabel).toBe('Paid on');
@@ -1296,6 +1315,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
 
   test('a day no stop covers keeps the city the traveller chose', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
     await fireEvent.press(screen.getByTestId('add-expense-city-100'));
 
     await fireEvent.press(screen.getByTestId('add-expense-date'));
@@ -1381,6 +1401,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
       await showKeyboard();
 
       await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '12,50');
+      await openExtras();
       await fireEvent.changeText(screen.getByTestId('add-expense-note'), 'Lunch');
       expectActionAboveKeyboard('add-expense-screen', 'add-expense-save');
       await press('add-expense-save');
