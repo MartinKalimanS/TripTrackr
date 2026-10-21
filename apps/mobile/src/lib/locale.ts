@@ -62,6 +62,98 @@ export function formatMoney(
   return formatter.resolvedOptions().style === 'currency' ? text : `${text} ${currency}`;
 }
 
+const wholeFormatters = new Map<string, Intl.NumberFormat>();
+
+/** The currency formatter with no fraction digits: for an amount that is a whole number. */
+function wholeMoneyFormatter(currency: string, languageTag: string): Intl.NumberFormat {
+  const key = `${languageTag}|${currency}`;
+  let formatter = wholeFormatters.get(key);
+  if (!formatter) {
+    try {
+      formatter = new Intl.NumberFormat(languageTag, {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      });
+    } catch {
+      formatter = new Intl.NumberFormat(languageTag, { maximumFractionDigits: 0 });
+    }
+    wholeFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+/** True when a decimal string has nothing but zeros after the point: no digit is lost without them. */
+function isWholeAmount(amount: string): boolean {
+  return /^-?\d+(\.0*)?$/.test(amount.trim());
+}
+
+function tightFormatter(amount: string, currency: string, languageTag: string) {
+  return isWholeAmount(amount)
+    ? wholeMoneyFormatter(currency, languageTag)
+    : moneyFormatter(currency, languageTag);
+}
+
+/**
+ * "€842" for 842.00 and "€14.80" for 14.80: `formatMoney`, but a whole amount drops its zero
+ * fraction (the spending figures of the pictures). Nothing is rounded: only digits that are all
+ * zero are left out, so the figure is the same amount.
+ */
+export function formatMoneyTight(
+  amount: string,
+  currency: string,
+  languageTag: string = deviceLocale().languageTag,
+): string {
+  const formatter = tightFormatter(amount, currency, languageTag);
+  const text = formatter.format(amount as unknown as number);
+  return formatter.resolvedOptions().style === 'currency' ? text : `${text} ${currency}`;
+}
+
+/** An amount cut at its currency sign, so a screen can raise the sign (the hero's numeral). */
+export interface MoneyParts {
+  before: string;
+  /** The currency sign or code as the locale writes it; empty when `Intl` cannot split it. */
+  symbol: string;
+  after: string;
+}
+
+/**
+ * `formatMoneyTight` in three pieces around the currency sign ("€", "842"; or "842", "€" where
+ * the locale puts it after). `before + symbol + after` is always the text `formatMoneyTight`
+ * gives; where `formatToParts` is missing the whole text is `before`.
+ */
+export function formatMoneyParts(
+  amount: string,
+  currency: string,
+  languageTag: string = deviceLocale().languageTag,
+): MoneyParts {
+  const formatter = tightFormatter(amount, currency, languageTag);
+  const whole = formatMoneyTight(amount, currency, languageTag);
+  if (formatter.resolvedOptions().style !== 'currency' || !formatter.formatToParts) {
+    return { before: whole, symbol: '', after: '' };
+  }
+  const parts = formatter.formatToParts(amount as unknown as number);
+  const at = parts.findIndex((part) => part.type === 'currency');
+  if (at < 0) return { before: whole, symbol: '', after: '' };
+  const join = (list: Intl.NumberFormatPart[]) => list.map((part) => part.value).join('');
+  return {
+    before: join(parts.slice(0, at)),
+    symbol: parts[at]!.value,
+    after: join(parts.slice(at + 1)),
+  };
+}
+
+/** A whole-unit decimal string ("281", "-4") grouped for the locale: the label under a bar. */
+export function formatWholeUnits(
+  whole: string,
+  languageTag: string = deviceLocale().languageTag,
+): string {
+  return new Intl.NumberFormat(languageTag, { maximumFractionDigits: 0 }).format(
+    whole as unknown as number,
+  );
+}
+
 /** "1 EUR = 0.888889 CHF" — the disclosure FR-026 asks for. */
 export function describeRate(from: string, rate: string, to: string): string {
   return `1 ${from} = ${rate} ${to}`;
