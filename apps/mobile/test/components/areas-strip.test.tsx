@@ -116,6 +116,14 @@ describe('<AreasStrip> privacy (FR-039, FR-070)', () => {
     expect(screen.getAllByText(/only visible to you/)).toHaveLength(1);
   });
 
+  test('the line is the 13 / 18 semibold caption (.priv-line) with a 6 dp gap to its 16 dp lock', async () => {
+    await render(strip());
+    const line = screen.getByTestId('trip-privacy-line');
+    expect(String(line.props.className)).toContain('text-[13px]');
+    expect(String(line.props.className)).toContain('leading-[18px]');
+    expect(String(line.parent?.props.className)).toContain('gap-1.5');
+  });
+
   test('the line is aqua ink with a decorative lock, not colour alone', async () => {
     await render(strip());
     expect(String(screen.getByTestId('trip-privacy-line').props.className)).toContain(

@@ -117,6 +117,20 @@ describe('<DayChips>', () => {
     expect(face.height).toBeUndefined();
   });
 
+  test('a chip is padded 6 by 10 and the strip is 56 dp tall: its air for the ring is bled, not added (.day)', async () => {
+    await render(chips());
+    const face = StyleSheet.flatten(
+      screen.getByTestId('trip-day-1-face').props.style,
+    ) as Record<string, number>;
+    expect(face).toMatchObject({ paddingHorizontal: 10, paddingVertical: 6 });
+    const scroller = StyleSheet.flatten(
+      screen.getByTestId('trip-days-scroll').props.style,
+    ) as Record<string, number>;
+    const content = screen.getByTestId('trip-days-scroll').props.contentContainerStyle;
+    expect(scroller).toMatchObject({ marginHorizontal: -20, marginVertical: -4 });
+    expect(content).toMatchObject({ gap: 8, paddingHorizontal: 20, paddingVertical: 4 });
+  });
+
   test('scrolls sideways with no bar, and is capped at 1.3 like every chip', async () => {
     await render(chips());
     const scroller = screen.getByTestId('trip-days-scroll');

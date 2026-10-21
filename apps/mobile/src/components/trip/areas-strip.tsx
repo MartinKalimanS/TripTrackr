@@ -85,12 +85,7 @@ function PrivacyLine() {
   return (
     <View className="flex-row items-center gap-1.5">
       <Icon name={LOCK} size={16} tone="aquaInk" />
-      <Text
-        variant="label"
-        strong
-        tone="aqua"
-        testID="trip-privacy-line"
-        className="shrink">
+      <Text variant="caption" tone="aqua" testID="trip-privacy-line" className="shrink">
         {PRIVACY_LINE}
       </Text>
     </View>

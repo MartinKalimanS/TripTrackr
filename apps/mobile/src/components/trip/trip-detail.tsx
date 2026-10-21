@@ -8,7 +8,7 @@
  * 1. The hero (`TripHero`): the cover, the title anchored to its bottom, the country and the
  *    dates. It moves at half the speed of the content and stretches on overscroll.
  * 2. The sheet, overlapping the hero by 28 dp: the status row (`ProgressRow`: the derived
- *    status, "Day N of M", the currency, the pending marker, the one sync chip), the one slim
+ *    status, "Day N of M" with its dots, the pending marker, the one sync chip), the one slim
  *    banner when there is something to say (offline, an upload that failed, a sync that
  *    failed), and the five areas (`AreasStrip`) with their counts, the spending total and the
  *    locks.
@@ -64,15 +64,17 @@ import { AreasStrip, type AreaSegment } from './areas-strip';
 import { CollapsedBar } from './collapsed-bar';
 import { DayChips } from './day-chips';
 import {
-  COLLAPSED_BAR_HEIGHT,
   HERO_MIN_HEIGHT,
   SHEET_OVERLAP,
+  pinLineOf,
+  pinnedBottom,
   useHeroCollapse,
 } from './hero-collapse';
 import { PinnedStrip } from './pinned-strip';
 import { ProgressRow } from './progress-row';
 import { StopEditor } from './stop-editor';
 import { StopsBody, StopsHeader } from './trip-states';
+import { useReportCollapsed } from './trip-header-controls';
 import { TripHero, type TripHeroCountry } from './trip-hero';
 import { useStopEditor, useStopWrites } from './use-stop-editing';
 
@@ -101,6 +103,7 @@ function useTripScroll(scrollRef: AnimatedRef<Animated.ScrollView>) {
   const heroHeight = useSharedValue(HERO_MIN_HEIGHT);
   const chipsY = useSharedValue(0);
   const collapse = useHeroCollapse(scrollY, heroHeight, insetTop);
+  useReportCollapsed(collapse.progress);
   return { scrollY, heroHeight, chipsY, collapse, insetTop };
 }
 
@@ -126,7 +129,7 @@ function useDayStrip(
       const stopId = next === null ? null : stopForDay(days, next);
       if (stopId === null) return;
       const { bodyY, listY, offsets } = measuredRef.current;
-      const pinned = COLLAPSED_BAR_HEIGHT + insetTop + chipsHeight;
+      const pinned = pinnedBottom(insetTop, chipsHeight);
       const y = Math.max(0, bodyY + listY + (offsets.get(stopId) ?? 0) - pinned);
       scrollRef.current?.scrollTo({ y, animated: !prefersLessMotion });
     },
@@ -161,7 +164,6 @@ function SheetHead({ trip, stops, sync, overview, onRetry }: SheetHeadProps) {
       <ProgressRow
         status={status}
         dayOf={dayOf}
-        currency={trip.home_currency}
         pending={trip.is_dirty}
         syncState={sync.state}
         onRetry={sync.retrySync}
@@ -274,7 +276,7 @@ function DaysPin({ days, strip, scroll, onHeight }: DaysPinProps) {
     <PinnedStrip
       anchorY={scroll.chipsY}
       scrollY={scroll.scrollY}
-      pinLine={COLLAPSED_BAR_HEIGHT + scroll.insetTop}
+      pinLine={pinLineOf(scroll.insetTop)}
       onHeight={onHeight}>
       <View className="px-5">
         <DayChips days={days} selected={strip.day} onSelect={strip.select} />
