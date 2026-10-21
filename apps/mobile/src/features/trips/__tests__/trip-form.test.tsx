@@ -277,7 +277,7 @@ describe('<StopEditor>', () => {
     );
 
     await fireEvent.press(screen.getByTestId('pick-rome'));
-    expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Roma');
+    expect(screen.getByTestId('stop-editor-place')).toHaveTextContent(/^Roma/);
     expect(
       screen.getByTestId('stop-editor-arrive').props.accessibilityValue.text,
     ).toMatch(/12/);

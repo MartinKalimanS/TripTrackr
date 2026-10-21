@@ -151,11 +151,15 @@ describe('<CityPicker> — step 2, city', () => {
     jest.useRealTimers();
   });
 
-  test('shows the accent-stripped name beneath a city whose display name differs', async () => {
+  // F6 (add-stop-kb.png): the second line of a result is "Place, Country", so the country
+  // follows the accent-free spelling ("Forli, Italy"), and a city whose spelling is the same
+  // shows the country alone. The data holds no region, so none is shown.
+  test('shows the accent-stripped name and the country beneath a city whose display name differs', async () => {
     await render(<CityPicker onSelect={jest.fn()} />);
     await fireEvent.press(screen.getByTestId('city-picker-country-IT'));
     expect(screen.getByText('Forlì')).toBeTruthy();
-    expect(screen.getByText('Forli')).toBeTruthy();
+    expect(screen.getByText('Forli, Italy')).toBeTruthy();
+    expect(screen.getAllByText('Italy').length).toBeGreaterThan(0);
   });
 
   test('"Change" returns to the country step', async () => {

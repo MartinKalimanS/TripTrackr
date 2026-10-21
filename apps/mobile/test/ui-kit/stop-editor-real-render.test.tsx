@@ -125,9 +125,9 @@ describe('the stop editor over the real kit', () => {
     );
 
     await fireEvent.press(screen.getByTestId('city-picker-city-100'));
-    // One flat card on the page, and the dates under it.
-    expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Roma');
-    expect(screen.getByText('Italy')).toBeTruthy();
+    // One cream place field on the page ("Roma" in bold, ", Italy" after it: F6, add-stop.png),
+    // and the dates under it.
+    expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Roma, Italy');
     const changeCity = screen.getByTestId('stop-editor-change-city');
     expect(changeCity.props.accessibilityRole).toBe('button');
     expect(changeCity.props.accessibilityLabel).toBe('Change city');

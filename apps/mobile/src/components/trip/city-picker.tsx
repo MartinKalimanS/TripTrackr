@@ -33,6 +33,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Field } from '@/components/ui/field';
+import { FlagChip } from '@/components/ui/flag-chip';
 import { ListGroup, ListRow } from '@/components/ui/list-group';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
 import { Text } from '@/components/ui/text';
@@ -85,6 +86,7 @@ function CountryRows({ countries, hasMore, onPick }: CountryRowsProps) {
             testID={`city-picker-country-${country.iso_code}`}
             title={country.name}
             description={country.continent}
+            leading={<FlagChip iso2={country.iso_code} size="lg" />}
             accessibilityLabel={country.name}
             onPress={() => onPick(country)}
           />
@@ -130,6 +132,8 @@ function CountryStep({ onPick }: CountryStepProps) {
         placeholder="Start typing a country"
         autoCorrect={false}
         autoCapitalize="words"
+        returnKeyType="search"
+        clearButtonMode="while-editing"
         testID="city-picker-country-filter"
       />
       {countries.data.offline ? <OfflineNote /> : null}
@@ -140,6 +144,16 @@ function CountryStep({ onPick }: CountryStepProps) {
       />
     </View>
   );
+}
+
+/**
+ * The second line of a city row, as pictured ("Place, Country"): the accent-free spelling
+ * when it differs, then the country. The data holds no region, so none is shown.
+ */
+function cityDescription(city: City, country: Country): string {
+  return city.ascii_name !== city.name
+    ? `${city.ascii_name}, ${country.name}`
+    : country.name;
 }
 
 type CityResultsProps = {
@@ -177,7 +191,8 @@ function CityResults({ search, country, query, onPick }: CityResultsProps) {
           key={city.id}
           testID={`city-picker-city-${city.id}`}
           title={city.name}
-          description={city.ascii_name !== city.name ? city.ascii_name : undefined}
+          description={cityDescription(city, country)}
+          leading={<FlagChip iso2={country.iso_code} size="lg" />}
           accessibilityLabel={`${city.name}, ${country.name}`}
           onPress={() => onPick(city)}
         />
@@ -221,6 +236,8 @@ function CityStep({ country, onChangeCountry, onPick }: CityStepProps) {
         autoCorrect={false}
         autoCapitalize="words"
         autoFocus
+        returnKeyType="search"
+        clearButtonMode="while-editing"
         testID="city-picker-city-query"
       />
 

@@ -4,8 +4,12 @@
  */
 import {
   addDays,
+  departureAfterNights,
   formatIsoDate,
+  formatStopDay,
+  formatStopMonthDay,
   fromIsoDate,
+  nightsBetween,
   suggestArrival,
   suggestDeparture,
   toIsoDate,
@@ -85,5 +89,53 @@ describe('ISO date helpers', () => {
     expect(rendered).toMatch(/2026/);
     // Month is spelled, not numbered — locale decides case and order.
     expect(rendered).toMatch(/may|mai|mayo|maggio|maj/i);
+  });
+});
+
+describe('nights, derived from the two dates (the Nights stepper stores nothing)', () => {
+  test('nightsBetween counts local calendar days, across month ends and a leap day', () => {
+    expect(nightsBetween('2026-10-15', '2026-10-19')).toBe(4);
+    expect(nightsBetween('2026-05-12', '2026-05-12')).toBe(0);
+    expect(nightsBetween('2028-02-28', '2028-03-01')).toBe(2);
+    expect(nightsBetween('2026-12-31', '2027-01-01')).toBe(1);
+  });
+
+  test('nightsBetween is not thrown off by a daylight saving change inside the stay', () => {
+    expect(nightsBetween('2026-03-27', '2026-03-30')).toBe(3);
+    expect(nightsBetween('2026-10-24', '2026-10-27')).toBe(3);
+  });
+
+  test('a departure before the arrival is a negative count, which the validator already refuses', () => {
+    expect(nightsBetween('2026-05-12', '2026-05-10')).toBe(-2);
+  });
+
+  test('departureAfterNights is the arrival plus the nights, as a wire date', () => {
+    expect(departureAfterNights('2026-10-15', 4)).toBe('2026-10-19');
+    expect(departureAfterNights('2026-10-15', 0)).toBe('2026-10-15');
+    expect(departureAfterNights('2026-12-30', 3)).toBe('2027-01-02');
+  });
+
+  test('departureAfterNights inverts nightsBetween', () => {
+    for (const nights of [0, 1, 7, 31, 400]) {
+      const depart = departureAfterNights('2026-01-31', nights);
+      expect(nightsBetween('2026-01-31', depart)).toBe(nights);
+    }
+  });
+});
+
+describe('the short day of the stop editor', () => {
+  test('formatStopDay is the weekday, day and month without a year: "Thu 15 Oct"', () => {
+    const text = formatStopDay('2026-10-15');
+    expect(text).toMatch(/15/);
+    expect(text).toMatch(/oct|okt|oct\.|ott/i);
+    expect(text).toMatch(/thu|jue|gio|do|jeu|donn/i);
+    expect(text).not.toMatch(/2026/);
+  });
+
+  test('formatStopMonthDay is the day and month alone: "19 Oct"', () => {
+    const text = formatStopMonthDay('2026-10-19');
+    expect(text).toMatch(/19/);
+    expect(text).toMatch(/oct|okt|ott/i);
+    expect(text).not.toMatch(/2026|mon/i);
   });
 });

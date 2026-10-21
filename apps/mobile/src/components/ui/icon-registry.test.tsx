@@ -157,6 +157,7 @@ describe('the vocabulary the screens need - D5-07', () => {
     'plane',
     'car',
     'tram',
+    'footprints',
     'bed',
     'fork-knife',
     'ticket',
