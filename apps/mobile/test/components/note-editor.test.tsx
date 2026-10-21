@@ -158,7 +158,7 @@ describe('<NoteEditor> is the shared form sheet - parts, ids and order (FR-009, 
     expect(screen.queryByText('New note')).toBeNull();
   });
 
-  test('the fields scroll in the body; Cancel and Save are in the footer, outside it', async () => {
+  test('the fields scroll in the body; Cancel is in the header and Save in the footer, outside it', async () => {
     await renderEditor();
 
     const body = within(screen.getByTestId(BODY));
@@ -168,23 +168,24 @@ describe('<NoteEditor> is the shared form sheet - parts, ids and order (FR-009, 
     expect(body.queryByTestId('note-editor-save')).toBeNull();
     expect(body.queryByTestId('note-editor-cancel')).toBeNull();
 
+    const header = within(screen.getByTestId('note-editor-header'));
+    expect(header.getByTestId('note-editor-cancel')).toBeTruthy();
     const footer = within(screen.getByTestId('note-editor-footer'));
-    expect(footer.getByTestId('note-editor-cancel')).toBeTruthy();
     expect(footer.getByTestId('note-editor-save')).toBeTruthy();
   });
 
-  test('reads the heading, the anchor, the title, the note, Cancel and Save, in that order', async () => {
+  test('reads Cancel, the heading, the anchor, the title, the note and Save, in that order', async () => {
     await renderEditor();
 
     const words = screen
       .getAllByText(/^(New note|Filed under|Title \(optional\)|Note|Cancel|Save note)$/)
       .map((node) => String(node.props.children));
     expect(words).toEqual([
+      'Cancel',
       'New note',
       'Filed under',
       'Title (optional)',
       'Note',
-      'Cancel',
       'Save note',
     ]);
 
@@ -192,10 +193,10 @@ describe('<NoteEditor> is the shared form sheet - parts, ids and order (FR-009, 
       .getAllByTestId(/^note-editor-(anchor|title|body|cancel|save)$/)
       .map((node) => node.props.testID);
     expect(ids).toEqual([
+      'note-editor-cancel',
       'note-editor-anchor',
       'note-editor-title',
       'note-editor-body',
-      'note-editor-cancel',
       'note-editor-save',
     ]);
   });
@@ -350,9 +351,9 @@ describe('<NoteEditor> fields - Field, with the behaviour of before (FR-024, FR-
       .getAllByTestId(/^note-editor-(body|error|cancel|save)$/)
       .map((node) => node.props.testID);
     expect(ids).toEqual([
+      'note-editor-cancel',
       'note-editor-body',
       'note-editor-error',
-      'note-editor-cancel',
       'note-editor-save',
     ]);
   });
