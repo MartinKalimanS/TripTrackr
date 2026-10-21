@@ -15,7 +15,17 @@ import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
 
-import { PlanTripFab, planTripFabHidden } from './plan-trip-fab';
+import {
+  hideKeyboard,
+  resetKeyboard,
+  showKeyboard,
+} from '../../../test/helpers/keyboard';
+import {
+  FAB_TOAST_LIFT,
+  PlanTripFab,
+  fabHeightAt,
+  planTripFabHidden,
+} from './plan-trip-fab';
 
 const flat = (element: { props: { style?: unknown } }) =>
   (StyleSheet.flatten(element.props.style as never) ?? {}) as Record<string, unknown>;
@@ -24,6 +34,7 @@ const INSETS = { top: 47, bottom: 34, left: 0, right: 0 };
 
 let platform: { restore: () => void } | undefined;
 afterEach(() => {
+  resetKeyboard();
   platform?.restore();
   platform = undefined;
 });
@@ -202,5 +213,59 @@ describe('planTripFabHidden: when Home does not show the button (FR-018)', () =>
   test('is hidden with no trips: the invitation card carries the action then', () => {
     expect(planTripFabHidden({ tripCount: 0, sheetFull: false })).toBe(true);
     expect(planTripFabHidden({ tripCount: 0, sheetFull: true })).toBe(true);
+  });
+});
+
+describe('<PlanTripFab> lifts above a toast (trips-toast.png: .fab.is-raised)', () => {
+  test('rises 68 dp while a toast is up (it is the screen that says so)', async () => {
+    await renderFab({ bottomInset: 88 });
+    expect(flat(screen.getByTestId('trips-plan-trip')).bottom).toBe(88 + 16);
+
+    await screen.rerender(
+      <SafeAreaInsetsContext.Provider value={INSETS}>
+        <PlanTripFab onPress={jest.fn()} bottomInset={88} lifted />
+      </SafeAreaInsetsContext.Provider>,
+    );
+    expect(FAB_TOAST_LIFT).toBe(68);
+    expect(flat(screen.getByTestId('trips-plan-trip')).bottom).toBe(88 + 16 + 68);
+  });
+});
+
+describe('<PlanTripFab> goes with the keyboard (UI-SPEC 3.1: hides when the keyboard is open)', () => {
+  test('is not drawn while the keyboard is up, and is back when it goes', async () => {
+    await renderFab();
+    expect(screen.getByTestId('trips-plan-trip')).toBeTruthy();
+
+    await showKeyboard();
+    expect(screen.queryByTestId('trips-plan-trip')).toBeNull();
+    expect(screen.queryByText('Plan a trip')).toBeNull();
+
+    await hideKeyboard();
+    expect(screen.getByTestId('trips-plan-trip')).toBeTruthy();
+  });
+
+  test('the collapsed button on Home goes with it too', async () => {
+    await renderFab({ screen: 'home', collapsed: true });
+    await showKeyboard();
+    expect(screen.queryByTestId('home-plan-trip-fab')).toBeNull();
+  });
+});
+
+describe('fabHeightAt: the room the list leaves for the button (172 dp, 176 on Android)', () => {
+  test.each([
+    ['ios', 1, 52],
+    ['android', 1, 56],
+  ] as const)('%s at the default text size is the pictured %i dp', (os, scale, dp) => {
+    expect(fabHeightAt(os, scale)).toBe(dp);
+  });
+
+  test('its words stop at 1.3 times the size, so the button stops growing there', () => {
+    expect(fabHeightAt('ios', 1.3)).toBe(fabHeightAt('ios', 2));
+    expect(fabHeightAt('ios', 3)).toBeLessThanOrEqual(56);
+    expect(fabHeightAt('android', 3)).toBe(56);
+  });
+
+  test('never below the pictured minimum, whatever the scale', () => {
+    expect(fabHeightAt('ios', 0.8)).toBe(52);
   });
 });
