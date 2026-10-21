@@ -262,15 +262,18 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     expect(screen.getByTestId('notes-filter-city:101')).toBeTruthy();
   });
 
-  test('has no bar of its own: the title and Back are the native header’s (FR-007, FR-008)', async () => {
+  test('draws its own header, as pictured (T551): Back, "Notes", the trip and the count, the search; no old title line', async () => {
     mockNotes.data = [note({})];
     await render(<NotesScreen />);
 
-    // The old bar drew "Back", the title `notes-title` ("Notes · <trip>") and the controls.
-    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.getByLabelText('Back')).toBeTruthy();
+    expect(screen.getByTestId('notes-header-title')).toHaveTextContent('Notes');
+    expect(screen.getByTestId('notes-subtitle')).toHaveTextContent(
+      'Italy, spring 2026 · 1 note',
+    );
     expect(screen.queryByTestId('notes-title')).toBeNull();
-    expect(screen.queryByText(/^Notes/)).toBeNull();
-    // What is not title or back stays: the filters and the action, in their old order.
+    expect(screen.getByTestId('coming-soon-notes-search')).toBeTruthy();
+    // What is not title or back keeps its old reading order: the filters, then the action.
     const order = screen
       .getAllByTestId(/^notes-(filter-all|add)$/)
       .map((node) => node.props.testID);
@@ -329,12 +332,14 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     expect(scrollers().some((scroller) => scroller.props.horizontal === true)).toBe(true);
   });
 
-  test('the notes are a list below the native header, with the content inset it needs (the collapse is a device check, T408)', async () => {
+  test('the notes are a list of days below the fixed header, clear of the floating button', async () => {
     mockNotes.data = [note({})];
     await render(<NotesScreen />);
 
     const list = scrollers().find((scroller) => scroller.props.horizontal !== true);
-    expect(list?.props.contentInsetAdjustmentBehavior).toBe('automatic');
+    expect(list).toBeTruthy();
+    expect(list?.props.contentInsetAdjustmentBehavior).not.toBe('automatic');
+    expect(screen.getByTestId('notes-list')).toBeTruthy();
   });
 
   test('a filter narrows the live query to that anchor', async () => {
@@ -383,7 +388,7 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     await render(<NotesScreen />);
 
     expect(screen.getByTestId('note-anchor-note-1')).toHaveTextContent('Italy');
-    expect(screen.getByTestId('note-anchor-note-2')).toHaveTextContent('Firenze, Italy');
+    expect(screen.getByTestId('note-anchor-note-2')).toHaveTextContent('Firenze');
     expect(screen.getByTestId('note-body-note-2')).toHaveTextContent('Gelato.');
 
     await fireEvent.press(screen.getByTestId('note-remove-note-2'));

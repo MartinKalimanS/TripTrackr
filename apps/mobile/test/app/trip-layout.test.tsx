@@ -73,10 +73,10 @@ const SUB_SCREENS = [
  * The sub-screens that moved to Atlas and so have a native header (004 phase 5); each is
  * asserted in its own suite (offline-maps-header, the document block below). `photos` is not
  * one of them since feature 005 (T549): it draws its own `AreaHeader`, so its native header
- * is hidden (photos-header.test.tsx).
+ * is hidden (photos-header.test.tsx); so is `notes` since F9 (T551): its `AreaHeader` is
+ * drawn by the screen (test/app/notes-pictured.test.tsx), and the navigator's header is hidden.
  */
 const MIGRATED_HEADERS = new Set<string>([
-  'notes',
   'expenses',
   'offline-maps',
   'documents',
@@ -187,15 +187,15 @@ describe('trip/[id]/_layout - the header is on for the overview and the migrated
   });
 
   test('the sub-screens keep an opaque bar of the canvas colour', async () => {
-    await openTrip(anchored, '/trip/abc/notes');
-    const header = tripHeaders().notes;
+    await openTrip(anchored, '/trip/abc/expenses');
+    const header = tripHeaders().expenses;
     expect(header?.translucent).toBe(false);
     expect(header?.backgroundColor).toBe(COLOURS.background);
   });
 
   test('every other trip screen is painted with the same background', async () => {
-    await openTrip(anchored, '/trip/abc/notes');
-    expect(contentBackground('notes')).toBe(COLOURS.background);
+    await openTrip(anchored, '/trip/abc/expenses');
+    expect(contentBackground('expenses')).toBe(COLOURS.background);
   });
 });
 
@@ -392,8 +392,16 @@ describe('trip/[id]/_layout - the document screens (004 T443; FR-007, FR-008, FR
   });
 });
 
-describe('trip/[id]/_layout - notes and spending: a native header with a title and Back (T440, T441; FR-007, FR-008)', () => {
-  const TITLES = { notes: 'Notes', expenses: 'Spending' } as const;
+describe('trip/[id]/_layout - notes draws its own header (F9, T551; FR-044)', () => {
+  test('the navigator’s header is hidden for notes: the screen draws the title and Back', async () => {
+    await openTrip(anchored, '/trip/abc/notes');
+    expect(tripHeaders().notes?.hidden).toBe(true);
+    expect(screen.queryAllByLabelText('Back')).toHaveLength(0);
+  });
+});
+
+describe('trip/[id]/_layout - spending: a native header with a title and Back (T441; FR-007, FR-008)', () => {
+  const TITLES = { expenses: 'Spending' } as const;
 
   test.each(Object.entries(TITLES))(
     '%s is titled "%s" in the header (the title the screen used to draw as a line of its own)',
@@ -434,10 +442,10 @@ describe('trip/[id]/_layout - notes and spending: a native header with a title a
     },
   );
 
-  test('Back from notes pops to the trip overview, the screen the traveller came from', async () => {
+  test('Back from spending pops to the trip overview, the screen the traveller came from', async () => {
     const { app } = await openTrip(anchored, '/trip/abc');
-    await act(async () => router.push('/trip/abc/notes'));
-    expect(app.getPathname()).toBe('/trip/abc/notes');
+    await act(async () => router.push('/trip/abc/expenses'));
+    expect(app.getPathname()).toBe('/trip/abc/expenses');
 
     const back = screen.getAllByLabelText('Back');
     await fireEvent.press(back[back.length - 1]);
