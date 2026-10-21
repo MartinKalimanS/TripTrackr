@@ -217,6 +217,8 @@ describe('<CategoryPicker> as a ChipGroup (T435)', () => {
 
     test('is a Field with its label on top and a secondary "Add category" button, disabled while empty', async () => {
       await renderCreating();
+      expect(screen.queryByTestId('category-new-name')).toBeNull();
+      await fireEvent.press(screen.getByTestId('category-new-toggle'));
 
       const field = screen.getByTestId('category-new-name');
       expect(field.props.accessibilityLabel).toBe('New category');
@@ -242,6 +244,7 @@ describe('<CategoryPicker> as a ChipGroup (T435)', () => {
         />,
       );
 
+      await fireEvent.press(screen.getByTestId('category-new-toggle'));
       await fireEvent.changeText(screen.getByTestId('category-new-name'), '  Museums ');
       expect(
         screen.getByTestId('category-new-add').props.accessibilityState,
@@ -250,6 +253,9 @@ describe('<CategoryPicker> as a ChipGroup (T435)', () => {
 
       expect(onCreate).toHaveBeenCalledWith('Museums');
       expect(onChange).toHaveBeenLastCalledWith('new-id');
+      // F6: the field closes once the category exists, and reopens empty.
+      expect(screen.queryByTestId('category-new-name')).toBeNull();
+      await fireEvent.press(screen.getByTestId('category-new-toggle'));
       expect(screen.getByTestId('category-new-name').props.value).toBe('');
     });
 
@@ -257,6 +263,7 @@ describe('<CategoryPicker> as a ChipGroup (T435)', () => {
       const onCreate = jest.fn(() => 'new-id');
       await renderCreating(onCreate);
 
+      await fireEvent.press(screen.getByTestId('category-new-toggle'));
       await fireEvent.changeText(screen.getByTestId('category-new-name'), '   ');
       await fireEvent(screen.getByTestId('category-new-name'), 'submitEditing');
       expect(onCreate).not.toHaveBeenCalled();

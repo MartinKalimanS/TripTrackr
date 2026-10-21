@@ -100,6 +100,7 @@ jest.mock('@/features/expenses/use-expenses', () => ({
     createExpense: mockCreateExpense,
     createCategory: jest.fn(() => ({ id: 'new-category', name: 'Coffee' })),
   }),
+  useFxSnapshot: () => null,
 }));
 
 const { HeroUINativeProvider } = jest.requireActual<typeof HeroUI>('heroui-native');
@@ -135,6 +136,7 @@ describe('the add-expense sheet over the real kit', () => {
 
     expect(screen.getByTestId('add-expense-screen')).toBeTruthy();
     expect(screen.getByTestId('add-expense-amount').type).toBe('TextInput');
+    await fireEvent.press(screen.getByTestId('add-expense-more'));
     expect(screen.getByTestId('add-expense-note').type).toBe('TextInput');
     expect(screen.getByTestId('add-expense-date').props.accessibilityRole).toBe('button');
     expect(screen.getByTestId('currency-CHF').props.accessibilityRole).toBe('radio');
@@ -151,6 +153,7 @@ describe('the add-expense sheet over the real kit', () => {
     await inKit(<AddExpenseScreen />);
 
     await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '1.234,50');
+    await fireEvent.press(screen.getByTestId('add-expense-more'));
     await fireEvent.press(screen.getByTestId('add-expense-city-101'));
     await act(async () => {
       fireEvent.press(screen.getByTestId('add-expense-save'));
@@ -164,7 +167,7 @@ describe('the add-expense sheet over the real kit', () => {
     expect(mockBack).toHaveBeenCalled();
   });
 
-  test('a refused amount appears as the kit’s FieldError words, and not before', async () => {
+  test('a refused amount appears as the pictured figure’s error words, and not before', async () => {
     await inKit(<AddExpenseScreen />);
     expect(screen.queryByTestId('add-expense-amount-error')).toBeNull();
 

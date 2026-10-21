@@ -92,6 +92,10 @@ export interface ChipOption {
   label: string;
   testID: string;
   accessibilityLabel: string;
+  /** An icon name or any node before the label (a category's glyph, the "Other" plus). */
+  leading?: IconName | ReactNode;
+  /** The "add" look: no fill, a dashed edge ("Other"). */
+  dashed?: boolean;
 }
 
 export interface ChipGroupProps {
@@ -382,6 +386,8 @@ export function ChipGroup({
       testID={option.testID}
       accessibilityLabel={option.accessibilityLabel}
       accessibilityRole="radio"
+      leading={option.leading}
+      dashed={option.dashed}
       selected={option.key === selectedKey}
       onPress={() => select(option.key)}
     />

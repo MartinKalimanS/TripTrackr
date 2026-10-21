@@ -19,6 +19,7 @@ import { useSessionStore } from '@/features/auth/session-store';
 import { __resetAppearanceStoreForTests } from '@/hooks/appearance-store';
 import { Sentry } from '@/lib/sentry';
 
+import { glyphsIn } from '../helpers/icons';
 import {
   PHONE_360X640,
   expectActionAboveKeyboard,
@@ -236,26 +237,27 @@ describe('<AddTripScreen> as a form sheet (T434; FR-005, FR-009, FR-024, FR-025,
     await render(<AddTripScreen />);
 
     expect(screen.getByTestId('add-trip-screen')).toBeTruthy();
-    const title = within(screen.getByTestId('add-trip-screen-body')).getByText(
+    const title = within(screen.getByTestId('add-trip-screen-header')).getByText(
       'New trip',
     );
     expect(title.props.accessibilityRole).toBe('header');
+    const header = within(screen.getByTestId('add-trip-screen-header'));
+    expect(header.getByTestId('add-trip-cancel')).toBeTruthy();
     const footer = within(screen.getByTestId('add-trip-screen-footer'));
-    expect(footer.getByTestId('add-trip-cancel')).toBeTruthy();
     expect(footer.getByTestId('add-trip-save')).toBeTruthy();
   });
 
-  test('keeps the reading order: title, trip name, home currency, then Cancel and Save', async () => {
+  test('keeps the reading order: Cancel, title, trip name, home currency, then Save (Cancel moved to the header, as pictured)', async () => {
     await render(<AddTripScreen />);
 
     const order = screen
-      .getAllByText(/^(New trip|Trip name|Home currency|Cancel|Save trip)$/)
+      .getAllByText(/^(Cancel|New trip|Trip name|Home currency|Save trip)$/)
       .map((node) => String(node.props.children));
     expect(order).toEqual([
+      'Cancel',
       'New trip',
       'Trip name',
       'Home currency',
-      'Cancel',
       'Save trip',
     ]);
   });
@@ -389,56 +391,184 @@ describe('<AddTripScreen> as a form sheet (T434; FR-005, FR-009, FR-024, FR-025,
     });
   });
 
-  describe('fits one screen at the default text size on 360 x 640 dp (FR-009; 003 FR-017)', () => {
+  describe('fits one screen at 390 x 844 dp, and scrolls with Save pinned below that (FR-009)', () => {
     // Jest renders no layout, so this is a desk budget, not a measurement: the heights of
-    // the parts as the tokens and the kit set them, added up for the busiest state, against
-    // the room the sheet is allowed. The on-phone check (tasks.md T434) measures it.
-    const HANDLE = 4 + 12;
-    const BODY_PAD = 24 + 16;
-    const GAP = 16;
-    const TITLE = 28;
-    const LABEL = 20;
-    const INPUT = 48;
-    const LABEL_TO_INPUT = 8;
-    const ERROR_LINE = 20;
-    const CHIP_ROW = 48 + 8;
-    const FOOTER = 12 + 48 + 16;
-    const field = (error: boolean) =>
-      LABEL + LABEL_TO_INPUT + INPUT + (error ? ERROR_LINE : 0);
+    // the parts as the pictures and the tokens set them (form.png: header 56 + 8, 24 dp
+    // between the five groups, a 76 dp cover tile, Save 56 dp), against the room the sheet
+    // is allowed. The on-phone check measures it.
+    const HEADER = 56 + 8;
+    const BODY_TOP = 8;
+    const BODY_BOTTOM = 16;
+    const GAP = 24;
+    const LABELLED = 20 + 8;
+    const ROW = 56;
+    const NAME = LABELLED + ROW;
+    const DESTINATION = LABELLED + ROW;
+    const COVER = LABELLED + 76;
+    const DATES = LABELLED + ROW;
+    const CURRENCY = LABELLED + 56 + 8 + 18;
+    const FOOTER = 1 + 12 + 56 + 16;
 
     const quiet = () =>
-      HANDLE +
-      BODY_PAD +
-      TITLE +
+      HEADER +
+      BODY_TOP +
+      NAME +
       GAP +
-      field(false) +
+      DESTINATION +
       GAP +
-      (LABEL + 8 + CHIP_ROW) +
-      FOOTER;
-    const busiest = () =>
-      HANDLE +
-      BODY_PAD +
-      TITLE +
+      COVER +
       GAP +
-      field(true) +
+      DATES +
       GAP +
-      (LABEL + 8 + CHIP_ROW + 8 + field(true)) +
-      GAP +
-      ERROR_LINE +
+      CURRENCY +
+      BODY_BOTTOM +
       FOOTER;
 
-    test('the form needs less than the room the sheet is allowed, even when every message is showing', () => {
-      const room = sheetMaxHeight({ windowHeight: 640, topInset: 24, keyboardHeight: 0 });
+    test('the pictured form needs less than the room the sheet is allowed on the reference phone', () => {
+      const room = sheetMaxHeight({ windowHeight: 844, topInset: 54, keyboardHeight: 0 });
       expect(quiet()).toBeLessThan(room);
-      expect(busiest()).toBeLessThan(room);
     });
 
-    test('has nothing to scroll in the quiet state: the sheet is not capped below the form', async () => {
+    test('on the smallest phone the sheet is capped below the form, so the body scrolls and Save stays', async () => {
       setWindow(PHONE_360X640);
       await render(<AddTripScreen />);
       const cap = StyleSheet.flatten(screen.getByTestId('add-trip-screen').props.style)
         .maxHeight as number;
-      expect(cap).toBeGreaterThan(quiet());
+      expect(cap).toBeLessThan(quiet());
+      expect(
+        within(screen.getByTestId('add-trip-screen-footer')).getByTestId('add-trip-save'),
+      ).toBeTruthy();
+    });
+  });
+
+  describe('as pictured (F6; form.png, UI-SPEC 9.1 and 10; owner decision Q-11)', () => {
+    beforeEach(() => {
+      setWindow({ width: 390, height: 844 });
+      const { mockToast } = jest.requireMock('heroui-native') as {
+        mockToast: { show: jest.Mock };
+      };
+      mockToast.show.mockClear();
+    });
+
+    const toast = () =>
+      (jest.requireMock('heroui-native') as { mockToast: { show: jest.Mock } }).mockToast
+        .show;
+
+    test('draws the destination, cover and dates rows in the picture order, between the name and the currency', async () => {
+      await render(<AddTripScreen />);
+
+      const body = within(screen.getByTestId('add-trip-screen-body'));
+      const order = body
+        .getAllByText(
+          /^(Trip name|Where to\?|Cities or countries|Cover|Dates|Home currency)$/,
+        )
+        .map((node) => String(node.props.children));
+      expect(order).toEqual([
+        'Trip name',
+        'Where to?',
+        'Cities or countries',
+        'Cover',
+        'Dates',
+        'Home currency',
+      ]);
+    });
+
+    test.each([
+      ['coming-soon-trip-destination', 'Add a city or country'],
+      ['coming-soon-trip-cover', 'Photos'],
+      ['coming-soon-trip-dates', 'Add dates'],
+    ])(
+      '%s is a real button named "%s" that answers with ONE toast and nothing else',
+      async (id, name) => {
+        await render(<AddTripScreen />);
+
+        const control = screen.getByTestId(id);
+        expect(control.props.accessibilityRole).toBe('button');
+        expect(control.props.accessibilityLabel).toBe(name);
+        expect(control.props.accessibilityHint).toBe('Not available yet');
+
+        await fireEvent.press(control);
+        await fireEvent.press(control);
+
+        expect(toast()).toHaveBeenCalledTimes(2);
+        expect(toast().mock.calls[0][0]).toMatchObject({ id: 'coming-soon' });
+        expect(mockActions.createTrip).not.toHaveBeenCalled();
+        expect(mockPush).not.toHaveBeenCalled();
+        expect(mockBack).not.toHaveBeenCalled();
+        expect(mockReplace).not.toHaveBeenCalled();
+      },
+    );
+
+    test('a coming-soon row is no input: it is not saved, and Save still needs only the name and the currency', async () => {
+      mockActions.createTrip.mockReturnValue({ ...trip, id: 'new-trip' });
+      await render(<AddTripScreen />);
+
+      await fireEvent.press(screen.getByTestId('coming-soon-trip-dates'));
+      await fireEvent.changeText(screen.getByTestId('add-trip-title'), 'Portugal');
+      await fireEvent.press(screen.getByTestId('add-trip-save'));
+
+      expect(mockActions.createTrip).toHaveBeenCalledWith({
+        title: 'Portugal',
+        home_currency: 'GBP',
+      });
+    });
+
+    test('invents no data: no photograph, date, place or night count of the picture is drawn', async () => {
+      await render(<AddTripScreen />);
+
+      for (const invented of [
+        /Lisbon|Porto/,
+        /\d+ nights/,
+        /Oct/,
+        /Portugal Road Trip/,
+      ]) {
+        expect(screen.queryByText(invented)).toBeNull();
+      }
+      expect(screen.queryByTestId('add-trip-title')?.props.value).toBe('');
+    });
+
+    test('says "Expenses are only visible to you." under the currency row, with a lock', async () => {
+      await render(<AddTripScreen />);
+
+      const line = screen.getByTestId('add-trip-privacy');
+      expect(within(line).getByText('Expenses are only visible to you.')).toBeTruthy();
+      expect(glyphsIn(line).map((glyph) => glyph.name)).toEqual(['lock']);
+      const body = within(screen.getByTestId('add-trip-screen-body'));
+      expect(body.getByTestId('add-trip-privacy')).toBe(line);
+    });
+
+    test('the sheet has Cancel at the left of a header that centres the title, a hairline above Save and 24 dp between groups', async () => {
+      await render(<AddTripScreen />);
+
+      const header = within(screen.getByTestId('add-trip-screen-header'));
+      expect(header.getByTestId('add-trip-cancel')).toBeTruthy();
+      expect(header.getByText('New trip')).toBeTruthy();
+      expect(
+        StyleSheet.flatten(
+          screen.getByTestId('add-trip-screen-body').props.contentContainerStyle,
+        ).gap,
+      ).toBe(24);
+      const footer = screen.getByTestId('add-trip-screen-footer').children[0] as {
+        props: { className?: string };
+      };
+      expect(String(footer.props.className)).toContain('border-t');
+    });
+
+    test('Other is the dashed chip with a plus, and the common codes keep their ids', async () => {
+      await render(<AddTripScreen />);
+
+      const other = screen.getByTestId('currency-other-toggle');
+      expect(other.props.accessibilityLabel).toBe('Other currency');
+      expect(glyphsIn(other).map((glyph) => glyph.name)).toEqual(['plus']);
+      expect(
+        (StyleSheet.flatten(other.props.style as never) as Record<string, unknown>)
+          .borderStyle,
+      ).toBe('dashed');
+      for (const code of ['USD', 'EUR', 'GBP', 'JPY']) {
+        expect(screen.getByTestId(`currency-${code}`).props.accessibilityLabel).toBe(
+          code,
+        );
+      }
     });
   });
 
@@ -589,10 +719,10 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
 
       const title = screen.getByText('Add stop');
       expect(title.props.accessibilityRole).toBe('header');
-      const body = screen.getByTestId('stop-editor-body');
+      const header = screen.getByTestId('stop-editor-header');
       const footer = screen.getByTestId('stop-editor-footer');
-      expect(within(body).getByText('Add stop')).toBeTruthy();
-      expect(within(footer).getByTestId('stop-editor-cancel')).toBeTruthy();
+      expect(within(header).getByText('Add stop')).toBeTruthy();
+      expect(within(header).getByTestId('stop-editor-cancel')).toBeTruthy();
       expect(within(footer).getByTestId('stop-editor-save')).toBeTruthy();
       expect(footer.props.offset).toEqual({ closed: 0, opened: 0 });
       expect(flat('stop-editor').flex).toBe(1);
@@ -638,7 +768,7 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
       expect(screen.queryByTestId('pick-florence')).toBeNull();
     });
 
-    test('reads title, city, country, Change, Cancel, Save in that order', async () => {
+    test('reads Cancel, title, city, country, Change, Save in that order (Cancel is in the header since F6)', async () => {
       await renderEditor();
       await fireEvent.press(screen.getByTestId('pick-florence'));
 
@@ -646,11 +776,11 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
         .getAllByText(/^(Add stop|Firenze|Italy|Change|Cancel|Save stop)$/)
         .map((node) => String(node.props.children));
       expect(order).toEqual([
+        'Cancel',
         'Add stop',
         'Firenze',
         'Italy',
         'Change',
-        'Cancel',
         'Save stop',
       ]);
     });
@@ -705,14 +835,14 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
-    test('a valid pair saves from the footer, and Cancel is there too', async () => {
+    test('a valid pair saves from the footer, and Cancel is in the header', async () => {
       await renderEditor(addMode);
       await showKeyboard();
       await fireEvent.press(screen.getByTestId('pick-florence'));
 
       expectActionAboveKeyboard('stop-editor', 'stop-editor-save');
       expect(
-        within(screen.getByTestId('stop-editor-footer')).getByTestId(
+        within(screen.getByTestId('stop-editor-header')).getByTestId(
           'stop-editor-cancel',
         ),
       ).toBeTruthy();

@@ -554,3 +554,50 @@ describe('<StatusChip> - presentation of the trip status', () => {
     expect(screen.getByText('Active').props.maxFontSizeMultiplier).toBe(1.3);
   });
 });
+
+describe('<ChipGroup> options - a glyph and the dashed "add" look (F6)', () => {
+  const WITH_GLYPHS: readonly ChipOption[] = [
+    {
+      key: 'a',
+      label: 'Food',
+      testID: 'o-a',
+      accessibilityLabel: 'Food',
+      leading: 'tram',
+    },
+    {
+      key: 'other',
+      label: 'Other',
+      testID: 'o-other',
+      accessibilityLabel: 'Other currency',
+      leading: 'plus',
+      dashed: true,
+    },
+  ];
+
+  test('an option draws its leading glyph, and the selected one the check instead', async () => {
+    await render(
+      <ChipGroup options={WITH_GLYPHS} selectedKey="a" onSelect={jest.fn()} />,
+    );
+
+    expect(glyphNamesIn(screen.getByTestId('o-a'))).toEqual(['check']);
+    expect(glyphNamesIn(screen.getByTestId('o-other'))).toEqual(['plus']);
+  });
+
+  test('a dashed option has no fill and a dashed edge; the others are solid', async () => {
+    await render(
+      <ChipGroup options={WITH_GLYPHS} selectedKey="a" onSelect={jest.fn()} />,
+    );
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId('o-other').props.style as never),
+    ).toMatchObject({ borderStyle: 'dashed' });
+    expect(
+      (
+        StyleSheet.flatten(screen.getByTestId('o-a').props.style as never) as Record<
+          string,
+          unknown
+        >
+      ).borderStyle,
+    ).toBeUndefined();
+  });
+});

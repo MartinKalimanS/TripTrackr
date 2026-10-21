@@ -412,8 +412,8 @@ describe('<CityPicker> - inside the stop editor sheet (T437; C4-10 rule 8; FR-00
     await fireEvent.press(screen.getByTestId('city-picker-country-IT'));
     await fireEvent.changeText(screen.getByLabelText('City'), 'Ro');
     expectActionAboveKeyboard('stop-editor', 'stop-editor-save');
-    const footer = screen.getByTestId('stop-editor-footer');
-    expect(within(footer).getByTestId('stop-editor-cancel')).toBeTruthy();
+    const header = screen.getByTestId('stop-editor-header');
+    expect(within(header).getByTestId('stop-editor-cancel')).toBeTruthy();
     expect(screen.getByTestId('stop-editor-save').props.accessibilityState).toMatchObject(
       {
         disabled: true,

@@ -23,6 +23,13 @@
  * `add-expense-date`, `add-expense-city-<id|none>`, `add-expense-note`,
  * `add-expense-error`, `add-expense-cancel`, `add-expense-save`.
  *
+ * As pictured (feature 005, F6; `more/add-expense.png`): the amount comes first as a 56 dp figure
+ * with its currency symbol (`AmountInput`) and, when the cached rates can back it, a "≈ $26.63 at
+ * today's rate" line; then the category and currency chip rows; then the day, city and note
+ * collapsed behind "Add note, date or place" (`ExpenseExtras`, which opens by itself on a
+ * refusal); "Only you" in the header; Save above the keypad. The title keeps the app's words
+ * ("New expense").
+ *
  * With no form to show (the trip is being read, could not be read, or is not on this
  * device) the same root id carries a designed state and a "Close" action
  * (`add-expense-close`), because a sheet with only a state would have no explicit way out.
@@ -36,6 +43,7 @@ import { useMemo, useState } from 'react';
 import {
   Controller,
   useForm,
+  useFormState,
   useWatch,
   type Control,
   type UseFormSetValue,
@@ -45,15 +53,23 @@ import { View } from 'react-native';
 import { CategoryPicker } from '@/components/trip/category-picker';
 import { CurrencyPicker } from '@/components/trip/currency-picker';
 import { DateField } from '@/components/trip/date-field';
+import { ExpenseExtras } from '@/components/trip/expense-extras';
 import { describePlace } from '@/components/trip/stop-row';
+import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import { ChipGroup, type ChipOption } from '@/components/ui/chip';
 import { Field } from '@/components/ui/field';
 import { FormSheet } from '@/components/ui/form-sheet';
 import { InlineError } from '@/components/ui/inline-error';
+import { PrivacyChip } from '@/components/ui/privacy-chip';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
 import { Text } from '@/components/ui/text';
 import type { StopWithPlace } from '@/db/repositories/stops';
+import {
+  currencySymbol,
+  extrasSummary,
+  ratePreview,
+} from '@/features/expenses/amount-preview';
 import {
   EXPENSE_FIELD_COPY,
   EXPENSE_FORM_COPY,
@@ -63,6 +79,7 @@ import {
 import {
   useExpenseActions,
   useExpenseCategories,
+  useFxSnapshot,
 } from '@/features/expenses/use-expenses';
 import { todayIso } from '@/features/trips/stop-dates';
 import { useTrip, useTripStops } from '@/features/trips/use-trips';
@@ -160,26 +177,51 @@ function useAddExpenseForm({ tripId, homeCurrency, stops, onDone }: FormProps) {
   return { control, setValue, cityId, save, saveError, createCategory };
 }
 
-function AmountField({ control }: { control: ExpenseControl }) {
-  const { decimalSeparator } = deviceLocale();
+type AmountFieldProps = { control: ExpenseControl; homeCurrency: string };
+
+/** The amount first, its currency symbol, and the rate preview the cache can back. */
+function AmountField({ control, homeCurrency }: AmountFieldProps) {
+  const { decimalSeparator, languageTag } = deviceLocale();
+  const snapshot = useFxSnapshot();
+  const today = useMemo(() => todayIso(), []);
+  const [amount, currency] = useWatch({ control, name: ['amount', 'currency'] });
+  const preview = ratePreview({
+    amount,
+    currency,
+    home: homeCurrency,
+    snapshot,
+    today,
+    languageTag,
+  });
+
   return (
-    <Controller
-      control={control}
-      name="amount"
-      render={({ field, fieldState }) => (
-        <Field
-          testID="add-expense-amount"
-          label="Amount"
-          value={field.value}
-          onChangeText={field.onChange}
-          onBlur={field.onBlur}
-          placeholder={`12${decimalSeparator}50`}
-          keyboardType="decimal-pad"
-          autoFocus
-          error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.amount)}
-        />
-      )}
-    />
+    <View className="gap-1">
+      <Controller
+        control={control}
+        name="amount"
+        render={({ field, fieldState }) => (
+          <AmountInput
+            testID="add-expense-amount"
+            symbol={currencySymbol(currency, languageTag)}
+            value={field.value}
+            onChangeText={field.onChange}
+            onBlur={field.onBlur}
+            placeholder={`12${decimalSeparator}50`}
+            autoFocus
+            error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.amount)}
+          />
+        )}
+      />
+      {preview ? (
+        <Text
+          testID="add-expense-rate"
+          variant="label"
+          tone="muted"
+          className="text-center">
+          {preview}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -190,6 +232,7 @@ function CurrencyField({ control }: { control: ExpenseControl }) {
       name="currency"
       render={({ field, fieldState }) => (
         <CurrencyPicker
+          label="Currency"
           value={field.value}
           onChange={field.onChange}
           error={fieldMessage(fieldState.error, EXPENSE_FIELD_COPY.currency)}
@@ -312,6 +355,50 @@ function NoteField({ control }: { control: ExpenseControl }) {
   );
 }
 
+type ExtrasSectionProps = {
+  control: ExpenseControl;
+  stops: readonly StopWithPlace[];
+  cityId: number | null;
+  setValue: UseFormSetValue<ExpenseFormValues>;
+};
+
+/**
+ * The day, the city and the note behind the pictured "Add note, date or place" row. It opens
+ * on its own when one of them has a refusal to show: a hidden error would be a silent failure.
+ */
+function ExtrasSection({ control, stops, cityId, setValue }: ExtrasSectionProps) {
+  const [open, setOpen] = useState(false);
+  const { errors } = useFormState({ control });
+  const [spentAt, note] = useWatch({ control, name: ['spent_at', 'note'] });
+  const today = useMemo(() => todayIso(), []);
+  const stop = stops.find((candidate) => candidate.city_id === cityId);
+  const summary = extrasSummary({
+    spentAt,
+    today,
+    place: stop ? describePlace(stop) : null,
+    hasNote: note.trim().length > 0,
+    languageTag: deviceLocale().languageTag,
+  });
+  const expanded = open || Boolean(errors.spent_at ?? errors.note);
+
+  return (
+    <ExpenseExtras
+      summary={summary}
+      expanded={expanded}
+      onToggle={() => setOpen(!expanded)}>
+      <PaidOnField control={control} stops={stops} setValue={setValue} />
+
+      <CityField
+        stops={stops}
+        cityId={cityId}
+        onSelect={(id) => setValue('city_id', id)}
+      />
+
+      <NoteField control={control} />
+    </ExpenseExtras>
+  );
+}
+
 function AddExpenseForm(props: FormProps) {
   const { control, setValue, cityId, save, saveError, createCategory } =
     useAddExpenseForm(props);
@@ -320,27 +407,25 @@ function AddExpenseForm(props: FormProps) {
     <FormSheet
       testID="add-expense-screen"
       title="New expense"
+      headerTrailing={<PrivacyChip />}
       actions={{
         testIDPrefix: 'add-expense',
         saveLabel: 'Save expense',
         onCancel: props.onDone,
         onSave: () => void save(),
       }}>
-      <AmountField control={control} />
-
-      <CurrencyField control={control} />
+      <AmountField control={control} homeCurrency={props.homeCurrency} />
 
       <CategoryField control={control} onCreate={createCategory} />
 
-      <PaidOnField control={control} stops={props.stops} setValue={setValue} />
+      <CurrencyField control={control} />
 
-      <CityField
+      <ExtrasSection
+        control={control}
         stops={props.stops}
         cityId={cityId}
-        onSelect={(id) => setValue('city_id', id)}
+        setValue={setValue}
       />
-
-      <NoteField control={control} />
 
       <InlineError testID="add-expense-error" message={saveError} />
     </FormSheet>
