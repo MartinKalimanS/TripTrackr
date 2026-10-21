@@ -5,6 +5,7 @@
  *
  *   <TripListSkeleton />                      a hero (16:10), a ticket, a year, rows
  *   <TripDetailSkeleton />                    hero, status row, four tiles, day chips, stops
+ *   <StopsSkeleton />                         the three stop rows alone ("Loading stops")
  *   <AreaSkeleton rows={4} label="Loading notes" />     a header and rows
  *   <HomeSkeleton discRadius={175} greetingName="Marta" />   a disc and a sheet
  *
@@ -85,8 +86,8 @@ export function TripListSkeleton({
 function StatusRowBones() {
   return (
     <View className="flex-row items-center justify-between">
-      <Bone className="h-9 w-40 rounded-full" />
-      <Bone className="h-9 w-20 rounded-full" />
+      <Bone className="h-7 w-[150px] rounded-full" />
+      <Bone className="h-9 w-12 rounded-full" />
     </View>
   );
 }
@@ -120,23 +121,43 @@ function DayChipBones() {
 
 function StopsHeaderBones() {
   return (
-    <View className="flex-row items-center justify-between">
-      <Bone className="h-6 w-24 rounded-lg" />
-      <Bone className="h-9 w-32 rounded-full" />
+    <View className="flex-row items-center justify-between gap-3">
+      <Bone className="h-6 w-[90px] rounded-lg" />
+      <Bone className="h-8 w-[136px] rounded-full" />
     </View>
   );
 }
 
+/** The prototype's `.stop`: a 32 dp rail with the node 8 dp down, 8 above and 12 below the body. */
 function StopBones() {
   return (
-    <View className="flex-row items-start gap-3">
-      <Bone className="size-7 rounded-full" />
-      <View className="flex-1 gap-2">
-        <Bone className="h-5 w-1/2 rounded-lg" />
-        <Bone className="h-4 w-3/4 rounded-lg" />
+    <View className="flex-row gap-3">
+      <View className="w-8 items-center">
+        <Bone className="mt-2 size-7 rounded-full" />
       </View>
-      <Bone className="size-14 rounded-2xl" />
+      <View className="flex-1 flex-row items-center gap-3 pb-3 pt-2">
+        <View className="flex-1 gap-2">
+          <Bone className="h-5 w-[55%] rounded-lg" />
+          <Bone className="h-3.5 w-[70%] rounded-lg" />
+        </View>
+        <Bone className="size-14 rounded-2xl" />
+      </View>
     </View>
+  );
+}
+
+export type StopsSkeletonProps = Pick<SkeletonRegionProps, 'label'>;
+
+/** The stops alone (the rest of the screen is already there): three rows on their rail. */
+export function StopsSkeleton({ label = 'Loading stops' }: StopsSkeletonProps) {
+  return (
+    <LoadingRegion label={label} testID="trip-stops-skeleton">
+      <ShimmerGroup>
+        <StopBones />
+        <StopBones />
+        <StopBones />
+      </ShimmerGroup>
+    </LoadingRegion>
   );
 }
 
@@ -161,9 +182,11 @@ export function TripDetailSkeleton({
           <AreaTileBones />
           <DayChipBones />
           <StopsHeaderBones />
-          <StopBones />
-          <StopBones />
-          <StopBones />
+          <View>
+            <StopBones />
+            <StopBones />
+            <StopBones />
+          </View>
         </View>
       </ShimmerGroup>
     </LoadingRegion>

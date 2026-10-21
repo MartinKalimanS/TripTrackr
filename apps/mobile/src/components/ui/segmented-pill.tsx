@@ -47,6 +47,8 @@ export interface SegmentOption {
   testID: string;
   /** Required: what a screen reader says ("Active, 1"). */
   accessibilityLabel: string;
+  /** Said after the name, for a segment that does not do what it says yet ("Not available yet"). */
+  accessibilityHint?: string;
 }
 
 export interface SegmentedPillProps {
@@ -134,6 +136,7 @@ function Segment({ option, selected, radio, size, colors, onPress }: SegmentProp
       testID={option.testID}
       accessibilityRole={radio ? 'radio' : 'tab'}
       accessibilityLabel={option.accessibilityLabel}
+      accessibilityHint={option.accessibilityHint}
       accessibilityState={state}
       onPress={onPress}
       onFocus={focus.onFocus}

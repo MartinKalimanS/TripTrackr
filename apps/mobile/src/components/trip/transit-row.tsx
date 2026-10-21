@@ -44,7 +44,11 @@ export function TransitRow({ stopId, km }: TransitRowProps) {
       </View>
       <View className="flex-1 flex-row items-center gap-1.5 py-1">
         <Icon name={ROUTE} size={16} tone="muted" />
-        <Text variant="label" strong tone="muted" className="shrink">
+        <Text
+          variant="caption"
+          tone="muted"
+          className="shrink"
+          testID={`stop-transit-distance-${stopId}`}>
           {formatDistance(km).text}
         </Text>
       </View>
