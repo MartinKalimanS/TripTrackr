@@ -68,6 +68,10 @@ export const GALLERY_COPY = {
   dismissLabel: 'Dismiss this message',
   retryText: 'Try again',
   retryLabel: 'Try uploading this photo again',
+  /** The word on a failed tile's pill and in the summary line (photos.png). */
+  tileRetryText: 'Retry',
+  retryAllLabel: 'Retry failed uploads',
+  retryAllOneLabel: 'Retry failed upload',
   noPreview: 'No preview',
   openHint: 'Opens the photo',
   closeText: 'Close',

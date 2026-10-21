@@ -71,13 +71,14 @@ const SUB_SCREENS = [
 
 /**
  * The sub-screens that moved to Atlas and so have a native header (004 phase 5); each is
- * asserted in its own suite (offline-maps-header, photos-header, the document block below).
+ * asserted in its own suite (offline-maps-header, the document block below). `photos` is not
+ * one of them since feature 005 (T549): it draws its own `AreaHeader`, so its native header
+ * is hidden (photos-header.test.tsx).
  */
 const MIGRATED_HEADERS = new Set<string>([
   'notes',
   'expenses',
   'offline-maps',
-  'photos',
   'documents',
   'document-view',
 ]);

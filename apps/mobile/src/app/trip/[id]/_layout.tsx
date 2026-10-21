@@ -43,6 +43,12 @@
  * the top-level lists. `document-capture` stays headerless: it is a camera surface with
  * its own opaque bar (see that screen's header comment).
  *
+ * Photos (feature 005, T549; FR-044) is the first of the everyday areas to draw the pictured
+ * header itself: Back, the title with the trip's name and a count under it, and the pictured
+ * controls (`AreaHeader`, `components/ui/area-header.tsx`), so the navigator's header is hidden
+ * for it (`headerShown: false`) and its title is the screen's. The other areas adopt the same
+ * header one by one and drop their `titled` entry here as they do.
+ *
  * No `unstable_settings` and no `initialParams` here: the root layout keeps the anchor
  * (`(tabs)`) and the route's params and deep links are exactly what they were.
  */
@@ -90,7 +96,7 @@ export default function TripLayout() {
           />
           <Stack.Screen name="notes" options={titled('Notes')} />
           <Stack.Screen name="expenses" options={titled('Spending')} />
-          <Stack.Screen name="photos" options={titled('Photos')} />
+          <Stack.Screen name="photos" options={{ headerShown: false }} />
           <Stack.Screen name="documents" options={titled('Documents')} />
           <Stack.Screen name="document-view" options={titled('Document')} />
           <Stack.Screen name="offline-maps" options={titled('Offline maps')} />
