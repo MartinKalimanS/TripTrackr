@@ -46,6 +46,8 @@ export interface TripCoverArtProps {
   trip: Pick<TripCardModel, 'id' | 'cover' | 'generated'>;
   /** The small form of the generated cover, for a row or a ticket. */
   thumb?: boolean;
+  /** Where a photograph sits in a frame it overflows (the hero's `50% 58%`); default centre. */
+  contentPosition?: { left: string; top: string };
 }
 
 const FADE_MS = 220;
@@ -55,7 +57,11 @@ const DECORATIVE = {
   importantForAccessibility: 'no-hide-descendants',
 } as const;
 
-export function TripCoverArt({ trip, thumb = false }: TripCoverArtProps) {
+export function TripCoverArt({
+  trip,
+  thumb = false,
+  contentPosition,
+}: TripCoverArtProps) {
   const { prefersLessMotion } = useAccessibilityFlags();
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const { cover, generated, id } = trip;
@@ -72,6 +78,7 @@ export function TripCoverArt({ trip, thumb = false }: TripCoverArtProps) {
           source={{ uri: cover.thumbnailUri }}
           recyclingKey={cover.photoId}
           contentFit="cover"
+          contentPosition={contentPosition}
           cachePolicy="memory-disk"
           transition={prefersLessMotion ? 0 : FADE_MS}
           onError={() => setFailedUri(cover.thumbnailUri)}

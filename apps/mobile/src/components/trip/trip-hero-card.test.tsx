@@ -1,7 +1,7 @@
 /**
  * T540 - `TripHeroCard` (contract C5-19; FR-007, FR-030, FR-031, FR-034, FR-075, FR-076;
  * research D5-10): the active trip as a large picture card. The cover (a thumbnail or the
- * generated one) under a bottom scrim, a status chip "Active · Day 3 of 8" and, while changes
+ * generated one) with no scrim over the picture itself (picture core/trips), a white status pill "Active · Day 3 of 8" and, while changes
  * wait, the sync marker on top; on the caption scrim the country with its flag and the stops,
  * the title (two lines), the dates and nights, and one dot per stop.
  *
@@ -12,7 +12,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
-import { Radii } from '@/theme';
+import { Palettes, Radii } from '@/theme';
 
 import { classesOf } from '../../../test/helpers/host-nodes';
 import { cardModel, withPhoto } from '../../../test/helpers/trip-card-fixture';
@@ -137,13 +137,39 @@ describe('<TripHeroCard> the picture and the scrims (FR-007, FR-034)', () => {
     );
   });
 
-  test('darkens the picture under the text: the bottom scrim and the caption scrim, with the text in the caption', async () => {
+  // Picture `core/trips` (and prototype `build.py`, `hero_card`): the top of the photograph is
+  // untouched; only the caption's ramp and block darken it. The contract's `scrim.bottom` is
+  // dropped on purpose (measured on the picture: about .2 at a third of the way down, not .45).
+  test('darkens the picture under the text with the caption scrim only, with the text in the caption', async () => {
     await renderHero();
 
-    expect(screen.getByTestId('scrim-bottom', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('scrim-bottom', hidden)).toBeNull();
     const caption = screen.getByTestId('scrim-caption-block', hidden);
     expect(within(caption).getByText('Portugal Road Trip')).toBeTruthy();
     expect(within(caption).getByText('Portugal · 3 stops')).toBeTruthy();
+  });
+
+  test('a photograph sits 58% down its frame, as the prototype puts it', async () => {
+    await renderHero(withPhoto());
+    expect(
+      screen.getByTestId('trip-card-t1-photo', hidden).props.contentPosition,
+    ).toEqual({
+      left: '50%',
+      top: '58%',
+    });
+  });
+
+  test('the status is the white on-photo pill in every theme, not the cream chip', async () => {
+    await renderHero();
+    const pill = flat(screen.getByTestId('status-pill-active'));
+    expect(pill.backgroundColor).toBe(Palettes.light.onPhoto);
+    expect(screen.getByTestId('status-pill-active-dot', hidden)).toBeTruthy();
+  });
+
+  test('the dates line has a 6 dp gap and the strip sits 8 dp under it (dot at 8)', async () => {
+    await renderHero();
+    expect(flat(screen.getByTestId('trip-card-t1-meta-row')).gap).toBe(6);
+    expect(flat(screen.getByTestId('stop-strip', hidden)).marginTop).toBe(6);
   });
 
   test('the status chip sits above the picture, outside the caption', async () => {

@@ -2,7 +2,7 @@
  * T540 - `StopStrip` (contract C5-19; FR-031): one dot per stop over a hero, joined by a 2 dp
  * line that is solid up to the stop the traveller has reached and dashed beyond it. A done
  * stop is filled, the one here a thick ring with a halo, the next a ring, the rest a thinner
- * ring; the abbreviation of each city sits under its dot in the eyebrow role. Decorative:
+ * ring; the abbreviation of each city sits under its dot in the caption role at 12 / 14. Decorative:
  * hidden from assistive technology (the card's name carries the stops), and all of it in the
  * opaque on-photo ink (text and marks over a picture are never an alpha white).
  */
@@ -12,6 +12,7 @@ import { StyleSheet } from 'react-native';
 import type { StopDot } from '@/features/trips/trip-card-model';
 import { Palettes } from '@/theme';
 
+import { classesOf } from '../../../test/helpers/host-nodes';
 import { asCss, mockThemeColors } from '../../../test/helpers/theme-colors';
 import { StopStrip } from './stop-strip';
 
@@ -108,6 +109,26 @@ describe('<StopStrip> labels', () => {
     expect(screen.getByText('LIS', hidden)).toBeTruthy();
     expect(screen.getByText('SIN', hidden)).toBeTruthy();
     expect(screen.getByText('POR', hidden)).toBeTruthy();
+  });
+
+  // Prototype `.strip .st`: 600, 12 / 14, tracking .06em; 2 dp under the dot (the halo box is 16).
+  test('sets each label in 12 / 14 semibold with .06em tracking, capped, 2 dp under the dot', async () => {
+    await renderStrip(['done', 'now', 'next'], ['LIS', 'SIN', 'POR']);
+    const label = screen.getByTestId('stop-strip-label-0', hidden);
+    expect(flat(label)).toMatchObject({
+      fontSize: 12,
+      lineHeight: 14,
+      letterSpacing: 0.72,
+      marginTop: -2,
+    });
+    expect(classesOf(label)).toContain('font-body-semibold');
+    expect(classesOf(label)).toContain('text-on-photo');
+    expect(label.props.maxFontSizeMultiplier).toBe(1.3);
+  });
+
+  test('takes the box the card gives it', async () => {
+    await render(<StopStrip dots={['done']} style={{ marginTop: 6 }} />);
+    expect(flat(screen.getByTestId('stop-strip', hidden)).marginTop).toBe(6);
   });
 
   test('draws nothing for a city this device has not cached', async () => {
