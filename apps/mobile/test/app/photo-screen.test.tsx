@@ -274,6 +274,15 @@ describe('<PhotosScreen> — the grid (Acceptance 5.1, 5.6; FR-041)', () => {
     expect(mockActions.retryUpload).toHaveBeenCalledWith(failed.id);
   });
 
+  test('opening a photo hands the viewer the whole gallery, so it can say "1 of 2"', async () => {
+    mockPhotos.data = [uploaded, photo('eeeeeeee')];
+    await render(<PhotosScreen />);
+
+    await fireEvent.press(screen.getByTestId(`photo-open-${uploaded.id}`));
+
+    expect(screen.getByTestId('photo-viewer-position')).toHaveTextContent('1 of 2');
+  });
+
   test('an uploaded photo carries no mark', async () => {
     mockPhotos.data = [uploaded];
     await render(<PhotosScreen />);

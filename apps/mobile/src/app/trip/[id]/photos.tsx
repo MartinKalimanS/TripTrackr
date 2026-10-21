@@ -236,6 +236,8 @@ function PhotosGallery({ tripId, onReread }: GalleryProps) {
       {gallery.viewing ? (
         <PhotoViewer
           photo={gallery.viewing}
+          photos={gallery.photos.data}
+          onChange={gallery.open}
           stops={stops.data}
           actions={gallery.actions}
           onClose={gallery.close}
