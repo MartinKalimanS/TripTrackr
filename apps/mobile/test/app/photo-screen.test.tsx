@@ -48,6 +48,7 @@ import {
   styleOf,
   uploaded,
 } from './photo-screen-harness';
+import { hostsWhere } from '../helpers/host-nodes';
 import { anyGlyph } from '../helpers/icons';
 
 // The screen asks the router for its params only: the title and Back belong to the
@@ -55,6 +56,12 @@ import { anyGlyph } from '../helpers/icons';
 const mockParams: { id: string | string[] | undefined } = { id: 'trip-42' };
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
+  useRouter: () => ({
+    back: jest.fn(),
+    canGoBack: () => true,
+    replace: jest.fn(),
+    push: jest.fn(),
+  }),
 }));
 
 jest.mock('expo-file-system', () =>
@@ -86,6 +93,13 @@ jest.mock('@/features/photos/use-capture', () =>
   require('./photo-screen-harness').captureModule(),
 );
 
+const pick = (style: Record<string, unknown>) => ({
+  left: style.left,
+  top: style.top,
+  width: style.width,
+  height: style.height,
+});
+
 beforeEach(() => {
   mockParams.id = 'trip-42';
   resetPhotoScreen();
@@ -105,12 +119,35 @@ describe('<PhotosScreen> — states', () => {
     expect(mockUploads).toHaveBeenCalledWith('trip-42');
   });
 
-  test('the trip’s name is the first thing on the page; the native header says "Photos"', async () => {
+  test('the title is "Photos" and the line under it names the trip and counts the photographs', async () => {
+    mockPhotos.data = [uploaded, pending];
     await render(<PhotosScreen />);
 
-    expect(screen.getByTestId('photos-title')).toHaveTextContent('Italy, spring 2026');
-    // "Photos" is the navigator's title (`_layout.tsx`): not drawn a second time here.
-    expect(screen.queryByText('Photos')).toBeNull();
+    expect(screen.getByTestId('photos-title')).toHaveTextContent('Photos');
+    expect(screen.getByTestId('photos-subtitle')).toHaveTextContent(
+      'Italy, spring 2026 · 2 photos',
+    );
+  });
+
+  test('the count is not said while the store has not answered or could not be read', async () => {
+    mockPhotos.loading = true;
+    await render(<PhotosScreen />);
+    expect(screen.getByTestId('photos-subtitle')).toHaveTextContent(
+      /^Italy, spring 2026$/,
+    );
+
+    mockPhotos.loading = false;
+    mockPhotos.error = new Error('boom');
+    await screen.rerender(<PhotosScreen />);
+    expect(screen.getByTestId('photos-subtitle')).toHaveTextContent(
+      /^Italy, spring 2026$/,
+    );
+  });
+
+  test('one photograph is "1 photo"', async () => {
+    mockPhotos.data = [uploaded];
+    await render(<PhotosScreen />);
+    expect(screen.getByTestId('photos-subtitle')).toHaveTextContent(/ · 1 photo$/);
   });
 
   test('loading is skeleton tiles shaped like the grid, announced as ONE busy region, never the empty state', async () => {
@@ -125,21 +162,21 @@ describe('<PhotosScreen> — states', () => {
     expect(screen.getByTestId('photos-screen')).toBeTruthy();
   });
 
-  test('the skeleton has the grid’s own number of tiles per row, so nothing reflows when photos arrive', async () => {
-    mockPhotos.data = Array.from({ length: 8 }, (_, index) => photo(`${index}aaaaaaa`));
+  test('the skeleton is the mosaic’s own geometry, so nothing reflows when photos arrive', async () => {
+    mockPhotos.data = Array.from({ length: 6 }, (_, index) => photo(`${index}aaaaaaa`));
     await render(<PhotosScreen />);
-    const first = screen.getByTestId(`photo-tile-${mockPhotos.data[0]!.id}`);
-    const columns = (first.parent as unknown as { children: unknown[] }).children.length;
-    expect(columns).toBeGreaterThanOrEqual(1);
+    const frames = mockPhotos.data.map((shown) =>
+      pick(styleOf(screen.getByTestId(`photo-tile-${shown.id}`))),
+    );
 
     mockPhotos.data = [];
     mockPhotos.loading = true;
     await screen.rerender(<PhotosScreen />);
-    const wrapper = screen.getByLabelText('Loading photos').children[0] as unknown as {
-      children: { children: unknown[] }[];
-    };
-    expect(wrapper.children).toHaveLength(3);
-    for (const row of wrapper.children) expect(row.children).toHaveLength(columns);
+    const bones = hostsWhere((node) =>
+      String(node.props.className ?? '').includes('absolute rounded-2xl'),
+    ).map((bone) => pick(styleOf(bone)));
+    expect(bones).toHaveLength(6);
+    expect(bones).toEqual(frames);
   });
 
   test('a store that did not answer says so in words and shows no stale tiles', async () => {
@@ -170,13 +207,13 @@ describe('<PhotosScreen> — states', () => {
     expect(screen.getByText('No photos yet')).toBeTruthy();
   });
 
-  test('draws no Back of its own: the native header carries it (trip-layout.test.tsx)', async () => {
+  test('draws its own Back, named exactly "Back", the navigator’s header being hidden (trip-layout.test.tsx)', async () => {
     await render(<PhotosScreen />);
-    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.getAllByLabelText('Back')).toHaveLength(1);
     expect(screen.queryByText('Back')).toBeNull();
   });
 
-  test('the controls and the note keep their reading order: title, add, take, the write error, the note', async () => {
+  test('the page keeps its reading order: the bar, the title, the write error, the photographs, the note, the add button', async () => {
     mockPhotos.data = [failed];
     mockActions.retryUpload.mockImplementationOnce(() => {
       throw new Error('disk I/O error');
@@ -187,15 +224,14 @@ describe('<PhotosScreen> — states', () => {
     const order = readingOrder();
     const at = (needle: string) => order.indexOf(needle);
     expect(at('photos-title')).toBeGreaterThanOrEqual(0);
-    expect(at('photos-title')).toBeLessThan(at('photos-add'));
-    expect(at('photos-add')).toBeLessThan(at('photos-take'));
-    expect(at('photos-take')).toBeLessThan(at('photos-write-error'));
-    expect(at('photos-write-error')).toBeLessThan(
+    expect(at('Back')).toBeLessThan(at('photos-take'));
+    expect(at('photos-take')).toBeLessThan(at('photos-title'));
+    expect(at('photos-title')).toBeLessThan(at('photos-write-error'));
+    expect(at('photos-write-error')).toBeLessThan(at(`photo-tile-${failed.id}`));
+    expect(at(`photo-tile-${failed.id}`)).toBeLessThan(
       at('Private — only you can see your photos.'),
     );
-    expect(at('Private — only you can see your photos.')).toBeLessThan(
-      at(`photo-tile-${failed.id}`),
-    );
+    expect(at('Private — only you can see your photos.')).toBeLessThan(at('photos-add'));
   });
 });
 
@@ -213,12 +249,12 @@ describe('<PhotosScreen> — the grid (Acceptance 5.1, 5.6; FR-041)', () => {
     }
   });
 
-  test('a photo waiting for its bytes says so, visibly and to a screen reader', async () => {
+  test('a photo waiting for its bytes says so, with an icon on the tile and in words to a screen reader', async () => {
     mockPhotos.data = [pending];
     await render(<PhotosScreen />);
 
     const tile = screen.getByTestId(`photo-tile-${pending.id}`);
-    expect(within(tile).getByText('Waiting to upload')).toBeTruthy();
+    expect(within(tile).getByTestId('photo-status-icon', hidden)).toBeTruthy();
     expect(screen.getByTestId(`photo-open-${pending.id}`).props.accessibilityLabel).toBe(
       'Photo taken 12 May 2026, filed under Roma, Italy. Waiting to upload — saved on this device only.',
     );
@@ -229,20 +265,22 @@ describe('<PhotosScreen> — the grid (Acceptance 5.1, 5.6; FR-041)', () => {
     await render(<PhotosScreen />);
 
     const tile = screen.getByTestId(`photo-tile-${failed.id}`);
-    expect(within(tile).getByText('Upload failed')).toBeTruthy();
-    expect(within(tile).queryByText('Waiting to upload')).toBeNull();
+    expect(within(tile).getByText('Retry')).toBeTruthy();
+    expect(
+      screen.getByTestId(`photo-open-${failed.id}`).props.accessibilityLabel,
+    ).toMatch(/Upload failed.$/);
     const retry = screen.getByLabelText('Try uploading this photo again');
     await fireEvent.press(retry);
     expect(mockActions.retryUpload).toHaveBeenCalledWith(failed.id);
   });
 
-  test('an uploaded photo carries no badge', async () => {
+  test('an uploaded photo carries no mark', async () => {
     mockPhotos.data = [uploaded];
     await render(<PhotosScreen />);
 
     const tile = screen.getByTestId(`photo-tile-${uploaded.id}`);
-    expect(within(tile).queryByText('Waiting to upload')).toBeNull();
-    expect(within(tile).queryByText('Upload failed')).toBeNull();
+    expect(within(tile).queryByTestId('photo-status-icon', hidden)).toBeNull();
+    expect(within(tile).queryByText('Retry')).toBeNull();
     expect(screen.getByTestId(`photo-open-${uploaded.id}`).props.accessibilityLabel).toBe(
       'Photo taken 12 May 2026, filed under Roma, Italy.',
     );
@@ -505,7 +543,8 @@ describe('<PhotosScreen> — edges', () => {
   test('a trip that is not on this device leaves its name out; the header still says "Photos"', async () => {
     mockTrip.data = null;
     await render(<PhotosScreen />);
-    expect(screen.queryByTestId('photos-title')).toBeNull();
+    expect(screen.getByTestId('photos-title')).toHaveTextContent('Photos');
+    expect(screen.getByTestId('photos-subtitle')).toHaveTextContent(/^0 photos$/);
     expect(screen.getByTestId('photos-add')).toBeTruthy();
   });
 

@@ -33,6 +33,7 @@ import { CaretRightIcon } from 'phosphor-react-native/src/icons/CaretRight';
 import { CaretUpIcon } from 'phosphor-react-native/src/icons/CaretUp';
 import { CheckCircleIcon } from 'phosphor-react-native/src/icons/CheckCircle';
 import { CheckIcon } from 'phosphor-react-native/src/icons/Check';
+import { ChecksIcon } from 'phosphor-react-native/src/icons/Checks';
 import { ClockIcon } from 'phosphor-react-native/src/icons/Clock';
 import { CloudArrowUpIcon } from 'phosphor-react-native/src/icons/CloudArrowUp';
 import { CloudCheckIcon } from 'phosphor-react-native/src/icons/CloudCheck';
@@ -101,6 +102,7 @@ export const ICONS = {
   minus: MinusIcon,
   x: XIcon,
   check: CheckIcon,
+  checks: ChecksIcon,
   search: MagnifyingGlassIcon,
   pencil: PencilSimpleIcon,
   trash: TrashIcon,

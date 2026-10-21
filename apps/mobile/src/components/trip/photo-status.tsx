@@ -19,13 +19,25 @@
  *
  * The retry is a `Button`: secondary beside the status in the photo view, and a text
  * button under a failed tile in the grid, where a tonal fill per tile would shout.
+ *
+ * On a mosaic tile (feature 005, T549; FR-045; `photos.png`) the state is drawn ON the
+ * thumbnail as the pictures draw it: `UploadBadge` is the 28 dp disc at the tile's bottom
+ * end (a dashed ring and a cloud for a photograph waiting to upload, a tick for one that
+ * just arrived) and `FailedRetryPill` the solid danger pill with the alert glyph and the word
+ * "Retry". The glyph and the word carry the state, never the hue alone; the tile's own name
+ * says it in full (`photoLabel`). The disc and the pill are a deliberate, pictured exception
+ * to the 004 rule of no overlay on a thumbnail (UI-SPEC 9.2 still says no TINT: the scrim of
+ * a failed tile and of the `+N` tile are the pictured ones).
  */
 import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Icon, type IconName, type IconTone } from '@/components/ui/icon';
+import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
+import { useColors } from '@/components/ui/theme-tokens';
 import { GALLERY_COPY, UPLOAD_STATE_COPY } from '@/features/photos/photo-copy';
+import { Radii, Space } from '@/theme';
 
 export type PhotoStatus = 'pending' | 'failed';
 
@@ -93,5 +105,103 @@ export function PhotoRetryButton({ onPress, compact = false }: PhotoRetryButtonP
       className="self-start">
       {GALLERY_COPY.retryText}
     </Button>
+  );
+}
+
+/** The badge's disc, from the prototype's `.ub`: 28 dp, 8 dp from the tile's bottom end. */
+const BADGE = 28;
+const BADGE_KINDS = {
+  queued: { icon: 'cloud-upload' },
+  synced: { icon: 'check' },
+} as const satisfies Record<string, { icon: IconName }>;
+
+export type UploadBadgeKind = keyof typeof BADGE_KINDS;
+
+const COLOR_KEYS = [
+  'scrimButton',
+  'scrimButtonLine',
+  'onPhoto',
+  'danger',
+  'dangerInk',
+] as const;
+
+/**
+ * The state of a photograph on its mosaic tile: a `scrimButton` disc with a white glyph, a
+ * dashed ring for one still to upload (the cloud), a tick for one that just arrived. Decorative:
+ * the tile's own name says the state in words, so this is hidden from assistive technology.
+ */
+export function UploadBadge({ kind }: { kind: UploadBadgeKind }) {
+  const colors = useColors(COLOR_KEYS);
+  const { icon } = BADGE_KINDS[kind];
+
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        end: Space[2],
+        bottom: Space[2],
+        width: BADGE,
+        height: BADGE,
+        borderRadius: Radii.full,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.scrimButton,
+        borderWidth: 1,
+        borderColor: colors.scrimButtonLine,
+        ...(kind === 'queued'
+          ? {
+              outlineWidth: 1.5,
+              outlineStyle: 'dashed',
+              outlineColor: colors.onPhoto,
+              outlineOffset: -3,
+            }
+          : null),
+      }}>
+      <Icon
+        testID={kind === 'queued' ? 'photo-status-icon' : 'photo-synced-icon'}
+        name={icon}
+        size={16}
+        tone="onPhoto"
+      />
+    </View>
+  );
+}
+
+/**
+ * "Retry" on a failed tile: a solid danger pill with the alert glyph and the word, 8 dp in from
+ * the tile's sides and bottom, at least 32 dp tall with a 44 dp touch target. It is a control of
+ * its own, beside the tile's open button and never inside it. A held press draws the focus ring
+ * and no fill (`feedback="ring"`).
+ */
+export function FailedRetryPill({ onPress }: { onPress: () => void }) {
+  const colors = useColors(COLOR_KEYS);
+
+  return (
+    <Tappable
+      accessibilityLabel={GALLERY_COPY.retryLabel}
+      feedback="ring"
+      hitSlop={{ top: 6, bottom: 6 }}
+      onPress={onPress}
+      style={{
+        position: 'absolute',
+        start: Space[2],
+        end: Space[2],
+        bottom: Space[2],
+        minHeight: 32,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Space[1],
+        borderRadius: Radii.full,
+        backgroundColor: colors.danger,
+      }}>
+      <Icon testID="photo-status-icon" name="alert" size={16} tone="dangerInk" />
+      <Text variant="caption" capped style={{ color: colors.dangerInk }}>
+        {GALLERY_COPY.tileRetryText}
+      </Text>
+    </Tappable>
   );
 }

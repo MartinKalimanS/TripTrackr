@@ -7,11 +7,12 @@
  * this suite pins how it is built and looks, rendered the same way (the live hooks mocked
  * through `photo-screen-harness.tsx`, everything else real):
  *   - one primary control per state (FR-005);
- *   - a photo not yet uploaded is marked in words, an icon and an edge, never hue alone
- *     (FR-025, FR-034), and the retry of a failed one is a control of its own;
- *   - nothing is laid across a photograph: no tint, scrim or shadow over a thumbnail, a
- *     hairline boundary round every one, and a ring outside the tile for focus and press
- *     (FR-033, 002 C12);
+ *   - a photo not yet uploaded is marked by an icon and a word on its tile (the pictured
+ *     disc and "Retry" pill, T549 FR-045), never hue alone, and the retry of a failed one
+ *     is a control of its own;
+ *   - a photograph that is safe is drawn bare: no tint, scrim or shadow over its thumbnail,
+ *     a hairline boundary round every one, and a ring outside the tile for focus and press
+ *     (FR-033, 002 C12; the failed tile's and the +N tile's scrims are the pictured ones);
  *   - the photo view's emphasis, chips and notes;
  *   - the sources import no retired primitive, no kit and no colour literal (FR-036).
  */
@@ -31,6 +32,7 @@ import {
   mockCapture,
   mockPhotos,
   pending,
+  photo,
   resetPhotoScreen,
   styleOf,
   uploaded,
@@ -43,6 +45,12 @@ import { anyGlyph, glyphId } from '../helpers/icons';
 const mockParams: { id: string | string[] | undefined } = { id: 'trip-42' };
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
+  useRouter: () => ({
+    back: jest.fn(),
+    canGoBack: () => true,
+    replace: jest.fn(),
+    push: jest.fn(),
+  }),
 }));
 
 jest.mock('expo-file-system', () =>
@@ -80,11 +88,22 @@ beforeEach(() => {
 });
 
 describe('<PhotosScreen> — one primary control per state (FR-005)', () => {
-  test('"Add photos" is the one primary, "Take a photo" a secondary beside it', async () => {
+  test('"Add photos" is the one primary, "Take a photo" a tonal icon button in the bar', async () => {
+    mockPhotos.data = [uploaded];
     await render(<PhotosScreen />);
 
     expect(variantOf(screen.getByTestId('photos-add'))).toBe('primary');
-    expect(variantOf(screen.getByTestId('photos-take'))).toBe('secondary');
+    const take = screen.getByTestId('photos-take');
+    expect(take.props.accessibilityLabel).toBe('Take a photo with the camera');
+    expect(take.props.accessibilityRole).toBe('button');
+    expect(buttonsOf('primary')).toHaveLength(1);
+  });
+
+  test('with no photographs the empty state carries the one primary and the floating button is gone', async () => {
+    await render(<PhotosScreen />);
+
+    expect(screen.getAllByTestId('photos-add')).toHaveLength(1);
+    expect(variantOf(screen.getByTestId('photos-add'))).toBe('primary');
     expect(buttonsOf('primary')).toHaveLength(1);
   });
 
@@ -118,65 +137,51 @@ describe('<PhotosScreen> — one primary control per state (FR-005)', () => {
   });
 });
 
-describe('<PhotosScreen> — a photo not yet uploaded is marked in words, an icon and an edge (FR-025, FR-034)', () => {
-  const badge = (shown: PhotoWithPlace, words: string) =>
-    within(screen.getByTestId(`photo-tile-${shown.id}`)).getByLabelText(words);
-  const glyph = (shown: PhotoWithPlace, words: string) =>
-    within(badge(shown, words)).getByTestId(anyGlyph, hidden).props.testID as string;
-  const classesOf = (node: { props: Record<string, unknown> }) =>
-    String(node.props.className ?? '').split(/\s+/);
+describe('<PhotosScreen> — a photo not yet uploaded is marked by an icon and a word, never hue alone (FR-025, FR-034, FR-045)', () => {
+  const tile = (shown: PhotoWithPlace) => screen.getByTestId(`photo-tile-${shown.id}`);
+  const glyph = (node: Parameters<typeof within>[0]) =>
+    within(node).getByTestId(anyGlyph, hidden).props.testID as string;
 
-  test('is announced as the words it shows, a text node, exactly as before (FR-030)', async () => {
-    mockPhotos.data = [pending, failed];
-    await render(<PhotosScreen />);
-
-    for (const [shown, words] of [
-      [pending, 'Waiting to upload'],
-      [failed, 'Upload failed'],
-    ] as const) {
-      expect(badge(shown, words).props.accessibilityRole).toBe('text');
-      expect(badge(shown, words).props.accessible).toBe(true);
-    }
-  });
-
-  test('carries a decorative icon beside the words, a different one for each state', async () => {
-    mockPhotos.data = [pending, failed];
-    await render(<PhotosScreen />);
-
-    const icons = within(screen.getByTestId(`photo-tile-${pending.id}`)).getByTestId(
-      'photo-status-icon',
-      hidden,
-    );
-    expect(icons.props.accessible).toBe(false);
-    expect(glyph(pending, 'Waiting to upload')).not.toBe(glyph(failed, 'Upload failed'));
-  });
-
-  test('pending is dashed in the pending ink, a failure solid in the danger ink: never hue alone', async () => {
-    mockPhotos.data = [pending, failed];
-    await render(<PhotosScreen />);
-
-    const waiting = classesOf(badge(pending, 'Waiting to upload'));
-    expect(waiting).toEqual(
-      expect.arrayContaining(['border-dashed', 'border-pending', 'bg-pending/15']),
-    );
-    const broken = classesOf(badge(failed, 'Upload failed'));
-    expect(broken).toEqual(
-      expect.arrayContaining(['border-solid', 'border-danger', 'bg-danger/15']),
-    );
-    expect(broken).not.toContain('border-dashed');
-    expect(classesOf(screen.getByText('Waiting to upload'))).toContain('text-pending');
-    expect(classesOf(screen.getByText('Upload failed'))).toContain('text-danger');
-  });
-
-  test('wraps inside the tile at the largest text size instead of clipping (FR-029)', async () => {
+  test('a photo waiting to upload wears the dashed cloud disc, hidden from a screen reader that has the tile’s name', async () => {
     mockPhotos.data = [pending];
     await render(<PhotosScreen />);
 
-    const words = screen.getByText('Waiting to upload');
-    expect(classesOf(words)).toContain('shrink');
-    expect(words.props.numberOfLines).toBeUndefined();
-    expect(words.props.maxFontSizeMultiplier).toBeUndefined();
-    expect(styleOf(badge(pending, 'Waiting to upload')).height).toBeUndefined();
+    const icon = within(tile(pending)).getByTestId('photo-status-icon', hidden);
+    expect(icon.props.accessible).toBe(false);
+    expect(glyph(tile(pending))).toBe(glyphId('cloud-upload', 'regular'));
+    const disc = hostAncestors(icon)[0]!;
+    expect(styleOf(disc)).toMatchObject({
+      width: 28,
+      height: 28,
+      outlineStyle: 'dashed',
+    });
+    expect(disc.props.accessibilityElementsHidden).toBe(true);
+    expect(
+      screen.getByTestId(`photo-open-${pending.id}`).props.accessibilityLabel,
+    ).toMatch(/Waiting to upload — saved on this device only\.$/);
+  });
+
+  test('a failed photo says so in a glyph and the word "Retry", on a scrim, and its name says "Upload failed"', async () => {
+    mockPhotos.data = [failed];
+    await render(<PhotosScreen />);
+
+    const retry = within(tile(failed)).getByLabelText('Try uploading this photo again');
+    expect(retry.props.accessibilityRole).toBe('button');
+    expect(within(retry).getByText('Retry')).toBeTruthy();
+    expect(within(retry).getByTestId('photo-status-icon', hidden)).toBeTruthy();
+    expect(glyph(retry)).toBe(glyphId('alert', 'regular'));
+    expect(
+      screen.getByTestId(`photo-open-${failed.id}`).props.accessibilityLabel,
+    ).toMatch(/Upload failed\.$/);
+    // The pictured scrim lies over the whole failed tile (`.pt.fail::after`).
+    const frame = screen.getByTestId(`photo-frame-${failed.id}`);
+    expect((frame as unknown as { children: unknown[] }).children).toHaveLength(2);
+  });
+
+  test('each state has a different glyph', async () => {
+    mockPhotos.data = [pending, failed];
+    await render(<PhotosScreen />);
+    expect(glyph(tile(pending))).not.toBe(glyph(tile(failed)));
   });
 
   test('the retry for a failed upload is its own control beside the tile’s button, not nested in it', async () => {
@@ -184,11 +189,31 @@ describe('<PhotosScreen> — a photo not yet uploaded is marked in words, an ico
     await render(<PhotosScreen />);
 
     const retry = screen.getByLabelText('Try uploading this photo again');
-    expect(retry.props.accessibilityRole).toBe('button');
-    expect(variantOf(retry)).toBe('text');
     const above = hostAncestors(retry).map((ancestor) => ancestor.props.testID);
     expect(above).not.toContain(`photo-open-${failed.id}`);
     expect(above).toContain(`photo-tile-${failed.id}`);
+    expect(styleOf(retry).minHeight).toBeGreaterThanOrEqual(32);
+    expect(retry.props.hitSlop).toMatchObject({ top: 6, bottom: 6 });
+  });
+
+  test('the word "Retry" on a tile stops growing at 1.3 times the text size', async () => {
+    mockPhotos.data = [failed];
+    await render(<PhotosScreen />);
+    expect(within(tile(failed)).getByText('Retry').props.maxFontSizeMultiplier).toBe(1.3);
+  });
+
+  test('an uploaded photograph carries nothing: a tile with no mark is a safe one', async () => {
+    mockPhotos.data = [uploaded];
+    await render(<PhotosScreen />);
+    expect(within(tile(uploaded)).queryByTestId(anyGlyph, hidden)).toBeNull();
+  });
+
+  test('a photograph uploaded from this device a moment ago wears the tick', async () => {
+    const fresh = photo('eeeeeeee', { synced_at: new Date().toISOString() });
+    mockPhotos.data = [fresh];
+    await render(<PhotosScreen />);
+    expect(within(tile(fresh)).getByTestId('photo-synced-icon', hidden)).toBeTruthy();
+    expect(within(tile(fresh)).queryByTestId('photo-status-icon', hidden)).toBeNull();
   });
 });
 
@@ -277,22 +302,23 @@ describe('<PhotosScreen> — a tile is one control (FR-026, FR-030)', () => {
     expect(styleOf(open).outlineWidth).toBeUndefined();
   });
 
-  test('is at least the platform’s touch target, growing with the text size', async () => {
+  test('is far above the platform’s touch target: 114 dp square, at every text size', async () => {
     mockPhotos.data = [uploaded];
     await render(<PhotosScreen />);
-    const open = screen.getByTestId(`photo-open-${uploaded.id}`);
+    const frame = styleOf(screen.getByTestId(`photo-tile-${uploaded.id}`));
 
-    expect(styleOf(open).minHeight).toBeGreaterThanOrEqual(44);
-    expect(styleOf(open).minWidth).toBeGreaterThanOrEqual(44);
+    expect(frame.width).toBeGreaterThanOrEqual(44);
+    expect(frame.height).toBeGreaterThanOrEqual(44);
   });
 
-  test('the grid is the list: a FlashList scroller that insets itself below the native header', async () => {
+  test('the grid is the list: a FlashList scroller under the screen’s own header', async () => {
     mockPhotos.data = [uploaded];
     await render(<PhotosScreen />);
     const list = screen.getByTestId('photos-list');
 
     expect(list.type).toBe('RCTScrollView');
-    expect(list.props.contentInsetAdjustmentBehavior).toBe('automatic');
+    // No native header on this route: nothing for the list to inset itself below.
+    expect(list.props.contentInsetAdjustmentBehavior).toBeUndefined();
     expect(within(list).getByTestId(`photo-tile-${uploaded.id}`)).toBeTruthy();
   });
 });
@@ -402,6 +428,12 @@ describe('<PhotosScreen> — sources (FR-036)', () => {
     'components/trip/photo-viewer.tsx',
     'components/trip/photos-header.tsx',
     'components/trip/photo-status.tsx',
+    'components/trip/photo-mosaic.tsx',
+    'components/trip/day-header.tsx',
+    'components/trip/upload-summary-pill.tsx',
+    'components/trip/photos-skeleton.tsx',
+    'components/ui/area-header.tsx',
+    'components/ui/area-fab.tsx',
   ];
   const source = (file: string) =>
     readFileSync(path.resolve(__dirname, '..', '..', 'src', file), 'utf8');
@@ -433,7 +465,7 @@ describe('<PhotosScreen> — sources (FR-036)', () => {
     const text = source('app/trip/[id]/photos.tsx');
     expect(importsOf(text)).toContain('@/components/ui/list-screen');
     expect(importsOf(text)).not.toContain('@/components/ui/screen');
-    expect(text).toMatch(/underHeader/);
+    expect(text).toContain("edges={['bottom']}");
   });
 });
 
