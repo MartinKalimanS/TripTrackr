@@ -71,13 +71,12 @@ const SUB_SCREENS = [
 
 /**
  * The sub-screens that moved to Atlas and so have a native header (004 phase 5); each is
- * asserted in its own suite (offline-maps-header, the document block below). `photos` is not
- * one of them since feature 005 (T549): it draws its own `AreaHeader`, so its native header
- * is hidden (photos-header.test.tsx).
+ * asserted in its own suite (offline-maps-header, the document block below). `photos` and
+ * `expenses` are not among them since feature 005 (T549, T550): each draws its own `AreaHeader`,
+ * so its native header is hidden (photos-header.test.tsx, expenses-header in spending-pictured).
  */
 const MIGRATED_HEADERS = new Set<string>([
   'notes',
-  'expenses',
   'offline-maps',
   'documents',
   'document-view',
@@ -392,8 +391,8 @@ describe('trip/[id]/_layout - the document screens (004 T443; FR-007, FR-008, FR
   });
 });
 
-describe('trip/[id]/_layout - notes and spending: a native header with a title and Back (T440, T441; FR-007, FR-008)', () => {
-  const TITLES = { notes: 'Notes', expenses: 'Spending' } as const;
+describe('trip/[id]/_layout - notes: a native header with a title and Back (T440; FR-007, FR-008)', () => {
+  const TITLES = { notes: 'Notes' } as const;
 
   test.each(Object.entries(TITLES))(
     '%s is titled "%s" in the header (the title the screen used to draw as a line of its own)',
@@ -444,14 +443,5 @@ describe('trip/[id]/_layout - notes and spending: a native header with a title a
 
     expect(app.getPathname()).toBe('/trip/abc');
     expect(screen.getByTestId('trip-index')).toBeTruthy();
-  });
-
-  test('Back from spending, opened by a deep link with nothing beneath it, goes home instead of vanishing', async () => {
-    const { app } = await openTrip(unanchored, '/trip/abc/expenses');
-    expect(app.getPathname()).toBe('/trip/abc/expenses');
-
-    await fireEvent.press(screen.getByLabelText('Back'));
-
-    expect(app.getPathname()).toBe('/');
   });
 });
