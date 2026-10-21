@@ -79,6 +79,8 @@ export interface ChipProps {
   accessibilityLabel: string;
   /** Default `button`, or `text` without `onPress`. */
   accessibilityRole?: AccessibilityRole;
+  /** Optional: what a press does, when the name does not say (a coming-soon chip). */
+  accessibilityHint?: string;
   disabled?: boolean;
   /** The "add" chip: no fill, a dashed border. */
   dashed?: boolean;
@@ -273,7 +275,12 @@ function useChipSurface({
 
 type HostInput = Pick<
   ChipProps,
-  'selected' | 'disabled' | 'accessibilityLabel' | 'testID' | 'className'
+  | 'selected'
+  | 'disabled'
+  | 'accessibilityLabel'
+  | 'accessibilityHint'
+  | 'testID'
+  | 'className'
 > & { role: AccessibilityRole };
 
 /** The props both forms of a chip put on their host node. */
@@ -282,6 +289,7 @@ function hostProps({
   selected = false,
   disabled = false,
   accessibilityLabel,
+  accessibilityHint,
   testID,
   className,
 }: HostInput) {
@@ -292,6 +300,7 @@ function hostProps({
     testID,
     accessibilityRole: role,
     accessibilityLabel,
+    accessibilityHint,
     accessibilityState: chipState(role, selected, disabled),
     className: classes || undefined,
   };

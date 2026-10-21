@@ -45,6 +45,7 @@ import { EnvelopeIcon } from 'phosphor-react-native/src/icons/Envelope';
 import { EyeSlashIcon } from 'phosphor-react-native/src/icons/EyeSlash';
 import { ExportIcon } from 'phosphor-react-native/src/icons/Export';
 import { FileTextIcon } from 'phosphor-react-native/src/icons/FileText';
+import { FootprintsIcon } from 'phosphor-react-native/src/icons/Footprints';
 import { ForkKnifeIcon } from 'phosphor-react-native/src/icons/ForkKnife';
 import { GearSixIcon } from 'phosphor-react-native/src/icons/GearSix';
 import { GlobeIcon } from 'phosphor-react-native/src/icons/Globe';
@@ -149,6 +150,7 @@ export const ICONS = {
   plane: AirplaneIcon,
   car: CarIcon,
   tram: TramIcon,
+  footprints: FootprintsIcon,
   bed: BedIcon,
   'fork-knife': ForkKnifeIcon,
   ticket: TicketIcon,
