@@ -97,6 +97,7 @@ export {
 } from './motion';
 
 export {
+  CoverGlow,
   Passport,
   Scrim,
   Sky,

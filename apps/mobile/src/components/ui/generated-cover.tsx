@@ -7,8 +7,8 @@
  *
  * A gradient of one of three palettes (`cover1..3` in the palette, drawn by `Scrim`, the one
  * gradient consumer), the country's code as a big ghost glyph (16 percent white) in the
- * bottom corner, and a dashed stamp outline in the top corner. With no country the glyph is
- * the initial of the trip. `thumb` is the small form: the code only, at 40 dp and in OPAQUE
+ * bottom corner, and a dashed stamp outline carrying the same code in the top corner. With
+ * no country the glyph is the initial of the trip. `thumb` is the small form: the code only, at 40 dp and in OPAQUE
  * white (text on a picture is never an alpha white, D5-10), no stamp.
  *
  * The flag chip is NOT drawn here. In the prototype frames (`trips-nocover`, `trip-nocover`)
@@ -26,7 +26,8 @@
  * no id yet.
  */
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Text as SvgText } from 'react-native-svg';
+import { useCSSVariable } from 'uniwind';
 
 import { useAppearance } from '@/hooks/use-appearance';
 import { fnv1a32 } from '@/lib/fnv1a';
@@ -34,6 +35,7 @@ import { Palettes, withAlpha } from '@/theme';
 
 import { initialsOf } from './avatar';
 import { Scrim, type CoverPaletteIndex } from './scrim';
+import { fontFamilyOf } from './stack-header';
 
 export type { CoverPaletteIndex } from './scrim';
 
@@ -107,8 +109,20 @@ function Glyph({
   );
 }
 
-/** Two rings, the outer one dashed, in the top corner, tilted: a stamp that was never inked. */
-function StampOutline({ color, testID }: { color: string; testID: string }) {
+/**
+ * Two rings, the outer one dashed, and the code between them (prototype `.cg-stamp`: 28 in
+ * the display face), in the top corner, tilted: a stamp that was never inked.
+ */
+function StampOutline({
+  color,
+  code,
+  testID,
+}: {
+  color: string;
+  code: string;
+  testID: string;
+}) {
+  const face = fontFamilyOf(useCSSVariable('--font-display-bold'));
   return (
     <View testID={testID} style={styles.stamp}>
       <Svg width="100%" height="100%" viewBox="0 0 120 120">
@@ -122,6 +136,18 @@ function StampOutline({ color, testID }: { color: string; testID: string }) {
           strokeDasharray="7 6"
         />
         <Circle cx={60} cy={60} r={44} fill="none" stroke={color} strokeWidth={1.5} />
+        {code === '' ? null : (
+          <SvgText
+            x={60}
+            y={70}
+            textAnchor="middle"
+            fontFamily={face}
+            fontWeight="normal"
+            fontSize={28}
+            fill={color}>
+            {code}
+          </SvgText>
+        )}
       </Svg>
     </View>
   );
@@ -149,6 +175,7 @@ export function GeneratedCover({
       {thumb ? null : (
         <StampOutline
           testID={`${testID}-stamp`}
+          code={glyph}
           color={withAlpha(onPhoto, OUTLINE_ALPHA)}
         />
       )}

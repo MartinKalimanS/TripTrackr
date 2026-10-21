@@ -130,10 +130,13 @@ describe('GeneratedCover - what is drawn', () => {
     expect(node('generated-cover-glyph')).toHaveTextContent('I');
   });
 
-  test('draws a dashed stamp outline, and no flag, no text of its own', async () => {
+  test('draws a dashed stamp outline carrying the code (picture trips-nocover), and no flag', async () => {
     await render(<GeneratedCover palette={0} iso2="PT" initial="P" />);
     const stamp = node('generated-cover-stamp');
     expect(stamp).toBeTruthy();
+    const drawn = JSON.stringify(screen.toJSON());
+    expect(drawn).toContain('"content":"PT"');
+    expect(drawn).toContain('"fontSize":28');
     expect(
       screen.queryByTestId('generated-cover-flag', { includeHiddenElements: true }),
     ).toBeNull();

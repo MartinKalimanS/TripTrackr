@@ -19,7 +19,14 @@ import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 import { ContrastFloor, PaletteNames, Palettes, type PaletteName } from '@/theme';
 import { blend, contrastRatio } from '@/theme/contrast';
-import { Passport, Sky, colourAt, scrimSpec, type GradientStop } from '@/theme/scrim';
+import {
+  CoverGlow,
+  Passport,
+  Sky,
+  colourAt,
+  scrimSpec,
+  type GradientStop,
+} from '@/theme/scrim';
 
 import { WHITE_PHOTO } from '../../../test/theme/palette-gate-support';
 
@@ -273,14 +280,17 @@ describe('Scrim - a generated cover is a gradient between two palette stops', ()
     },
   );
 
-  test('carries the faint amber corner of the passport as a layer above the gradient', async () => {
+  test('carries the amber corner of a cover (CoverGlow, not the passport glow) above the gradient', async () => {
     await render(<Scrim kind="cover" palette={0} />);
     const layers = layersOf('scrim-cover');
     expect(layers.map((layer) => layer.type)).toEqual([
       'radial-gradient',
       'linear-gradient',
     ]);
-    expect(stopsOf(layers[0])[0]).toMatchObject({ at: 0, rgb: Passport.glow.colour });
+    expect(stopsOf(layers[0])[0]).toMatchObject({ at: 0, rgb: CoverGlow.colour });
+    expect(stopsOf(layers[0])[0].alpha).toBeCloseTo(CoverGlow.alpha, 2);
+    expect(layers[0].size).toEqual({ x: '85%', y: '95%' });
+    expect(layers[0].position).toEqual({ left: '100%', top: '0%' });
   });
 
   test('takes the stops of the theme the traveller is in', async () => {

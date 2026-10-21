@@ -56,6 +56,7 @@ import {
 
 import { useAppearance } from '@/hooks/use-appearance';
 import {
+  CoverGlow,
   Palettes,
   Passport,
   Sky,
@@ -204,11 +205,11 @@ const COVER_STOPS = [
   ['cover3Start', 'cover3End'],
 ] as const satisfies readonly (readonly [keyof Palette, keyof Palette])[];
 
-/** A cover: the passport's amber corner over a gradient between the palette's two stops. */
+/** A cover: its amber corner over a gradient between the palette's two stops. */
 function coverLayers(palette: Palette, index: CoverPaletteIndex): Layer[] {
   const [start, end] = COVER_STOPS[index];
   return [
-    glowLayer(Passport.glow),
+    glowLayer(CoverGlow),
     linear(`${Passport.angle}deg`, [
       { color: palette[start], at: 0 },
       { color: palette[end], at: 1 },
