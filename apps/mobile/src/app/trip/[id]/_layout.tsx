@@ -95,7 +95,7 @@ export default function TripLayout() {
             }}
           />
           <Stack.Screen name="notes" options={titled('Notes')} />
-          <Stack.Screen name="expenses" options={titled('Spending')} />
+          <Stack.Screen name="expenses" options={{ headerShown: false }} />
           <Stack.Screen name="photos" options={{ headerShown: false }} />
           <Stack.Screen name="documents" options={titled('Documents')} />
           <Stack.Screen name="document-view" options={titled('Document')} />
