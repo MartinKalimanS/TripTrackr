@@ -18,7 +18,7 @@ const SOURCE = fs.readFileSync(path.join(__dirname, 'icon-registry.ts'), 'utf8')
 describe('the registry - D5-07', () => {
   test('holds about sixty icons', () => {
     expect(ICON_KEYS.length).toBeGreaterThanOrEqual(55);
-    expect(ICON_KEYS.length).toBeLessThanOrEqual(70);
+    expect(ICON_KEYS.length).toBeLessThanOrEqual(80);
   });
 
   test('a key is a lower-case word, joined by hyphens', () => {

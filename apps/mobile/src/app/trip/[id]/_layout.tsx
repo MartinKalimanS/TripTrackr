@@ -53,36 +53,28 @@
  * draw their own bars (the list's `AreaHeader`; the viewer's close, kind and "Only you" bar), so the
  * navigator's header is hidden for both.
  *
+ * Offline maps (F11, T552) adopts it too: with it no sub-screen has a native header any more, so the
+ * `titled()` helper and the plain Back are gone from this file.
+ *
  * No `unstable_settings` and no `initialParams` here: the root layout keeps the anchor
  * (`(tabs)`) and the route's params and deep links are exactly what they were.
  */
 import { Stack } from 'expo-router';
 
 import { RequireLocalStore } from '@/components/require-local-store';
-import { HeaderBackButton } from '@/components/ui/header-back-button';
 import { useHeaderTheme, useTransparentHeaderTheme } from '@/components/ui/header-theme';
-import { useHeaderTitleStyle } from '@/components/ui/header-title-style';
 import {
   TripHeaderBack,
   TripHeaderProvider,
   TripHeaderTools,
 } from '@/components/trip/trip-header-controls';
 
-const renderBack = () => <HeaderBackButton />;
 const renderHeroBack = () => <TripHeaderBack />;
 const renderHeroTools = () => <TripHeaderTools />;
 
 export default function TripLayout() {
   const theme = useHeaderTheme();
   const transparent = useTransparentHeaderTheme();
-  const title = useHeaderTitleStyle();
-  const titled = (text: string) => ({
-    ...theme,
-    ...title,
-    headerShown: true,
-    title: text,
-    headerLeft: renderBack,
-  });
 
   return (
     <RequireLocalStore>
