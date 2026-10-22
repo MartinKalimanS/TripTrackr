@@ -522,10 +522,15 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
       _As built (F9, 2026-10-21):_ notes by day, `NoteCard` foot row with the honest sync state, the editor sheet with Cancel and
       Save (no autosave) and the formatting strip as coming-soon controls; note `reference/as-built/f9-notes.md`; branch
       `feat/f9-notes` tip `95a3f90`; 352 suites / 8,717 tests green on the branch.
-- [ ] T552 [P] [US4] Branch `feat/005-areas-documents`. Failing tests then `DocumentTicket` (three kinds: boarding
+- [x] T552 [P] [US4] Branch `feat/005-areas-documents`. Failing tests then `DocumentTicket` (three kinds: boarding
       pass, booking, other), the viewer with the barcode on a white plate, `PrivacyChip` and the existing privacy
       line, `OfflineCityCard` and `StorageBar`; screen-capture protection unchanged;
       `05-photos-and-documents` (FR-049, FR-050; D5-17)
+      _As built (F10 and F11, 2026-10-22):_ `DocumentTicket` with the notches and perforation, the viewer on a white plate (no share
+      control: documents are never shareable), `OfflineCityCard`, `StorageBar`, the Downloaded list with the real Remove; the pictured
+      extras are coming-soon controls (Q-11); notes `reference/as-built/f10-documents.md` and `f11-offline-maps.md`; branches
+      `feat/f10-documents` (`c52acbc`) and `feat/f11-offline-maps` (`99f3e3c`); merged gate on `feat/ui-stack` 360 suites / 8,868 tests,
+      `tsc`, ESLint, Prettier, parity and theme check green. `05-photos-and-documents` and `04-zoom` were read, not run.
 - [x] T553 [P] [US5] Branch `feat/005-areas-forms`. Failing keyboard-visibility tests then the `FormSheet` look (28 dp
       radius, handle, Cancel in ink), New trip with name and currency only, the stop editor with `RoutePreview`
       and `NightsStepper` over the unchanged date fields, the city picker with flag chips; `01-account-and-trip`
