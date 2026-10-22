@@ -6,7 +6,7 @@
 import { View } from 'react-native';
 import Svg, { Circle, Ellipse, Path } from 'react-native-svg';
 
-import { useAppearance } from '@/hooks/use-appearance';
+import { useColors } from '@/components/ui/theme-tokens';
 
 const DECORATIVE = {
   accessible: false,
@@ -14,28 +14,30 @@ const DECORATIVE = {
   importantForAccessibility: 'no-hide-descendants',
 } as const;
 
+const MARK_COLOURS = ['ink', 'accentLine'] as const;
+
 export function WelcomeMark({ size = 32 }: { size?: number }) {
-  const { tokens } = useAppearance();
+  const colours = useColors(MARK_COLOURS);
   return (
     <View testID="welcome-mark" {...DECORATIVE}>
       <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-        <Circle cx={16} cy={16} r={12.5} stroke={tokens.ink} strokeWidth={1.75} />
+        <Circle cx={16} cy={16} r={12.5} stroke={colours.ink} strokeWidth={1.75} />
         <Ellipse
           cx={16}
           cy={16}
           rx={5.5}
           ry={12.5}
-          stroke={tokens.ink}
+          stroke={colours.ink}
           strokeWidth={1.75}
         />
-        <Path d="M3.5 16h25" stroke={tokens.ink} strokeWidth={1.75} />
+        <Path d="M3.5 16h25" stroke={colours.ink} strokeWidth={1.75} />
         <Path
           d="M5 22C9 11 18 7 27 9"
-          stroke={tokens.accentLine}
+          stroke={colours.accentLine}
           strokeWidth={2.25}
           strokeLinecap="round"
         />
-        <Circle cx={27} cy={9} r={2.6} fill={tokens.accentLine} />
+        <Circle cx={27} cy={9} r={2.6} fill={colours.accentLine} />
       </Svg>
     </View>
   );

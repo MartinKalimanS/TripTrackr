@@ -12,7 +12,7 @@ import { Text } from '@/components/ui/text';
 export function PrivacyPromise() {
   return (
     <View testID="privacy-promise" className="flex-row items-center gap-2">
-      <Icon name="lock" size={16} tone="aqua" />
+      <Icon name="lock" size={16} tone="aquaInk" />
       <Text variant="label" strong tone="aqua" className="shrink">
         Expenses and documents stay private to you.
       </Text>
