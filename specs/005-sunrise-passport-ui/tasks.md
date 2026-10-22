@@ -544,20 +544,27 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 ## Phase 8: Welcome, sign-in, You, delight (branch `feat/005-auth-you`) — User Stories 7 and 8
 
-- [ ] T554 [P] [US7] Failing tests then Welcome: sky `Scrim`, the turning globe (static under reduced motion,
+- [x] T554 [P] [US7] Failing tests then Welcome: sky `Scrim`, the turning globe (static under reduced motion,
       `useIdleSpin` at world scale), the 28 dp sheet with the existing tagline (one nested accent word) and the
       two buttons; `01-appearance` (FR-056, FR-019; D5-04; Q-5)
-- [ ] T555 [P] [US7] Sign in and Create account restyle: failing tests for the thumb-zone primary, words-and-icon
+      _As built (F12, 2026-10-22):_ Welcome with the three pictured buttons (Apple on iOS only, Google, email = `welcome-create-account`), the sky,
+      FIRST STAMP and a static composed globe (the approved fallback); `reference/as-built/f12-auth.md`; branch `feat/f12-auth` (`41434ae`).
+- [x] T555 [P] [US7] Sign in and Create account restyle: failing tests for the thumb-zone primary, words-and-icon
       errors and the unchanged `secureTextEntry`, `textContentType`, `autoComplete`; a light security review
       (error mapping and logging unchanged); `00-smoke`, `offline/00-a-setup-account` (FR-057)
-- [ ] T556 [P] [US7] Failing `features/passport/stamp-spec.test.ts` (200 or more country and date pairs give the same
+      _As built (F12, 2026-10-22):_ sign in and create account restyled, error summary that focuses fields, credential props and error mapping untouched,
+      security review in the as-built note; Maestro ids resolve (flows not run).
+- [x] T556 [P] [US7] Failing `features/passport/stamp-spec.test.ts` (200 or more country and date pairs give the same
       stamp twice, fixed shape, ink, rotation between −8 and 8, wear and perforation by the hash rules), then
       `passport-totals.test.ts` (period membership by first arrival, continents excluding Unknown, lap fraction)
       then `stamp-spec.ts`, `passport-totals.ts` (FR-058, FR-059, FR-084; D5-08, D5-17; SC-016)
-- [ ] T557 [US7] You screen: failing tests then identity ("Traveller since" from the account's creation year),
+      _As built (F13, 2026-10-22):_ `features/passport/stamp-spec.ts` and `passport-totals.ts`, test-first; `reference/as-built/f13-you.md`; branch `feat/f13-you` (`883f944`).
+- [x] T557 [US7] You screen: failing tests then identity ("Traveller since" from the account's creation year),
       `PeriodSwitch`, `PassportCard`, `StampsPage` (rasterised past about 100 stamps), the Account and App groups,
       Sign out and Delete account set apart with the guard unchanged; `offline/11-*`; a 120-stamp scroll test
       (FR-058, FR-059, FR-081; D5-08; Q-2)
+      _As built (F13, 2026-10-22):_ You screen, passport card, stamps page (baked to bitmaps from 100 stamps, 120-stamp scroll test), coming-soon Share, Settings and recap;
+      merged gate on `feat/ui-stack` 376 suites / 9,066 tests (one 20 s timeout in `list-group.test.tsx` while the machine stalled; 40/40 alone), `tsc`, ESLint, Prettier, parity and theme check green. `offline/11-a` was updated, not run.
 - [ ] T558 [US8] Delight: failing tests then count-up trigger policy once per appearance, the stamp landing for
       stamps earned in the last 7 days once per session with the heavy haptic, the live pin pulse, selection
       haptics on detent, tab and chip; nothing under reduced motion (FR-060, FR-061, FR-062; D5-11, D5-14)

@@ -22,48 +22,48 @@ Last updated: 2026-10-22 (UI features F1 to F9 built; evidence log added). Sessi
 
 ## Steps
 
-| Done | Step                                             | State / evidence                                                                                                                                                                      |
-| ---- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [ ]  | S-01 Repository governance and security baseline | not started                                                                                                                                                                           |
-| [ ]  | S-02 Sunrise Passport UI F3 to F14               | F1 and F2 approved and in `main`; F3 to F11 built and awaiting approval (stack `feat/ui-stack`); F10 and F11 built; F12 and F13 in progress; F14 not started. Evidence: the log below |
-| [ ]  | S-03 Device proof of the core                    | not started                                                                                                                                                                           |
-| [ ]  | S-04 Offline acceptance gate (HARD GATE)         | not started                                                                                                                                                                           |
-| [ ]  | S-05 Account deletion                            | not started                                                                                                                                                                           |
-| [ ]  | S-06 Data export                                 | not started                                                                                                                                                                           |
-| [ ]  | S-07 About, legal links, attributions            | not started                                                                                                                                                                           |
-| [ ]  | S-08 Geography in production                     | not started                                                                                                                                                                           |
-| [ ]  | S-09 Authentication audit and hardening          | not started                                                                                                                                                                           |
-| [ ]  | S-10 Allowance and entitlement backend           | not started                                                                                                                                                                           |
-| [ ]  | S-11 RevenueCat server integration               | not started                                                                                                                                                                           |
-| [ ]  | S-12 Paywall and subscription management         | not started                                                                                                                                                                           |
-| [ ]  | S-13 IAP products in the stores and RevenueCat   | not started                                                                                                                                                                           |
-| [ ]  | S-14 Planner backend (1.1)                       | not started                                                                                                                                                                           |
-| [ ]  | S-15 Planner screens (1.1)                       | not started                                                                                                                                                                           |
-| [ ]  | S-16 Planner cost controls (1.1)                 | not started                                                                                                                                                                           |
-| [ ]  | S-17 Photo screening provider (1.2)              | not started                                                                                                                                                                           |
-| [ ]  | S-18 Social backend (1.2)                        | not started                                                                                                                                                                           |
-| [ ]  | S-19 Social screens (1.2)                        | not started                                                                                                                                                                           |
-| [ ]  | S-20 UGC compliance (1.2)                        | not started                                                                                                                                                                           |
-| [ ]  | S-21 Performance and load                        | not started                                                                                                                                                                           |
-| [ ]  | S-22 Security hardening                          | not started                                                                                                                                                                           |
-| [ ]  | S-23 Accessibility pass                          | not started                                                                                                                                                                           |
-| [ ]  | S-24 Observability                               | not started                                                                                                                                                                           |
-| [ ]  | S-25 Production host, domain and TLS             | not started                                                                                                                                                                           |
-| [ ]  | S-26 Production configuration and backups        | not started                                                                                                                                                                           |
-| [ ]  | S-27 API deploy pipeline                         | not started                                                                                                                                                                           |
-| [ ]  | S-28 EAS setup and first builds                  | not started                                                                                                                                                                           |
-| [ ]  | S-29 Mobile PR checks                            | not started                                                                                                                                                                           |
-| [ ]  | S-30 Release automation                          | not started                                                                                                                                                                           |
-| [ ]  | S-31 Store accounts and app records              | not started                                                                                                                                                                           |
-| [ ]  | S-32 Legal documents, support, static site       | not started                                                                                                                                                                           |
-| [ ]  | S-33 Listing, assets, review notes, demo account | not started                                                                                                                                                                           |
-| [ ]  | S-34 Store-readiness compliance run              | not started                                                                                                                                                                           |
-| [ ]  | S-35 Internal testing                            | not started                                                                                                                                                                           |
-| [ ]  | S-36 Closed beta                                 | not started                                                                                                                                                                           |
-| [ ]  | S-37 Release candidate                           | not started                                                                                                                                                                           |
-| [ ]  | S-38 Submission and review                       | not started                                                                                                                                                                           |
-| [ ]  | S-39 Staged rollout and hotfix readiness         | not started                                                                                                                                                                           |
-| [ ]  | S-40 Operate                                     | not started                                                                                                                                                                           |
+| Done | Step                                             | State / evidence                                                                                                                                             |
+| ---- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [ ]  | S-01 Repository governance and security baseline | not started                                                                                                                                                  |
+| [ ]  | S-02 Sunrise Passport UI F3 to F14               | F1 and F2 approved and in `main`; F3 to F13 built and awaiting approval (stack `feat/ui-stack`); F12 and F13 built; F14 not started. Evidence: the log below |
+| [ ]  | S-03 Device proof of the core                    | not started                                                                                                                                                  |
+| [ ]  | S-04 Offline acceptance gate (HARD GATE)         | not started                                                                                                                                                  |
+| [ ]  | S-05 Account deletion                            | not started                                                                                                                                                  |
+| [ ]  | S-06 Data export                                 | not started                                                                                                                                                  |
+| [ ]  | S-07 About, legal links, attributions            | not started                                                                                                                                                  |
+| [ ]  | S-08 Geography in production                     | not started                                                                                                                                                  |
+| [ ]  | S-09 Authentication audit and hardening          | not started                                                                                                                                                  |
+| [ ]  | S-10 Allowance and entitlement backend           | not started                                                                                                                                                  |
+| [ ]  | S-11 RevenueCat server integration               | not started                                                                                                                                                  |
+| [ ]  | S-12 Paywall and subscription management         | not started                                                                                                                                                  |
+| [ ]  | S-13 IAP products in the stores and RevenueCat   | not started                                                                                                                                                  |
+| [ ]  | S-14 Planner backend (1.1)                       | not started                                                                                                                                                  |
+| [ ]  | S-15 Planner screens (1.1)                       | not started                                                                                                                                                  |
+| [ ]  | S-16 Planner cost controls (1.1)                 | not started                                                                                                                                                  |
+| [ ]  | S-17 Photo screening provider (1.2)              | not started                                                                                                                                                  |
+| [ ]  | S-18 Social backend (1.2)                        | not started                                                                                                                                                  |
+| [ ]  | S-19 Social screens (1.2)                        | not started                                                                                                                                                  |
+| [ ]  | S-20 UGC compliance (1.2)                        | not started                                                                                                                                                  |
+| [ ]  | S-21 Performance and load                        | not started                                                                                                                                                  |
+| [ ]  | S-22 Security hardening                          | not started                                                                                                                                                  |
+| [ ]  | S-23 Accessibility pass                          | not started                                                                                                                                                  |
+| [ ]  | S-24 Observability                               | not started                                                                                                                                                  |
+| [ ]  | S-25 Production host, domain and TLS             | not started                                                                                                                                                  |
+| [ ]  | S-26 Production configuration and backups        | not started                                                                                                                                                  |
+| [ ]  | S-27 API deploy pipeline                         | not started                                                                                                                                                  |
+| [ ]  | S-28 EAS setup and first builds                  | not started                                                                                                                                                  |
+| [ ]  | S-29 Mobile PR checks                            | not started                                                                                                                                                  |
+| [ ]  | S-30 Release automation                          | not started                                                                                                                                                  |
+| [ ]  | S-31 Store accounts and app records              | not started                                                                                                                                                  |
+| [ ]  | S-32 Legal documents, support, static site       | not started                                                                                                                                                  |
+| [ ]  | S-33 Listing, assets, review notes, demo account | not started                                                                                                                                                  |
+| [ ]  | S-34 Store-readiness compliance run              | not started                                                                                                                                                  |
+| [ ]  | S-35 Internal testing                            | not started                                                                                                                                                  |
+| [ ]  | S-36 Closed beta                                 | not started                                                                                                                                                  |
+| [ ]  | S-37 Release candidate                           | not started                                                                                                                                                  |
+| [ ]  | S-38 Submission and review                       | not started                                                                                                                                                  |
+| [ ]  | S-39 Staged rollout and hotfix readiness         | not started                                                                                                                                                  |
+| [ ]  | S-40 Operate                                     | not started                                                                                                                                                  |
 
 ## UI features (S-02 detail; each approved by the owner)
 
@@ -81,8 +81,8 @@ The owner asked (2026-10-22) to keep implementing without waiting at each featur
 - [ ] F9 Notes (built 2026-10-21; awaiting approval)
 - [ ] F10 Documents (built 2026-10-22; awaiting approval)
 - [ ] F11 Offline maps (built 2026-10-22; awaiting approval)
-- [ ] F12 Welcome, sign in, create account
-- [ ] F13 You
+- [ ] F12 Welcome, sign in, create account (built 2026-10-22; awaiting approval)
+- [ ] F13 You (built 2026-10-22; awaiting approval)
 - [ ] F14 Sweeps, retire Atlas, release gates (the finer list is `specs/005-sunrise-passport-ui/reference/IMPLEMENTATION-PLAN.md`)
 
 ## Evidence log (small steps)
@@ -113,6 +113,9 @@ row here is not done. Test counts are the full Jest run of the workspace on that
 | 2026-10-22 | F10 documents: tickets, viewer, capture and confirm   | `feat/f10-documents` (`c52acbc`)      | 351 suites / 8,710 tests; `as-built/f10-documents.md`; spec T552 ticked                                                          |
 | 2026-10-22 | F11 offline maps: storage card, rows, Downloaded list | `feat/f11-offline-maps` (`99f3e3c`)   | 350 suites / 8,690 tests; `as-built/f11-offline-maps.md`                                                                         |
 | 2026-10-22 | Merge F8 to F11 into the stack, repair the seams      | `feat/ui-stack` (`676f8be`)           | 360 suites / 8,868 tests, tsc, ESLint, Prettier, parity, theme green; icon cap lifted 70 to 80; no native sub-screen header left |
+| 2026-10-22 | F12 Welcome, sign in, create account                  | `feat/f12-auth` (`41434ae`)           | 361 suites / 8,840 tests; `as-built/f12-auth.md`; spec T554, T555 ticked                                                         |
+| 2026-10-22 | F13 You: passport, stamps, groups                     | `feat/f13-you` (`883f944`)            | 365 suites / 8,887 tests; `as-built/f13-you.md`; spec T556, T557 ticked                                                          |
+| 2026-10-22 | Merge F12 and F13 into the stack                      | `feat/ui-stack` (`bbce1c9`)           | 376 suites / 9,066 tests, tsc, ESLint, Prettier, parity (100 ids, 80 labels), theme green; one timeout flake, passes alone       |
 
 ## Feature 001 open tasks (65 of 228 at 2026-10-21; the list moves to the steps above)
 
