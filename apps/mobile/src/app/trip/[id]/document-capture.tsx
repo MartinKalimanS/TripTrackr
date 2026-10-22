@@ -17,10 +17,10 @@
  *
  * A camera surface keeps its own bar instead of the navigation header
  * (`trip/[id]/_layout.tsx` leaves `document-capture` headerless, on purpose): the preview
- * wants the whole width and as much of the height as the page can give, a second title
- * would repeat `document-capture-title`, and the bar below carries the Back it always had
- * (named "Back", `Button` text variant, which, unlike a header's, grows with the text size
- * and always shows its word). The camera preview is the full width of the screen in a
+ * wants the whole width and as much of the height as the page can give. Since 005 T552 the bar is
+ * the shared `AreaHeader` (the tonal Back disc, still named "Back", the title
+ * `document-capture-title` and the "Only you" chip), so the capture screen looks like the list and the
+ * viewer it comes from. The camera preview is the full width of the screen in a
  * hairline frame, and every control is OUTSIDE it and opaque: nothing is drawn across the
  * picture (FR-033). One primary per state (FR-005): the shutter while the camera is live,
  * "Allow camera" or "Open Settings" when it is not; the library is secondary throughout.
@@ -36,6 +36,7 @@ import { View } from 'react-native';
 
 import { DocumentCamera } from '@/components/trip/document-camera';
 import { DocumentCameraPermission } from '@/components/trip/document-camera-permission';
+import { AreaHeader } from '@/components/ui/area-header';
 import { Button } from '@/components/ui/button';
 import { ChipGroup, type ChipOption } from '@/components/ui/chip';
 import type { IconName } from '@/components/ui/icon';
@@ -74,7 +75,6 @@ const HINTS: Readonly<Record<DocumentType, string>> = {
   other: 'Fill the frame with the document, then take the photo.',
 };
 
-const BACK: IconName = 'chevron-left';
 const LIBRARY: IconName = 'images';
 
 type CameraAreaProps = {
@@ -125,25 +125,6 @@ function CaptureProblems({ problem }: { problem: DocumentCapture['problem'] }) {
   );
 }
 
-/** The screen's own bar: the way back, then the title, wrapping under large text. */
-function CaptureBar({ onBack }: { onBack: () => void }) {
-  return (
-    <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
-      <Button
-        variant="text"
-        size="sm"
-        icon={BACK}
-        accessibilityLabel="Back"
-        onPress={onBack}>
-        Back
-      </Button>
-      <Text type="title" testID="document-capture-title">
-        Add a document
-      </Text>
-    </View>
-  );
-}
-
 export default function DocumentCaptureScreen() {
   useScreenCaptureGuard();
   const router = useRouter();
@@ -154,41 +135,47 @@ export default function DocumentCaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions();
 
   return (
-    <Screen testID="document-capture-screen">
-      <CaptureBar onBack={() => router.back()} />
-
-      <ChipGroup
-        options={TYPE_OPTIONS}
-        selectedKey={type}
-        onSelect={(key) => setType(key as DocumentType)}
+    <View className="flex-1 bg-background">
+      <AreaHeader
+        title="Add a document"
+        titleTestID="document-capture-title"
+        privacy
+        onBack={() => router.back()}
       />
-      <Text type="callout" tone="muted" testID="document-capture-hint">
-        {HINTS[type]}
-      </Text>
-
-      <CameraArea
-        permission={permission}
-        onAllow={() => void requestPermission()}
-        type={type}
-        capture={capture}
-      />
-
-      <CaptureProblems problem={capture.problem} />
-      {capture.busy ? (
-        <Text type="callout" accessibilityLiveRegion="polite">
-          Saving to this device…
+      <Screen testID="document-capture-screen" edges={['bottom']}>
+        <ChipGroup
+          options={TYPE_OPTIONS}
+          selectedKey={type}
+          onSelect={(key) => setType(key as DocumentType)}
+        />
+        <Text type="callout" tone="muted" testID="document-capture-hint">
+          {HINTS[type]}
         </Text>
-      ) : null}
 
-      <Button
-        testID="document-capture-library"
-        variant="secondary"
-        icon={LIBRARY}
-        accessibilityLabel="Choose from library"
-        busy={capture.busy}
-        onPress={capture.onLibrary}>
-        Choose from library
-      </Button>
-    </Screen>
+        <CameraArea
+          permission={permission}
+          onAllow={() => void requestPermission()}
+          type={type}
+          capture={capture}
+        />
+
+        <CaptureProblems problem={capture.problem} />
+        {capture.busy ? (
+          <Text type="callout" accessibilityLiveRegion="polite">
+            Saving to this device…
+          </Text>
+        ) : null}
+
+        <Button
+          testID="document-capture-library"
+          variant="secondary"
+          icon={LIBRARY}
+          accessibilityLabel="Choose from library"
+          busy={capture.busy}
+          onPress={capture.onLibrary}>
+          Choose from library
+        </Button>
+      </Screen>
+    </View>
   );
 }
