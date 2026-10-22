@@ -84,3 +84,13 @@ export function isOutOfSpaceError(error: unknown): boolean {
   }
   return false;
 }
+
+/** Bytes free on the volume that holds app storage, or null when the platform cannot say. */
+export function freeDiskBytes(): number | null {
+  try {
+    const free = Paths.availableDiskSpace;
+    return typeof free === 'number' && Number.isFinite(free) && free > 0 ? free : null;
+  } catch {
+    return null;
+  }
+}

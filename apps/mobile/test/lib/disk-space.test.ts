@@ -8,6 +8,7 @@
  */
 import {
   StorageFullError,
+  freeDiskBytes,
   hasRoomFor,
   isOutOfSpaceError,
   requireRoomFor,
@@ -125,5 +126,19 @@ describe('StorageFullError', () => {
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe('StorageFullError');
     expect(error.message).toMatch(/free space/i);
+  });
+});
+
+describe('freeDiskBytes - the offline maps storage card (F11)', () => {
+  test('is the platform’s reading when it gives one', () => {
+    mockDisk.free = 1_700_000_000;
+    expect(freeDiskBytes()).toBe(1_700_000_000);
+  });
+
+  test('is null when the platform cannot say: missing, zero, negative or not a number', () => {
+    for (const reading of [undefined, 0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      mockDisk.free = reading;
+      expect(freeDiskBytes()).toBeNull();
+    }
   });
 });
