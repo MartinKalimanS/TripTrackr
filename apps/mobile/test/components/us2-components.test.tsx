@@ -15,6 +15,7 @@ import type { NoteWithPlace } from '@/db/repositories/notes';
 import type { AnchorTarget } from '@/features/notes/use-move-note';
 
 import { classesOf } from '../helpers/host-nodes';
+import { glyphNamesIn } from '../helpers/icons';
 
 const targets: AnchorTarget[] = [
   {
