@@ -59,6 +59,14 @@ const STAMP = { below: 74, size: 104, margin: Space[5] } as const;
 /** What the hero holds at least: the wordmark row and the stamp, below the status bar. */
 const HERO_MIN_BELOW_STATUS_BAR = 180;
 const WORDMARK_BELOW_STATUS_BAR = 6;
+/** The wordmark row's own height: all the hero holds when the decoration yields. */
+const WORDMARK_ROW = 40;
+/**
+ * From this text scale the decoration yields (FR-029): the stamp is not drawn and the hero
+ * shrinks to the wordmark row, so the sheet (which grows with the text) keeps its three buttons
+ * as near the screen as it can. Below it the composition is as pictured.
+ */
+const DECORATION_YIELDS_AT = 1.3;
 
 /** Today as the local `YYYY-MM-DD` the stamp prints: decoration, never the traveller's day. */
 function todayLocal(): string {
@@ -91,7 +99,8 @@ function Headline() {
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { tokens, themeName } = useAppearance();
+  const { tokens, themeName, fontScale } = useAppearance();
+  const decorated = fontScale < DECORATION_YIELDS_AT;
   const { width } = useWindowDimensions();
   const insets = useContext(SafeAreaInsetsContext) ?? NO_INSETS;
   const social = useSocialSignIn();
@@ -110,25 +119,33 @@ export default function WelcomeScreen() {
         <View
           testID="welcome-hero"
           className="grow shrink-0 basis-auto"
-          style={{ minHeight: insets.top + HERO_MIN_BELOW_STATUS_BAR }}>
+          style={{
+            minHeight:
+              insets.top +
+              (decorated
+                ? HERO_MIN_BELOW_STATUS_BAR
+                : WORDMARK_BELOW_STATUS_BAR + WORDMARK_ROW + Space[2]),
+          }}>
           <View
             className="absolute flex-row items-center gap-2"
             style={{ left: Space[5], top: insets.top + WORDMARK_BELOW_STATUS_BAR }}>
             <WelcomeMark />
             <Text variant="callout">TripTrackr</Text>
           </View>
-          <View
-            testID="welcome-stamp"
-            pointerEvents="none"
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={{
-              position: 'absolute',
-              right: STAMP.margin,
-              top: insets.top + STAMP.below,
-            }}>
-            <Stamp spec={firstStamp()} size={STAMP.size} testID="welcome-stamp-art" />
-          </View>
+          {decorated ? (
+            <View
+              testID="welcome-stamp"
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={{
+                position: 'absolute',
+                right: STAMP.margin,
+                top: insets.top + STAMP.below,
+              }}>
+              <Stamp spec={firstStamp()} size={STAMP.size} testID="welcome-stamp-art" />
+            </View>
+          ) : null}
         </View>
 
         <View

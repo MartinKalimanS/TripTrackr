@@ -426,6 +426,26 @@ describe('Welcome - the composition', () => {
     expect(screen.getByTestId('welcome-sign-in')).toBeTruthy();
   });
 
+  test('at the largest text sizes the decoration yields: no stamp, a shorter hero, every button still there', async () => {
+    useAppearance.mockReturnValue(appearance());
+    const { rerender } = await render(<WelcomeScreen />);
+    const roomy = flat(screen.getByTestId('welcome-hero').props.style)
+      .minHeight as number;
+    expect(screen.getByTestId('welcome-stamp', hidden)).toBeTruthy();
+
+    useAppearance.mockReturnValue(appearance({ fontScale: 1.3 }));
+    await rerender(<WelcomeScreen />);
+    expect(screen.queryByTestId('welcome-stamp', hidden)).toBeNull();
+    expect(flat(screen.getByTestId('welcome-hero').props.style).minHeight).toBeLessThan(
+      roomy,
+    );
+    expect(screen.getByText('TripTrackr')).toBeTruthy();
+    expect(screen.getByTestId('welcome-globe', hidden)).toBeTruthy();
+    for (const id of ['welcome-create-account', 'welcome-sign-in']) {
+      expect(screen.getByTestId(id)).toBeTruthy();
+    }
+  });
+
   test('the globe is a still frame: no timer, no frame loop, with or without reduced motion', async () => {
     for (const prefersLessMotion of [false, true]) {
       useAppearance.mockReturnValue(appearance({ prefersLessMotion }));
