@@ -21,6 +21,26 @@ import { UnsyncedChangesError } from '@/features/auth/use-sign-out';
 import { useConflictStore } from '@/sync/conflicts';
 import type { SyncStatus } from '@/sync/types';
 
+// The You screen's passport has its own suites (components/profile, test/app/profile-screen):
+// here the store has no countries and the screen's own rows are what is pinned.
+const mockPassport = {
+  data: { trips: [], summaries: [], periods: ['all'] },
+  loading: false,
+  error: null as Error | null,
+};
+jest.mock('@/features/passport/use-passport', () => ({
+  usePassport: () => mockPassport,
+}));
+
+// The stamps page draws baked stamps through expo-image, whose real module needs the
+// `experienceUrl` the expo-constants stand-in of this suite does not have.
+jest.mock('expo-image', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+  const Host = View as unknown as React.ComponentType<Record<string, unknown>>;
+  return { Image: (props: Record<string, unknown>) => React.createElement(Host, props) };
+});
+
 jest.mock('react-native-worklets', () => require('../mocks/worklets'));
 jest.mock('react-native-reanimated', () => require('../mocks/reanimated-full'));
 // The suite-wide stand-in is replaced by the real kit for THIS file only.

@@ -263,6 +263,13 @@ describe('<StampsPage> - a long passport is baked to bitmaps', () => {
       width: 124,
       height: 124,
     });
+    let up = pictures[0]!.parent;
+    while (up && !StyleSheet.flatten(up.props.style)?.transform) up = up.parent;
+    const holder = StyleSheet.flatten(up!.props.style);
+    expect(holder.transform).toEqual([
+      { rotate: expect.stringMatching(/^-?[0-9]+deg$/) },
+    ]);
+    expect(holder.mixBlendMode).toBe('multiply');
     // The slot it held goes to the next stamp in line.
     expect(screen.getAllByTestId(/^stamp-art-[A-Z]{2}-stage$/, hidden)).toHaveLength(3);
   });

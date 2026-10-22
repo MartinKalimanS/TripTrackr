@@ -118,11 +118,7 @@ export function RasterStamp({ spec, size, testID = 'stamp-raster' }: RasterStamp
   const tilt = { transform: [{ rotate: `${spec.rotationDeg}deg` }] } as const;
   if (uri !== undefined) {
     return (
-      <Image
-        testID={testID}
-        source={{ uri }}
-        contentFit="contain"
-        transition={0}
+      <View
         {...DECORATIVE}
         style={[
           {
@@ -131,8 +127,16 @@ export function RasterStamp({ spec, size, testID = 'stamp-raster' }: RasterStamp
             mixBlendMode: theme === 'light' ? 'multiply' : 'normal',
           },
           tilt,
-        ]}
-      />
+        ]}>
+        <Image
+          testID={testID}
+          source={{ uri }}
+          contentFit="contain"
+          transition={0}
+          {...DECORATIVE}
+          style={{ width: size, height: size }}
+        />
+      </View>
     );
   }
   const drawn = phase === 'capturing' || phase === 'failed';
