@@ -183,7 +183,7 @@ describe('the sign-in screen over the real kit', () => {
     expect(mockMutations.login.mutate).toHaveBeenCalledTimes(1);
   });
 
-  test('the provider buttons are outlined, named and in one column under the action', async () => {
+  test('the provider buttons are pills, named and in one column under the action', async () => {
     await renderScreen(<LoginScreen />);
 
     const google = screen.getByTestId('google-sign-in-unavailable');
@@ -192,10 +192,11 @@ describe('the sign-in screen over the real kit', () => {
     expect(apple.props.accessibilityLabel).toBe('Continue with Apple');
     for (const button of [google, apple]) {
       expect(button.props.accessibilityRole).toBe('button');
-      expect(classesOf(button)).toEqual(
-        expect.arrayContaining(['border', 'border-border', 'self-stretch']),
-      );
+      expect(classesOf(button)).toContain('self-stretch');
     }
+    expect(classesOf(google)).toEqual(
+      expect.arrayContaining(['border', 'border-border']),
+    );
     expect(within(apple).getByText('Continue with Apple')).toBeTruthy();
     expect(
       within(screen.getByTestId('login-actions')).getByTestId('social-sign-in'),

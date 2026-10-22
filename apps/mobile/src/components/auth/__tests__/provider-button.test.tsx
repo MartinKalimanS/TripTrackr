@@ -2,12 +2,13 @@
  * `ProviderButton` - the "Continue with Google / Apple" button (feature 004, T446; FR-005,
  * FR-024, FR-025, FR-026, FR-029, FR-030; contract C4-11 "outline social buttons").
  *
- * An OUTLINED control: no fill, a boundary the colour gate measures at 3:1 (FR-024), the
- * provider's logo and its name in words, as wide as the screen's content so the thumb finds
- * it. It is a secondary control (FR-005): only the screen's own action is primary.
+ * A 52 dp pill (F12, owner decision Q-11): Google outlined with a boundary the colour gate
+ * measures at 3:1 (FR-024), Apple as the Sign in with Apple button (black, white in the dark),
+ * each with the provider's logo and its name in words, as wide as the screen's content so the
+ * thumb finds it. It is a secondary control (FR-005): only the screen's own action is primary.
  *
  * Both providers are drawn the same size and with the same prominence (App Store Review
- * Guideline 4.8, docs/release/store-readiness.md): one component, one set of classes.
+ * Guideline 4.8, docs/release/store-readiness.md): one component, the same size, shape and type.
  *
  * Jest renders no styles: classes and props are what is asserted. That the outline draws,
  * and how it looks in four themes, is a device check.
@@ -58,7 +59,7 @@ describe('<ProviderButton> - what it says', () => {
       expect(button.props.accessibilityRole).toBe('button');
       expect(button.props.accessibilityLabel).toBe(`Continue with ${name}`);
       expect(within(button).getByText(`Continue with ${name}`)).toBeTruthy();
-      expect(within(button).getByTestId(`icon-logo-${provider}`, hidden)).toBeTruthy();
+      expect(within(button).getByTestId('brand-glyph', hidden)).toBeTruthy();
     },
   );
 
@@ -70,7 +71,7 @@ describe('<ProviderButton> - what it says', () => {
   });
 });
 
-describe('<ProviderButton> - an outline, secondary control (FR-005, FR-024)', () => {
+describe('<ProviderButton> - a pill, a secondary control (FR-005, FR-024)', () => {
   test('is outlined with the boundary token, fills nothing and spans the content width', async () => {
     await render(<ProviderButton provider="google" onPress={jest.fn()} />);
     const classes = classesOf(screen.getByTestId('google-sign-in'));
@@ -108,7 +109,7 @@ describe('<ProviderButton> - an outline, secondary control (FR-005, FR-024)', ()
     expect(words.props.numberOfLines).toBeUndefined();
   });
 
-  test('draws Google and Apple identically: same classes, same size, same prominence (Guideline 4.8)', async () => {
+  test('draws Google and Apple at the same size and weight: same shape, type and width, only the brand fill differs (Guideline 4.8)', async () => {
     await render(
       <>
         <ProviderButton provider="google" onPress={jest.fn()} />
@@ -117,9 +118,30 @@ describe('<ProviderButton> - an outline, secondary control (FR-005, FR-024)', ()
     );
     const google = screen.getByTestId('google-sign-in');
     const apple = screen.getByTestId('apple-sign-in');
+    const { backgroundColor: appleFill, ...appleShape } = resting(apple);
+    const { backgroundColor: googleFill, ...googleShape } = resting(google);
 
-    expect(classesOf(google)).toEqual(classesOf(apple));
-    expect(resting(google)).toEqual(resting(apple));
+    expect(appleShape).toEqual(googleShape);
+    expect(appleFill).toBeDefined();
+    expect(googleFill).toBeUndefined();
+    expect(classesOf(apple)).toEqual(
+      expect.arrayContaining([
+        'flex-row',
+        'items-center',
+        'justify-center',
+        'self-stretch',
+      ]),
+    );
+    expect(screen.getByText('Continue with Apple').props.className).toBe(
+      screen.getByText('Continue with Google').props.className,
+    );
+  });
+
+  test('is 52 dp tall at least, a full-radius pill', async () => {
+    await render(<ProviderButton provider="google" onPress={jest.fn()} />);
+    const style = resting(screen.getByTestId('google-sign-in'));
+    expect(style.minHeight).toBeGreaterThanOrEqual(52);
+    expect(style.borderRadius).toBeGreaterThanOrEqual(999);
   });
 });
 
