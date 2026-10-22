@@ -9,6 +9,8 @@
  * asks for black on white or white on black, Google for its four-colour "G").
  *
  * - `GoogleG`: the four-colour "G" in Google's 48 by 48 box, one path per colour.
+ * - `GoogleButton`: the fill, ink and boundary of the Google button in each scheme (Google's
+ *   light and dark button: a white button with a grey line, a near-black one with a light line);
  * - `AppleButton`: the fill and ink of the Sign in with Apple button in each scheme (black with a
  *   white logo on light grounds; white with a black logo on dark ones).
  *
@@ -36,6 +38,11 @@ export const GoogleG = deepFreeze({
       d: 'M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z',
     },
   ],
+} as const);
+
+export const GoogleButton = deepFreeze({
+  light: { fill: '#FFFFFF', ink: '#1F1F1F', border: '#747775' },
+  dark: { fill: '#131314', ink: '#E3E3E3', border: '#8E918F' },
 } as const);
 
 export const AppleButton = deepFreeze({

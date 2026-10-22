@@ -8,7 +8,8 @@
  *
  * - `apple`: the Sign in with Apple button, black with a white label, and white with a black
  *   label in the dark themes (`AppleButton`, the brand's rule, not a palette colour);
- * - `outline`: no fill, the 1 dp `border` boundary (3:1, FR-024) - Google's button;
+ * - `google`: Google's button: its white (near-black in the dark) fill, ink and 1 dp line
+ *   (`GoogleButton`, the brand's rule), whose line is above 3:1 on both grounds (FR-024);
  * - `cream`: `surfaceSecondary` fill inside the same boundary - "Continue with email".
  *
  * It is a `Tappable`, so the touch target (scaled by the font scale and growing past one line
@@ -28,9 +29,9 @@ import { Text } from '@/components/ui/text';
 import { MinTouchTarget } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
 import { Space, cornerOf } from '@/theme';
-import { AppleButton } from '@/theme/brand-artwork';
+import { AppleButton, GoogleButton } from '@/theme/brand-artwork';
 
-export type PillLook = 'apple' | 'outline' | 'cream';
+export type PillLook = 'apple' | 'google' | 'cream';
 
 /** The prototype's `.btn-pill` minimum height, in dp. */
 export const PILL_MIN_HEIGHT = 52;
@@ -51,7 +52,7 @@ export type PillButtonProps = {
 const BASE = 'flex-row items-center justify-center gap-3 self-stretch';
 const LOOK_CLASSES: Record<PillLook, string> = {
   apple: BASE,
-  outline: `${BASE} border border-border`,
+  google: `${BASE} border`,
   cream: `${BASE} border border-border bg-surface-secondary`,
 };
 
@@ -66,7 +67,8 @@ export function PillButton({
   disabled = false,
 }: PillButtonProps) {
   const { theme, fontScale } = useAppearance();
-  const brand = AppleButton[theme];
+  const brand = look === 'google' ? GoogleButton[theme] : AppleButton[theme];
+  const branded = look !== 'cream';
   const apple = look === 'apple';
 
   return (
@@ -83,13 +85,14 @@ export function PillButton({
         paddingHorizontal: Space[6],
         paddingVertical: Space[3],
         ...cornerOf('full'),
-        ...(apple ? { backgroundColor: brand.fill } : null),
+        ...(branded ? { backgroundColor: brand.fill } : null),
+        ...(look === 'google' ? { borderColor: GoogleButton[theme].border } : null),
       }}>
       {leading ? <View>{leading}</View> : null}
       <Text
         variant="callout"
         className="shrink text-center"
-        style={apple ? { color: brand.ink } : undefined}>
+        style={branded ? { color: brand.ink } : undefined}>
         {label}
       </Text>
     </Tappable>

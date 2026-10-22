@@ -17,6 +17,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 import { StyleSheet } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
+import { GoogleButton } from '@/theme/brand-artwork';
 
 import { ProviderButton, ProviderButtonSpacer } from '../provider-button';
 
@@ -72,13 +73,15 @@ describe('<ProviderButton> - what it says', () => {
 });
 
 describe('<ProviderButton> - a pill, a secondary control (FR-005, FR-024)', () => {
-  test('is outlined with the boundary token, fills nothing and spans the content width', async () => {
+  test('is Google’s own button (its fill, ink and line), with a boundary, spanning the content width', async () => {
     await render(<ProviderButton provider="google" onPress={jest.fn()} />);
     const classes = classesOf(screen.getByTestId('google-sign-in'));
 
-    expect(classes).toEqual(expect.arrayContaining(['border', 'border-border']));
-    expect(classes).toContain('self-stretch');
-    expect(classes.some((name) => /^bg-/.test(name))).toBe(false);
+    expect(classes).toEqual(expect.arrayContaining(['border', 'self-stretch']));
+    expect(resting(screen.getByTestId('google-sign-in'))).toMatchObject({
+      backgroundColor: GoogleButton.light.fill,
+      borderColor: GoogleButton.light.border,
+    });
   });
 
   test('is not a primary control: it is a bare pressable, not the kit’s Button', async () => {
@@ -109,7 +112,7 @@ describe('<ProviderButton> - a pill, a secondary control (FR-005, FR-024)', () =
     expect(words.props.numberOfLines).toBeUndefined();
   });
 
-  test('draws Google and Apple at the same size and weight: same shape, type and width, only the brand fill differs (Guideline 4.8)', async () => {
+  test('draws Google and Apple at the same size and weight: same shape, type and width, only the brand fills and lines differ (Guideline 4.8)', async () => {
     await render(
       <>
         <ProviderButton provider="google" onPress={jest.fn()} />
@@ -119,11 +122,12 @@ describe('<ProviderButton> - a pill, a secondary control (FR-005, FR-024)', () =
     const google = screen.getByTestId('google-sign-in');
     const apple = screen.getByTestId('apple-sign-in');
     const { backgroundColor: appleFill, ...appleShape } = resting(apple);
-    const { backgroundColor: googleFill, ...googleShape } = resting(google);
+    const { backgroundColor: googleFill, borderColor, ...googleShape } = resting(google);
 
     expect(appleShape).toEqual(googleShape);
     expect(appleFill).toBeDefined();
-    expect(googleFill).toBeUndefined();
+    expect(googleFill).toBeDefined();
+    expect(borderColor).toBeDefined();
     expect(classesOf(apple)).toEqual(
       expect.arrayContaining([
         'flex-row',

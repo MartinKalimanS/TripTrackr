@@ -107,9 +107,7 @@ describe('<SocialSignIn> — the provider pills', () => {
       ).toBeTruthy();
       expect(within(button).getByText(words)).toBeTruthy();
     }
-    expect(classesOf(google)).toEqual(
-      expect.arrayContaining(['border', 'border-border']),
-    );
+    expect(classesOf(google)).toContain('border');
     expect(
       within(apple).getByTestId('icon-logo-apple', { includeHiddenElements: true }),
     ).toBeTruthy();

@@ -7,7 +7,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 import { StyleSheet, Text } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
-import { AppleButton } from '@/theme/brand-artwork';
+import { AppleButton, GoogleButton } from '@/theme/brand-artwork';
 
 import { PILL_MIN_HEIGHT, PillButton } from '../pill-button';
 
@@ -94,16 +94,22 @@ describe('<PillButton>', () => {
     expect(label().color).toBe(AppleButton.dark.ink);
   });
 
-  test('the outline look has the boundary token and no fill; the cream look fills with the secondary surface', async () => {
+  test('the Google look is its own button: white with a grey line and dark ink, near-black in the dark; the cream look fills with the secondary surface', async () => {
     await render(
       <>
-        <PillButton testID="o" label="Continue with Google" look="outline" />
+        <PillButton testID="o" label="Continue with Google" look="google" />
         <PillButton testID="c" label="Continue with email" look="cream" />
       </>,
     );
-    const outline = classesOf(screen.getByTestId('o'));
-    expect(outline).toEqual(expect.arrayContaining(['border', 'border-border']));
-    expect(outline.some((name) => /^bg-/.test(name))).toBe(false);
+    const google = screen.getByTestId('o');
+    expect(classesOf(google)).toContain('border');
+    expect(resting(google)).toMatchObject({
+      backgroundColor: GoogleButton.light.fill,
+      borderColor: GoogleButton.light.border,
+    });
+    expect(
+      StyleSheet.flatten(screen.getByText('Continue with Google').props.style).color,
+    ).toBe(GoogleButton.light.ink);
     expect(classesOf(screen.getByTestId('c'))).toEqual(
       expect.arrayContaining(['border', 'border-border', 'bg-surface-secondary']),
     );

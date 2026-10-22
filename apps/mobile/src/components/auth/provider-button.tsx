@@ -5,7 +5,7 @@
  * content so the thumb finds it.
  *
  * Apple is the Sign in with Apple button (black with a white logo and label; white with black in
- * the dark themes) and Google is the outlined pill with its four-colour "G": the same size, the
+ * the dark themes) and Google is its own light (dark) button with the four-colour "G": the same size, the
  * same type and the same width, so neither has more weight (App Store Review Guideline 4.8,
  * docs/release/store-readiness.md "Branded sign-in buttons"). They are secondary controls
  * (FR-005): the screen's own coral action is the only primary one. The Apple logo is the
@@ -37,7 +37,7 @@ const PROVIDERS: Record<
   { name: string; logo: BrandGlyphName; look: PillLook }
 > = {
   apple: { name: 'Apple', logo: 'logo-apple', look: 'apple' },
-  google: { name: 'Google', logo: 'logo-google', look: 'outline' },
+  google: { name: 'Google', logo: 'logo-google', look: 'google' },
 };
 
 export type ProviderButtonProps = {

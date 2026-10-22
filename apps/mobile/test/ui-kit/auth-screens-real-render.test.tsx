@@ -199,9 +199,7 @@ describe('the sign-in screen over the real kit', () => {
       expect(button.props.accessibilityRole).toBe('button');
       expect(classesOf(button)).toContain('self-stretch');
     }
-    expect(classesOf(google)).toEqual(
-      expect.arrayContaining(['border', 'border-border']),
-    );
+    expect(classesOf(google)).toContain('border');
     expect(within(apple).getByText('Continue with Apple')).toBeTruthy();
     expect(
       within(screen.getByTestId('login-actions')).getByTestId('social-sign-in'),

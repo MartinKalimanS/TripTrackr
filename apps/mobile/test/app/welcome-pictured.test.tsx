@@ -16,7 +16,7 @@ import { Linking, Platform, StyleSheet } from 'react-native';
 
 import WelcomeScreen from '@/app/(auth)/welcome';
 import { LEGAL_URLS } from '@/constants/legal-urls';
-import { AppleButton } from '@/theme/brand-artwork';
+import { AppleButton, GoogleButton } from '@/theme/brand-artwork';
 
 import { appearance, appearanceOf } from '../helpers/appearance';
 
@@ -202,7 +202,7 @@ describe('Welcome - the three buttons (owner decision Q-11)', () => {
     expect(resting(google).minHeight).toBe(resting(email).minHeight);
   });
 
-  test('the Apple button is black with a white label (white with black in the dark), Google is outlined with its four-colour G, email is cream with an envelope', async () => {
+  test('the Apple button is black with a white label (white with black in the dark), Google is its own light button with its four-colour G, email is cream with an envelope', async () => {
     configureGoogle();
     const { rerender } = await render(<WelcomeScreen />);
     const apple = await screen.findByTestId('apple-sign-in');
@@ -210,7 +210,9 @@ describe('Welcome - the three buttons (owner decision Q-11)', () => {
     expect(within(apple).getByTestId('icon-logo-apple', hidden)).toBeTruthy();
 
     const google = screen.getByTestId('google-sign-in');
-    expect(classesOf(google)).toContain('border-border');
+    expect(classesOf(google)).toContain('border');
+    expect(resting(google).backgroundColor).toBe(GoogleButton.light.fill);
+    expect(resting(google).borderColor).toBe(GoogleButton.light.border);
     expect(within(google).getAllByTestId('svg-Path', hidden)).toHaveLength(4);
 
     const email = screen.getByTestId('welcome-create-account');
