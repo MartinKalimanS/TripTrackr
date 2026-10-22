@@ -49,6 +49,10 @@
  * for it (`headerShown: false`) and its title is the screen's. The other areas adopt the same
  * header one by one and drop their `titled` entry here as they do.
  *
+ * Documents (feature 005, T552; FR-049) adopts the same header: `documents` and `document-view`
+ * draw their own bars (the list's `AreaHeader`; the viewer's close, kind and "Only you" bar), so the
+ * navigator's header is hidden for both.
+ *
  * No `unstable_settings` and no `initialParams` here: the root layout keeps the anchor
  * (`(tabs)`) and the route's params and deep links are exactly what they were.
  */
@@ -97,8 +101,8 @@ export default function TripLayout() {
           <Stack.Screen name="notes" options={titled('Notes')} />
           <Stack.Screen name="expenses" options={titled('Spending')} />
           <Stack.Screen name="photos" options={{ headerShown: false }} />
-          <Stack.Screen name="documents" options={titled('Documents')} />
-          <Stack.Screen name="document-view" options={titled('Document')} />
+          <Stack.Screen name="documents" options={{ headerShown: false }} />
+          <Stack.Screen name="document-view" options={{ headerShown: false }} />
           <Stack.Screen name="offline-maps" options={titled('Offline maps')} />
         </Stack>
       </TripHeaderProvider>
