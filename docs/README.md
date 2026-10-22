@@ -3,14 +3,15 @@
 Long-form material that is not a specification. Specifications live in `specs/`; the
 constitution lives in `.specify/memory/constitution.md`.
 
-| Path                                                         | What it is                                                                                                                    |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| [`travelappblueprint.md`](./travelappblueprint.md)           | Original product blueprint. **Preserved verbatim — do not edit.**                                                             |
-| [`travelappfullspec.md`](./travelappfullspec.md)             | Original full product specification. **Preserved verbatim — do not edit.**                                                    |
-| [`legal/privacy-policy.md`](./legal/privacy-policy.md)       | Privacy policy source, specific to the data TripTrackr actually holds. Draft — counsel review, then publish at a public URL.  |
-| [`legal/terms-of-service.md`](./legal/terms-of-service.md)   | Terms of service / EULA source, including subscription disclosures both stores require. Draft — counsel review, then publish. |
-| [`legal/account-deletion.md`](./legal/account-deletion.md)   | Public account-deletion page (Google Play requires a web page; Apple requires the in-app path it describes). Draft.           |
-| [`release/store-readiness.md`](./release/store-readiness.md) | Launch checklist: Apple, Google Play, EAS/third parties, backend. Every row has an owner; blocking rows gate submission.      |
+| Path                                                         | What it is                                                                                                                                                             |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`travelappblueprint.md`](./travelappblueprint.md)           | Original product blueprint. **Preserved verbatim — do not edit.**                                                                                                      |
+| [`travelappfullspec.md`](./travelappfullspec.md)             | Original full product specification. **Preserved verbatim — do not edit.**                                                                                             |
+| [`legal/privacy-policy.md`](./legal/privacy-policy.md)       | Privacy policy source, specific to the data TripTrackr actually holds. Draft — counsel review, then publish at a public URL.                                           |
+| [`legal/terms-of-service.md`](./legal/terms-of-service.md)   | Terms of service / EULA source, including subscription disclosures both stores require. Draft — counsel review, then publish.                                          |
+| [`legal/account-deletion.md`](./legal/account-deletion.md)   | Public account-deletion page (Google Play requires a web page; Apple requires the in-app path it describes). Draft.                                                    |
+| [`release/store-readiness.md`](./release/store-readiness.md) | Launch checklist: Apple, Google Play, EAS/third parties, backend. Every row has an owner; blocking rows gate submission.                                               |
+| [`roadmap/`](./roadmap/README.md)                            | The plan from today to a launched, operated app: roadmap, system specification, tool inventory, 40 steps with an AI prompt each, CI/CD and release, testing, progress. |
 
 Related, elsewhere in the repository:
 

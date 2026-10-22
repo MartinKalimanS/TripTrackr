@@ -18,6 +18,7 @@ it; where they disagree, the constitution wins.
 | `infra/`             | Compose stack, backup image, `scripts/backup.sh` + `scripts/restore-rehearsal.sh`.         |
 | `specs/`             | Spec Kit features. `001-triptrackr-mvp` is the product; `005-sunrise-passport-ui` visuals. |
 | `docs/`              | Product documents, legal sources (`legal/`), store checklist (`release/`).                 |
+| `docs/roadmap/`      | The plan to production: roadmap, spec, steps, session prompts, CI/CD, testing, progress.   |
 
 ## Commands
 
