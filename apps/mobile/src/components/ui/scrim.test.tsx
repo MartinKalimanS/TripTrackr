@@ -304,6 +304,59 @@ describe('Scrim - a generated cover is a gradient between two palette stops', ()
   });
 });
 
+describe('Scrim - the passport card (F13; C5-10 Passport)', () => {
+  test.each(PaletteNames)(
+    'is the navy cover of the card, whatever the theme (%s)',
+    async (name) => {
+      setTheme(name);
+      await render(<Scrim kind="passport" />);
+      const layers = layersOf('scrim-passport');
+      expect(layers.map((layer) => layer.type)).toEqual([
+        'radial-gradient',
+        'linear-gradient',
+      ]);
+      const linear = layers[1];
+      expect(linear.direction).toBe(`${Passport.angle}deg`);
+      expect(stopsOf(linear).map((stop) => stop.rgb)).toEqual([...Passport.stops]);
+    },
+  );
+
+  test('carries the faint amber glow of the passport in its top right corner', async () => {
+    await render(<Scrim kind="passport" />);
+    const [glow] = layersOf('scrim-passport');
+    expect(stopsOf(glow)[0]).toMatchObject({ at: 0, rgb: Passport.glow.colour });
+    expect(stopsOf(glow)[0].alpha).toBeCloseTo(Passport.glow.alpha, 2);
+    expect(glow.size).toEqual({ x: '70%', y: '90%' });
+    expect(glow.position).toEqual({ left: '100%', top: '0%' });
+  });
+
+  test('fills its parent, takes no touch and is hidden from assistive technology', async () => {
+    await render(<Scrim kind="passport" />);
+    expect(flat('scrim-passport')).toMatchObject({ position: 'absolute' });
+    expect(node('scrim-passport').props.pointerEvents).toBe('none');
+    expect(node('scrim-passport').props.importantForAccessibility).toBe(
+      'no-hide-descendants',
+    );
+  });
+});
+
+describe('Scrim - the recap tile (F13)', () => {
+  test.each(PaletteNames)(
+    'is the coral to amber gradient at 135 degrees (%s)',
+    async (name) => {
+      setTheme(name);
+      await render(<Scrim kind="recap" />);
+      const [linear] = layersOf('scrim-recap');
+      expect(linear.direction).toBe(`${Passport.angle}deg`);
+      expect(stopsOf(linear).map((stop) => stop.rgb)).toEqual([
+        Palettes[name].accent,
+        Palettes[name].amber,
+      ]);
+      expect(node('scrim-recap').props.pointerEvents).toBe('none');
+    },
+  );
+});
+
 describe('Scrim - the fade under the tab pill (T530, FR-022)', () => {
   test.each(PaletteNames)(
     'is a gradient from nothing to the canvas of %s, top to bottom',
@@ -487,7 +540,16 @@ describe.each(PaletteNames)('ink and muted on the sky - %s', (name) => {
 
 describe('Scrim - the kinds are exactly those of the contract and the cover', () => {
   test('the type lists them', () => {
-    const kinds: ScrimKind[] = ['top', 'bottom', 'caption', 'sky', 'cover', 'fade'];
-    expect(kinds).toHaveLength(6);
+    const kinds: ScrimKind[] = [
+      'top',
+      'bottom',
+      'caption',
+      'sky',
+      'cover',
+      'fade',
+      'passport',
+      'recap',
+    ];
+    expect(kinds).toHaveLength(8);
   });
 });

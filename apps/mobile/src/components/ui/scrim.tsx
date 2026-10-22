@@ -8,6 +8,8 @@
  *   <Scrim kind="sky" />                    the warm (or night) sky behind the globe
  *   <Scrim kind="cover" palette={1} />      a generated cover's gradient (`GeneratedCover`)
  *   <Scrim kind="fade" ground="surface" />  the fade of the ground under the tab pill
+ *   <Scrim kind="passport" />               the You screen's navy passport card (F13)
+ *   <Scrim kind="recap" />                  the coral-to-amber tile of the recap entry (F13)
  *
  * The VALUES are data in `src/theme/scrim.ts` (stops, alphas, the sky, the passport glow);
  * the contrast gate measures them over a PURE WHITE photograph, and `scrim.test.tsx` measures
@@ -67,7 +69,8 @@ import {
   type ScrimSpec,
 } from '@/theme';
 
-export type ScrimKind = 'top' | 'bottom' | 'caption' | 'sky' | 'cover' | 'fade';
+export type ScrimKind =
+  'top' | 'bottom' | 'caption' | 'sky' | 'cover' | 'fade' | 'passport' | 'recap';
 
 /** What a `fade` fades to: the canvas of the lists or the surface of a sheet. */
 export type FadeGround = 'canvas' | 'surface';
@@ -217,13 +220,34 @@ function coverLayers(palette: Palette, index: CoverPaletteIndex): Layer[] {
   ];
 }
 
+/** The passport card: its amber corner over the navy gradient, the same in every theme. */
+function passportLayers(): Layer[] {
+  return [
+    glowLayer(Passport.glow),
+    linear(
+      `${Passport.angle}deg`,
+      Passport.stops.map((color, index) => ({ color, at: index })),
+    ),
+  ];
+}
+
+/** The recap entry's icon tile: coral to amber at 135 degrees (prototype `.recap .ico`). */
+function recapLayers(palette: Palette): Layer[] {
+  return [
+    linear(`${Passport.angle}deg`, [
+      { color: palette.accent, at: 0 },
+      { color: palette.amber, at: 1 },
+    ]),
+  ];
+}
+
 const HIDDEN = {
   accessibilityElementsHidden: true,
   importantForAccessibility: 'no-hide-descendants',
 } as const;
 
 const BANDS: Record<
-  'top' | 'bottom' | 'sky' | 'cover' | 'fade',
+  'top' | 'bottom' | 'sky' | 'cover' | 'fade' | 'passport' | 'recap',
   (spec: ScrimSpec) => ViewStyle
 > = {
   top: (spec) => ({
@@ -236,6 +260,8 @@ const BANDS: Record<
   bottom: () => StyleSheet.absoluteFill,
   sky: () => StyleSheet.absoluteFill,
   cover: () => StyleSheet.absoluteFill,
+  passport: () => StyleSheet.absoluteFill,
+  recap: () => StyleSheet.absoluteFill,
   fade: () => ({ position: 'absolute', left: 0, right: 0, bottom: 0 }),
 };
 
@@ -313,6 +339,8 @@ export function Scrim({
     bottom: () => bottomLayers(spec),
     sky: () => skyLayers(theme),
     cover: () => coverLayers(Palettes[themeName], palette),
+    passport: () => passportLayers(),
+    recap: () => recapLayers(Palettes[themeName]),
     fade: () => fadeLayers(Palettes[themeName][ground]),
   }[kind]();
   return <Band testID={id} layers={layers} box={BANDS[kind](spec)} style={style} />;

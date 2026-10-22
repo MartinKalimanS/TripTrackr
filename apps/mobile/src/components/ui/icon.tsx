@@ -50,6 +50,7 @@ export type IconTone =
   | 'aquaLine'
   | 'amberInk'
   | 'amberLine'
+  | 'amber'
   | 'danger'
   | 'dangerInk'
   | 'success'
@@ -90,7 +91,8 @@ type AppColor =
   | 'aqua-ink'
   | 'aqua-line'
   | 'amber-ink'
-  | 'amber-line';
+  | 'amber-line'
+  | 'amber';
 
 const TONE_TOKENS: Record<IconTone, ThemeColor | AppColor> = {
   ink: 'foreground',
@@ -105,6 +107,7 @@ const TONE_TOKENS: Record<IconTone, ThemeColor | AppColor> = {
   aquaLine: 'aqua-line',
   amberInk: 'amber-ink',
   amberLine: 'amber-line',
+  amber: 'amber',
   danger: 'danger',
   dangerInk: 'danger-foreground',
   success: 'success',

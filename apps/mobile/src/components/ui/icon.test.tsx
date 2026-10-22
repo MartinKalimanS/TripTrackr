@@ -107,6 +107,7 @@ const TONES: [IconTone, string, keyof (typeof Palettes)['light']][] = [
   ['aquaLine', 'aqua-line', 'aquaLine'],
   ['amberInk', 'amber-ink', 'amberInk'],
   ['amberLine', 'amber-line', 'amberLine'],
+  ['amber', 'amber', 'amber'],
   ['danger', 'danger', 'danger'],
   ['dangerInk', 'danger-foreground', 'dangerInk'],
   ['success', 'success', 'success'],
@@ -142,10 +143,13 @@ describe('<Icon> tone - FR-023, C5-14', () => {
     });
 
     // Tones the screens draw on paper or cream: a graphic needs 3:1 (FR-069). The three
-    // left out sit on their own grounds: onInk on ink, onPhoto on a scrim, accentInk on coral.
+    // left out sit on their own grounds: onInk on ink, onPhoto on a scrim, accentInk on coral;
+    // `amber` is the bright amber of the passport card's lap line, drawn on its navy only.
     const ON_PAPER = TONES.filter(
       ([tone]) =>
-        !['onInk', 'onPhoto', 'accentInk', 'onAccent', 'dangerInk'].includes(tone),
+        !['onInk', 'onPhoto', 'accentInk', 'onAccent', 'dangerInk', 'amber'].includes(
+          tone,
+        ),
     );
 
     test.each(ON_PAPER)('%s reads on paper and on cream', (_t, token) => {
