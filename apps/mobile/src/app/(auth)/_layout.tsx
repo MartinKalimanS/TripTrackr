@@ -18,11 +18,15 @@
  *   forwarded, as in the trip layout; with the anchor below there is always a welcome
  *   screen beneath for it to pop to (`HeaderBackButton`'s own fallback, `replace('/')`,
  *   is the root's and is not reached).
+ * - at the right, the text link to the OTHER form (F12, pictures `more/auth.png` and
+ *   `register.png`): "Create account" on Sign in, "Sign in" on Create account
+ *   (`AuthSwitchLink`, which replaces the screen so Back still lands on Welcome);
  * - the colours, and no hairline, come from `useHeaderTheme` (tokens, never a literal); the
  *   scene behind every screen is the canvas, so the bar and the page are one colour.
  */
 import { Stack } from 'expo-router';
 
+import { AuthSwitchLink } from '@/components/auth/auth-switch-link';
 import { HeaderBackButton } from '@/components/ui/header-back-button';
 import { useHeaderTheme } from '@/components/ui/header-theme';
 import { useHeaderTitleStyle } from '@/components/ui/header-title-style';
@@ -39,6 +43,8 @@ export const unstable_settings = {
 };
 
 const renderBack = () => <HeaderBackButton />;
+const renderToRegister = () => <AuthSwitchLink to="register" />;
+const renderToLogin = () => <AuthSwitchLink to="login" />;
 
 export default function AuthLayout() {
   const theme = useHeaderTheme();
@@ -54,8 +60,14 @@ export default function AuthLayout() {
 
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: theme.contentStyle }}>
-      <Stack.Screen name="login" options={{ ...pushed, title: 'Sign in' }} />
-      <Stack.Screen name="register" options={{ ...pushed, title: 'Create account' }} />
+      <Stack.Screen
+        name="login"
+        options={{ ...pushed, title: 'Sign in', headerRight: renderToRegister }}
+      />
+      <Stack.Screen
+        name="register"
+        options={{ ...pushed, title: 'Create account', headerRight: renderToLogin }}
+      />
     </Stack>
   );
 }

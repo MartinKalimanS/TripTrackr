@@ -5,8 +5,8 @@
  * they persist. What is pinned here is the screens' behaviour — validation
  * mirrors the contracts and is said in words (FR-010), a busy control while a
  * request is in flight, API refusals shown as plain language, and where the
- * Google and Apple section sits: on Sign in and Create account, not on the
- * welcome screen. What that section does is pinned by its own suite
+ * Google and Apple section sits: under the form on Sign in and Create account (and, F12,
+ * above "Continue with email" on Welcome). What that section does is pinned by its own suite
  * (src/components/auth/__tests__/social-sign-in.test.tsx).
  *
  * `expo-router` is replaced with a recording router: the screens' job is to
@@ -130,79 +130,13 @@ beforeEach(() => {
 });
 
 describe('<WelcomeScreen>', () => {
+  // The three buttons, the composition, the ids and the legal line are pinned by
+  // `test/app/welcome-pictured.test.tsx` (F12, owner decision Q-11).
   test('greets with product copy, not template copy', async () => {
     await render(<WelcomeScreen />);
     expect(screen.getByText('TripTrackr')).toBeTruthy();
     expect(screen.getByText('Plan it. Live it. Share what you want.')).toBeTruthy();
     expect(screen.queryByText(/Welcome to Expo/)).toBeNull();
-  });
-
-  test('offers sign in and create account as labelled actions with stable ids (C9, Maestro)', async () => {
-    await render(<WelcomeScreen />);
-    expect(screen.getByTestId('welcome-screen')).toBeTruthy();
-    expect(screen.getByLabelText('Sign in')).toBeTruthy();
-    expect(screen.getByLabelText('Create account')).toBeTruthy();
-    expect(screen.getByTestId('welcome-sign-in')).toBeTruthy();
-    expect(screen.getByTestId('welcome-create-account')).toBeTruthy();
-  });
-
-  test('routes to the login and register screens', async () => {
-    await render(<WelcomeScreen />);
-    await fireEvent.press(screen.getByLabelText('Sign in'));
-    expect(mockPush).toHaveBeenCalledWith('/login');
-
-    await fireEvent.press(screen.getByLabelText('Create account'));
-    expect(mockPush).toHaveBeenCalledWith('/register');
-  });
-
-  test('offers no provider sign-in of its own: that lives on Sign in and Create account', async () => {
-    await render(<WelcomeScreen />);
-    expect(screen.queryByTestId('social-sign-in')).toBeNull();
-    expect(screen.queryByLabelText(/Continue with (Google|Apple)/)).toBeNull();
-  });
-
-  test('the product name is its one heading (the screen has no header)', async () => {
-    await render(<WelcomeScreen />);
-    const headings = screen.getAllByRole('header');
-    expect(headings).toHaveLength(1);
-    expect(headings[0]).toHaveTextContent('TripTrackr');
-  });
-
-  test('has ONE primary action, Create account; Sign in is the secondary one (FR-005)', async () => {
-    await render(<WelcomeScreen />);
-    expect(primaries().map((button) => button.props.testID)).toEqual([
-      'welcome-create-account',
-    ]);
-    expect(screen.getByTestId('welcome-sign-in').props.variant).toBe('secondary');
-  });
-
-  test('keeps the reading order: Create account, then Sign in (FR-030)', async () => {
-    await render(<WelcomeScreen />);
-    const order = screen.getAllByRole('button').map((button) => button.props.testID);
-    expect(order).toEqual(['welcome-create-account', 'welcome-sign-in']);
-  });
-
-  test('puts both actions in the lower part of the screen, under a hero that takes the spare room (FR-017)', async () => {
-    await render(<WelcomeScreen />);
-    const hero = screen.getByTestId('welcome-hero');
-    const actions = screen.getByTestId('welcome-actions');
-
-    expect(idsInOrder().filter((id) => /^welcome-(hero|actions)$/.test(id))).toEqual([
-      'welcome-hero',
-      'welcome-actions',
-    ]);
-    // The hero grows, the actions do not: the actions are the bottom of the screen, and
-    // the content scrolls rather than squeezing the hero at the largest text size.
-    expect(classesOf(hero)).toEqual(expect.arrayContaining(['grow', 'shrink-0']));
-    expect(classesOf(actions)).not.toContain('grow');
-    expect(within(actions).getByTestId('welcome-create-account')).toBeTruthy();
-    expect(within(actions).getByTestId('welcome-sign-in')).toBeTruthy();
-  });
-
-  test('the two actions are the large, thumb-sized size', async () => {
-    await render(<WelcomeScreen />);
-    expect(screen.getByTestId('welcome-create-account').props.size).toBe('lg');
-    expect(screen.getByTestId('welcome-sign-in').props.size).toBe('lg');
   });
 
   test('passes nothing in the route when it navigates (FR-030)', async () => {
@@ -275,10 +209,11 @@ describe('<LoginScreen>', () => {
     );
   });
 
-  test('leaves its title and its Back to the native header: it draws neither (FR-007, FR-008)', async () => {
+  test('leaves its title and its Back to the native header; its one heading is the pictured "Welcome back" (FR-007, FR-008)', async () => {
     await render(<LoginScreen />);
     expect(screen.queryByLabelText('Back')).toBeNull();
-    expect(screen.queryAllByRole('header')).toEqual([]);
+    expect(screen.getAllByRole('header')).toHaveLength(1);
+    expect(screen.getByRole('header')).toHaveTextContent('Welcome back');
     // The only "Sign in" on the page is the action; the title is the header's.
     expect(screen.getAllByText('Sign in')).toHaveLength(1);
   });
@@ -447,7 +382,9 @@ describe('<RegisterScreen>', () => {
     await fill({ Name: '  ', Email: 'not-an-email' });
     await fireEvent.press(screen.getByTestId('register-submit'));
 
-    expect(screen.getByText(/Tell us what to call you/)).toBeTruthy();
+    expect(screen.getByTestId('register-display-name-error')).toHaveTextContent(
+      /Tell us what to call you/,
+    );
     expect(screen.getByText('Enter a valid email address.')).toBeTruthy();
     expect(mockMutations.register.mutate).not.toHaveBeenCalled();
   });
@@ -489,10 +426,11 @@ describe('<RegisterScreen>', () => {
     });
   });
 
-  test('leaves its title and its Back to the native header: it draws neither (FR-007, FR-008)', async () => {
+  test('leaves its title and its Back to the native header; its one heading is the pictured "Create your passport" (FR-007, FR-008)', async () => {
     await render(<RegisterScreen />);
     expect(screen.queryByLabelText('Back')).toBeNull();
-    expect(screen.queryAllByRole('header')).toEqual([]);
+    expect(screen.getAllByRole('header')).toHaveLength(1);
+    expect(screen.getByRole('header')).toHaveTextContent('Create your passport');
     // The only "Create account" on the page is the action; the title is the header's.
     expect(screen.getAllByText('Create account')).toHaveLength(1);
   });

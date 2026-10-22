@@ -1,8 +1,8 @@
 /**
  * Continue with Google / Apple — FR-002; spec Edge Cases (Accounts).
  *
- * Outlined buttons carrying each provider's logo and name (Atlas, feature 004 T446; what
- * one button is is pinned in `provider-button.test.tsx`) on the Sign in and Create account
+ * Pills carrying each provider's logo and name, Apple first as pictured (F12; what one
+ * button is is pinned in `provider-button.test.tsx`) on the Sign in and Create account
  * screens below the email form. A provider that cannot work on this build or platform yet
  * is shown disabled and the section says it is coming soon; one that can is wired to its
  * flow.
@@ -91,24 +91,26 @@ const classesOf = (node: { props: { className?: unknown } }) =>
     .split(/\s+/)
     .filter(Boolean);
 
-describe('<SocialSignIn> — the outline buttons', () => {
-  test('are outlined and full width, each carrying its provider’s logo and name', async () => {
+describe('<SocialSignIn> — the provider pills', () => {
+  test('are full width, each carrying its provider’s logo and name', async () => {
     await render(<SocialSignIn />);
     const google = screen.getByTestId('google-sign-in-unavailable');
     const apple = await screen.findByTestId('apple-sign-in-unavailable');
 
-    for (const [button, logo, words] of [
-      [google, 'icon-logo-google', 'Continue with Google'],
-      [apple, 'icon-logo-apple', 'Continue with Apple'],
+    for (const [button, words] of [
+      [google, 'Continue with Google'],
+      [apple, 'Continue with Apple'],
     ] as const) {
-      expect(classesOf(button)).toEqual(
-        expect.arrayContaining(['border', 'border-border', 'self-stretch']),
-      );
+      expect(classesOf(button)).toContain('self-stretch');
       expect(
-        within(button).getByTestId(logo, { includeHiddenElements: true }),
+        within(button).getByTestId('brand-glyph', { includeHiddenElements: true }),
       ).toBeTruthy();
       expect(within(button).getByText(words)).toBeTruthy();
     }
+    expect(classesOf(google)).toContain('border');
+    expect(
+      within(apple).getByTestId('icon-logo-apple', { includeHiddenElements: true }),
+    ).toBeTruthy();
   });
 
   test('are one pair of the same size and prominence, stacked in one column', async () => {
@@ -116,13 +118,28 @@ describe('<SocialSignIn> — the outline buttons', () => {
     const google = screen.getByTestId('google-sign-in-unavailable');
     const apple = await screen.findByTestId('apple-sign-in-unavailable');
 
-    expect(classesOf(google)).toEqual(classesOf(apple));
+    expect(classesOf(google)).toEqual(
+      expect.arrayContaining([
+        'flex-row',
+        'items-center',
+        'justify-center',
+        'self-stretch',
+      ]),
+    );
+    expect(classesOf(apple)).toEqual(
+      expect.arrayContaining([
+        'flex-row',
+        'items-center',
+        'justify-center',
+        'self-stretch',
+      ]),
+    );
     const row = screen.getByTestId('social-sign-in-buttons');
     expect(classesOf(row)).toEqual(expect.arrayContaining(['gap-3']));
     expect(classesOf(row)).not.toContain('flex-row');
   });
 
-  test('sit under an "or continue with" divider, Google first', async () => {
+  test('sit under an "or continue with" divider, Apple first as pictured', async () => {
     await render(<SocialSignIn />);
     await screen.findByTestId('apple-sign-in-unavailable');
 
@@ -130,7 +147,7 @@ describe('<SocialSignIn> — the outline buttons', () => {
     const ids = screen
       .getAllByRole('button')
       .map((button) => button.props.testID as string);
-    expect(ids).toEqual(['google-sign-in-unavailable', 'apple-sign-in-unavailable']);
+    expect(ids).toEqual(['apple-sign-in-unavailable', 'google-sign-in-unavailable']);
   });
 
   test('none is a primary control: the screen’s own action is the only one (FR-005)', async () => {
@@ -169,11 +186,16 @@ describe('<SocialSignIn> — providers that cannot work yet', () => {
     expect(await screen.findByText('Apple sign-in is coming soon.')).toBeTruthy();
   });
 
-  test('on Android, where Apple offers no native sign-in, Apple waits without asking', async () => {
+  test('on Android, where Apple offers no native sign-in, Apple is not drawn and is not asked', async () => {
     const os = jest.replaceProperty(Platform, 'OS', 'android');
     try {
       await render(<SocialSignIn />);
-      expect(screen.getByTestId('apple-sign-in-unavailable')).toBeTruthy();
+      expect(screen.queryByTestId('apple-sign-in-unavailable')).toBeNull();
+      expect(screen.queryByTestId('apple-sign-in')).toBeNull();
+      expect(screen.queryByLabelText(/Apple/)).toBeNull();
+      expect(screen.getByTestId('google-sign-in-unavailable')).toBeTruthy();
+      // Only what is missing here is named: Apple is not "coming soon" on Android.
+      expect(screen.getByText('Google sign-in is coming soon.')).toBeTruthy();
       expect(isAvailable).not.toHaveBeenCalled();
     } finally {
       os.restore();
