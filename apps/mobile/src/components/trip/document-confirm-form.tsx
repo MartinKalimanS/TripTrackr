@@ -177,7 +177,7 @@ export function DocumentConfirmForm({
   const confirm = handleSubmit(onConfirm);
 
   return (
-    <Card testID="document-confirm-form">
+    <Card testID="document-confirm-form" variant="tile">
       <View className="gap-4">
         <View className="gap-1">
           <Text type="headline">Flight details</Text>

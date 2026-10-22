@@ -154,11 +154,12 @@ beforeEach(() => {
 });
 
 describe('the document list over the real kit', () => {
-  test('renders the context line, the privacy notice, the one primary and a card per document without error', async () => {
+  test('renders the header, the privacy notice, the one primary and a ticket per document without error', async () => {
     await renderOver(<DocumentsScreen />);
 
-    expect(screen.getByTestId('documents-title')).toHaveTextContent(
-      'Documents · Montréal, autumn 2026',
+    expect(screen.getByTestId('documents-title')).toHaveTextContent('Documents');
+    expect(screen.getByTestId('documents-subtitle')).toHaveTextContent(
+      'Montréal, autumn 2026 · 2 documents',
     );
     expect(screen.getByTestId('documents-privacy')).toBeTruthy();
     const add = screen.getByTestId('documents-add');
@@ -166,7 +167,7 @@ describe('the document list over the real kit', () => {
     expect(add.props.accessibilityLabel).toBe('Add document');
   });
 
-  test('a row is one named button the kit presses, in a card with its edge from the document’s state', async () => {
+  test('a row is one named button the kit presses, a cream ticket with its edge from the document’s state', async () => {
     await renderOver(<DocumentsScreen />);
 
     const row = screen.getByTestId('document-row-pass-1');
@@ -178,7 +179,11 @@ describe('the document list over the real kit', () => {
     );
 
     expect(classesOf(screen.getByTestId('document-row-pass-1-surface'))).toEqual(
-      expect.arrayContaining(['bg-surface', 'border-dashed', 'border-amber-line']),
+      expect.arrayContaining([
+        'bg-surface-secondary',
+        'border-dashed',
+        'border-amber-line',
+      ]),
     );
     expect(classesOf(screen.getByTestId('document-row-booking-1-surface'))).not.toContain(
       'border-dashed',

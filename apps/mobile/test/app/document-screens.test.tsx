@@ -261,22 +261,31 @@ describe('<DocumentsScreen> — trip/[id]/documents (T118)', () => {
   test('the empty state is designed, names the next action, and says documents are private and encrypted', async () => {
     await render(<DocumentsScreen />);
 
-    expect(screen.getByTestId('documents-title')).toHaveTextContent(
-      /Documents · Montréal, autumn 2026/,
+    expect(screen.getByTestId('documents-title')).toHaveTextContent(/^Documents$/);
+    expect(screen.getByTestId('documents-subtitle')).toHaveTextContent(
+      'Montréal, autumn 2026 · 0 documents',
     );
     expect(screen.getByText('No documents yet')).toBeTruthy();
-    expect(screen.getByText(/Use “Add document” to scan a boarding pass/)).toBeTruthy();
+    expect(screen.getByText(/Scan a boarding pass or photograph a booking/)).toBeTruthy();
     expect(screen.getByTestId('documents-privacy')).toHaveTextContent(/Only you/);
   });
 
-  test('draws no Back and no title bar of its own: the navigation header carries them (FR-007, FR-008)', async () => {
+  test('draws its own bar as pictured: Back, the "Only you" chip and the title as the page heading (FR-044)', async () => {
     await render(<DocumentsScreen />);
 
-    expect(screen.queryByLabelText('Back')).toBeNull();
-    // The words the page keeps are the trip it belongs to, as an id the flows wait on.
-    expect(screen.getByTestId('documents-title').props.accessibilityRole).not.toBe(
-      'header',
-    );
+    expect(screen.getAllByLabelText('Back')).toHaveLength(1);
+    expect(screen.getByTestId('privacy-chip')).toBeTruthy();
+    expect(screen.getByTestId('documents-title').props.accessibilityRole).toBe('header');
+  });
+
+  test('the pictured "more" control is a coming-soon control; there is no share control of any kind', async () => {
+    mockDocuments.data = [doc()];
+    await render(<DocumentsScreen />);
+
+    const more = screen.getByTestId('coming-soon-documents-more');
+    expect(more.props.accessibilityLabel).toBe('More');
+    expect(more.props.accessibilityHint).toBe('Not available yet');
+    expect(buttonLabels().filter((label) => SHARING.test(label))).toEqual([]);
   });
 
   test('"Add document" opens the capture screen for this trip', async () => {
@@ -393,7 +402,7 @@ describe('<DocumentsScreen> — trip/[id]/documents (T118)', () => {
     );
   });
 
-  test('a row is ONE control, named as it was read before, with its hint and a chevron (FR-024, FR-030)', async () => {
+  test('a row is ONE control, named as it was read before plus its date, with its hint (FR-024, FR-030)', async () => {
     mockDocuments.data = [
       doc(),
       doc({ id: BOOKING_ID, type: 'booking', parsed_json: null }),
@@ -403,13 +412,16 @@ describe('<DocumentsScreen> — trip/[id]/documents (T118)', () => {
     const pass = screen.getByTestId(`document-row-${PASS_ID}`);
     expect(pass.props.accessibilityRole).toBe('button');
     expect(pass.props.accessibilityLabel).toBe(
-      `Boarding pass. AC834 · ${formatIsoDate('2026-11-22')}. ${FIELDS_STATUS_TEXT.unconfirmed}. Not yet synced`,
+      `Boarding pass. AC834 · ${formatIsoDate('2026-11-22')}. ${FIELDS_STATUS_TEXT.unconfirmed}. Not yet synced. Added ${formatIsoDate('2026-11-20')}`,
     );
     expect(pass.props.accessibilityHint).toBe('Opens the document');
-    expect(screen.getByTestId(`document-row-${PASS_ID}-cue`, hidden)).toBeTruthy();
+    // The date stub is the row's cue, as pictured: no chevron.
+    expect(screen.queryByTestId(`document-row-${PASS_ID}-cue`, hidden)).toBeNull();
 
     const booking = screen.getByTestId(`document-row-${BOOKING_ID}`);
-    expect(booking.props.accessibilityLabel).toBe('Booking. Not yet synced');
+    expect(booking.props.accessibilityLabel).toBe(
+      `Booking. Not yet synced. Added ${formatIsoDate('2026-11-20')}`,
+    );
     // The rows are not the screen's primary: the one primary stays "Add document".
     expect(primaries()).toEqual(['Add document']);
   });
@@ -1233,33 +1245,60 @@ describe('<DocumentViewScreen> — Atlas (T443)', () => {
     mockParams = { id: 'trip-42', documentId: PASS_ID };
   });
 
-  test('draws no Back of its own: the navigation header carries it, and the kind is the page heading', async () => {
+  test('draws its own bar as pictured: a close disc named "Back", the kind as the heading and the "Only you" chip', async () => {
     await render(<DocumentViewScreen />);
 
-    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.getAllByLabelText('Back')).toHaveLength(1);
+    await fireEvent.press(screen.getByLabelText('Back'));
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('privacy-chip')).toBeTruthy();
     const title = screen.getByTestId('document-view-title');
     expect(title).toHaveTextContent('Boarding pass');
     expect(title.props.accessibilityRole).toBe('header');
   });
 
-  test('the picture is framed by a hairline and carries nothing across it (FR-033)', async () => {
+  test('the picture is the hero: on a white plate under a band, with nothing but the brightness control near it (FR-033, FR-050)', async () => {
     await render(<DocumentViewScreen />);
 
     const image = screen.getByTestId('document-image');
     expect(image.props.accessibilityRole).toBe('image');
     expect(image.props.accessibilityLabel).toBe('Picture of your boarding pass');
-    // The first ancestor that draws a border is the frame.
-    let frame = image.parent;
-    while (frame && !StyleSheet.flatten(frame.props.style)?.borderWidth) {
-      frame = frame.parent;
-    }
-    const style = StyleSheet.flatten(frame?.props.style);
-    expect(style.borderWidth).toBeGreaterThan(0);
-    for (const key of ['backgroundColor', 'boxShadow', 'shadowColor', 'opacity']) {
-      expect(style).not.toHaveProperty(key);
-    }
-    // Nothing but the picture is in its frame: no control is drawn across it.
-    expect(within(frame!).queryAllByRole('button')).toEqual([]);
+    const hero = screen.getByTestId('document-hero');
+    expect(within(hero).getByTestId('barcode-plate')).toBeTruthy();
+    expect(within(hero).getByTestId('document-hero-kind')).toHaveTextContent(
+      'Boarding pass',
+    );
+    // The flight is on the band only once the traveller has confirmed it.
+    expect(within(hero).queryByTestId('document-hero-flight')).toBeNull();
+    // Nothing is drawn across the picture: no control is inside the hero.
+    expect(within(hero).queryAllByRole('button')).toEqual([]);
+    expect(StyleSheet.flatten(hero.props.style).transform).toEqual([{ rotate: '-1deg' }]);
+  });
+
+  test('a confirmed pass puts its flight number on the hero band', async () => {
+    mockDocument.data = doc({ parsed_confirmed_at: '2026-11-21T09:00:00.000Z' });
+    await render(<DocumentViewScreen />);
+
+    expect(screen.getByTestId('document-hero-flight')).toHaveTextContent('AC834');
+  });
+
+  test('the pictured brightness line is a coming-soon control that changes nothing', async () => {
+    await render(<DocumentViewScreen />);
+
+    const boost = screen.getByTestId('coming-soon-document-brightness');
+    expect(boost.props.accessibilityRole).toBe('button');
+    expect(boost.props.accessibilityLabel).toBe('Raise brightness for the code');
+    expect(boost.props.accessibilityHint).toBe('Not available yet');
+    expect(screen.queryByText(/brightness is raised/i)).toBeNull();
+  });
+
+  test('the pictured share, copy and linked-stop rows are not drawn: a document is never shareable', async () => {
+    await render(<DocumentViewScreen />);
+
+    expect(screen.queryByText('Share a copy')).toBeNull();
+    expect(screen.queryByLabelText('Copy reference')).toBeNull();
+    expect(screen.queryByText('Linked to')).toBeNull();
+    expect(buttonLabels().filter((label) => SHARING.test(label))).toEqual([]);
   });
 
   test('viewing a pass: there is no primary; checking is secondary and Delete is destructive (FR-005)', async () => {
@@ -1507,6 +1546,11 @@ describe('document screens — composed from the Atlas adapter layer only (FR-03
     'components/trip/document-details.tsx',
     'components/trip/document-image.tsx',
     'components/trip/document-list-item.tsx',
+    'components/trip/document-ticket.tsx',
+    'components/trip/document-hero.tsx',
+    'components/trip/barcode-plate.tsx',
+    'components/trip/brightness-boost.tsx',
+    'components/trip/documents-skeleton.tsx',
   ];
 
   test.each(sources)('%s uses no retired primitive, kit or colour literal', (file) => {
@@ -1542,6 +1586,142 @@ describe('document screens — composed from the Atlas adapter layer only (FR-03
  * (a global stand-in, jest.setup.ts). The destructive `Button` also plays the warning as it
  * is pressed; the native confirmation is a separate moment, so its answer is given by hand.
  */
+// ---------------------------------------------------------------------------
+// As pictured (005 T552; FR-049, FR-050)
+// ---------------------------------------------------------------------------
+
+describe('<DocumentsScreen> — as pictured (T552)', () => {
+  const SAVED = { upload_state: 'uploaded', is_dirty: false } as const;
+
+  test('the subtitle counts the documents; the FAB says "Scan document" and is named "Add document"', async () => {
+    mockDocuments.data = [
+      doc(),
+      doc({ id: BOOKING_ID, type: 'booking', parsed_json: null }),
+    ];
+    await render(<DocumentsScreen />);
+
+    expect(screen.getByTestId('documents-subtitle')).toHaveTextContent(
+      'Montréal, autumn 2026 · 2 documents',
+    );
+    const add = screen.getByTestId('documents-add');
+    expect(add.props.accessibilityLabel).toBe('Add document');
+    expect(within(add).getByText('Scan document')).toBeTruthy();
+    expect(screen.getAllByTestId('documents-add')).toHaveLength(1);
+  });
+
+  test('with no documents the empty state carries the one primary, "Scan document", and the FAB is not drawn twice', async () => {
+    await render(<DocumentsScreen />);
+
+    expect(screen.getAllByTestId('documents-add')).toHaveLength(1);
+    expect(screen.getByText('Scan document')).toBeTruthy();
+    expect(screen.getByText('No documents yet')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('documents-add'));
+    expect(mockPush).toHaveBeenCalledWith('/trip/trip-42/document-capture');
+  });
+
+  test('a ticket shows a confirmed pass by its flight day and anything else by the day it was added', async () => {
+    mockDocuments.data = [
+      doc({ ...SAVED, parsed_confirmed_at: '2026-11-20T10:05:00.000Z' }),
+      doc({ ...SAVED, id: BOOKING_ID, type: 'booking', parsed_json: null }),
+    ];
+    await render(<DocumentsScreen />);
+
+    expect(
+      screen.getByTestId(`document-row-${PASS_ID}-stub-day`, hidden),
+    ).toHaveTextContent('22');
+    expect(
+      screen.getByTestId(`document-row-${BOOKING_ID}-stub-day`, hidden),
+    ).toHaveTextContent('20');
+    expect(
+      screen.getByTestId(`document-row-${PASS_ID}`).props.accessibilityLabel,
+    ).toMatch(/Flight date /);
+    expect(
+      screen.getByTestId(`document-row-${BOOKING_ID}`).props.accessibilityLabel,
+    ).toMatch(/Added /);
+  });
+
+  test('the list says no passenger name', async () => {
+    mockDocuments.data = [doc()];
+    await render(<DocumentsScreen />);
+
+    expect(screen.queryByText(/DESMARAIS/)).toBeNull();
+  });
+});
+
+describe('<DocumentViewScreen> — as pictured (T552)', () => {
+  beforeEach(() => {
+    mockParams = { id: 'trip-42', documentId: PASS_ID };
+  });
+
+  test('the details are one group: the pass’s fields, then the day it was added, with the cloud tick only once uploaded', async () => {
+    await render(<DocumentViewScreen />);
+
+    const group = screen.getByTestId('document-info');
+    expect(within(group).getByTestId('document-details')).toBeTruthy();
+    expect(within(group).getByTestId('document-added-on')).toHaveTextContent(
+      formatIsoDate('2026-11-20'),
+    );
+    expect(screen.queryByTestId('document-added-uploaded', hidden)).toBeNull();
+
+    mockDocument.data = doc({ upload_state: 'uploaded', is_dirty: false });
+    await screen.rerender(<DocumentViewScreen />);
+    expect(screen.getByTestId('document-added-uploaded', hidden)).toBeTruthy();
+    expect(screen.getByTestId('document-upload-status')).toHaveTextContent(
+      UPLOAD_STATUS_TEXT.saved,
+    );
+  });
+
+  test('a booking has the Added row and no fields', async () => {
+    mockDocument.data = doc({ type: 'booking', parsed_json: null });
+    await render(<DocumentViewScreen />);
+
+    expect(screen.queryByTestId('document-details')).toBeNull();
+    expect(screen.getByTestId('document-added')).toBeTruthy();
+  });
+
+  test('with the form open the fields leave the group and the Added row stays', async () => {
+    mockParams = { id: 'trip-42', documentId: PASS_ID, review: '1' };
+    await render(<DocumentViewScreen />);
+
+    expect(screen.getByTestId('document-confirm-form')).toBeTruthy();
+    expect(screen.queryByTestId('document-details')).toBeNull();
+    expect(screen.getByTestId('document-added')).toBeTruthy();
+  });
+
+  test('Delete is the pictured word, named "Delete document", destructive and centred', async () => {
+    await render(<DocumentViewScreen />);
+
+    const remove = screen.getByTestId('document-delete');
+    expect(remove.props.accessibilityLabel).toBe('Delete document');
+    expect(remove.props.variant).toBe('danger-soft');
+    expect(within(remove).getByText('Delete')).toBeTruthy();
+  });
+
+  test('the bar is drawn in every state, so a document that will not open can still be left', async () => {
+    mockDocument.data = null;
+    mockDocument.error = new Error('store closed');
+    await render(<DocumentViewScreen />);
+
+    expect(screen.getByLabelText('Back')).toBeTruthy();
+    expect(screen.getByTestId('privacy-chip')).toBeTruthy();
+    expect(screen.queryByTestId('document-view-title')).toBeNull();
+  });
+});
+
+describe('<DocumentCaptureScreen> — as pictured (T552)', () => {
+  test('shares the area bar: the tonal Back disc, the title and the "Only you" chip', async () => {
+    await render(<DocumentCaptureScreen />);
+
+    expect(screen.getByTestId('document-capture-title')).toHaveTextContent(
+      'Add a document',
+    );
+    expect(screen.getByTestId('document-capture-title').props.accessibilityRole).toBe(
+      'header',
+    );
+    expect(screen.getByTestId('privacy-chip')).toBeTruthy();
+  });
+});
+
 describe('<DocumentViewScreen> — save and destructive-confirmation haptics (T460; FR-020)', () => {
   const haptics = jest.mocked(ExpoHaptics);
   const notified = () => haptics.notificationAsync.mock.calls.map(([kind]) => kind);

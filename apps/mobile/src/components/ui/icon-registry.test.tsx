@@ -109,6 +109,8 @@ describe('the vocabulary the screens need - D5-07', () => {
     'x',
     'check',
     'checks',
+    'scan',
+    'sun',
     'search',
     'pencil',
     'trash',

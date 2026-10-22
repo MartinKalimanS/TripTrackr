@@ -35,7 +35,7 @@ export function DocumentCameraPermission({
   onAllow,
 }: DocumentCameraPermissionProps) {
   return (
-    <Card variant="flat">
+    <Card variant="tile">
       <View className="items-start gap-2">
         <Text type="headline">
           {canAskAgain ? 'Allow the camera' : 'The camera is turned off'}
