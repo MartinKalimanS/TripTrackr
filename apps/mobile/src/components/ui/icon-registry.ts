@@ -63,12 +63,14 @@ import { PathIcon } from 'phosphor-react-native/src/icons/Path';
 import { PencilSimpleIcon } from 'phosphor-react-native/src/icons/PencilSimple';
 import { PlusIcon } from 'phosphor-react-native/src/icons/Plus';
 import { QuestionIcon } from 'phosphor-react-native/src/icons/Question';
+import { ScanIcon } from 'phosphor-react-native/src/icons/Scan';
 import { ShieldCheckIcon } from 'phosphor-react-native/src/icons/ShieldCheck';
 import { ShoppingBagIcon } from 'phosphor-react-native/src/icons/ShoppingBag';
 import { SignOutIcon } from 'phosphor-react-native/src/icons/SignOut';
 import { SparkleIcon } from 'phosphor-react-native/src/icons/Sparkle';
 import { StampIcon } from 'phosphor-react-native/src/icons/Stamp';
 import { StopCircleIcon } from 'phosphor-react-native/src/icons/StopCircle';
+import { SunIcon } from 'phosphor-react-native/src/icons/Sun';
 import { SuitcaseIcon } from 'phosphor-react-native/src/icons/Suitcase';
 import { SuitcaseRollingIcon } from 'phosphor-react-native/src/icons/SuitcaseRolling';
 import { TagIcon } from 'phosphor-react-native/src/icons/Tag';
@@ -148,6 +150,8 @@ export const ICONS = {
   tag: TagIcon,
   mail: EnvelopeIcon,
   sparkle: SparkleIcon,
+  scan: ScanIcon,
+  sun: SunIcon,
   // Categories and transport
   plane: AirplaneIcon,
   car: CarIcon,
