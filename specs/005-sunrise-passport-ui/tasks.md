@@ -494,29 +494,46 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 ## Phase 7: Everyday areas and forms (after T547; five parallel branches) — User Stories 4 and 5
 
-- [ ] T548 [US4] Branch `feat/005-areas-shared` (merged first). Failing tests then `AreaHeader` (Back, title,
+- [x] T548 [US4] Branch `feat/005-areas-shared` (merged first). Failing tests then `AreaHeader` (Back, title,
       subtitle, `PrivacyChip`), `AreaFab` (hides with the keyboard), the area skeletons and empty states with the
       existing strings (FR-044, FR-064; D5-14)
-- [ ] T549 [P] [US4] Branch `feat/005-areas-photos`. Failing tests (grouping by day, mosaic geometry and `+N`,
+      _As built (F7, 2026-10-21):_ `components/ui/area-header.tsx` and `area-fab.tsx` (API in
+      `reference/as-built/f7-photos-screen.md`); evidence: branch `feat/f7-photos-screen` tip `71d48f1`, merged gate
+      on `feat/f7-photos` 348 suites / 8,649 tests, `tsc`, ESLint, Prettier, parity and theme check green.
+- [x] T549 [P] [US4] Branch `feat/005-areas-photos`. Failing tests (grouping by day, mosaic geometry and `+N`,
       each upload state, the summary line, no overlay on a thumbnail, viewer controls kept) then `DayHeader`,
       `PhotoMosaic`, `UploadState`, `UploadSummary`, the `PhotoViewer` adapter over the zoom toolkit with
       progressive loading; ids kept; `05-photos-and-documents` and `offline/06-*` (FR-045, FR-046, FR-081; D5-09,
       D5-13)
-- [ ] T550 [P] [US4] Branch `feat/005-areas-expenses`. Failing `features/expenses/spending-summary.test.ts` (exact
+      _As built (F7, 2026-10-21):_ `features/photos/photo-days.ts`, `photo-mosaic.ts`, `upload-summary.ts`, `DayHeader`,
+      `PhotoMosaic`, `UploadSummaryPill`, the `PhotoViewer` adapter over the zoom toolkit with progressive load and swipe;
+      notes `reference/as-built/f7-photos-screen.md` and `f7-photos-viewer.md`; tips `71d48f1` (screen), `2f37eaa` (viewer),
+      integration wiring in `feat/f7-photos` (the viewer pages the gallery, test "1 of 2"). The Maestro flows were read, not run.
+- [x] T550 [P] [US4] Branch `feat/005-areas-expenses`. Failing `features/expenses/spending-summary.test.ts` (exact
       `decimal.js` sums, per-day and per-category totals, pending conversions counted and excluded, average per
       day, no `Number` on an amount) then `spending-summary.ts`, `SpendingHero`, `DayBars`, `CategoryBar`,
       `ExpenseRow`, and the amount-first Add expense sheet with the keyboard test; `02-notes-and-expenses`
       (FR-047, FR-054; D5-15)
-- [ ] T551 [P] [US4] Branch `feat/005-areas-notes`. Failing tests then `NoteCard` and the note editor sheet with
+      _As built (F8, 2026-10-21):_ `features/expenses/spending-summary.ts` (decimal.js, pending counted and excluded, no `Number`),
+      `SpendingHero`, `DayBars`, `CategoryBar`, the pictured Budget as a coming-soon control without an amount; note
+      `reference/as-built/f8-spending.md`; branch `feat/f8-spending` tip `7b1e0c2`; 351 suites / 8,699 tests green on the branch.
+- [x] T551 [P] [US4] Branch `feat/005-areas-notes`. Failing tests then `NoteCard` and the note editor sheet with
       Cancel and Save (no autosave), keyboard test; `02-notes-and-expenses` (FR-048; D5-14)
+      _As built (F9, 2026-10-21):_ notes by day, `NoteCard` foot row with the honest sync state, the editor sheet with Cancel and
+      Save (no autosave) and the formatting strip as coming-soon controls; note `reference/as-built/f9-notes.md`; branch
+      `feat/f9-notes` tip `95a3f90`; 352 suites / 8,717 tests green on the branch.
 - [ ] T552 [P] [US4] Branch `feat/005-areas-documents`. Failing tests then `DocumentTicket` (three kinds: boarding
       pass, booking, other), the viewer with the barcode on a white plate, `PrivacyChip` and the existing privacy
       line, `OfflineCityCard` and `StorageBar`; screen-capture protection unchanged;
       `05-photos-and-documents` (FR-049, FR-050; D5-17)
-- [ ] T553 [P] [US5] Branch `feat/005-areas-forms`. Failing keyboard-visibility tests then the `FormSheet` look (28 dp
+- [x] T553 [P] [US5] Branch `feat/005-areas-forms`. Failing keyboard-visibility tests then the `FormSheet` look (28 dp
       radius, handle, Cancel in ink), New trip with name and currency only, the stop editor with `RoutePreview`
       and `NightsStepper` over the unchanged date fields, the city picker with flag chips; `01-account-and-trip`
       date-picker taps and `03-globe` (FR-051, FR-052, FR-053, FR-055; D5-16)
+      _As built (F6, 2026-10-21):_ `FormSheet` look, New trip (name and currency real; destination, cover and dates as coming-soon rows),
+      Add expense amount-first, the stop editor with `RoutePreview` (distance from real coordinates), `NightsStepper` and the pictured
+      chips as coming-soon controls; notes `reference/as-built/f6-forms-trip.md` and `f6-forms-stop.md`; tips `ebb7ee3`, `2f8c9e5`;
+      merged gate on `feat/f6-forms` 339 suites / 8,471 tests, all gates green.
 
 ---
 
