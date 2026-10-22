@@ -10,20 +10,22 @@
  *
  * Every state is designed and none is blank: opening, not on this device (a
  * document another device captured), unreadable (damaged, or sealed under a key
- * this device no longer has), and the picture itself, framed rather than
- * covered (004 FR-033: a hairline `MediaFrame`, no tint, shadow or control across
- * it) and sized to its own proportions so a tall mobile pass is as legible as a
- * landscape booking. Blocks screen capture (FR-034). The unreadable state offers no
- * retry on purpose: the file is damaged or sealed under another key, and opening it
- * again would fail the same way (004 T443).
+ * this device no longer has), and the picture itself, as the HERO of the viewer
+ * (005 T552, `DocumentHero`): on a fixed white `BarcodePlate` so a scanner can read
+ * it in every theme, under a band naming the kind, and sized to its own proportions
+ * so a tall mobile pass is as legible as a landscape booking. Nothing is drawn across
+ * the picture (004 FR-033: no tint, shadow or control over it). Blocks screen capture
+ * (FR-034). The unreadable state offers no retry on purpose: the file is damaged or
+ * sealed under another key, and opening it again would fail the same way (004 T443).
  *
  * Visibility posture: owner-only. There is no control here to share, export,
  * copy or save the picture, and none may be added (FR-032).
  */
 import { useState } from 'react';
-import { Image, StyleSheet, type ImageLoadEvent } from 'react-native';
+import { Image, type ImageLoadEvent } from 'react-native';
 
-import { MediaFrame } from '@/components/ui/media-frame';
+import { BrightnessBoost } from '@/components/trip/brightness-boost';
+import { DocumentHero } from '@/components/trip/document-hero';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
 import { useDocumentImage } from '@/features/documents/use-documents';
 import { useScreenCaptureGuard } from '@/features/documents/use-screen-capture-guard';
@@ -34,6 +36,10 @@ export type DocumentImageProps = {
   path: string | null;
   /** What the picture is, for a screen reader. */
   description: string;
+  /** The kind of document, on the hero's band. */
+  kindLabel: string;
+  /** The confirmed flight number for the band, or none. */
+  flight?: string | null;
 };
 
 const DEFAULT_ASPECT = 4 / 3;
@@ -47,7 +53,13 @@ function aspectOf(event: ImageLoadEvent): number | null {
   return Math.min(MAX_ASPECT, Math.max(MIN_ASPECT, width / height));
 }
 
-export function DocumentImage({ documentId, path, description }: DocumentImageProps) {
+export function DocumentImage({
+  documentId,
+  path,
+  description,
+  kindLabel,
+  flight = null,
+}: DocumentImageProps) {
   useScreenCaptureGuard();
   const image = useDocumentImage(documentId, path);
   const [aspectRatio, setAspectRatio] = useState(DEFAULT_ASPECT);
@@ -71,20 +83,19 @@ export function DocumentImage({ documentId, path, description }: DocumentImagePr
   }
 
   return (
-    <MediaFrame radius="lg" style={styles.frame}>
-      <Image
-        testID="document-image"
-        source={{ uri: `data:image/jpeg;base64,${image.base64}` }}
-        accessibilityRole="image"
-        accessibilityLabel={description}
-        resizeMode="contain"
-        onLoad={(event) => setAspectRatio(aspectOf(event) ?? DEFAULT_ASPECT)}
-        style={{ width: '100%', aspectRatio }}
-      />
-    </MediaFrame>
+    <>
+      <DocumentHero kindLabel={kindLabel} flight={flight}>
+        <Image
+          testID="document-image"
+          source={{ uri: `data:image/jpeg;base64,${image.base64}` }}
+          accessibilityRole="image"
+          accessibilityLabel={description}
+          resizeMode="contain"
+          onLoad={(event) => setAspectRatio(aspectOf(event) ?? DEFAULT_ASPECT)}
+          style={{ width: '100%', aspectRatio }}
+        />
+      </DocumentHero>
+      <BrightnessBoost />
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  frame: { width: '100%' },
-});
