@@ -4,6 +4,7 @@
  */
 import {
   lapText,
+  mrzLine,
   passportHeading,
   passportName,
   periodLabel,
@@ -56,5 +57,24 @@ describe('lapText', () => {
     expect(lapText(0, 'en-US')).toBeNull();
     expect(lapText(Number.NaN, 'en-US')).toBeNull();
     expect(lapText(0.02, 'en-US')).toBe('Under 0.1\u00d7 around the Earth');
+  });
+});
+
+describe('mrzLine - the machine-readable strip of the card (decorative, from the name)', () => {
+  test('is P<TRIPTRACKR<< then the name in capitals, padded with fillers to 44 characters', () => {
+    const line = mrzLine('Marta');
+    expect(line.startsWith('P<TRIPTRACKR<<MARTA<')).toBe(true);
+    expect(line).toHaveLength(44);
+    expect(line).toMatch(/^[A-Z<]+$/);
+  });
+
+  test('folds accents, turns spaces into fillers and drops what is not a letter', () => {
+    expect(mrzLine('Zoë O’Neil-3').startsWith('P<TRIPTRACKR<<ZOE<ONEIL<')).toBe(true);
+    expect(mrzLine('Åsa  Lind')).toMatch(/^P<TRIPTRACKR<<ASA<LIND</);
+  });
+
+  test('a name with no Latin letter is only fillers, and a long name is cut to 44', () => {
+    expect(mrzLine('张伟')).toBe('P<TRIPTRACKR<<'.padEnd(44, '<'));
+    expect(mrzLine('A'.repeat(80))).toHaveLength(44);
   });
 });

@@ -58,3 +58,23 @@ export function recapTitle(period: PassportPeriodKey, thisYear: number): string 
 }
 
 export const RECAP_SUBTITLE = 'See it and share it';
+
+const MRZ_LENGTH = 44;
+const MRZ_HEAD = 'P<TRIPTRACKR<<';
+
+/**
+ * The machine-readable strip drawn along the foot of the passport card, as a passport has one:
+ * `P<TRIPTRACKR<<` then the traveller's name in capital Latin letters (accents folded, spaces
+ * as `<`), padded with `<` to 44 characters. Decoration only: it says nothing the card does not,
+ * and the card hides it from assistive technology.
+ */
+export function mrzLine(displayName: string): string {
+  const name = displayName
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toUpperCase()
+    .replace(/[^A-Z\s]/g, '')
+    .trim()
+    .replace(/\s+/g, '<');
+  return `${MRZ_HEAD}${name}`.slice(0, MRZ_LENGTH).padEnd(MRZ_LENGTH, '<');
+}
