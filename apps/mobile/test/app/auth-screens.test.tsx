@@ -209,10 +209,11 @@ describe('<LoginScreen>', () => {
     );
   });
 
-  test('leaves its title and its Back to the native header: it draws neither (FR-007, FR-008)', async () => {
+  test('leaves its title and its Back to the native header; its one heading is the pictured "Welcome back" (FR-007, FR-008)', async () => {
     await render(<LoginScreen />);
     expect(screen.queryByLabelText('Back')).toBeNull();
-    expect(screen.queryAllByRole('header')).toEqual([]);
+    expect(screen.getAllByRole('header')).toHaveLength(1);
+    expect(screen.getByRole('header')).toHaveTextContent('Welcome back');
     // The only "Sign in" on the page is the action; the title is the header's.
     expect(screen.getAllByText('Sign in')).toHaveLength(1);
   });
@@ -381,7 +382,9 @@ describe('<RegisterScreen>', () => {
     await fill({ Name: '  ', Email: 'not-an-email' });
     await fireEvent.press(screen.getByTestId('register-submit'));
 
-    expect(screen.getByText(/Tell us what to call you/)).toBeTruthy();
+    expect(screen.getByTestId('register-display-name-error')).toHaveTextContent(
+      /Tell us what to call you/,
+    );
     expect(screen.getByText('Enter a valid email address.')).toBeTruthy();
     expect(mockMutations.register.mutate).not.toHaveBeenCalled();
   });
@@ -423,10 +426,11 @@ describe('<RegisterScreen>', () => {
     });
   });
 
-  test('leaves its title and its Back to the native header: it draws neither (FR-007, FR-008)', async () => {
+  test('leaves its title and its Back to the native header; its one heading is the pictured "Create your passport" (FR-007, FR-008)', async () => {
     await render(<RegisterScreen />);
     expect(screen.queryByLabelText('Back')).toBeNull();
-    expect(screen.queryAllByRole('header')).toEqual([]);
+    expect(screen.getAllByRole('header')).toHaveLength(1);
+    expect(screen.getByRole('header')).toHaveTextContent('Create your passport');
     // The only "Create account" on the page is the action; the title is the header's.
     expect(screen.getAllByText('Create account')).toHaveLength(1);
   });

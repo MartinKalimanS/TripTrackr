@@ -185,6 +185,35 @@ describe('(auth)/_layout - Back (FR-008, research "Items to verify" item 7)', ()
   });
 });
 
+describe('(auth)/_layout - the link to the other form (F12, pictures auth.png and register.png)', () => {
+  test('Sign in offers "Create account" at the right of its header, and Create account offers "Sign in"', async () => {
+    await openAt('/welcome');
+    await act(async () => router.push('/login'));
+    expect(screen.getByTestId('auth-switch-link').props.accessibilityLabel).toBe(
+      'Create account',
+    );
+    await act(async () => router.push('/register'));
+    const links = screen.getAllByTestId('auth-switch-link');
+    expect(links.map((link) => link.props.accessibilityLabel)).toContain('Sign in');
+  });
+
+  test('it replaces the screen, so Back from the other form still lands on the welcome screen', async () => {
+    const { app } = await openAt('/welcome');
+    await act(async () => router.push('/login'));
+
+    await fireEvent.press(screen.getByTestId('auth-switch-link'));
+    expect(app.getPathname()).toBe('/register');
+
+    await fireEvent.press(screen.getByLabelText('Back'));
+    expect(app.getPathname()).toBe('/welcome');
+  });
+
+  test('the welcome screen has no such link', async () => {
+    await openAt('/welcome');
+    expect(screen.queryByTestId('auth-switch-link')).toBeNull();
+  });
+});
+
 describe('(auth)/_layout - the group keeps its anchor (FR-030)', () => {
   test('still opens the welcome screen first', () => {
     const layout = jest.requireActual('@/app/(auth)/_layout') as {

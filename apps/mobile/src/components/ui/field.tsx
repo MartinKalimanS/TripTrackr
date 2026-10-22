@@ -66,8 +66,8 @@ import {
   TextField,
   useThemeColor,
 } from 'heroui-native';
-import { useState } from 'react';
-import { View, type TextInputProps, type TextStyle } from 'react-native';
+import { useState, type ReactNode, type Ref } from 'react';
+import { View, type TextInput, type TextInputProps, type TextStyle } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -88,6 +88,10 @@ export type FieldProps = Omit<TextInputProps, 'style'> & {
   description?: string;
   /** Shows the kit's asterisk and tells a screen reader the field is required. */
   isRequired?: boolean;
+  /** The input's own ref, for a caller that moves focus to it (an error summary's links). */
+  inputRef?: Ref<TextInput>;
+  /** A control at the end of the label row ("Forgot password?"), beside the label. */
+  labelAccessory?: ReactNode;
 };
 
 /** The Sunrise input is at least 56 dp tall. */
@@ -177,7 +181,7 @@ function HelperLine({ text }: { text: string }) {
 
 type FieldInputProps = Omit<
   FieldProps,
-  'label' | 'error' | 'description' | 'accessibilityLabel' | 'editable'
+  'label' | 'error' | 'description' | 'accessibilityLabel' | 'editable' | 'labelAccessory'
 > & { name: string; invalid: boolean };
 
 /** The input: the focus ring, the boundary and the size, around the caller's own props. */
@@ -190,6 +194,7 @@ function FieldInput({
   numberOfLines,
   onFocus,
   onBlur,
+  inputRef,
   ...rest
 }: FieldInputProps) {
   const { fontScale } = useAppearance();
@@ -203,6 +208,7 @@ function FieldInput({
 
   return (
     <Input
+      ref={inputRef}
       accessibilityLabel={name}
       accessibilityHint={accessibilityHint ?? (isRequired ? REQUIRED_HINT : undefined)}
       aria-invalid={invalid}
@@ -230,6 +236,7 @@ export function Field({
   description,
   accessibilityLabel,
   editable,
+  labelAccessory,
   ...input
 }: FieldProps) {
   const name = accessibilityLabel ?? label;
@@ -242,9 +249,18 @@ export function Field({
       isInvalid={invalid}
       isDisabled={editable === false}
       isRequired={input.isRequired ?? false}>
-      <Label>
-        <Label.Text className={LABEL_CLASSES}>{label}</Label.Text>
-      </Label>
+      {labelAccessory ? (
+        <View className="flex-row items-center justify-between gap-3">
+          <Label className="shrink">
+            <Label.Text className={LABEL_CLASSES}>{label}</Label.Text>
+          </Label>
+          {labelAccessory}
+        </View>
+      ) : (
+        <Label>
+          <Label.Text className={LABEL_CLASSES}>{label}</Label.Text>
+        </Label>
+      )}
       <FieldInput {...input} name={name} invalid={invalid} />
       <FieldError
         accessible
