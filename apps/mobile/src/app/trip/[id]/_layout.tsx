@@ -103,7 +103,7 @@ export default function TripLayout() {
           <Stack.Screen name="photos" options={{ headerShown: false }} />
           <Stack.Screen name="documents" options={{ headerShown: false }} />
           <Stack.Screen name="document-view" options={{ headerShown: false }} />
-          <Stack.Screen name="offline-maps" options={titled('Offline maps')} />
+          <Stack.Screen name="offline-maps" options={{ headerShown: false }} />
         </Stack>
       </TripHeaderProvider>
     </RequireLocalStore>

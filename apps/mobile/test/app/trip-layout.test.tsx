@@ -71,12 +71,12 @@ const SUB_SCREENS = [
 
 /**
  * The sub-screens that moved to Atlas and so have a native header (004 phase 5); each is
- * asserted in its own suite (offline-maps-header). `photos`, `notes`, `expenses` and the document screens are
- * not among them since feature 005 (T549 to T552): each draws its own bar (`AreaHeader`, the viewer's close
- * bar), so its native header is hidden (photos-header, notes-pictured, spending-pictured, the document
- * block below).
+ * asserted in its own suite. Since feature 005 (T549 to T552, F11) NONE of them is: `photos`, `notes`,
+ * `expenses`, the document screens and `offline-maps` each draw their own bar (`AreaHeader`, the viewer's
+ * close bar), so every native header is hidden (photos-header, notes-pictured, spending-pictured,
+ * offline-maps-header and the document block below).
  */
-const MIGRATED_HEADERS = new Set<string>(['offline-maps']);
+const MIGRATED_HEADERS = new Set<string>([]);
 
 function routes(root: object) {
   return {
@@ -179,13 +179,6 @@ describe('trip/[id]/_layout - the header is on for the overview and the migrated
     await openTrip(anchored, '/trip/abc');
     expect(tripHeaders().index?.color).toBe(COLOURS['on-photo']);
     expect(contentBackground('index')).toBe(COLOURS.background);
-  });
-
-  test('the sub-screens keep an opaque bar of the canvas colour', async () => {
-    await openTrip(anchored, '/trip/abc/offline-maps');
-    const header = tripHeaders()['offline-maps'];
-    expect(header?.translucent).toBe(false);
-    expect(header?.backgroundColor).toBe(COLOURS.background);
   });
 
   test('every other trip screen is painted with the same background', async () => {
