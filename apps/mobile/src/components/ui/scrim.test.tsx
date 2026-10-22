@@ -340,6 +340,23 @@ describe('Scrim - the passport card (F13; C5-10 Passport)', () => {
   });
 });
 
+describe('Scrim - the recap tile (F13)', () => {
+  test.each(PaletteNames)(
+    'is the coral to amber gradient at 135 degrees (%s)',
+    async (name) => {
+      setTheme(name);
+      await render(<Scrim kind="recap" />);
+      const [linear] = layersOf('scrim-recap');
+      expect(linear.direction).toBe(`${Passport.angle}deg`);
+      expect(stopsOf(linear).map((stop) => stop.rgb)).toEqual([
+        Palettes[name].accent,
+        Palettes[name].amber,
+      ]);
+      expect(node('scrim-recap').props.pointerEvents).toBe('none');
+    },
+  );
+});
+
 describe('Scrim - the fade under the tab pill (T530, FR-022)', () => {
   test.each(PaletteNames)(
     'is a gradient from nothing to the canvas of %s, top to bottom',
@@ -531,7 +548,8 @@ describe('Scrim - the kinds are exactly those of the contract and the cover', ()
       'cover',
       'fade',
       'passport',
+      'recap',
     ];
-    expect(kinds).toHaveLength(7);
+    expect(kinds).toHaveLength(8);
   });
 });
