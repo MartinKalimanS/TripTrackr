@@ -177,7 +177,7 @@ export function PassportCard({ totals, holder }: PassportCardProps) {
   return (
     <View
       testID="passport-card"
-      accessible
+      accessibilityRole="summary"
       accessibilityLabel={passportName(totals.period)}
       style={[
         {

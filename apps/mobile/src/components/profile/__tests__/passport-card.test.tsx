@@ -52,6 +52,16 @@ describe('<PassportCard> - what it says', () => {
     expect(screen.getByText('Passport \u00b7 all time')).toBeOnTheScreen();
   });
 
+  test('the card is a labelled summary, not one element: its four figures stay reachable one by one', async () => {
+    await render(card());
+    const root = screen.getByTestId('passport-card');
+    expect(root.props.accessible).not.toBe(true);
+    expect(root.props.accessibilityRole).toBe('summary');
+    for (const name of ['countries', 'trips', 'distance', 'continents']) {
+      expect(screen.getByTestId(`passport-figure-${name}`).props.accessible).toBe(true);
+    }
+  });
+
   test('a year says the year', async () => {
     await render(card({ period: '2026' }));
     expect(screen.getByText('Passport \u00b7 2026')).toBeOnTheScreen();
