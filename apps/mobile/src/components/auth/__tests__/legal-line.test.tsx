@@ -26,8 +26,8 @@ describe('<LegalLine>', () => {
   });
 
   test('reads as one sentence with the two names as links', async () => {
-    await render(<LegalLine lead="By continuing you accept the" testID="legal" />);
-    expect(screen.getByTestId('legal')).toHaveTextContent(
+    await render(<LegalLine lead="By continuing you accept the" />);
+    expect(screen.getByTestId('legal-line')).toHaveTextContent(
       'By continuing you accept the Terms and Privacy Policy.',
     );
     for (const [id, name] of [
