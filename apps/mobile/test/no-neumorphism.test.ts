@@ -88,15 +88,16 @@ describe('the neumorphic look is retired from the application source (SC-001, FR
 
 /**
  * T517 — feature 005 FR-083, SC-001: no Atlas-only treatment may remain when the feature is
- * complete. They exist today (the 004 shape tables, the flat tab strip's mark, two 004 text
- * roles) and are removed screen by screen, then by T564, so the search is red-able on demand
- * and a ratchet otherwise:
+ * complete. T564 removed what nothing read (the flat tab strip's mark is gone: its ceiling is
+ * zero). The 004 shape tables and two 004 text roles are still read by live adapters and
+ * screens (`theme/atlas-values.ts` names them), so the search is red-able on demand and a
+ * ratchet otherwise:
  *
  * - by default a treatment may not GAIN a line (its `ceiling` in `theme/atlas-values.ts`):
  *   a new component built on an Atlas-only table fails here;
- * - `ATLAS_RETIREMENT=1 npx jest test/no-neumorphism` demands zero of each, which is the
- *   state T564 must reach; T564 then deletes this flag, the ceilings and the skip, and the
- *   strict test becomes the only one.
+ * - `ATLAS_RETIREMENT=1 npx jest test/no-neumorphism` demands zero of each: red for the two
+ *   treatments above until their readers are migrated; the flag, the ceilings and the skip
+ *   go when the strict test is green.
  *
  * The Atlas palette VALUES are guarded without a ratchet by `theme/atlas-values.test.ts`.
  */
@@ -124,7 +125,7 @@ describe('the Atlas-only treatments are retired from the application source (FR-
     },
   );
 
-  // Red until T564 (and the screens it waits on): run with ATLAS_RETIREMENT=1.
+  // Red until the readers of the 004 shape tables and text roles move: ATLAS_RETIREMENT=1.
   strictTest.each(ATLAS_TREATMENTS)(
     '$label: none remain (ATLAS_RETIREMENT=1)',
     (treatment) => {
