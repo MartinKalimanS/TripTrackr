@@ -474,7 +474,7 @@ function Sheet({ photo, stops, actions, onClose }: PhotoViewerProps) {
           onRefile={(cityId) => attempt(() => actions.refile(photo.id, cityId))}
         />
         <InlineError testID="photo-viewer-error" message={writeError} />
-        <PrivateNote />
+        <PrivateNote isPublic={photo.is_public} />
       </ScrollView>
     </View>
   );

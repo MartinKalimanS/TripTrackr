@@ -77,6 +77,12 @@ export function addPhotosLabel(count: number): string {
 export const PRIVATE_COPY = 'Private — only you can see your photos.';
 
 /**
+ * A photo the traveller chose public (spec 006): honest about what that means today. The
+ * public trip view and automated screening are not built, so nobody else can see it yet.
+ */
+export const PUBLIC_PENDING_COPY = 'Public — for now only you can see this photo.';
+
+/**
  * The gallery's own words: its states, its controls, and the photo view.
  * Each control has a short visible `…Text` and the longer spoken `…Label`
  * (touch targets are named for what they do, not just what they say).
