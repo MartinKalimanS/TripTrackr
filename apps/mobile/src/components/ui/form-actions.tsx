@@ -50,17 +50,23 @@ const SAVE = 'self-stretch max-w-full';
 /** The header's Cancel: a text button in the ink, named "Cancel". */
 export function FormCancel({
   testIDPrefix,
-  cancelLabel = 'Cancel',
+  cancelLabel,
   onCancel,
 }: Pick<FormActionsProps, 'testIDPrefix' | 'cancelLabel' | 'onCancel'>) {
-  return (
-    <Button
-      testID={`${testIDPrefix}-cancel`}
-      variant="text"
-      size="sm"
-      accessibilityLabel={cancelLabel}
-      onPress={() => onCancel()}
-      className={CANCEL}>
+  const shared = {
+    testID: `${testIDPrefix}-cancel`,
+    variant: 'text',
+    size: 'sm',
+    onPress: () => onCancel(),
+    className: CANCEL,
+  } as const;
+  // The default keeps its name as a literal so the parity guard (testid-baseline) reads it.
+  return cancelLabel === undefined ? (
+    <Button {...shared} accessibilityLabel="Cancel">
+      Cancel
+    </Button>
+  ) : (
+    <Button {...shared} accessibilityLabel={cancelLabel}>
       {cancelLabel}
     </Button>
   );
