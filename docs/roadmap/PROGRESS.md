@@ -128,6 +128,7 @@ row here is not done. Test counts are the full Jest run of the workspace on that
 | 2026-10-22 | Spec 006: photo-library permission and the public or private prompt (default private)          | `feat/006-photos` (`9587194`)         | 426 suites / 9,878 tests; `specs/006-photo-permission-visibility/` (spec, plan, tasks ticked with shas, as-built)                                |
 | 2026-10-22 | Merge both into the stack                                                                      | `feat/ui-stack` (`72018b2`)           | 429 suites / 9,929 tests, tsc, ESLint, Prettier, parity, theme green                                                                             |
 | 2026-10-23 | T564 part: retire AtlasSpacing, AtlasRadius, cornerStyle; fix flaky document-upload order test | `feat/ui-stack`                       | 429 suites / 9,912 tests, tsc, ESLint, Prettier, theme css green; `ATLAS_RETIREMENT=1` 1 red left (text roles); `as-built/f14-atlas.md` addendum |
+| 2026-10-23 | T569 review of the derived views and the sign-in restyle                                       | `feat/ui-stack`                       | read and grep review, no finding; `specs/005-sunrise-passport-ui/tasks.md` T569                                                                  |
 
 ## Feature 001 open tasks (65 of 228 at 2026-10-21; the list moves to the steps above)
 

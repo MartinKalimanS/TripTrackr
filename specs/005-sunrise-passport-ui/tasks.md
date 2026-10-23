@@ -621,8 +621,10 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
       `apps/mobile/e2e/offline/gate-evidence.md` (FR-065, FR-081; SC-010)
 - [ ] T568 Clean `npm ci` and the full checks on Windows and the first CI run of the branch; coverage at least 80% in
       every workspace; the privacy and API suites unaffected (D5-19; SC-004, SC-012)
-- [ ] T569 Code review and a security review of the derived views (no path by which expenses or documents reach a
+- [x] T569 Code review and a security review of the derived views (no path by which expenses or documents reach a
       shareable surface; nothing transmitted; nothing stored) and of the sign-in restyle (FR-084, FR-080)
+      _Reviewed 2026-10-23 (by reading and grep, one reviewer; a second pair of eyes is still welcome):_ the passport, globe and home derive from `useGlobe` (trips, stops, photos) and import no expense or document reader (the only readers are `category-picker`, `features/documents/*` and `features/expenses/*`); nothing in the derived views calls `apiFetch`, `fetch`, `Share`, the clipboard or the media library; the rasterised stamp page is a local temp PNG shown in-app and never shared; the sign-in screens log nothing, store no credential, send Google and Apple tokens only through zod-validated requests to the app's own API, and report errors through `describeAuthError`. No finding.
+
 - [ ] T570 [DEVICE] Final owner review on a phone in both themes, at the largest text size and with increased
       contrast; first-time-viewer test of Home, Trips and a trip (95 percent identify what is tappable; 9 of 10
       find the primary action in sunlight) (D5-01; SC-009, SC-013)
