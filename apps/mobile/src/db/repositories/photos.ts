@@ -82,6 +82,13 @@ export interface SyncReceipt {
   server?: ServerPhotoState;
 }
 
+/** What a registration answers with: the server's state, and the stamp it gave the row. */
+export interface UploadReceipt extends SyncReceipt {
+  server: ServerPhotoState;
+  /** The registered photo's `updated_at` on the server's clock, when the answer carried it. */
+  serverUpdatedAt?: string;
+}
+
 const live = (id: string) => and(eq(photos.id, id), isNull(photos.deleted_at));
 
 /**
@@ -229,8 +236,40 @@ function markSynced(db: AppDatabase, id: string, receipt: SyncReceipt): void {
     .run();
 }
 
-/** The object store confirmed the bytes and the server registered them (FR-041). */
-function markUploaded(db: AppDatabase, id: string, receipt: Required<SyncReceipt>): void {
+/** Milliseconds since the epoch, reading a stamp with microseconds as the milliseconds it is. */
+function instantOf(iso: string): number {
+  return Date.parse(iso.replace(/(.d{3})d+/, '$1'));
+}
+
+/**
+ * The stamp of a change made once the server has registered the photo: the device clock,
+ * unless the server's own stamp is as late or later, then one millisecond after it. The
+ * server applies an incoming record only when it is strictly newer than the stored one,
+ * and a registration stamps the row with the server's clock.
+ */
+function afterRegistration(
+  syncedAt: string,
+  serverUpdatedAt: string | undefined,
+): string {
+  const device = instantOf(syncedAt);
+  const server = serverUpdatedAt === undefined ? Number.NaN : instantOf(serverUpdatedAt);
+  return new Date(
+    Number.isNaN(server) ? device : Math.max(device, server + 1),
+  ).toISOString();
+}
+
+/**
+ * The object store confirmed the bytes and the server registered them (FR-041).
+ *
+ * A private row is then clean: registration carried everything it holds. A PUBLIC row is
+ * not: `RegisterPhotoRequest` has no visibility, the registration made the photo private
+ * on the server, and the traveller's choice is a change still to push (spec 006 FR-012).
+ * It stays dirty with a new stamp, whatever else happened to it in flight, and travels in
+ * the next push cycle like any local edit; the push handler accepts `is_public` for a
+ * registered photo at any time, and the photo stays unreachable until screening approves
+ * it (FR-056).
+ */
+function markUploaded(db: AppDatabase, id: string, receipt: UploadReceipt): void {
   db.transaction((tx) => {
     tx.update(photos)
       .set({ upload_state: 'uploaded', ...receipt.server })
@@ -238,7 +277,20 @@ function markUploaded(db: AppDatabase, id: string, receipt: Required<SyncReceipt
       .run();
     tx.update(photos)
       .set({ is_dirty: false, synced_at: receipt.syncedAt })
-      .where(and(live(id), eq(photos.updated_at, receipt.sentUpdatedAt)))
+      .where(
+        and(
+          live(id),
+          eq(photos.is_public, false),
+          eq(photos.updated_at, receipt.sentUpdatedAt),
+        ),
+      )
+      .run();
+    tx.update(photos)
+      .set({
+        is_dirty: true,
+        updated_at: afterRegistration(receipt.syncedAt, receipt.serverUpdatedAt),
+      })
+      .where(and(live(id), eq(photos.is_public, true)))
       .run();
   });
 }
