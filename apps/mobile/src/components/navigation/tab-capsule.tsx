@@ -11,7 +11,9 @@
  *
  * ITS COLOUR is the `accentTint` in the light themes and white at 14 percent in the dark ones
  * (`.tab.is-on` in the prototype; `home-dark.png`): the one white token is `onPhoto`, which is
- * pure white in every theme.
+ * pure white in every theme. Where the pill is solid (increased contrast, reduced
+ * transparency) that white is laid over the pill's own tint beforehand, so the capsule is opaque
+ * as well (FR-072, FR-073).
  *
  * It carries the id `tab-mark-<routeName>` of the SELECTED route, so the id the 004 mark
  * had still exists in the selected tab's place only (`tab-mark-index` while Globe is
@@ -32,9 +34,10 @@ import Animated, {
 
 import { useColors } from '@/components/ui/theme-tokens';
 import { useAppearance } from '@/hooks/use-appearance';
-import { Radii, springOf, withAlpha } from '@/theme';
+import { Radii, blend, springOf, withAlpha, type PaletteName } from '@/theme';
 
 import { PillMetrics, capsuleLayout } from './tab-metrics';
+import { tabTint } from './tab-surface';
 
 export interface TabCapsuleProps {
   /** The selected route's name: the id is `tab-mark-<routeName>`. */
@@ -47,16 +50,34 @@ export interface TabCapsuleProps {
   trackWidth: number | null;
 }
 
-const COLOR_KEYS = ['accentTint', 'onPhoto'] as const;
+const COLOR_KEYS = ['accentTint', 'onPhoto', 'surface', 'surfaceSecondary'] as const;
+
+/** Tint in the light themes; white at 14 percent in the dark ones, solid where the pill is. */
+function capsuleFill(
+  dark: boolean,
+  opaque: boolean,
+  themeName: PaletteName,
+  colors: Record<(typeof COLOR_KEYS)[number], string>,
+): string {
+  if (!dark) return colors.accentTint;
+  const alpha = PillMetrics.darkCapsuleAlpha;
+  return opaque
+    ? blend(colors.onPhoto, colors[tabTint(themeName)], alpha)
+    : withAlpha(colors.onPhoto, alpha);
+}
 
 export function TabCapsule({ routeName, index, count, trackWidth }: TabCapsuleProps) {
-  const { prefersLessMotion, theme } = useAppearance();
+  const {
+    prefersLessMotion,
+    prefersLessTransparency,
+    prefersMoreContrast,
+    theme,
+    themeName,
+  } = useAppearance();
   const colors = useColors(COLOR_KEYS);
+  const opaque = prefersLessTransparency || prefersMoreContrast;
   const { width: windowWidth } = useWindowDimensions();
-  const fill =
-    theme === 'dark'
-      ? withAlpha(colors.onPhoto, PillMetrics.darkCapsuleAlpha)
-      : colors.accentTint;
+  const fill = capsuleFill(theme === 'dark', opaque, themeName, colors);
   const { tabWidth, offsetOf } = capsuleLayout(
     trackWidth ?? windowWidth - 2 * PillMetrics.sideMargin,
     count,

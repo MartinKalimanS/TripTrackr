@@ -41,6 +41,7 @@ import { assertAccessibleName, assertNotBusyAndDisabled } from './adapter-guards
 import { focusRingStyle, useFocusRing } from './focus-ring';
 import { Icon, type IconName, type IconSize, type IconTone } from './icon';
 import { liftStyle } from './lift-style';
+import { useOpaqueSurfaces } from './solid-ground';
 import { useColors, type PaletteKey } from './theme-tokens';
 
 export const ICON_BUTTON_VARIANTS = [
@@ -153,6 +154,8 @@ interface StyleInput {
   theme: PaletteName;
   scale: number;
   focused: boolean;
+  /** Increased contrast or reduced transparency: the paper over the sky is solid. */
+  opaque: boolean;
 }
 
 function discStyle({
@@ -162,9 +165,10 @@ function discStyle({
   theme,
   scale,
   focused,
+  opaque,
 }: StyleInput): ViewStyle {
   const fill =
-    variant === 'onSky' && look.fill === 'surface'
+    variant === 'onSky' && look.fill === 'surface' && !opaque
       ? withAlpha(colors.surface, SKY_OPACITY)
       : look.fill
         ? colors[look.fill as keyof typeof colors]
@@ -199,6 +203,7 @@ function useDisc(
 ): Disc {
   const { themeName, prefersLessMotion } = useAppearance();
   const colors = useColors(COLOR_KEYS);
+  const opaque = useOpaqueSurfaces();
   const inert = state.busy || state.disabled;
   return {
     inkColor: REST[variant].icon === 'onPhoto' ? colors.onPhoto : colors.ink,
@@ -210,6 +215,7 @@ function useDisc(
         theme: themeName,
         scale: pressed && !inert ? pressScaleOf(prefersLessMotion) : 1,
         focused,
+        opaque,
       }),
   };
 }

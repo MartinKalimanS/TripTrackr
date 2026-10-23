@@ -38,7 +38,7 @@ import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
 import { useColors } from '@/components/ui/theme-tokens';
 import { useAppearance } from '@/hooks/use-appearance';
-import { Radii, withAlpha } from '@/theme';
+import { Radii, blend, withAlpha } from '@/theme';
 
 import { AndroidBarMetrics } from './tab-metrics';
 import {
@@ -135,9 +135,14 @@ export function AndroidNavBar({
   // Lets `useBottomTabBarHeight()` tell every scene where the bar's top edge is.
   const reportHeight = use(BottomTabBarHeightCallbackContext);
   const colors = useColors(COLOR_KEYS);
-  const { theme } = useAppearance();
+  const { theme, prefersLessTransparency, prefersMoreContrast } = useAppearance();
+  const opacity = AndroidBarMetrics.indicatorOpacity[theme];
   const fills: IndicatorFills = {
-    tint: withAlpha(colors.accent, AndroidBarMetrics.indicatorOpacity[theme]),
+    // The accent at 26 or 28 percent over the bar; solid under increased contrast (FR-072).
+    tint:
+      prefersLessTransparency || prefersMoreContrast
+        ? blend(colors.accent, colors.surfaceSecondary, opacity)
+        : withAlpha(colors.accent, opacity),
     held: colors.pressed,
   };
 

@@ -18,6 +18,8 @@ import { useThemeColor, type ThemeColor } from 'heroui-native';
 
 import type { Palette } from '@/theme';
 
+import { solidOver, useOpaqueSurfaces } from './solid-ground';
+
 export const TOKEN_OF = {
   // Ink
   ink: 'foreground',
@@ -60,14 +62,36 @@ export const TOKEN_OF = {
 export type PaletteKey = keyof typeof TOKEN_OF;
 
 /**
+ * The keys the dark themes write as translucent colours over the paper. Under increased
+ * contrast or reduced transparency `useColors` hands them over as the opaque colour they
+ * come to over the `surface` (FR-072, FR-073; `solid-ground.ts`): the light themes' tints
+ * are opaque already and come back unchanged.
+ */
+const TINTS: ReadonlySet<PaletteKey> = new Set<PaletteKey>([
+  'accentTint',
+  'aquaTint',
+  'amberTint',
+  'dangerTint',
+  'successTint',
+]);
+
+/**
  * The colours of `keys` in the active theme, in ONE kit call. Pass a module-level constant
- * array so the call is stable between renders.
+ * array so the call is stable between renders. A tint is opaque under increased contrast or
+ * reduced transparency (`TINTS`).
  */
 export function useColors<K extends PaletteKey>(keys: readonly K[]): Record<K, string> {
-  const tokens = keys.map((key) => TOKEN_OF[key]) as ThemeColor[];
+  // The paper rides in the same call, as the last colour: it is what a tint settles onto.
+  const tokens = [...keys.map((key) => TOKEN_OF[key]), TOKEN_OF.surface] as ThemeColor[];
   const colours = useThemeColor(tokens) as string[];
-  return Object.fromEntries(keys.map((key, index) => [key, colours[index]])) as Record<
-    K,
-    string
-  >;
+  const opaque = useOpaqueSurfaces();
+  const ground = colours[keys.length];
+  return Object.fromEntries(
+    keys.map((key, index) => [
+      key,
+      opaque && TINTS.has(key) && typeof ground === 'string'
+        ? solidOver(colours[index], ground)
+        : colours[index],
+    ]),
+  ) as Record<K, string>;
 }

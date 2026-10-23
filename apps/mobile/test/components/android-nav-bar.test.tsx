@@ -23,7 +23,7 @@ import { Dimensions, Platform, StyleSheet } from 'react-native';
 import { AndroidNavBar, indicatorFill } from '@/components/navigation/android-nav-bar';
 import { TabBar } from '@/components/navigation/tab-bar';
 import { AndroidBarMetrics } from '@/components/navigation/tab-metrics';
-import { Radii, Palettes, withAlpha, type PaletteName } from '@/theme';
+import { Radii, Palettes, blend, withAlpha, type PaletteName } from '@/theme';
 
 import { appearanceOf } from '../helpers/appearance';
 import { glyphsIn } from '../helpers/icons';
@@ -354,8 +354,12 @@ describe('<AndroidNavBar> the indicator - FR-022', () => {
       expect(opacity).toBe(
         AndroidBarMetrics.indicatorOpacity[theme.split('-')[0] as 'light'],
       );
+      // FR-072: under increased contrast the accent is laid over the bar, so it is opaque.
+      const { accent, surfaceSecondary } = Palettes[theme];
       expect(styleOf(marks()[0]!).backgroundColor).toBe(
-        withAlpha(Palettes[theme].accent, opacity),
+        theme.endsWith('-contrast')
+          ? blend(accent, surfaceSecondary, opacity)
+          : withAlpha(accent, opacity),
       );
       expect(styleOf(marks()[0]!).backgroundColor).not.toBe(
         Palettes[theme].accentTint.toLowerCase(),
