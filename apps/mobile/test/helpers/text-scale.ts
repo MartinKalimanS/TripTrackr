@@ -48,18 +48,15 @@ function holdsScalingText(node: HostNode | string): boolean {
   return (node.children ?? []).some(holdsScalingText);
 }
 
-function walk(node: HostNode | string, found: FixedHeight[]): void {
+function walk(node: HostNode | string, found: FixedHeight[], allow: RegExp[]): void {
   if (typeof node === 'string') return;
   const { height } = styleOf(node);
-  if (typeof height === 'number' && holdsScalingText(node)) {
-    const testID = node.props.testID;
-    found.push({
-      type: node.type,
-      testID: typeof testID === 'string' ? testID : null,
-      height,
-    });
+  const testID = typeof node.props.testID === 'string' ? node.props.testID : null;
+  const allowed = testID !== null && allow.some((pattern) => pattern.test(testID));
+  if (typeof height === 'number' && !allowed && holdsScalingText(node)) {
+    found.push({ type: node.type, testID, height });
   }
-  (node.children ?? []).forEach((child) => walk(child, found));
+  (node.children ?? []).forEach((child) => walk(child, found, allow));
 }
 
 /**
@@ -67,14 +64,16 @@ function walk(node: HostNode | string, found: FixedHeight[]): void {
  * which holds text that scales at any depth: a container that cannot grow when the text does. A
  * fixed `height` on a node with no text in it (a thumbnail, a dot, a bar), or only text that
  * ignores the system size (`allowFontScaling={false}`: a flag, a cover letter), is not a clip
- * risk and is not listed. Style `height` only: a class such as `h-5` is the ratchet's to read
+ * risk and is not listed; `allow` names the test ids of a drawing whose text is part of the
+ * picture (a stamp, whose letters are painted by the SVG and do not scale). Style `height` only: a class such as `h-5` is the ratchet's to read
  * (`test/scale/fixed-heights.test.ts`), Jest renders no classes.
  */
 export function fixedHeightTextContainers(
   root: Root = screen.toJSON() as Root,
+  allow: RegExp[] = [],
 ): FixedHeight[] {
   const found: FixedHeight[] = [];
   if (root === null) return found;
-  (Array.isArray(root) ? root : [root]).forEach((node) => walk(node, found));
+  (Array.isArray(root) ? root : [root]).forEach((node) => walk(node, found, allow));
   return found;
 }
