@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-23
 
-**Status**: Draft
+**Status**: Built (device checks pending: quickstart.md)
 
 **Input**: owner decision of 2026-10-22, recorded in `docs/roadmap/DECISIONS.md`: "Photos: the app asks
 the traveller for photo-library permission before the picker opens; after a pick it asks whether the
@@ -108,7 +108,8 @@ offers "Allow photo access".
 ### Edge Cases
 
 - **Limited access** (iOS 14+ "Selected photos", Android 14+ "Select photos and videos") counts as
-  allowed: the picker opens and offers what the traveller shared.
+  allowed: the picker opens. Which photos it then offers is the system's (the iOS picker runs out of
+  process and may show the whole library regardless of the limit; a device check records it).
 - **Android 13+**: `expo-image-picker`'s own library request asks nothing there (plan D6-02), so the
   request is made with React Native's `PermissionsAndroid` for `READ_MEDIA_IMAGES` (and
   `READ_MEDIA_VISUAL_USER_SELECTED` on 14+). **Android 12 and below**: the module asks for storage.
@@ -164,6 +165,9 @@ offers "Allow photo access".
 - **FR-016**: One capture at a time: a second tap while a capture or the sheet is open MUST be ignored.
 - **FR-017**: The native configuration MUST declare only the permissions this needs (plan D6-04), with an
   honest iOS usage string, and the release notes MUST say a new native build is required.
+- **FR-018**: A photo the traveller chose public MUST be described honestly in the photo view: "Public — for
+  now only you can see this photo." (a private photo keeps "Private — only you can see your photos."); nothing
+  in the view offers to change the visibility (User Story 7).
 
 ### Key Entities
 

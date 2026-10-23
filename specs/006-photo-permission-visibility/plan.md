@@ -174,6 +174,20 @@ camera, dismissal, Public, N photos, busy guard); module tests per platform with
 and push tests for `is_public`; a screen test of the photos route; the config test for the manifest and
 the plugin string; Maestro flows edited, not run.
 
+### D6-12 The refusal notice is a secondary action
+
+The notice sits above a gallery whose own primary ("Add photos") stays on screen, and a state has exactly
+one primary (FR-005 of feature 004; the F14 sweep, `as-built/f14-states.md`). So "Allow photo access" and
+"Open Settings" are the notice's one action, drawn secondary beside a text "Dismiss", exactly as the camera
+notice is (`PermissionState` without `primary`). The owner's "one primary action" is read as "one action,
+named for what fixes it". Reversible with one prop (`primary`) if the owner wants the louder button.
+
+### D6-13 The photo view says what "public" means today
+
+`PrivateNote` read "Private — only you can see your photos." for every photo, which contradicts a photo the
+traveller just chose public. For a public photo the view says "Public — for now only you can see this
+photo." (FR-018). The gallery's footer note is about the gallery as a whole and is unchanged.
+
 ## Technical Context
 
 TypeScript, Expo SDK 57, React Native 0.86, `expo-image-picker` 57.0.19, Jest with the repository's
