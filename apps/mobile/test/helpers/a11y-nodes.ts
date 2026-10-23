@@ -36,6 +36,10 @@ export interface AccessibleNode {
   /** The keys of `accessibilityState` (and `aria-*`) that are on, e.g. `selected`, `disabled`. */
   state: string[];
   hint?: string;
+  /** The spoken value after the name (`accessibilityValue.text`): "Half", "50%". */
+  value?: string;
+  /** The custom actions a reader offers on it (the label, else the name): "Next trip"... */
+  actions: string[];
 }
 
 const STATE_KEYS = ['busy', 'checked', 'disabled', 'expanded', 'selected'] as const;
@@ -73,19 +77,31 @@ function labelOf(node: HostNode): string | undefined {
   return typeof label === 'string' && label.trim() !== '' ? label : undefined;
 }
 
-/** The text a node holds that a reader would speak: its strings, not what is hidden. */
-function spokenText(node: HostNode | string): string[] {
-  if (typeof node === 'string') return [node];
-  if (hidesDescendants(node)) return [];
+/**
+ * The text a node holds that a reader would speak, not what is hidden: the pieces of one `Text`
+ * run together ("Hello, " and "Ana"); the texts of a group are said one after the other.
+ */
+function spokenText(node: HostNode | string): string {
+  if (typeof node === 'string') return node;
+  if (hidesDescendants(node)) return '';
   const own =
     node.type === 'TextInput' ? [node.props.value ?? node.props.placeholder] : [];
-  return [
+  const parts = [
     ...own.filter((part): part is string => typeof part === 'string'),
-    ...(node.children ?? []).flatMap(spokenText),
+    ...(node.children ?? []).map(spokenText),
   ];
+  return node.type === 'Text' ? parts.join('') : parts.join(' ');
 }
 
-const squash = (parts: string[]) => parts.join(' ').replace(/\s+/g, ' ').trim();
+const squash = (text: string) => text.replace(/\s+/g, ' ').trim();
+
+function actionsOf(node: HostNode): string[] {
+  const list = node.props.accessibilityActions;
+  if (!Array.isArray(list)) return [];
+  return list.map(
+    (action: { name: string; label?: string }) => action.label ?? action.name,
+  );
+}
 
 function stateOf(node: HostNode): string[] {
   const props = node.props;
@@ -103,10 +119,13 @@ function describe(node: HostNode): AccessibleNode {
     name: labelOf(node) ?? squash(spokenText(node)),
     kind: node.type,
     state: stateOf(node),
+    actions: actionsOf(node),
   };
   if (typeof props.testID === 'string') entry.id = props.testID;
   if (typeof role === 'string') entry.role = role;
   if (typeof props.accessibilityHint === 'string') entry.hint = props.accessibilityHint;
+  const value = props.accessibilityValue as { text?: unknown } | undefined;
+  if (typeof value?.text === 'string') entry.value = value.text;
   return entry;
 }
 

@@ -25,6 +25,7 @@ async function show() {
         accessibilityRole="button"
         accessibilityLabel="Go"
         accessibilityHint="Goes"
+        accessibilityValue={{ text: 'Ready' }}
         accessibilityState={{ selected: true, disabled: false }}>
         <Text>Inner words</Text>
       </Pressable>
@@ -50,6 +51,15 @@ async function show() {
       <View importantForAccessibility="no">
         <Text>Still read</Text>
       </View>
+      <Text testID="run">
+        Hello, <Text>Ana</Text>
+      </Text>
+      <View
+        testID="globe"
+        accessible
+        accessibilityLabel="Globe"
+        accessibilityActions={[{ name: 'next', label: 'Next trip' }, { name: 'back' }]}
+      />
       <Pressable testID="blank" accessibilityRole="button" />
     </View>,
   );
@@ -66,6 +76,8 @@ describe('accessibleNodes', () => {
       'Name',
       'A picture',
       'Still read',
+      'Hello, Ana',
+      'Globe',
       '',
     ]);
   });
@@ -74,7 +86,12 @@ describe('accessibleNodes', () => {
     await show();
     const nodes = accessibleNodes();
     const go = nodes.find((node) => node.id === 'go')!;
-    expect(go).toMatchObject({ role: 'button', hint: 'Goes', state: ['selected'] });
+    expect(go).toMatchObject({
+      role: 'button',
+      hint: 'Goes',
+      value: 'Ready',
+      state: ['selected'],
+    });
     expect(nodes.some((node) => node.name === 'Inner words')).toBe(false);
   });
 
@@ -85,6 +102,16 @@ describe('accessibleNodes', () => {
       expect(names).not.toContain(gone);
     }
     expect(accessibleNodes().some((node) => node.id === 'art')).toBe(false);
+  });
+
+  test('says the pieces of one text run together, and offers the actions by label', async () => {
+    await show();
+    const nodes = accessibleNodes();
+    expect(nodes.find((node) => node.id === 'run')?.name).toBe('Hello, Ana');
+    expect(nodes.find((node) => node.id === 'globe')?.actions).toEqual([
+      'Next trip',
+      'back',
+    ]);
   });
 
   test('names an unlabelled control with nothing in it as a finding', async () => {
@@ -103,9 +130,16 @@ describe('accessibleNodes', () => {
 
 describe('the order assertions', () => {
   const nodes = [
-    { name: 'Back', id: 'back', kind: 'View', role: 'button', state: [] },
-    { name: 'Title', kind: 'Text', role: 'header', state: [] },
-    { name: 'Save', id: 'save', kind: 'View', role: 'button', state: ['disabled'] },
+    { name: 'Back', id: 'back', kind: 'View', role: 'button', state: [], actions: [] },
+    { name: 'Title', kind: 'Text', role: 'header', state: [], actions: [] },
+    {
+      name: 'Save',
+      id: 'save',
+      kind: 'View',
+      role: 'button',
+      state: ['disabled'],
+      actions: [],
+    },
   ];
 
   test('accepts ids, names and patterns in order, with room between them', () => {
@@ -126,6 +160,8 @@ describe('the order assertions', () => {
       /3\. Save \[button, disabled\] #save/,
     );
     expect(describeNodes(nodes)).toContain('2. Title [header]');
-    expect(describeNodes([{ name: '', kind: 'View', state: [] }])).toBe('1. (unnamed)');
+    expect(describeNodes([{ name: '', kind: 'View', state: [], actions: [] }])).toBe(
+      '1. (unnamed)',
+    );
   });
 });
