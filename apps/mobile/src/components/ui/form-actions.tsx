@@ -22,6 +22,11 @@
  *   at the largest text size (FR-029): `max-w-full` lets a long label wrap INSIDE a button
  *   that already fills the row instead of overflowing it.
  * - Press feedback, the target floor, the focus ring and the Save haptic are `Button`'s.
+ * - Two optional names for the rare form whose buttons do not read "Cancel" and "Save"
+ *   (spec 006, the photo visibility sheet: leaving it still adds the photos, so "Cancel" would
+ *   mislead, and its button adds): `cancelLabel` is the header button's text and name, and
+ *   `saveTestID` its footer id where `<prefix>-save` is not what a flow selects by. Both
+ *   default to what every other form has had all along.
  */
 import { View } from 'react-native';
 
@@ -30,6 +35,10 @@ import { Button } from './button';
 export type FormActionsProps = {
   testIDPrefix: string;
   saveLabel: string;
+  /** The footer button's id when it is not `<prefix>-save`. */
+  saveTestID?: string;
+  /** The header button's text and name when it is not "Cancel". */
+  cancelLabel?: string;
   onCancel: () => void;
   onSave: () => void;
   saveDisabled?: boolean;
@@ -41,17 +50,18 @@ const SAVE = 'self-stretch max-w-full';
 /** The header's Cancel: a text button in the ink, named "Cancel". */
 export function FormCancel({
   testIDPrefix,
+  cancelLabel = 'Cancel',
   onCancel,
-}: Pick<FormActionsProps, 'testIDPrefix' | 'onCancel'>) {
+}: Pick<FormActionsProps, 'testIDPrefix' | 'cancelLabel' | 'onCancel'>) {
   return (
     <Button
       testID={`${testIDPrefix}-cancel`}
       variant="text"
       size="sm"
-      accessibilityLabel="Cancel"
+      accessibilityLabel={cancelLabel}
       onPress={() => onCancel()}
       className={CANCEL}>
-      Cancel
+      {cancelLabel}
     </Button>
   );
 }
@@ -60,13 +70,14 @@ export function FormCancel({
 export function FormActions({
   testIDPrefix,
   saveLabel,
+  saveTestID,
   onSave,
   saveDisabled = false,
 }: FormActionsProps) {
   return (
     <View>
       <Button
-        testID={`${testIDPrefix}-save`}
+        testID={saveTestID ?? `${testIDPrefix}-save`}
         variant="primary"
         size="lg"
         accessibilityLabel={saveLabel}

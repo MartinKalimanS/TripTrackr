@@ -73,6 +73,36 @@ describe('<FormActions> and <FormCancel>', () => {
     expect(screen.getByLabelText('Save expense')).toBe(save);
   });
 
+  test('a form may name its save id and its cancel, and both keep the shared look', async () => {
+    const props: FormActionsProps = {
+      testIDPrefix: 'photo-visibility',
+      saveLabel: 'Add 2 photos',
+      saveTestID: 'photo-visibility-confirm',
+      cancelLabel: 'Close',
+      onCancel: jest.fn(),
+      onSave: jest.fn(),
+    };
+    await render(
+      <>
+        <FormCancel
+          testIDPrefix={props.testIDPrefix}
+          cancelLabel={props.cancelLabel}
+          onCancel={props.onCancel}
+        />
+        <FormActions {...props} />
+      </>,
+    );
+
+    const cancel = screen.getByTestId('photo-visibility-cancel');
+    expect(cancel.props.accessibilityLabel).toBe('Close');
+    expect(cancel).toHaveTextContent('Close');
+    expect(screen.queryByLabelText('Cancel')).toBeNull();
+    expect(screen.queryByTestId('photo-visibility-save')).toBeNull();
+    expect(screen.getByTestId('photo-visibility-confirm').props.variant).toBe('primary');
+    await fireEvent.press(screen.getByTestId('photo-visibility-confirm'));
+    expect(props.onSave).toHaveBeenCalledTimes(1);
+  });
+
   test('Cancel calls onCancel and Save calls onSave, each only its own', async () => {
     const props = await renderActions({
       testIDPrefix: 'note-editor',

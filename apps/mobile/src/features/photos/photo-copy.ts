@@ -50,6 +50,29 @@ export const UPLOAD_STATE_COPY = {
   },
 } as const;
 
+/**
+ * The sheet that asks who can see the photos just chosen (spec 006 FR-006 to FR-010). The
+ * owner's words for the two choices; `note` is the honest line: the public trip view and the
+ * screening provider are not built, so a public photo is seen only by its owner for now, and
+ * leaving the sheet any way at all adds the photos as private.
+ */
+export const VISIBILITY_COPY = {
+  titleMany: 'Who can see these photos?',
+  titleOne: 'Who can see this photo?',
+  privateTitle: 'Private',
+  privateDetail: 'Only you',
+  publicTitle: 'Public',
+  publicDetail: 'Can appear on a trip you choose to share',
+  publicExtra: 'Nothing is shared until you publish a trip',
+  note: 'Sharing isn’t available yet, so for now only you can see a public photo. Closing this adds the photos as private.',
+  closeText: 'Close',
+} as const;
+
+/** The primary of the sheet: "Add 1 photo", "Add 12 photos". */
+export function addPhotosLabel(count: number): string {
+  return count === 1 ? 'Add 1 photo' : `Add ${count} photos`;
+}
+
 /** The visibility posture, told to the traveller in words. */
 export const PRIVATE_COPY = 'Private — only you can see your photos.';
 
