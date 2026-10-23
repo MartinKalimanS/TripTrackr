@@ -565,29 +565,34 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
       (FR-058, FR-059, FR-081; D5-08; Q-2)
       _As built (F13, 2026-10-22):_ You screen, passport card, stamps page (baked to bitmaps from 100 stamps, 120-stamp scroll test), coming-soon Share, Settings and recap;
       merged gate on `feat/ui-stack` 376 suites / 9,066 tests (one 20 s timeout in `list-group.test.tsx` while the machine stalled; 40/40 alone), `tsc`, ESLint, Prettier, parity and theme check green. `offline/11-a` was updated, not run.
-- [ ] T558 [US8] Delight: failing tests then count-up trigger policy once per appearance, the stamp landing for
+- [x] T558 [US8] Delight: failing tests then count-up trigger policy once per appearance, the stamp landing for
       stamps earned in the last 7 days once per session with the heavy haptic, the live pin pulse, selection
       haptics on detent, tab and chip; nothing under reduced motion (FR-060, FR-061, FR-062; D5-11, D5-14)
+      _As built (f14-delight, 2026-10-22):_ count-up once per appearance, stamp landing queue newest first, sheet haptic only on a detent change, nothing under reduced motion; `reference/as-built/f14-delight.md`; branch `feat/f14-delight` (`1b6c662`).
 
 ---
 
 ## Phase 9: States, accessibility, text scale, themes, baselines (branch `feat/005-sweeps`) — User Story 6
 
-- [ ] T559 [US6] State sweep: every route has loading, empty and error to one standard; camera and photographs
+- [x] T559 [US6] State sweep: every route has loading, empty and error to one standard; camera and photographs
       denial screens; filtered-empty and no-results; a test that fails on a screen state with no handler for any
       control and on any Tier 3 control (FR-064, FR-066, FR-080; D5-14)
-- [ ] T560 [US6] Accessibility sweep: names, roles, states and order unchanged for every pre-existing control
+      _As built (f14-states, 2026-10-22):_ route inventory (`test/state-sweep/route-inventory.ts`), dead-control and Tier 3 guards, camera denial screens with Open Settings, ways back from the not-here states; `reference/as-built/f14-states.md`. Open owner question: no photo-library denial screen was built because the system picker asks for no permission.
+- [x] T560 [US6] Accessibility sweep: names, roles, states and order unchanged for every pre-existing control
       (the parity test and an order test per screen), decorative art hidden, animated figures announce the final
       value, locale formats for figures, dates, plurals and units, the globe's actions and the Countries list reach
       every country and trip (a test over a 30-country fixture). **[DEVICE]** VoiceOver and TalkBack walks of Home,
       Trips, a trip and You (FR-070, FR-075, FR-076, FR-077, FR-080; SC-015)
-- [ ] T561 [US6] Text-scale sweep: reflow tests at scale 1, 1.15, 1.5 and 2 for Home figures, areas, ticket, passport
+      _As built (f14-a11y, 2026-10-22):_ reading-order tests for 13 screens, decorative art hidden, final values announced, `useReachAll` (all 30 countries and 200 trips reachable with a screen reader), distance units by locale; `reference/as-built/f14-a11y.md`. The **[DEVICE]** VoiceOver and TalkBack walks are NOT done (script in the note).
+- [x] T561 [US6] Text-scale sweep: reflow tests at scale 1, 1.15, 1.5 and 2 for Home figures, areas, ticket, passport
       grid, tabs, hero title; no fixed heights remain. **[DEVICE]** iOS largest accessibility size and Android
       200 percent on every screen in four themes (FR-074; SC-007)
-- [ ] T562 [US6] Theme, motion and transparency sweep: four themes on every screen, the contrast themes opaque (no
+      _As built (f14-scale, 2026-10-22):_ reflow suites at 1, 1.15, 1.5 and 2 for components and screens, the fixed-height ratchet with a reasoned allow-list, four fixes (day chart, photo count, route column, two-line titles); `reference/as-built/f14-scale.md`. The **[DEVICE]** passes are NOT done; open owner question: should the Home half detent grow with text.
+- [x] T562 [US6] Theme, motion and transparency sweep: four themes on every screen, the contrast themes opaque (no
       glass or blur), reduced motion removes rotation, pulse, count-up, stamp landing, shimmer and haptics, reduced
       transparency; a test that no translucent surface renders under either flag. **[DEVICE]** live switching
       with the app open (FR-073, FR-078, FR-079; SC-008)
+      _As built (f14-themes, 2026-10-22):_ 29 screens and states in four themes and under reduced transparency, reduced-motion and live-switching suites, translucent surfaces made opaque in the contrast themes and under the flag (dark tints, search disc, sync chip, tab capsule, Android indicator, map tile); `reference/as-built/f14-themes.md`. The **[DEVICE]** live-switching check is NOT done.
 - [ ] T563 [US6] Baselines compared: the frame rates of T500 and the sheet drag (SC-006), release bundle and font
       size against `pre-005-baseline` (over 1 MB reviewed, SC-011), press feedback within 100 ms and settle within
       300 ms (FR-027, FR-081; SC-005, SC-006, SC-011). **[DEVICE]**
@@ -599,8 +604,10 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 - [ ] T564 Remove every Atlas palette value, the flat tab strip code, the Atlas-only adapters and the 004 aliases that
       nothing uses; `test/theme/atlas-values.test.ts` turns green; the neumorphism search stays empty (FR-083;
       SC-001)
+      _Partly built (f14-atlas, 2026-10-22), NOT ticked:_ every dead Atlas value, alias and the unused adapters are removed with proof; what a live screen or adapter still reads (`AtlasSpacing`, `AtlasRadius`, `cornerStyle`, the 004 text roles, `LegacyRoleMap`, palette aliases) is kept and listed with its readers in `reference/as-built/f14-atlas.md`; `ATLAS_RETIREMENT=1` still has 2 red tests until those move to the Sunrise names.
 - [ ] T565 Docs as built: `AGENTS.md` (the look, the chrome, the libraries), `research.md` spike results, the
       amendments of 003 and 004 pointing at their final state, the as-built notes of the contracts (FR-083; D5-20)
+      _Partly built (2026-10-22), NOT ticked:_ `AGENTS.md` (the look, the chrome, the libraries, the test kits), the spike status table in `research.md` and the final-state lines in the 003 and 004 amendments are done; the as-built notes of `contracts/components.md` and the spike RESULTS wait for the device runs.
 
 ---
 
