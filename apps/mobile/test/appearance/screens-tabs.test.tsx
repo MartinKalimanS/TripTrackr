@@ -81,8 +81,11 @@ const mockTrips: { data: unknown[]; loading: boolean; error: Error | null } = {
   error: null,
 };
 jest.mock('@/features/trips/use-trips', () => ({ useTrips: () => mockTrips }));
+const mockSync: { current: { chip: object; banner: object | null } } = {
+  current: { chip: { kind: 'synced' }, banner: null },
+};
 jest.mock('@/features/trips/use-trips-sync', () => ({
-  useTripsSync: () => ({ chip: { kind: 'synced' }, banner: null, retry: jest.fn() }),
+  useTripsSync: () => ({ ...mockSync.current, retry: jest.fn() }),
 }));
 
 const mockPassport: { data: unknown; loading: boolean; error: Error | null } = {
@@ -156,6 +159,7 @@ function resetWindow() {
     fontScale: 1,
   });
   sync.current = { kind: 'synced' };
+  mockSync.current = { chip: { kind: 'synced' }, banner: null };
   focus.focused = true;
   focus.appActive = true;
   useSessionStore.setState({
@@ -224,6 +228,41 @@ sweepScreen(
     resetWindow();
     mockTrips.loading = false;
     mockTrips.data = manyTrips(4);
+  },
+);
+
+// ---- Trips with the offline notice and the error notice under the filter (tinted fills).
+sweepScreen(
+  'Trips (offline notice)',
+  () => <TripsScreen />,
+  () => {
+    resetWindow();
+    mockTrips.loading = false;
+    mockTrips.data = manyTrips(3);
+    mockSync.current = {
+      chip: { kind: 'offline', count: 3 },
+      banner: {
+        tone: 'offline',
+        message: "Offline. 3 changes will sync when you're back online.",
+      },
+    };
+  },
+);
+sweepScreen(
+  'Trips (sync error notice)',
+  () => <TripsScreen />,
+  () => {
+    resetWindow();
+    mockTrips.loading = false;
+    mockTrips.data = manyTrips(3);
+    mockSync.current = {
+      chip: { kind: 'failed', count: 2 },
+      banner: {
+        tone: 'error',
+        message: "Couldn't sync 2 changes. Your trips are safe on this phone.",
+        action: { label: 'Retry', onPress: jest.fn() },
+      },
+    };
   },
 );
 
