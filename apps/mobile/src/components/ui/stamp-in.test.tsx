@@ -28,11 +28,16 @@ jest.mock('react-native-reanimated', () => {
   class MockKeyframe {
     definitions: unknown;
     durationMs: number | undefined;
+    delayMs: number | undefined;
     constructor(definitions: unknown) {
       this.definitions = definitions;
     }
     duration(ms: number) {
       this.durationMs = ms;
+      return this;
+    }
+    delay(ms: number) {
+      this.delayMs = ms;
       return this;
     }
   }
@@ -75,6 +80,7 @@ interface Entering {
     };
   };
   durationMs: number;
+  delayMs: number | undefined;
 }
 
 const entering = () =>
@@ -82,7 +88,7 @@ const entering = () =>
 
 /** The landing timers the component set and cleared; every other timer passes through. */
 interface Landing {
-  scheduled: { callback: () => void; id: number }[];
+  scheduled: { callback: () => void; id: number; ms: number }[];
   cleared: number[];
 }
 let landing: Landing;
@@ -96,9 +102,12 @@ beforeEach(() => {
     ms?: number,
     ...rest: unknown[]
   ) => {
-    if (ms !== Motion.stampLandMs) return realSet(callback, ms, ...rest);
+    // A landing is due at its own duration plus the wait of its slot, under a second.
+    if (ms === undefined || ms < Motion.stampLandMs || ms >= 1_000) {
+      return realSet(callback, ms, ...rest);
+    }
     const id = 9_000 + landing.scheduled.length;
-    landing.scheduled.push({ callback, id });
+    landing.scheduled.push({ callback, id, ms });
     return id as unknown as ReturnType<typeof setTimeout>;
   }) as unknown as typeof setTimeout);
   jest.spyOn(globalThis, 'clearTimeout').mockImplementation(((id?: number) => {
@@ -172,6 +181,53 @@ describe('StampIn - the landing', () => {
     );
     expect(screen.getByText('the stamp')).toBeOnTheScreen();
     expect(screen.getByTestId('stamp-in-PT').props.style).toEqual({ margin: 4 });
+  });
+});
+
+describe('StampIn - landing after another stamp (delayMs)', () => {
+  test('a stamp with no wait adds no delay to the keyframe and thuds when it lands', async () => {
+    await render(
+      <StampIn tiltDeg={0}>
+        <Text>stamp</Text>
+      </StampIn>,
+    );
+    expect(entering()?.delayMs).toBeUndefined();
+    expect(landing.scheduled.map(({ ms }) => ms)).toEqual([Motion.stampLandMs]);
+  });
+
+  test('waits its turn: the keyframe starts later and the thud is due when it lands', async () => {
+    await render(
+      <StampIn tiltDeg={0} delayMs={240}>
+        <Text>stamp</Text>
+      </StampIn>,
+    );
+    expect(entering()?.delayMs).toBe(240);
+    expect(entering()?.durationMs).toBe(Motion.stampLandMs);
+    expect(landing.scheduled.map(({ ms }) => ms)).toEqual([Motion.stampLandMs + 240]);
+    landing.scheduled[0].callback();
+    expect(stamp).toHaveBeenCalledTimes(1);
+  });
+
+  test('a wait changes nothing under reduced motion: no animation, no timer, no haptic', async () => {
+    setMotion(true);
+    await render(
+      <StampIn tiltDeg={0} delayMs={240}>
+        <Text>stamp</Text>
+      </StampIn>,
+    );
+    expect(entering()).toBeUndefined();
+    expect(landing.scheduled).toHaveLength(0);
+    expect(stamp).not.toHaveBeenCalled();
+  });
+
+  test('a wait changes nothing when it has landed before (play is false)', async () => {
+    await render(
+      <StampIn tiltDeg={0} delayMs={240} play={false}>
+        <Text>stamp</Text>
+      </StampIn>,
+    );
+    expect(entering()).toBeUndefined();
+    expect(landing.scheduled).toHaveLength(0);
   });
 });
 
