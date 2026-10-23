@@ -71,6 +71,12 @@ export interface CaptureMessage {
   text: string;
   /** The fix is in the system's Settings (a permission the system will not ask for again). */
   openSettings?: boolean;
+  /**
+   * The photo-library permission is what is off (spec 006): the notice offers "Allow photo
+   * access" while the system will still ask, and "Open Settings" when `openSettings` is set.
+   * Absent, a message that opens Settings is the camera's.
+   */
+  permission?: 'library';
 }
 
 /**

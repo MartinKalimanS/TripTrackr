@@ -16,6 +16,12 @@ export const PHOTO_COPY = {
     'TripTrackr needs your permission to use the camera. Tap “Take a photo” to be asked again.',
   cameraBlocked:
     'Camera access is turned off for TripTrackr. You can turn it on in Settings.',
+  /** The library permission was refused and the system will still ask (spec 006 FR-004). */
+  libraryDeclined:
+    'TripTrackr needs your permission to read the photos you choose. Tap “Allow photo access” to be asked again.',
+  /** ... and the system will not ask again. */
+  libraryBlocked:
+    'Photo access is turned off for TripTrackr. You can turn it on in Settings.',
   settingsUnavailable: 'Settings couldn’t be opened. Open them from your home screen.',
   /** A refile, a delete or a retry — all local writes — that did not commit. */
   writeFailed: 'That change couldn’t be saved on this device. Please try again.',
@@ -65,6 +71,10 @@ export const GALLERY_COPY = {
   takeLabel: 'Take a photo with the camera',
   /** The title of the camera refusal the system will not ask about again. */
   cameraOffTitle: 'Camera access is off',
+  /** The title of the photo-library refusal (spec 006): one action, "Allow photo access" or "Open Settings". */
+  libraryOffTitle: 'Photo access is off',
+  allowText: 'Allow photo access',
+  allowLabel: 'Allow photo access',
   openSettingsLabel: 'Open Settings',
   dismissText: 'Dismiss',
   dismissLabel: 'Dismiss this message',

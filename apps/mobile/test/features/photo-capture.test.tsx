@@ -5,8 +5,10 @@
  * `useCapture` over a real SQLite database, with the three native modules it
  * drives replaced by the contract-faithful fakes in photo-fakes.ts. What these
  * pin:
- *   - the library picker opens for several images with EXIF; the camera asks
- *     for permission first and a refusal is explained in words;
+ *   - the library picker opens for several images with EXIF once the library
+ *     permission allows it (spec 006: photo-capture-visibility.test.tsx has every
+ *     branch of that and of the visibility question); the camera asks for
+ *     permission first and a refusal is explained in words;
  *   - EXIF is read from the picker's asset BEFORE the re-encode, which makes a
  *     JPEG of at most 2048 px on the long edge and a ~400 px thumbnail;
  *   - both files land in app-private storage under a relative path, the row is
@@ -38,9 +40,11 @@ import {
 import { fitWithin } from '@/features/photos/reencode';
 import { useCapture } from '@/features/photos/use-capture';
 import { Sentry } from '@/lib/sentry';
+import { checkLibraryAccess } from '@/features/photos/library-permission';
 import { kickUploadQueue } from '@/sync/upload-queue';
 
 import { createTestDatabase, type TestSqlite } from '../db/sqlite-harness';
+import { answer, captureAnswering, captureQuietly } from './photo-capture-prompt';
 import {
   CACHE,
   DOCUMENTS,
@@ -58,6 +62,10 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
   launchCameraAsync: jest.fn(),
   requestCameraPermissionsAsync: jest.fn(),
+}));
+jest.mock('@/features/photos/library-permission', () => ({
+  checkLibraryAccess: jest.fn(),
+  requestLibraryAccess: jest.fn(),
 }));
 jest.mock('@/sync/upload-queue', () => ({
   kickUploadQueue: jest.fn(async () => undefined),
@@ -135,6 +143,7 @@ async function renderCapture() {
 beforeEach(async () => {
   __fs.reset();
   __manipulator.reset();
+  (checkLibraryAccess as jest.Mock).mockReset().mockResolvedValue({ state: 'granted' });
   sqlite = await createTestDatabase();
   geographyRepository.cacheCountries(sqlite.db, [
     { id: 1, iso_code: 'IT', name: 'Italy', continent: 'Europe' },
@@ -186,7 +195,7 @@ describe('adding from the photo library', () => {
     libraryReturns([]);
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureQuietly({ result });
 
     expect(picker.launchImageLibraryAsync).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -195,7 +204,8 @@ describe('adding from the photo library', () => {
         exif: true,
       }),
     );
-    // The library needs no permission prompt: the system picker is the grant.
+    // The library permission is asked first (spec 006); the camera's is not involved.
+    expect(checkLibraryAccess).toHaveBeenCalled();
     expect(picker.requestCameraPermissionsAsync).not.toHaveBeenCalled();
   });
 
@@ -205,7 +215,7 @@ describe('adding from the photo library', () => {
     libraryReturns([rome, plain]);
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     const rows = allRows();
     expect(rows).toHaveLength(2);
@@ -230,7 +240,7 @@ describe('adding from the photo library', () => {
     libraryReturns([pickedAsset('rome', ROME_EXIF)]);
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     const [row] = allRows();
     const relative = photoPath(tripId, row!.id);
@@ -253,7 +263,7 @@ describe('adding from the photo library', () => {
     ]);
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     const sizes = __manipulator.saved.map(({ width, height, format }) => [
       width,
@@ -285,7 +295,7 @@ describe('adding from the photo library', () => {
     ]);
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     expect(allRows()[0]).toMatchObject({ exif_lat: 42.7185, city_id: null });
   });
@@ -297,7 +307,7 @@ describe('adding from the photo library', () => {
     });
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureQuietly({ result });
 
     expect(allRows()).toEqual([]);
     expect(result.current.message).toBeNull();
@@ -308,7 +318,7 @@ describe('adding from the photo library', () => {
     picker.launchImageLibraryAsync.mockRejectedValueOnce(new Error('picker gone'));
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureQuietly({ result });
 
     expect(result.current.message).toEqual({
       tone: 'error',
@@ -321,7 +331,7 @@ describe('adding from the photo library', () => {
     libraryReturns([pickedAsset('rome', ROME_EXIF)]);
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     expect(kickUploadQueue).toHaveBeenCalledWith('capture');
     expect(kickUploadQueue).toHaveBeenCalledTimes(1);
@@ -337,7 +347,7 @@ describe('taking a photo', () => {
     });
     const { result } = await renderCapture();
 
-    await act(() => result.current.takePhoto());
+    await captureAnswering({ result }, 'takePhoto');
 
     expect(picker.requestCameraPermissionsAsync).toHaveBeenCalled();
     expect(picker.launchCameraAsync).toHaveBeenCalledWith(
@@ -351,7 +361,7 @@ describe('taking a photo', () => {
     granted(false, true);
     const { result } = await renderCapture();
 
-    await act(() => result.current.takePhoto());
+    await captureQuietly({ result }, 'takePhoto');
 
     expect(picker.launchCameraAsync).not.toHaveBeenCalled();
     expect(result.current.message).toEqual({
@@ -365,7 +375,7 @@ describe('taking a photo', () => {
     granted(false, false);
     const { result } = await renderCapture();
 
-    await act(() => result.current.takePhoto());
+    await captureQuietly({ result }, 'takePhoto');
 
     expect(result.current.message).toEqual({
       tone: 'error',
@@ -379,7 +389,7 @@ describe('taking a photo', () => {
     picker.launchCameraAsync.mockRejectedValueOnce(new Error('no camera'));
     const { result } = await renderCapture();
 
-    await act(() => result.current.takePhoto());
+    await captureQuietly({ result }, 'takePhoto');
 
     expect(result.current.message).toEqual({
       tone: 'error',
@@ -396,7 +406,7 @@ describe('a failure part-way leaves no half-written record (sync-protocol.md §4
       to.endsWith('.thumb.jpg') ? new Error('No space left on device') : null;
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     expect(allRows()).toEqual([]);
     expect(stagedFiles()).toEqual([]);
@@ -415,7 +425,7 @@ describe('a failure part-way leaves no half-written record (sync-protocol.md §4
     __manipulator.state.failSaveAt = 2; // the thumbnail's save
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     expect(allRows()).toEqual([]);
     expect(stagedFiles()).toEqual([]);
@@ -428,7 +438,7 @@ describe('a failure part-way leaves no half-written record (sync-protocol.md §4
     tripId = randomUUID(); // not on this device: the insert is refused
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     expect(allRows()).toEqual([]);
     expect(stagedFiles()).toEqual([]);
@@ -444,7 +454,7 @@ describe('a failure part-way leaves no half-written record (sync-protocol.md §4
     __fs.state.availableDiskSpace = MIN_FREE_BYTES - 1;
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     expect(ImageManipulator.manipulate).not.toHaveBeenCalled();
     expect(allRows()).toEqual([]);
@@ -455,7 +465,7 @@ describe('a failure part-way leaves no half-written record (sync-protocol.md §4
     libraryReturns([pickedAsset('empty', null, { width: 0, height: 0 })]);
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     expect(allRows()).toEqual([]);
     expect(__manipulator.saved).toEqual([]);
@@ -471,7 +481,7 @@ describe('a failure part-way leaves no half-written record (sync-protocol.md §4
     libraryReturns([pickedAsset('first', ROME_EXIF), broken, pickedAsset('third', null)]);
     const { result } = await renderCapture();
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     expect(allRows()).toHaveLength(2);
     expect(result.current.message).toEqual({
@@ -496,13 +506,13 @@ describe('one capture at a time', () => {
     });
     expect(result.current.busy).toBe(true);
 
-    await act(() => result.current.addFromLibrary());
+    await captureQuietly({ result });
     expect(picker.launchImageLibraryAsync).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       finish({ canceled: false, assets: [pickedAsset('rome', ROME_EXIF)] });
-      await first;
     });
+    await answer({ result }, { done: first });
     await waitFor(() => expect(result.current.busy).toBe(false));
     expect(allRows()).toHaveLength(1);
   });
@@ -510,7 +520,7 @@ describe('one capture at a time', () => {
   test('clearMessage clears the last word', async () => {
     granted(false, true);
     const { result } = await renderCapture();
-    await act(() => result.current.takePhoto());
+    await captureQuietly({ result }, 'takePhoto');
     expect(result.current.message).not.toBeNull();
 
     await act(async () => result.current.clearMessage());
@@ -579,7 +589,7 @@ describe('pure helpers', () => {
   test('a photo with a staged file resolves; its repository row agrees', async () => {
     libraryReturns([pickedAsset('rome', ROME_EXIF)]);
     const { result } = await renderCapture();
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     const [row] = allRows();
     expect(photosRepository.byId(sqlite.db, row!.id)?.local_file_uri).toBe(
