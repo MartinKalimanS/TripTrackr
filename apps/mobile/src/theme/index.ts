@@ -75,7 +75,6 @@ export {
   innerRadius,
   liftOf,
   type AtlasRadiusName,
-  type AtlasSpacingName,
   type IconWeight,
   type LiftLayer,
   type LiftName,

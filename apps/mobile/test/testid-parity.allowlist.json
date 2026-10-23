@@ -9,5 +9,10 @@
       "reason": "The retired TextField primitive's internal surface id, deleted with the primitive (FR-038), T452; recorded in the T452 note in tasks.md. Every field is now a Field, whose input carries the screen's own id (login-email, ...), and no screen, test or Maestro flow ever read this one."
     }
   ],
-  "accessibilityLabels": []
+  "accessibilityLabels": [
+    {
+      "id": "<param> <param> visited, <param> travelled",
+      "reason": "The one-sentence summary of the 004 statistics overlay (components/globe/stats-overlay.tsx). Feature 005 draws the Home statistics as three tiles (stats-row.tsx), each announced on its own, and no screen has drawn the overlay since the Home was composed (T537, note 11 of its as-built section in contracts/components.md); the unused component was deleted by T564. The ids globe-stats, globe-stat-countries and globe-stat-distance that the Maestro flows read are served by stats-row.tsx. Recorded in specs/005-sunrise-passport-ui/reference/as-built/f14-atlas.md."
+    }
+  ]
 }

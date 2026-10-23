@@ -58,9 +58,6 @@ export type IconTone =
   | 'default'
   | 'accent'
   | 'onAccent'
-  | 'statusPlanning'
-  | 'statusActive'
-  | 'statusPast'
   | 'pending';
 
 export interface IconProps {
@@ -114,9 +111,6 @@ const TONE_TOKENS: Record<IconTone, ThemeColor | AppColor> = {
   default: 'foreground',
   accent: 'accent-text',
   onAccent: 'accent-foreground',
-  statusPlanning: 'amber-ink',
-  statusActive: 'accent-line',
-  statusPast: 'muted',
   pending: 'amber-ink',
 };
 

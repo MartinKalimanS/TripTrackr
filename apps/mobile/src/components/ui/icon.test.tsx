@@ -116,9 +116,6 @@ const TONES: [IconTone, string, keyof (typeof Palettes)['light']][] = [
   ['default', 'foreground', 'ink'],
   ['accent', 'accent-text', 'accentText'],
   ['onAccent', 'accent-foreground', 'accentInk'],
-  ['statusPlanning', 'amber-ink', 'amberInk'],
-  ['statusActive', 'accent-line', 'accentLine'],
-  ['statusPast', 'muted', 'muted'],
   ['pending', 'amber-ink', 'amberInk'],
 ];
 
