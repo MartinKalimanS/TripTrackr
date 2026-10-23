@@ -1231,7 +1231,8 @@ describe('<DocumentViewScreen> — the document and its fields (T118, T119)', ()
 
     mockDocument.loading = true;
     await screen.rerender(<DocumentViewScreen />);
-    expect(screen.getByText('Loading the document')).toBeTruthy();
+    // A skeleton shaped like the screen (T559, FR-064), announced by name.
+    expect(screen.getByLabelText('Loading the document')).toBeTruthy();
 
     mockDocument.loading = false;
     mockDocument.error = new Error('store closed');

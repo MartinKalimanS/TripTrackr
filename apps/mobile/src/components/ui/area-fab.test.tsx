@@ -179,3 +179,19 @@ describe('areaFabClearance: what a list leaves under its last item', () => {
     expect(areaFabClearance('ios', 3)).toBe(areaFabClearance('ios', 2));
   });
 });
+
+describe('<AreaFab> as a coming-soon control (T559, FR-080 as amended by Q-11)', () => {
+  test('says "Not available yet" after its name when it is given the hint, and says nothing otherwise', async () => {
+    await renderFab({ accessibilityHint: 'Not available yet' });
+    expect(screen.getByTestId('area-fab').props.accessibilityHint).toBe(
+      'Not available yet',
+    );
+
+    await screen.rerender(
+      <SafeAreaInsetsContext.Provider value={INSETS}>
+        <AreaFab label="Add photos" icon="images" testID="area-fab" onPress={jest.fn()} />
+      </SafeAreaInsetsContext.Provider>,
+    );
+    expect(screen.getByTestId('area-fab').props.accessibilityHint).toBeUndefined();
+  });
+});

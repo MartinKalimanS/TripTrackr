@@ -31,7 +31,7 @@
  * tile store. Nothing about the trip leaves the phone, and no other traveller can see what
  * was saved.
  */
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useContext, useMemo, useState, type ReactElement } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
@@ -42,7 +42,7 @@ import { StorageBar } from '@/components/trip/storage-bar';
 import { describePlace } from '@/components/trip/stop-row';
 import { AreaFab, areaFabClearance } from '@/components/ui/area-fab';
 import { AreaHeader, areaMargin } from '@/components/ui/area-header';
-import { useComingSoon } from '@/components/ui/coming-soon-button';
+import { COMING_SOON_HINT, useComingSoon } from '@/components/ui/coming-soon-button';
 import { EmptyState, ErrorState } from '@/components/ui/state-view';
 import { Text } from '@/components/ui/text';
 import type { StopWithPlace } from '@/db/repositories/stops';
@@ -205,13 +205,23 @@ function CityPackList({ cities, tripTitle }: ListProps) {
   );
 }
 
-type BodyProps = { stops: LiveResult<StopWithPlace[]>; cities: TripCities };
+type BodyProps = {
+  stops: LiveResult<StopWithPlace[]>;
+  cities: TripCities;
+  /** The way out of a trip with no city to save a map for. */
+  onBack: () => void;
+};
+
+const BACK_TO_TRIP = {
+  label: 'Back to the trip',
+  testID: 'offline-maps-empty-back',
+} as const;
 
 /**
  * What stands in for the list while the trip's cities are unread, unreadable, absent or
  * unplaceable; null once there are cities to list.
  */
-function tripCitiesNotice({ stops, cities }: BodyProps): ReactElement | null {
+function tripCitiesNotice({ stops, cities, onBack }: BodyProps): ReactElement | null {
   // The error first: a live read that fails can still report `loading`.
   if (stops.error) {
     return (
@@ -231,6 +241,7 @@ function tripCitiesNotice({ stops, cities }: BodyProps): ReactElement | null {
       <EmptyState
         title="No cities yet"
         detail="Add a stop to this trip, then save its city’s map here."
+        action={{ ...BACK_TO_TRIP, onPress: onBack }}
       />
     );
   }
@@ -239,6 +250,7 @@ function tripCitiesNotice({ stops, cities }: BodyProps): ReactElement | null {
       <EmptyState
         title="No city can be saved yet"
         detail={unplacedSentence(cities.unplaced)}
+        action={{ ...BACK_TO_TRIP, onPress: onBack }}
       />
     );
   }
@@ -281,6 +293,7 @@ export default function OfflineMapsScreen() {
   const trip = useTrip(tripId);
   const stops = useTripStops(tripId);
   const cities = useMemo(() => tripCities(stops.data), [stops.data]);
+  const router = useRouter();
   const { tokens } = useAppearance();
   const fontScale = useFontScale();
   const insets = useContext(SafeAreaInsetsContext) ?? NO_INSETS;
@@ -311,12 +324,14 @@ export default function OfflineMapsScreen() {
         <OfflineMapsBody
           stops={stops}
           cities={cities}
+          onBack={() => router.back()}
           tripTitle={trip.data?.title ?? null}
         />
       </ScrollView>
       <AreaFab
         label="New area"
         accessibilityLabel="Download a new area"
+        accessibilityHint={COMING_SOON_HINT}
         icon="map-pin"
         testID="coming-soon-offline-new-area"
         onPress={newArea}

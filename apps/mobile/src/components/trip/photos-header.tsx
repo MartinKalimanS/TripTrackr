@@ -19,8 +19,10 @@
  *
  * What a capture came to is said in words: an error as an alert with the alert icon (never
  * colour alone), anything else politely; a camera refusal the system will not ask about again
- * offers to open Settings (`Linking.openSettings` —
- * https://reactnative.dev/docs/linking), a secondary action beside a text "Dismiss".
+ * is the shared `PermissionState` (T559; FR-066; contract C5-28): the camera icon, "Camera access
+ * is off", what to do, "Open Settings" (`Linking.openSettings` —
+ * https://reactnative.dev/docs/linking) as a secondary action and a text "Dismiss". It is a
+ * secondary because the screen's one primary is "Add photos".
  */
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
@@ -31,6 +33,7 @@ import { Button } from '@/components/ui/button';
 import { ComingSoonButton } from '@/components/ui/coming-soon-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { InlineError } from '@/components/ui/inline-error';
+import { PermissionState } from '@/components/ui/permission-state';
 import { Text } from '@/components/ui/text';
 import type { CaptureMessage } from '@/features/photos/capture';
 import { GALLERY_COPY, PHOTO_COPY } from '@/features/photos/photo-copy';
@@ -65,6 +68,36 @@ function CaptureNotice({ message, onDismiss }: CaptureNoticeProps) {
     });
   };
 
+  const settingsError = (
+    <InlineError
+      testID="photos-settings-error"
+      message={settingsFailed ? PHOTO_COPY.settingsUnavailable : null}
+    />
+  );
+
+  if (message.openSettings) {
+    return (
+      <View className="gap-2">
+        <PermissionState
+          testID="photos-camera-denied"
+          accessibilityLiveRegion="polite"
+          icon="camera"
+          title={GALLERY_COPY.cameraOffTitle}
+          detail={message.text}
+          detailTestID="photos-capture-error"
+          settingsLabel={GALLERY_COPY.openSettingsLabel}
+          onOpenSettings={openSettings}
+          alternative={{
+            label: GALLERY_COPY.dismissText,
+            accessibilityLabel: GALLERY_COPY.dismissLabel,
+            onPress: onDismiss,
+          }}
+        />
+        {settingsError}
+      </View>
+    );
+  }
+
   return (
     <View className="gap-2">
       {message.tone === 'error' ? (
@@ -77,20 +110,8 @@ function CaptureNotice({ message, onDismiss }: CaptureNoticeProps) {
           {message.text}
         </Text>
       )}
-      <InlineError
-        testID="photos-settings-error"
-        message={settingsFailed ? PHOTO_COPY.settingsUnavailable : null}
-      />
+      {settingsError}
       <View className="flex-row flex-wrap gap-2">
-        {message.openSettings ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            accessibilityLabel={GALLERY_COPY.openSettingsLabel}
-            onPress={openSettings}>
-            {GALLERY_COPY.openSettingsLabel}
-          </Button>
-        ) : null}
         <Button
           variant="text"
           size="sm"
