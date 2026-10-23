@@ -193,6 +193,7 @@ const LIST_SHAPE: Pick<
   | 'keyExtractor'
   | 'getItemType'
   | 'viewabilityConfig'
+  | 'reachAll'
 > = {
   underHeader: true,
   // The floating pill runs over the bottom of the screen: `ListScreen` ends the list above it.
@@ -202,6 +203,8 @@ const LIST_SHAPE: Pick<
   keyExtractor: tripItemKey,
   getItemType: tripItemType,
   viewabilityConfig: VIEWABILITY,
+  // Every trip is a node a screen reader can reach (SC-015), whatever the length of the list.
+  reachAll: true,
 };
 
 interface TripsHeaderProps {

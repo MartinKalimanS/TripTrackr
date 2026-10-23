@@ -9,9 +9,11 @@
  * `home-screen.test.tsx`; the sheet is its double (the real sheet's handle is
  * `order-sheet.test.tsx`).
  */
-import { render } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import { appearance } from '../helpers/appearance';
+import { manyCountries, overviewOf, rowLabel } from '../helpers/country-fixture';
 import { captureIntervals } from '../helpers/captured-interval';
 import {
   changeDetent,
@@ -22,7 +24,7 @@ import {
   withLiveTrip,
   withPastTrip,
 } from '../helpers/home-harness';
-import { globe } from '../helpers/home-state';
+import { globe, overview } from '../helpers/home-state';
 import {
   accessibleNodes,
   exposedArt,
@@ -133,7 +135,10 @@ describe('Home reading order: header, globe, sheet (contract C5-32)', () => {
   test('the globe is one stop that offers the four actions, in the order of the contract', async () => {
     withLiveTrip();
     await renderHome();
-    const globeStop = accessibleNodes().find((node) => node.id === 'globe-map');
+    const nodes = accessibleNodes();
+    const globeStop = nodes.find((node) => node.id === 'globe-map');
+    // The atmosphere, the graticule, the arcs and the pins draw inside this ONE stop.
+    expect(nodes.filter((node) => node.id?.startsWith('mapbox-'))).toEqual([]);
     expect(globeStop?.actions).toEqual([
       'Next trip',
       'Previous trip',
@@ -180,5 +185,43 @@ describe('Home reading order: header, globe, sheet (contract C5-32)', () => {
     withLiveTrip();
     await renderHome();
     expect(exposedArt()).toEqual([]);
+  });
+
+  describe('the globe reaches every country (SC-015)', () => {
+    const screenReader = (on: boolean) =>
+      jest.spyOn(AccessibilityInfo, 'isScreenReaderEnabled').mockResolvedValue(on);
+    afterEach(() => screenReader(false));
+
+    async function openCountries() {
+      withPastTrip();
+      overview.data = overviewOf(manyCountries(30)) as typeof overview.data;
+      await renderHome();
+      await act(() =>
+        screen.getByTestId('globe-map').props.onAccessibilityAction({
+          nativeEvent: { actionName: 'openCountries' },
+        }),
+      );
+      await settle('full');
+      await act(() => new Promise<void>((resolve) => setTimeout(resolve, 60)));
+      return accessibleNodes().filter((node) => node.id?.startsWith('country-row-'));
+    }
+
+    test('"Open countries" raises the list, and with a screen reader on all 30 countries are nodes', async () => {
+      screenReader(true);
+      const rows = await openCountries();
+      expect(rows.map((node) => node.name)).toEqual(
+        manyCountries(30)
+          .sort(
+            (a, b) =>
+              a.continent.localeCompare(b.continent) || a.name.localeCompare(b.name),
+          )
+          .map(rowLabel),
+      );
+    });
+
+    test('with none, the list stays virtualised', async () => {
+      screenReader(false);
+      expect((await openCountries()).length).toBeLessThan(30);
+    });
   });
 });

@@ -4,9 +4,9 @@
  * that says whether it is selected), the hero card, the ticket, the year headers and rows, then
  * the "Plan a trip" button. The mocked world is `trips-screen.test.tsx`'s.
  */
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
-import { Platform } from 'react-native';
+import { AccessibilityInfo, Platform } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import TripsScreen from '@/app/(tabs)/trips';
@@ -15,7 +15,7 @@ import type { TripCardModel } from '@/features/trips/trip-card-model';
 import type { TripsSync } from '@/features/trips/use-trips-sync';
 
 import { resetKeyboard } from '../helpers/keyboard';
-import { cardModel } from '../helpers/trip-card-fixture';
+import { cardModel, manyTrips } from '../helpers/trip-card-fixture';
 import {
   accessibleNodes,
   exposedArt,
@@ -255,5 +255,33 @@ describe('Trips reading order', () => {
     mockTrips.data = MIXED();
     platform = await renderOn('ios');
     expect(exposedArt()).toEqual([]);
+  });
+
+  describe('every trip is reachable (SC-015)', () => {
+    const cards = () =>
+      accessibleNodes().filter((node) => node.id?.startsWith('trip-card-'));
+
+    // The platform double is one shared mock: say who is listening, and put it back.
+    const screenReader = (on: boolean) =>
+      jest.spyOn(AccessibilityInfo, 'isScreenReaderEnabled').mockResolvedValue(on);
+    afterEach(() => screenReader(false));
+
+    test('with a screen reader on, each of 200 trips is a node, by its name', async () => {
+      screenReader(true);
+      mockTrips.data = manyTrips(200);
+      platform = await renderOn('ios');
+      await act(() => new Promise<void>((resolve) => setTimeout(resolve, 60)));
+      expect(cards()).toHaveLength(200);
+      expect(cards().map((node) => node.name)).toContain('Past 199, past, 3 stops');
+      expect(cards().every((node) => node.role === 'button')).toBe(true);
+    });
+
+    test('with none, the list stays virtualised', async () => {
+      screenReader(false);
+      mockTrips.data = manyTrips(200);
+      platform = await renderOn('ios');
+      await act(() => new Promise<void>((resolve) => setTimeout(resolve, 60)));
+      expect(cards().length).toBeLessThan(200);
+    });
   });
 });
