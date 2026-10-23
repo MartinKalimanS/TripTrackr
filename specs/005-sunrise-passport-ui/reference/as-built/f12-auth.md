@@ -80,6 +80,8 @@ Apple and Google sign-in flows (`apple-sign-in-button.tsx`, `google-sign-in-butt
   two strings and nothing else.
 - **Apple logo** is the Ionicons glyph in white / black, not Apple's downloaded artwork; Google's "G" is its own artwork.
   Replacing the Apple glyph is the release checklist item "Branded sign-in buttons" and touches `brand-glyph.tsx` only.
+  **Superseded (owner decision 2026-10-22):** Apple's own `AppleAuthenticationButton` now draws the Apple logo and title on Welcome,
+  Sign in and Create account, and the glyph, the `apple` pill look and `AppleButton` are gone: see `f12-apple.md`.
 - **`testid-unresolved-count.json` 98 / 76 -> 99 / 77**: `PillButton` forwards its `testID` and `accessibilityLabel` (an
   intended adapter; every id is a literal at its call site and in the tests). Regenerated with `--write-unresolved`.
 - **Base repair:** `test/components/us2-components.test.tsx` lost its `glyphNamesIn` import in the f8/f9 merge into
@@ -124,7 +126,8 @@ two small commits and run again after them: see the final report), `npx tsc --no
    (disc top 73 dp below the status bar, radius 0.654 x width), coral countries and arcs, the stamp (does `TextPath` draw
    "FIRST STAMP" and the date on a device, as `Stamp` device check V5), the sheet's top corners and lift, the wordmark mark.
 2. **Brand buttons:** Apple black / white and Google light / dark against Apple's HIG and Google's branding guidelines; swap the
-   Apple glyph for Apple's artwork before release (store-readiness "Branded sign-in buttons").
+   Apple glyph for Apple's artwork before release (store-readiness "Branded sign-in buttons"). **Done in code, see `f12-apple.md`
+   (its DEVICE checks replace this one for Apple).**
 3. **Sign in with Apple on a real iOS device and Google on both platforms, started from Welcome**, including a cancelled sheet
    and a refusal (error shown inline under the buttons).
 4. **Text scale 1.3, 1.5 and 2 on Android** (`01-appearance`): Welcome scrolls; `assertVisible` on `welcome-sign-in` and

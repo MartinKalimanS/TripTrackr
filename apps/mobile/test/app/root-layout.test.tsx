@@ -264,14 +264,11 @@ describe('root layout — auth gate (R009, D-17)', () => {
     expect(source).toMatch(/preventAutoHideAsync\(\)\s*\.catch\(/);
   });
 
-  test('loads the provider-logo font behind the splash, and reports a failure', () => {
-    // The Google and Apple buttons draw Ionicons glyphs; an icon whose font is
-    // not loaded yet paints nothing, so the font is loaded before any auth
-    // screen can mount.
+  test('loads no icon font: the Google logo is SVG and the Apple logo is Apple\u2019s own button', () => {
     const source = jest
       .requireActual('fs')
       .readFileSync(require.resolve('@/app/_layout'), 'utf8') as string;
-    expect(source).toMatch(/Ionicons\.loadFont\(\)\s*\.catch\(/);
+    expect(source).not.toMatch(/Ionicons|loadFont/);
   });
 });
 

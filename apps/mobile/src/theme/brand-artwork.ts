@@ -1,18 +1,17 @@
 /**
- * The two sign-in brands' own artwork (feature 005, F12; owner decision Q-11; Apple's
- * "Sign in with Apple" button rules, Google's "Sign in with Google" branding guidelines,
- * `docs/release/store-readiness.md` "Branded sign-in buttons").
+ * Google's own artwork for the sign-in button (feature 005, F12; owner decision Q-11;
+ * Google's "Sign in with Google" branding guidelines, `docs/release/store-readiness.md`
+ * "Branded sign-in buttons"). Apple has none here: its logo is drawn by Apple's own native
+ * button, never by the app (owner decision 2026-10-22).
  *
  * A provider's colours are NOT the app's palette: they belong to the brand and may not be
  * retuned to match a theme. They live here, in the token layer, so no screen or component
- * writes a colour literal; the contrast of a brand's own button is the brand's rule (Apple
- * asks for black on white or white on black, Google for its four-colour "G").
+ * writes a colour literal; the contrast of a brand's own button is the brand's rule (Google
+ * asks for its four-colour "G" on its light or dark button).
  *
  * - `GoogleG`: the four-colour "G" in Google's 48 by 48 box, one path per colour.
  * - `GoogleButton`: the fill, ink and boundary of the Google button in each scheme (Google's
- *   light and dark button: a white button with a grey line, a near-black one with a light line);
- * - `AppleButton`: the fill and ink of the Sign in with Apple button in each scheme (black with a
- *   white logo on light grounds; white with a black logo on dark ones).
+ *   light and dark button: a white button with a grey line, a near-black one with a light line).
  *
  * Pure data.
  */
@@ -43,9 +42,4 @@ export const GoogleG = deepFreeze({
 export const GoogleButton = deepFreeze({
   light: { fill: '#FFFFFF', ink: '#1F1F1F', border: '#747775' },
   dark: { fill: '#131314', ink: '#E3E3E3', border: '#8E918F' },
-} as const);
-
-export const AppleButton = deepFreeze({
-  light: { fill: '#000000', ink: '#FFFFFF' },
-  dark: { fill: '#FFFFFF', ink: '#000000' },
 } as const);

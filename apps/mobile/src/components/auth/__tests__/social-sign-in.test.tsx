@@ -1,11 +1,12 @@
 /**
  * Continue with Google / Apple — FR-002; spec Edge Cases (Accounts).
  *
- * Pills carrying each provider's logo and name, Apple first as pictured (F12; what one
- * button is is pinned in `provider-button.test.tsx`) on the Sign in and Create account
- * screens below the email form. A provider that cannot work on this build or platform yet
- * is shown disabled and the section says it is coming soon; one that can is wired to its
- * flow.
+ * Apple's own button (F12; `apple-official-button.test.tsx` pins what it is) and Google's
+ * pill, Apple first as pictured, on the Sign in and Create account screens below the email
+ * form. Google, when it cannot work on this build yet, is shown disabled; Apple, when the
+ * device says it is unavailable, is not drawn at all (Apple's logo is only ever drawn by
+ * Apple's button, and that button cannot be offered disabled); the section says what is
+ * coming soon either way. A provider that can work is wired to its flow.
  */
 import {
   fireEvent,
@@ -15,7 +16,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 import { ApiRequestError } from '@/lib/api-client';
 
@@ -35,22 +36,9 @@ jest.mock('@/features/auth/use-session', () => ({
   useGoogleSignIn: () => mockMutations.google,
 }));
 
-// The glyph font is not the subject; which logo, in which colour, is.
-jest.mock('@expo/vector-icons/Ionicons', () => {
-  const { Text } = jest.requireActual('react-native');
-  return function MockIonicons({ name, color }: { name: string; color: string }) {
-    return (
-      <Text testID={`icon-${name}`} style={{ color }}>
-        {name}
-      </Text>
-    );
-  };
-});
-
 jest.mock('expo-apple-authentication', () => ({
+  ...require('../../../../test/mocks/expo-apple-authentication'),
   isAvailableAsync: jest.fn(async () => false),
-  signInAsync: jest.fn(),
-  AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
 }));
 
 const mockPromptAsync = jest.fn();
@@ -86,37 +74,36 @@ beforeEach(() => {
   isAvailable.mockResolvedValue(false);
 });
 
+const flat = (style: unknown) =>
+  (StyleSheet.flatten(style as never) ?? {}) as Record<string, unknown>;
+
 const classesOf = (node: { props: { className?: unknown } }) =>
   String(node.props.className ?? '')
     .split(/\s+/)
     .filter(Boolean);
 
-describe('<SocialSignIn> — the provider pills', () => {
-  test('are full width, each carrying its provider’s logo and name', async () => {
+describe("<SocialSignIn> — Apple's button and Google's pill", () => {
+  test('are full width: Google a pill with its logo and name, Apple the system button', async () => {
+    isAvailable.mockResolvedValue(true);
     await render(<SocialSignIn />);
     const google = screen.getByTestId('google-sign-in-unavailable');
-    const apple = await screen.findByTestId('apple-sign-in-unavailable');
+    const apple = await screen.findByTestId('apple-sign-in');
 
-    for (const [button, words] of [
-      [google, 'Continue with Google'],
-      [apple, 'Continue with Apple'],
-    ] as const) {
-      expect(classesOf(button)).toContain('self-stretch');
-      expect(
-        within(button).getByTestId('brand-glyph', { includeHiddenElements: true }),
-      ).toBeTruthy();
-      expect(within(button).getByText(words)).toBeTruthy();
-    }
+    expect(classesOf(google)).toContain('self-stretch');
     expect(classesOf(google)).toContain('border');
     expect(
-      within(apple).getByTestId('icon-logo-apple', { includeHiddenElements: true }),
+      within(google).getByTestId('brand-glyph', { includeHiddenElements: true }),
     ).toBeTruthy();
+    expect(within(google).getByText('Continue with Google')).toBeTruthy();
+    expect(flat(apple.props.style).alignSelf).toBe('stretch');
+    expect(apple.props.accessibilityLabel).toBe('Continue with Apple');
   });
 
   test('are one pair of the same size and prominence, stacked in one column', async () => {
+    isAvailable.mockResolvedValue(true);
     await render(<SocialSignIn />);
     const google = screen.getByTestId('google-sign-in-unavailable');
-    const apple = await screen.findByTestId('apple-sign-in-unavailable');
+    const apple = await screen.findByTestId('apple-sign-in');
 
     expect(classesOf(google)).toEqual(
       expect.arrayContaining([
@@ -126,29 +113,38 @@ describe('<SocialSignIn> — the provider pills', () => {
         'self-stretch',
       ]),
     );
-    expect(classesOf(apple)).toEqual(
-      expect.arrayContaining([
-        'flex-row',
-        'items-center',
-        'justify-center',
-        'self-stretch',
-      ]),
-    );
+    expect(flat(apple.props.style).height).toBe(flat(google.props.style).minHeight);
     const row = screen.getByTestId('social-sign-in-buttons');
     expect(classesOf(row)).toEqual(expect.arrayContaining(['gap-3']));
     expect(classesOf(row)).not.toContain('flex-row');
   });
 
   test('sit under an "or continue with" divider, Apple first as pictured', async () => {
+    isAvailable.mockResolvedValue(true);
     await render(<SocialSignIn />);
-    await screen.findByTestId('apple-sign-in-unavailable');
+    await screen.findByTestId('apple-sign-in');
 
     expect(screen.getByText('or continue with')).toBeTruthy();
     const ids = screen
       .getAllByRole('button')
       .map((button) => button.props.testID as string);
-    expect(ids).toEqual(['apple-sign-in-unavailable', 'google-sign-in-unavailable']);
+    expect(ids).toEqual(['apple-sign-in', 'google-sign-in-unavailable']);
   });
+
+  test.each([
+    ['sign-in', 'Sign in with Apple', 0],
+    ['sign-up', 'Sign up with Apple', 2],
+    ['continue', 'Continue with Apple', 1],
+  ] as const)(
+    'the screen picks Apple\u2019s title: %s reads "%s" (button type %i)',
+    async (appleIntent, title, buttonType) => {
+      isAvailable.mockResolvedValue(true);
+      await render(<SocialSignIn appleIntent={appleIntent} />);
+      const apple = await screen.findByTestId('apple-sign-in');
+      expect(apple.props.buttonType).toBe(buttonType);
+      expect(apple.props.accessibilityLabel).toBe(title);
+    },
+  );
 
   test('none is a primary control: the screen’s own action is the only one (FR-005)', async () => {
     configureGoogle();
@@ -163,19 +159,21 @@ describe('<SocialSignIn> — the provider pills', () => {
 });
 
 describe('<SocialSignIn> — providers that cannot work yet', () => {
-  test('are disabled and labelled, and the section says they are coming soon', async () => {
+  test('Google is disabled and labelled; an unavailable Apple is not drawn; the section says both are coming soon', async () => {
     await render(<SocialSignIn />);
     const google = screen.getByTestId('google-sign-in-unavailable');
-    const apple = await screen.findByTestId('apple-sign-in-unavailable');
+    expect(
+      await screen.findByText('Google and Apple sign-in are coming soon.'),
+    ).toBeTruthy();
 
     expect(google.props.accessibilityState).toMatchObject({ disabled: true });
     expect(google.props.accessibilityLabel).toBe('Continue with Google, coming soon');
-    expect(apple.props.accessibilityState).toMatchObject({ disabled: true });
-    expect(apple.props.accessibilityLabel).toBe('Continue with Apple, coming soon');
-    expect(screen.getByText('Google and Apple sign-in are coming soon.')).toBeTruthy();
+    expect(screen.queryByTestId('apple-sign-in')).toBeNull();
+    expect(screen.queryByTestId('apple-sign-in-frame')).toBeNull();
+    expect(screen.queryByTestId('apple-sign-in-unavailable')).toBeNull();
+    expect(screen.queryByLabelText(/Apple/)).toBeNull();
 
     await fireEvent.press(google);
-    await fireEvent.press(apple);
     expect(mockPromptAsync).not.toHaveBeenCalled();
     expect(signInAsync).not.toHaveBeenCalled();
   });
@@ -209,16 +207,21 @@ describe('<SocialSignIn> — providers that cannot work yet', () => {
     expect(screen.queryByTestId('apple-sign-in')).toBeNull();
     expect(screen.queryByTestId('apple-sign-in-unavailable')).toBeNull();
     expect(screen.getByText('Google sign-in is coming soon.')).toBeTruthy();
+    // The place is held, so Apple appearing does not push anything down.
+    expect(
+      screen.getByTestId('provider-button-spacer', { includeHiddenElements: true }),
+    ).toBeTruthy();
   });
 
-  test('if asking the platform fails, Apple waits too and the failure is shown', async () => {
+  test('if asking the platform fails, Apple is not drawn and the failure is shown', async () => {
     isAvailable.mockRejectedValue(new Error('native module unavailable'));
     await render(<SocialSignIn />);
 
-    expect(await screen.findByTestId('apple-sign-in-unavailable')).toBeTruthy();
-    expect(screen.getByTestId('social-sign-in-error')).toHaveTextContent(
+    expect(await screen.findByTestId('social-sign-in-error')).toHaveTextContent(
       /Something went wrong/,
     );
+    expect(screen.queryByTestId('apple-sign-in')).toBeNull();
+    expect(screen.queryByTestId('apple-sign-in-unavailable')).toBeNull();
   });
 });
 
@@ -324,7 +327,30 @@ describe('<SocialSignIn> — providers that work', () => {
 
   test('while the screen’s own form is submitting, the working buttons wait', async () => {
     configureGoogle();
+    isAvailable.mockResolvedValue(true);
     await render(<SocialSignIn disabled />);
+    expect(screen.getByTestId('google-sign-in').props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    await screen.findByTestId('apple-sign-in');
+    expect(screen.getByTestId('apple-sign-in-frame').props).toMatchObject({
+      accessibilityState: { disabled: true },
+      pointerEvents: 'none',
+    });
+    expect(screen.queryByText(/Signing in with Apple/)).toBeNull();
+  });
+
+  test('an Apple sign-in in flight shows on its own button, in words, and holds Google', async () => {
+    configureGoogle();
+    isAvailable.mockResolvedValue(true);
+    mockMutations.apple.isPending = true;
+    await render(<SocialSignIn />);
+    await screen.findByTestId('apple-sign-in');
+    expect(screen.getByTestId('apple-sign-in-frame').props).toMatchObject({
+      accessibilityLabel: 'Continue with Apple',
+      accessibilityState: { busy: true, disabled: true },
+    });
+    expect(screen.getByText('Signing in with Apple\u2026')).toBeTruthy();
     expect(screen.getByTestId('google-sign-in').props.accessibilityState).toMatchObject({
       disabled: true,
     });

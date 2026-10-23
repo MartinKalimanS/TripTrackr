@@ -1,6 +1,11 @@
 {
   "entries": [
     {
+      "file": "src/components/auth/apple-official-button.tsx",
+      "count": 1,
+      "reason": "The frame of Apple’s own Sign in with Apple button: a native view with no content to size it (Expo: without a height it does not appear) that holds none of the app’s text, because the system draws its title inside the frame, scaled to it. The height is the pill minimum grown by the font scale (pillMinHeight), so it grows with the text size like the Google pill beside it"
+    },
+    {
       "file": "src/components/auth/social-sign-in.tsx",
       "count": 1,
       "reason": "A hairline or separator: no text in it (the rule beside \"or\")"

@@ -51,17 +51,6 @@ jest.mock('@/features/auth/use-session', () => ({
   useAppleSignIn: () => mockMutations.apple,
   useGoogleSignIn: () => mockMutations.google,
 }));
-jest.mock('expo-apple-authentication', () => ({
-  isAvailableAsync: jest.fn(async () => true),
-  signInAsync: jest.fn(),
-  AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
-}));
-jest.mock('@expo/vector-icons/Ionicons', () => {
-  const { Text } = jest.requireActual('react-native');
-  return function MockIonicons({ name }: { name: string }) {
-    return <Text testID={`icon-${name}`}>{name}</Text>;
-  };
-});
 jest.mock('expo-auth-session/providers/google', () => ({
   useIdTokenAuthRequest: () => [{ loaded: true }, null, jest.fn()],
 }));
@@ -164,13 +153,17 @@ describe.each(TEXT_SCALES)('Welcome at a font scale of %s', (scale) => {
     await render(<WelcomeScreen />);
     await screen.findByTestId('apple-sign-in');
 
-    for (const id of ['apple-sign-in', 'google-sign-in-unavailable']) {
-      const pill = styleOf(screen.getByTestId(id));
-      expect(pill.height).toBeUndefined();
-      expect(pill.minHeight).toBe(
-        Math.max(PILL_MIN_HEIGHT, MinTouchTarget * Math.max(1, scale)),
-      );
-    }
+    const pill = styleOf(screen.getByTestId('google-sign-in-unavailable'));
+    expect(pill.height).toBeUndefined();
+    expect(pill.minHeight).toBe(
+      Math.max(PILL_MIN_HEIGHT, MinTouchTarget * Math.max(1, scale)),
+    );
+    // Apple's own button draws its title inside the frame it is given (the system sizes the
+    // title to the frame, so no app text can clip); the frame is the same minimum, grown by
+    // the text size, and holds no text of the app's.
+    const apple = screen.getByTestId('apple-sign-in');
+    expect(styleOf(apple).height).toBe(pill.minHeight);
+    expect(apple.children).toHaveLength(0);
     const email = styleOf(screen.getByTestId('welcome-create-account'));
     expect(email.minHeight).toBe(
       Math.max(PILL_MIN_HEIGHT, MinTouchTarget * Math.max(1, scale)),

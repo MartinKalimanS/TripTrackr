@@ -17,7 +17,7 @@
  * (`test/theme/shape.test.ts` pins them), and a shadow is drawn BEHIND a surface, never as one.
  */
 import { Palettes, type Palette, type PaletteName } from '@/theme';
-import { AppleButton, GoogleButton, GoogleG } from '@/theme/brand-artwork';
+import { GoogleButton, GoogleG } from '@/theme/brand-artwork';
 
 export interface TranslucentException {
   /** The palette token whose (translucent) value may be a background. */
@@ -67,15 +67,14 @@ const schemeOf = (theme: PaletteName) => (theme.startsWith('dark') ? 'dark' : 'l
 export const LITERAL: readonly LiteralException[] = [
   {
     colours: (theme) => [
-      ...Object.values(AppleButton[schemeOf(theme)]),
       ...Object.values(GoogleButton[schemeOf(theme)]),
       ...GoogleG.paths.map((path) => path.fill),
     ],
     reason:
-      "The Sign in with Apple and Sign in with Google buttons: a provider's colours belong " +
-      'to its brand and may not be retuned to a theme (Apple: black on white or white on ' +
-      'black; Google: its light and dark button and the four-colour G). They are ' +
-      'token-layer data (src/theme/brand-artwork.ts), so no screen writes them.',
+      "The Sign in with Google button: a provider's colours belong to its brand and may " +
+      'not be retuned to a theme (its light and dark button and the four-colour G). They ' +
+      'are token-layer data (src/theme/brand-artwork.ts), so no screen writes them. Apple ' +
+      'has none: its button is drawn by Apple (`apple-official-button.tsx`), not by the app.',
   },
   {
     node: /^View#status-pill-active(-dot)?$/,
