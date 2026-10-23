@@ -17,7 +17,7 @@ import { AccessibilityInfo } from 'react-native';
 import { CountriesList } from '@/components/home/countries-list';
 import { GLOBE_ACTIONS } from '@/components/globe/use-globe-actions';
 import type { GlobeTrip } from '@/features/globe/globe-data';
-import { placedTrips, stepTrip } from '@/features/globe/globe-actions';
+import { placedTrips, stepTrip, type TripPlace } from '@/features/globe/globe-actions';
 
 import { accessibleNodes, exposedArt, unnamed } from '../helpers/a11y-nodes';
 import { appearance } from '../helpers/appearance';
@@ -129,7 +129,7 @@ describe("The globe's actions reach every trip (FR-017)", () => {
     const seen: string[] = [];
     let current: string | null = null;
     for (let step = 0; step < places.length; step += 1) {
-      const next = stepTrip(places, current, 1)!;
+      const next: TripPlace = stepTrip(places, current, 1)!;
       seen.push(next.tripId);
       current = next.tripId;
     }

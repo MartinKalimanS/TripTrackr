@@ -194,7 +194,7 @@ describe('Home reading order: header, globe, sheet (contract C5-32)', () => {
 
     async function openCountries() {
       withPastTrip();
-      overview.data = overviewOf(manyCountries(30)) as typeof overview.data;
+      overview.data = overviewOf(manyCountries(30)) as unknown as typeof overview.data;
       await renderHome();
       await act(() =>
         screen.getByTestId('globe-map').props.onAccessibilityAction({
