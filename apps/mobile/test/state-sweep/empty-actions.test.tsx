@@ -21,7 +21,7 @@ import type { DocumentRow, TripRow } from '@/db/schema';
 import { useAppearance } from '@/hooks/use-appearance';
 
 import { appearance } from '../helpers/appearance';
-import { deadControls } from '../helpers/dead-controls';
+import { deadControls, misroutedComingSoon } from '../helpers/dead-controls';
 
 const mockBack = jest.fn();
 const mockReplace = jest.fn();
@@ -42,7 +42,8 @@ jest.mock('@/lib/sentry', () => ({
   initSentry: jest.fn(),
 }));
 jest.mock('@/lib/disk-space', () => ({ freeDiskBytes: () => 1_700_000_000 }));
-jest.mock('@/hooks/use-mapbox-ready', () => ({ useMapboxReady: () => 'ready' }));
+const mockMapbox: { state: 'starting' | 'ready' | 'unavailable' } = { state: 'ready' };
+jest.mock('@/hooks/use-mapbox-ready', () => ({ useMapboxReady: () => mockMapbox.state }));
 
 const mockTrip = {
   data: null as TripRow | null,
@@ -80,6 +81,7 @@ beforeEach(() => {
   mockBack.mockReset();
   mockReplace.mockReset();
   mockRouter.canGoBack = true;
+  mockMapbox.state = 'ready';
   mockTrip.data = null;
   mockStops.data = [];
   mockStops.loading = false;
@@ -227,5 +229,50 @@ describe('a document that is still being read (FR-064: a skeleton shaped like th
     // The bar is there, so the wait can be left.
     expect(screen.getByLabelText('Back')).toBeTruthy();
     expect(deadControls()).toEqual([]);
+  });
+});
+
+describe('the other states of the same two screens: no control is a dead end', () => {
+  it('a document that cannot be read: words, an icon and "Try again"', async () => {
+    mockDocument.error = new Error('store closed');
+    await render(<DocumentViewScreen />);
+    expect(screen.getByLabelText('Try again')).toBeTruthy();
+    expect(deadControls()).toEqual([]);
+  });
+
+  const ARRANGEMENTS: [string, () => void][] = [
+    [
+      'the trip’s cities are being read',
+      () => {
+        mockStops.loading = true;
+      },
+    ],
+    [
+      'the trip’s cities cannot be read',
+      () => {
+        mockStops.error = new Error('x');
+      },
+    ],
+    [
+      'maps are not set up in this build',
+      () => {
+        mockMapbox.state = 'unavailable';
+      },
+    ],
+    [
+      'the map engine is starting',
+      () => {
+        mockMapbox.state = 'starting';
+      },
+    ],
+  ];
+
+  it.each(ARRANGEMENTS)('offline maps: %s', async (_name, arrange) => {
+    mockStops.data = [];
+    arrange();
+    await render(<OfflineMapsScreen />);
+    expect(screen.getByTestId('offline-maps-screen')).toBeTruthy();
+    expect(deadControls()).toEqual([]);
+    expect(misroutedComingSoon()).toEqual([]);
   });
 });

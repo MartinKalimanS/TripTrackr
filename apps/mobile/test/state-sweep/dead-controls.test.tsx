@@ -24,7 +24,7 @@ describe('deadControls', () => {
   it('finds a Pressable, a Tappable, a Button and an IconButton with no handler', async () => {
     await render(
       <View>
-        <Pressable accessibilityLabel="Raw" />
+        <Pressable accessibilityLabel="Raw" accessibilityRole="button" />
         <Tappable accessibilityLabel="Bare" />
         <Button accessibilityLabel="Labelled">Labelled</Button>
         <IconButton icon="search" accessibilityLabel="Icon" />
@@ -36,7 +36,7 @@ describe('deadControls', () => {
   });
 
   it('names a control by its testID when it has no label', async () => {
-    await render(<Pressable testID="orphan" />);
+    await render(<Pressable testID="orphan" accessibilityRole="button" />);
     expect(deadControls()).toEqual(['#orphan']);
   });
 
@@ -64,6 +64,12 @@ describe('deadControls', () => {
         <Pressable accessibilityLabel="Raw off" disabled />
       </View>,
     );
+    expect(deadControls()).toEqual([]);
+  });
+
+  it('does not hold a static row to a handler: a pressable with no role is not a control', async () => {
+    await render(<Pressable testID="static-row" />);
+    expect(pressableCount()).toBe(1);
     expect(deadControls()).toEqual([]);
   });
 
