@@ -32,6 +32,7 @@ import { Text } from '@/components/ui/text';
 import { describeAuthError } from '@/features/auth/auth-errors';
 import { useAppleSignIn, useGoogleSignIn } from '@/features/auth/use-session';
 
+import type { AppleIntent } from './apple-official-button';
 import { AppleSignInButton, useAppleSignInAvailability } from './apple-sign-in-button';
 import { GoogleSignInButton, isGoogleSignInConfigured } from './google-sign-in-button';
 
@@ -49,15 +50,22 @@ export function comingSoonSentence(
     : `${missing.join(' and ')} sign-in are coming soon.`;
 }
 
+/** Apple's own title cannot change to say the sign-in is under way, so these words do (FR-025). */
+const APPLE_STATUS = 'Signing in with Apple\u2026';
+
 export type SocialSignInProps = {
   /** The screen's own form is submitting. */
   disabled?: boolean;
+  /** Which of Apple's titles this screen says; see `useSocialSignIn`. */
+  appleIntent?: AppleIntent;
 };
 
 export interface SocialSignInParts {
   /** Sign in with Apple; null on Android, where it is not drawn. */
   apple: ReactNode;
   google: ReactNode;
+  /** "Signing in with Apple…" while that sign-in is in flight, or null: Apple's title cannot say it. */
+  status: string | null;
   /** One quiet sentence naming what is coming soon, or null. */
   soon: string | null;
   /** A provider failure or an API refusal, in plain words, or null. */
@@ -68,8 +76,14 @@ export interface SocialSignInParts {
  * The two provider buttons with their handlers, the in-flight state and the error, for a
  * screen to place (the form screens under their form, Welcome above "Continue with email").
  * The handlers are the ones the buttons always had: the session mutations are untouched.
+ * `appleIntent` picks which of Apple's three titles its own button reads (Sign in says "Sign in
+ * with Apple", Create account "Sign up with Apple", Welcome, which does either, "Continue with
+ * Apple"); it changes nothing about what pressing it does.
  */
-export function useSocialSignIn(disabled = false): SocialSignInParts {
+export function useSocialSignIn(
+  disabled = false,
+  appleIntent: AppleIntent = 'continue',
+): SocialSignInParts {
   const apple = useAppleSignIn();
   const google = useGoogleSignIn();
   const [providerError, setProviderError] = useState<string | null>(null);
@@ -92,6 +106,7 @@ export function useSocialSignIn(disabled = false): SocialSignInParts {
         available={appleAvailable}
         busy={apple.isPending}
         disabled={disabled || google.isPending}
+        intent={appleIntent}
         onCredential={(input) => {
           setProviderError(null);
           apple.mutate(input);
@@ -110,13 +125,14 @@ export function useSocialSignIn(disabled = false): SocialSignInParts {
         onError={failed}
       />
     ),
+    status: apple.isPending ? APPLE_STATUS : null,
     soon,
     error,
   };
 }
 
-export function SocialSignIn({ disabled = false }: SocialSignInProps) {
-  const { apple, google, soon, error } = useSocialSignIn(disabled);
+export function SocialSignIn({ disabled = false, appleIntent }: SocialSignInProps) {
+  const { apple, google, status, soon, error } = useSocialSignIn(disabled, appleIntent);
 
   return (
     <View testID="social-sign-in" className="mt-3 gap-3">
@@ -125,6 +141,7 @@ export function SocialSignIn({ disabled = false }: SocialSignInProps) {
         {apple}
         {google}
       </View>
+      <ProviderStatus status={status} />
       {soon ? (
         <Text type="callout" tone="muted" className="text-center">
           {soon}
@@ -132,6 +149,20 @@ export function SocialSignIn({ disabled = false }: SocialSignInProps) {
       ) : null}
       <InlineError testID="social-sign-in-error" message={error} />
     </View>
+  );
+}
+
+/** A polite live region: the screen reader says it once when it appears; nothing when null. */
+export function ProviderStatus({ status }: { status: string | null }) {
+  if (!status) return null;
+  return (
+    <Text
+      type="callout"
+      tone="muted"
+      className="text-center"
+      accessibilityLiveRegion="polite">
+      {status}
+    </Text>
   );
 }
 

@@ -194,7 +194,7 @@ export default function RegisterScreen() {
           onPress={submit}>
           {register.isPending ? 'Creating your account…' : 'Create account'}
         </Button>
-        <SocialSignIn disabled={register.isPending} />
+        <SocialSignIn appleIntent="sign-up" disabled={register.isPending} />
       </View>
     </Screen>
   );

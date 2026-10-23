@@ -36,6 +36,16 @@ export type PillLook = 'apple' | 'google' | 'cream';
 /** The prototype's `.btn-pill` minimum height, in dp. */
 export const PILL_MIN_HEIGHT = 52;
 
+/**
+ * The height every way-in button holds at least, at a font scale: the pill's 52 dp, or the touch
+ * target grown by the text size, whichever is more. One rule for the pills, the placeholder that
+ * holds a button's place, and Apple's own button (`apple-official-button.tsx`), whose frame has
+ * no text of the app's to grow with, so the three are the same height.
+ */
+export function pillMinHeight(fontScale: number): number {
+  return Math.max(PILL_MIN_HEIGHT, MinTouchTarget * Math.max(1, fontScale));
+}
+
 export type PillButtonProps = {
   testID: string;
   /** The visible words; also the accessible name unless `accessibilityLabel` says more. */
@@ -81,7 +91,7 @@ export function PillButton({
       feedback={apple ? 'ring' : 'fill'}
       className={LOOK_CLASSES[look]}
       style={{
-        minHeight: Math.max(PILL_MIN_HEIGHT, MinTouchTarget * Math.max(1, fontScale)),
+        minHeight: pillMinHeight(fontScale),
         paddingHorizontal: Space[6],
         paddingVertical: Space[3],
         ...cornerOf('full'),

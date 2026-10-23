@@ -37,7 +37,7 @@ import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { LegalLine } from '@/components/auth/legal-line';
 import { PillButton } from '@/components/auth/pill-button';
-import { useSocialSignIn } from '@/components/auth/social-sign-in';
+import { ProviderStatus, useSocialSignIn } from '@/components/auth/social-sign-in';
 import { WelcomeGlobe } from '@/components/auth/welcome-globe';
 import { WelcomeMark } from '@/components/auth/welcome-mark';
 import { Button } from '@/components/ui/button';
@@ -173,6 +173,7 @@ export default function WelcomeScreen() {
               leading={<Icon name="mail" size={20} />}
               onPress={() => router.push('/register')}
             />
+            <ProviderStatus status={social.status} />
             {social.soon ? (
               <Text type="callout" tone="muted" className="text-center">
                 {social.soon}

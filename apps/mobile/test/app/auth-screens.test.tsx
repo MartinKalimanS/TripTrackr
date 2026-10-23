@@ -148,10 +148,26 @@ describe('<WelcomeScreen>', () => {
 
 describe('<LoginScreen>', () => {
   test('offers Google and Apple below the email form (FR-002)', async () => {
+    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
     await render(<LoginScreen />);
     const section = screen.getByTestId('social-sign-in');
     expect(within(section).getByLabelText(/Continue with Google/)).toBeTruthy();
-    expect(await within(section).findByLabelText(/Continue with Apple/)).toBeTruthy();
+    expect(await within(section).findByTestId('apple-sign-in')).toBeTruthy();
+  });
+
+  test('Apple is the system "Sign in with Apple" button (SIGN_IN), in Apple’s black on this light ground', async () => {
+    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
+    await render(<LoginScreen />);
+    const apple = await within(screen.getByTestId('social-sign-in')).findByTestId(
+      'apple-sign-in',
+    );
+    expect(apple.props.buttonType).toBe(
+      AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN,
+    );
+    expect(apple.props.buttonStyle).toBe(
+      AppleAuthentication.AppleAuthenticationButtonStyle.BLACK,
+    );
+    expect(apple.props.accessibilityLabel).toBe('Sign in with Apple');
   });
 
   test('renders an email and a password field with the right keyboard behaviour', async () => {
@@ -256,8 +272,9 @@ describe('<LoginScreen>', () => {
   });
 
   test('has ONE primary action, Sign in; the provider buttons are not primary (FR-005)', async () => {
+    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
     await render(<LoginScreen />);
-    await screen.findByLabelText(/Continue with Apple/);
+    await screen.findByTestId('apple-sign-in');
     expect(primaries().map((button) => button.props.testID)).toEqual(['login-submit']);
     expect(screen.getByTestId('login-submit').props.size).toBe('lg');
   });
@@ -328,10 +345,26 @@ describe('<LoginScreen>', () => {
 
 describe('<RegisterScreen>', () => {
   test('offers Google and Apple below the email form (FR-002)', async () => {
+    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
     await render(<RegisterScreen />);
     const section = screen.getByTestId('social-sign-in');
     expect(within(section).getByLabelText(/Continue with Google/)).toBeTruthy();
-    expect(await within(section).findByLabelText(/Continue with Apple/)).toBeTruthy();
+    expect(await within(section).findByTestId('apple-sign-in')).toBeTruthy();
+  });
+
+  test('Apple is the system "Sign up with Apple" button (SIGN_UP)', async () => {
+    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
+    await render(<RegisterScreen />);
+    const apple = await within(screen.getByTestId('social-sign-in')).findByTestId(
+      'apple-sign-in',
+    );
+    expect(apple.props.buttonType).toBe(
+      AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP,
+    );
+    expect(apple.props.buttonStyle).toBe(
+      AppleAuthentication.AppleAuthenticationButtonStyle.BLACK,
+    );
+    expect(apple.props.accessibilityLabel).toBe('Sign up with Apple');
   });
 
   const fill = async (overrides: Partial<Record<string, string>> = {}) => {
@@ -479,8 +512,9 @@ describe('<RegisterScreen>', () => {
   });
 
   test('has ONE primary action, Create account; the provider buttons are not primary (FR-005)', async () => {
+    (AppleAuthentication.isAvailableAsync as jest.Mock).mockResolvedValue(true);
     await render(<RegisterScreen />);
-    await screen.findByLabelText(/Continue with Apple/);
+    await screen.findByTestId('apple-sign-in');
     expect(primaries().map((button) => button.props.testID)).toEqual(['register-submit']);
     expect(screen.getByTestId('register-submit').props.size).toBe('lg');
   });

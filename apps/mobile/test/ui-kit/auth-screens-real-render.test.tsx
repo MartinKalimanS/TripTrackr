@@ -13,6 +13,7 @@
  */
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import type * as HeroUI from 'heroui-native';
+import { StyleSheet } from 'react-native';
 
 import LoginScreen from '@/app/(auth)/login';
 import RegisterScreen from '@/app/(auth)/register';
@@ -183,19 +184,24 @@ describe('the sign-in screen over the real kit', () => {
     expect(mockMutations.login.mutate).toHaveBeenCalledTimes(1);
   });
 
-  test('the provider buttons are pills, named and in one column under the action', async () => {
+  test('the provider buttons are Google\u2019s pill and Apple\u2019s own button, named and in one column under the action', async () => {
     await renderScreen(<LoginScreen />);
 
     const google = screen.getByTestId('google-sign-in-unavailable');
     const apple = await screen.findByTestId('apple-sign-in');
     expect(google.props.accessibilityLabel).toBe('Continue with Google, coming soon');
-    expect(apple.props.accessibilityLabel).toBe('Continue with Apple');
+    expect(apple.props.accessibilityLabel).toBe('Sign in with Apple');
     for (const button of [google, apple]) {
       expect(button.props.accessibilityRole).toBe('button');
-      expect(classesOf(button)).toContain('self-stretch');
     }
+    expect(classesOf(google)).toContain('self-stretch');
+    expect(
+      StyleSheet.flatten(apple.props.style as never) as { alignSelf?: string },
+    ).toMatchObject({
+      alignSelf: 'stretch',
+    });
     expect(classesOf(google)).toContain('border');
-    expect(within(apple).getByText('Continue with Apple')).toBeTruthy();
+    expect(apple.children).toHaveLength(0);
     expect(
       within(screen.getByTestId('login-actions')).getByTestId('social-sign-in'),
     ).toBeTruthy();

@@ -26,9 +26,7 @@
 import { View, useWindowDimensions } from 'react-native';
 
 import { BrandGlyph, type BrandGlyphName } from '@/components/ui/brand-glyph';
-import { MinTouchTarget } from '@/constants/theme';
-
-import { PILL_MIN_HEIGHT, PillButton, type PillLook } from './pill-button';
+import { PillButton, pillMinHeight, type PillLook } from './pill-button';
 
 export type SignInProvider = 'apple' | 'google';
 
@@ -85,9 +83,7 @@ export function ProviderButtonSpacer() {
   return (
     <View
       testID="provider-button-spacer"
-      style={{
-        minHeight: Math.max(PILL_MIN_HEIGHT, MinTouchTarget * Math.max(1, fontScale)),
-      }}
+      style={{ minHeight: pillMinHeight(fontScale) }}
     />
   );
 }

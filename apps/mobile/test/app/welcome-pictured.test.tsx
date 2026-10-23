@@ -3,7 +3,7 @@
  * owner decision Q-11): the sky, a static composed globe with the coral countries and arcs,
  * the FIRST STAMP stamp, the wordmark row, a 28 dp sheet (padding 24 20 34) with the eyebrow,
  * the existing tagline as the headline with ONE nested accent word, the lede, THREE 52 dp
- * buttons (Apple on iOS only, Google, email) and the legal line with real links; plus the
+ * buttons (Apple's own button on iOS only, Google, email) and the legal line with real links; plus the
  * quiet "Already have an account? Sign in" link the picture does not show.
  *
  * Jest renders no styles: classes, props and the style objects are what is asserted. How the
@@ -16,7 +16,8 @@ import { Linking, Platform, StyleSheet } from 'react-native';
 
 import WelcomeScreen from '@/app/(auth)/welcome';
 import { LEGAL_URLS } from '@/constants/legal-urls';
-import { AppleButton, GoogleButton } from '@/theme/brand-artwork';
+import { MinTouchTarget } from '@/constants/theme';
+import { GoogleButton } from '@/theme/brand-artwork';
 
 import { appearance, appearanceOf } from '../helpers/appearance';
 
@@ -181,27 +182,82 @@ describe('Welcome - the three buttons (owner decision Q-11)', () => {
     ]);
   });
 
-  test('iOS: the three are the same 52 dp size and the same width', async () => {
+  test('iOS: the three are the same 52 dp size, the same pill and the same width', async () => {
     configureGoogle();
     await render(<WelcomeScreen />);
     const apple = await screen.findByTestId('apple-sign-in');
     const google = screen.getByTestId('google-sign-in');
     const email = screen.getByTestId('welcome-create-account');
-    for (const button of [apple, google, email]) {
+    for (const button of [google, email]) {
       expect(resting(button).minHeight).toBeGreaterThanOrEqual(52);
       expect(resting(button).borderRadius).toBeGreaterThanOrEqual(999);
       expect(classesOf(button)).toContain('self-stretch');
     }
-    expect(resting(apple).minHeight).toBe(resting(email).minHeight);
-    expect(resting(google).minHeight).toBe(resting(email).minHeight);
+    // Apple's own button is a frame of exactly that minimum, a capsule, across the column.
+    expect(resting(apple).height).toBe(52);
+    expect(apple.props.cornerRadius).toBe(26);
+    expect(resting(apple).alignSelf).toBe('stretch');
+    expect(resting(apple).height).toBe(resting(email).minHeight);
+    expect(resting(apple).height).toBe(resting(google).minHeight);
   });
 
-  test('the Apple button is black with a white label (white with black in the dark), Google is its own light button with its four-colour G, email is cream with an envelope', async () => {
-    configureGoogle();
+  test.each([1, 1.15, 1.5, 2])(
+    'iOS at text scale %s: Apple is as tall and as wide as the Google button beside it',
+    async (fontScale) => {
+      configureGoogle();
+      useAppearance.mockReturnValue(appearance({ fontScale }));
+      await render(<WelcomeScreen />);
+      const apple = await screen.findByTestId('apple-sign-in');
+      const google = screen.getByTestId('google-sign-in');
+      expect(resting(apple).height).toBe(resting(google).minHeight);
+      expect(resting(apple).height).toBe(Math.max(52, MinTouchTarget * fontScale));
+      expect(apple.props.cornerRadius).toBe((resting(apple).height as number) / 2);
+      expect(resting(apple).alignSelf).toBe('stretch');
+      expect(classesOf(google)).toContain('self-stretch');
+    },
+  );
+
+  test('Apple is the system "Continue with Apple" button, black (white in the dark): Apple draws its logo and title', async () => {
     const { rerender } = await render(<WelcomeScreen />);
     const apple = await screen.findByTestId('apple-sign-in');
-    expect(resting(apple).backgroundColor).toBe(AppleButton.light.fill);
-    expect(within(apple).getByTestId('icon-logo-apple', hidden)).toBeTruthy();
+    expect(apple.props.buttonType).toBe(
+      AppleAuthentication.AppleAuthenticationButtonType.CONTINUE,
+    );
+    expect(apple.props.buttonStyle).toBe(
+      AppleAuthentication.AppleAuthenticationButtonStyle.BLACK,
+    );
+    expect(apple.props.accessibilityLabel).toBe('Continue with Apple');
+    expect(resting(apple)).not.toHaveProperty('backgroundColor');
+    expect(resting(apple)).not.toHaveProperty('borderRadius');
+
+    useAppearance.mockReturnValue(appearanceOf('dark'));
+    await rerender(<WelcomeScreen />);
+    expect(screen.getByTestId('apple-sign-in').props.buttonStyle).toBe(
+      AppleAuthentication.AppleAuthenticationButtonStyle.WHITE,
+    );
+  });
+
+  test.each([
+    ['light', 'BLACK'],
+    ['light-contrast', 'BLACK'],
+    ['dark', 'WHITE'],
+    ['dark-contrast', 'WHITE'],
+  ] as const)(
+    'in the %s theme the button is Apple’s %s style: it stays visible and needs no outline',
+    async (themeName, style) => {
+      useAppearance.mockReturnValue(appearanceOf(themeName));
+      await render(<WelcomeScreen />);
+      const apple = await screen.findByTestId('apple-sign-in');
+      expect(apple.props.buttonStyle).toBe(
+        AppleAuthentication.AppleAuthenticationButtonStyle[style],
+      );
+    },
+  );
+
+  test('Google is its own light button with its four-colour G, email is cream with an envelope', async () => {
+    configureGoogle();
+    await render(<WelcomeScreen />);
+    await screen.findByTestId('apple-sign-in');
 
     const google = screen.getByTestId('google-sign-in');
     expect(classesOf(google)).toContain('border');
@@ -213,12 +269,6 @@ describe('Welcome - the three buttons (owner decision Q-11)', () => {
     expect(classesOf(email)).toContain('bg-surface-secondary');
     expect(within(email).getByText('Continue with email')).toBeTruthy();
     expect(email.props.accessibilityLabel).toBe('Continue with email');
-
-    useAppearance.mockReturnValue(appearanceOf('dark'));
-    await rerender(<WelcomeScreen />);
-    expect(resting(screen.getByTestId('apple-sign-in')).backgroundColor).toBe(
-      AppleButton.dark.fill,
-    );
   });
 
   test('Android: the Apple button is not drawn and is never asked about; Google and email remain', async () => {
@@ -286,12 +336,32 @@ describe('Welcome - the three buttons (owner decision Q-11)', () => {
     configureGoogle();
     mockMutations.apple.isPending = true;
     await render(<WelcomeScreen />);
-    expect(
-      (await screen.findByTestId('apple-sign-in')).props.accessibilityState,
-    ).toMatchObject({ busy: true });
+    await screen.findByTestId('apple-sign-in');
+    expect(screen.getByTestId('apple-sign-in-frame').props).toMatchObject({
+      accessibilityLabel: 'Continue with Apple',
+      accessibilityState: { busy: true, disabled: true },
+      pointerEvents: 'none',
+    });
+    expect(screen.getByText('Signing in with Apple…')).toBeTruthy();
     expect(screen.getByTestId('google-sign-in').props.accessibilityState).toMatchObject({
       disabled: true,
     });
+  });
+
+  test('an unavailable Apple draws nothing, not even a disabled copy of its logo; the sentence says so', async () => {
+    isAvailable.mockResolvedValue(false);
+    await render(<WelcomeScreen />);
+    expect(
+      await screen.findByText('Google and Apple sign-in are coming soon.'),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('apple-sign-in')).toBeNull();
+    expect(screen.queryByTestId('apple-sign-in-unavailable')).toBeNull();
+    expect(screen.queryByLabelText(/Apple/)).toBeNull();
+    expect(buttonIds()).toEqual([
+      'google-sign-in-unavailable',
+      'welcome-create-account',
+      'welcome-sign-in',
+    ]);
   });
 
   test('none of the three is the coral primary: Welcome has no Button primary', async () => {

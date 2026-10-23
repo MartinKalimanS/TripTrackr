@@ -154,7 +154,7 @@ export default function LoginScreen() {
           onPress={submit}>
           {login.isPending ? 'Signing in…' : 'Sign in'}
         </Button>
-        <SocialSignIn disabled={login.isPending} />
+        <SocialSignIn appleIntent="sign-in" disabled={login.isPending} />
       </View>
     </Screen>
   );
