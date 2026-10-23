@@ -14,14 +14,17 @@
  */
 import { View } from 'react-native';
 
+import { metaLines } from '@/components/ui/reflow';
 import { Text } from '@/components/ui/text';
 import type { DayGroup } from '@/features/photos/photo-days';
+import { useFontScale } from '@/hooks/use-font-scale';
 import { Space } from '@/theme';
 
 const NUMERAL_ROOM = 52;
 const UNDATED_TITLE = 'Date unknown';
 
 export function DayHeader({ group }: { group: DayGroup }) {
+  const fontScale = useFontScale();
   const title = group.numeral === null ? UNDATED_TITLE : group.place;
 
   return (
@@ -41,7 +44,7 @@ export function DayHeader({ group }: { group: DayGroup }) {
       )}
       <View className="min-w-0 shrink">
         {title ? (
-          <Text variant="callout" numberOfLines={1}>
+          <Text variant="callout" numberOfLines={metaLines(fontScale)}>
             {title}
           </Text>
         ) : null}

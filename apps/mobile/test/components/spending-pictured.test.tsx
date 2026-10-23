@@ -25,6 +25,7 @@ import { formatMoney, formatMoneyTight } from '@/lib/locale';
 
 import { classesOf, containing, hostsWhere } from '../helpers/host-nodes';
 import { glyphNamesIn } from '../helpers/icons';
+import { phoneAtFontScale } from '../helpers/text-scale';
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -505,6 +506,7 @@ describe('<CategoryBar> (prototype .catbar, .legend; picture expenses.png)', () 
 });
 
 describe('<ExpenseRow> - one expense (T441, T550; FR-014, FR-025, FR-030, FR-034)', () => {
+  afterEach(() => jest.restoreAllMocks());
   const base = row({
     id: 'e1',
     amount: '9.00',
@@ -585,11 +587,16 @@ describe('<ExpenseRow> - one expense (T441, T550; FR-014, FR-025, FR-030, FR-034
     expect(screen.queryByText('Food · Lisbon')).toBeNull();
   });
 
-  test('the title takes two lines and the category line one', async () => {
+  test('the title takes two lines and the category line one (two from a font scale of 1.15)', async () => {
+    phoneAtFontScale(1);
     await renderRow({}, { place: 'Lisbon' });
 
     expect(screen.getByText('Lunch').props.numberOfLines).toBe(2);
     expect(screen.getByText('Food · Lisbon').props.numberOfLines).toBe(1);
+
+    phoneAtFontScale(1.15);
+    await renderRow({ id: 'e2' }, { place: 'Lisbon' });
+    expect(screen.getAllByText('Food · Lisbon').at(-1)?.props.numberOfLines).toBe(2);
   });
 
   test('leads with the category icon on its tint, decorative because the name beside it says it', async () => {

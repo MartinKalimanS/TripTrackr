@@ -3,7 +3,7 @@
  * 9.2; prototype `.note`, `.nb`, `.nm`, `.sync` in `extra/screens.css`; picture `more/notes`).
  *
  * A cream tile (`Card variant="tile"`: hairline, radius 16, no shadow) padded 16: the title
- * (`callout`, one line, two from text scale 1.5), a three-line excerpt (`body`, muted), then
+ * (`callout`, one line, two from text scale 1.15), a three-line excerpt (`body`, muted), then
  * the foot row: the time, a dot, the country's flag and the place at the start, the record's
  * sync state at the end. The card has no dashed edge: the state is a glyph AND words, never a
  * line or a colour alone (FR-025): "On this device" in amber ink with an upload cloud while the
@@ -26,6 +26,7 @@ import { View, type AccessibilityActionEvent } from 'react-native';
 import { Card } from '@/components/ui/card';
 import { FlagChip } from '@/components/ui/flag-chip';
 import { Icon } from '@/components/ui/icon';
+import { metaLines } from '@/components/ui/reflow';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
 import type { NoteWithPlace } from '@/db/repositories/notes';
@@ -53,8 +54,6 @@ export function describeAnchor(note: NoteWithPlace): string {
 
 /** The characters the announced name carries of the body. */
 const PREVIEW_LENGTH = 160;
-/** The text size from which a title may take a second line (the prototype's `data-bigtext`). */
-const BIG_TEXT = 1.5;
 const EXCERPT_LINES = 3;
 
 const ROW_ACTIONS = [
@@ -146,7 +145,7 @@ export function NoteCard({ note, onEdit, onRemove }: NoteCardProps) {
             {note.title ? (
               <Text
                 variant="callout"
-                numberOfLines={fontScale >= BIG_TEXT ? 2 : 1}
+                numberOfLines={metaLines(fontScale)}
                 testID={`note-title-${note.id}`}>
                 {note.title}
               </Text>

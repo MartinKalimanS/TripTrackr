@@ -26,6 +26,8 @@ import { PassportCard } from '@/components/profile/passport-card';
 import { PhotoTile } from '@/components/trip/photo-tile';
 import { AreasStrip } from '@/components/trip/areas-strip';
 import { DayBars } from '@/components/trip/day-bars';
+import { DayHeader } from '@/components/trip/day-header';
+import { ExpenseExtras } from '@/components/trip/expense-extras';
 import { DocumentTicket } from '@/components/trip/document-ticket';
 import { NightsStepper } from '@/components/trip/nights-stepper';
 import { NoteCard } from '@/components/trip/note-card';
@@ -33,7 +35,10 @@ import { SpendingHero } from '@/components/trip/spending-hero';
 import { StopDatesBlock } from '@/components/trip/stop-dates-block';
 import { TicketCard } from '@/components/trip/ticket-card';
 import { TripHero } from '@/components/trip/trip-hero';
+import { RoutePreview } from '@/components/trip/route-preview';
+import { TripHeroCard } from '@/components/trip/trip-hero-card';
 import { TripRow } from '@/components/trip/trip-row';
+import { AreaHeader } from '@/components/ui/area-header';
 import { buttonFrame } from '@/components/ui/button';
 import { FormActions } from '@/components/ui/form-actions';
 import { areaColumns } from '@/components/ui/reflow';
@@ -42,6 +47,8 @@ import type { NoteWithPlace } from '@/db/repositories/notes';
 import type { PhotoWithPlace } from '@/db/repositories/photos';
 import type { ExpenseRow } from '@/db/schema';
 import type { HomeTrip } from '@/features/home/home-trips';
+import type { DayGroup } from '@/features/photos/photo-days';
+import type { RoutePreview as RoutePreviewModel } from '@/features/trips/stop-route';
 import { deriveSpendingView } from '@/features/expenses/spending-summary';
 import type { PassportTotals } from '@/features/passport/passport-totals';
 
@@ -51,6 +58,7 @@ import { classesOf, hostsWhere } from '../helpers/host-nodes';
 import {
   TEXT_SCALES,
   fixedHeightTextContainers,
+  fixedWidthTextContainers,
   phoneAtFontScale,
   reflows,
   styleOf,
@@ -72,6 +80,7 @@ jest.mock('@/features/sync/use-sync-chip-state', () => ({
 jest.mock('@/sync/engine', () => ({ syncNow: jest.fn() }));
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), navigate: jest.fn(), replace: jest.fn() },
+  useRouter: () => ({ back: jest.fn(), canGoBack: () => true, replace: jest.fn() }),
 }));
 
 const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
@@ -89,9 +98,16 @@ function atScale(fontScale: number) {
 beforeEach(() => captureIntervals());
 afterEach(() => jest.restoreAllMocks());
 
-/** The sweep's one cross-cutting rule: nothing that holds text has a fixed height. */
-function expectNoFixedTextHeight() {
+/**
+ * The sweep's one cross-cutting rule: nothing that holds text pins a height or a width in dp.
+ * Two columns are sized on purpose and are named: the per-day chart's columns (`columnWidth`
+ * is the width the longest label needs at the text size) and, below the reflow threshold only,
+ * the 88 dp stub of a ticket (from 1.15 it is a row with no width).
+ */
+function expectNoFixedTextSize(scale: number) {
   expect(fixedHeightTextContainers()).toEqual([]);
+  const sized = [/^summary-day-/, ...(reflows(scale) ? [] : [/-stub$/])];
+  expect(fixedWidthTextContainers(undefined, sized)).toEqual([]);
 }
 
 describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
@@ -115,7 +131,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     for (const divider of dividers) {
       expect(classesOf(divider)).toContain(reflows(scale) ? 'h-px' : 'w-px');
     }
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('trip areas: four columns, then two', async () => {
@@ -132,7 +148,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
         reflows(scale) ? '50%' : '25%',
       );
     }
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the ticket card: a row, then stacked with the notches gone', async () => {
@@ -160,7 +176,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     expect(screen.queryByTestId('trip-card-t1-notch-top', hidden) === null).toBe(
       reflows(scale),
     );
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('a trip row: thumbnail 64, then 56, and the lines wrap to two', async () => {
@@ -173,7 +189,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     expect(screen.getByText('Portugal Road Trip').props.numberOfLines).toBe(
       reflows(scale) ? 2 : 1,
     );
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the passport grid: two columns, then one', async () => {
@@ -193,7 +209,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
         reflows(scale) ? 'column' : 'row',
       );
     }
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the hero title grows upward to two lines; the eyebrow takes two from 1.15', async () => {
@@ -214,7 +230,37 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     expect(screen.getByTestId('trip-hero-eyebrow').props.numberOfLines).toBe(
       reflows(scale) ? 2 : 1,
     );
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
+  });
+
+  test('the Trips hero card: the title is two lines, the eyebrow and the dates wrap from 1.15', async () => {
+    await render(
+      <TripHeroCard
+        trip={cardModel({
+          id: 'h1',
+          title: 'Portugal Road Trip and the long way home through Spain',
+          country: { iso2: 'GB', name: 'United Kingdom of Great Britain' },
+        })}
+        onPress={jest.fn()}
+      />,
+    );
+    expect(styleOf(screen.getByTestId('trip-card-h1-frame')).minHeight).toBe(219);
+    expect(styleOf(screen.getByTestId('trip-card-h1-frame')).height).toBeUndefined();
+    expect(screen.getByText(/^United Kingdom of Great Britain/).props.numberOfLines).toBe(
+      reflows(scale) ? 2 : 1,
+    );
+    expect(screen.getByText(/^Portugal Road Trip/).props.numberOfLines).toBe(2);
+    expectNoFixedTextSize(scale);
+  });
+
+  test('the route preview: a stop column grows with its code, the line of words wraps', async () => {
+    await render(<RoutePreview route={ROUTE} />);
+    for (const node of hostsWhere((n) => n.props.testID === 'stop-route-drawing')) {
+      expect(node).toBeDefined();
+    }
+    expect(screen.getByText('LIS').props.numberOfLines).toBe(1);
+    expect(screen.getByTestId('stop-route-meta').props.numberOfLines).toBeUndefined();
+    expectNoFixedTextSize(scale);
   });
 
   test('the documents ticket: a row, then stacked, the line to two lines', async () => {
@@ -240,7 +286,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     expect(screen.queryByTestId('document-row-d1-notch-top', hidden) === null).toBe(
       reflows(scale),
     );
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the stop dates: side by side, then stacked with a hairline', async () => {
@@ -256,17 +302,17 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     expect(block.flexDirection).toBe(reflows(scale) ? 'column' : 'row');
     expect(block.minHeight).toBeDefined();
     expect(block.height).toBeUndefined();
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
-  test('the notes card: a one-line title, two from 1.5, a foot row that wraps', async () => {
+  test('the notes card: a one-line title, two from 1.15, a foot row that wraps', async () => {
     await render(<NoteCard note={NOTE} onEdit={jest.fn()} onRemove={jest.fn()} />);
     expect(screen.getByTestId('note-title-n1').props.numberOfLines).toBe(
-      scale >= 1.5 ? 2 : 1,
+      reflows(scale) ? 2 : 1,
     );
     expect(classesOf(screen.getByTestId('note-foot-n1'))).toContain('flex-wrap');
     expect(styleOf(screen.getByTestId('note-foot-n1')).height).toBeUndefined();
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the spending hero: the numeral shrinks before it clips, capped at 1.3; the pill wraps', async () => {
@@ -277,7 +323,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     expect(numeral?.props.maxFontSizeMultiplier).toBe(1.3);
     expect(classesOf(screen.getByTestId('summary-average'))).toContain('self-start');
     expect(styleOf(screen.getByTestId('summary-average')).height).toBeUndefined();
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the per-day chart grows with its labels', async () => {
@@ -293,7 +339,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     const chart = screen.getByRole('image');
     expect(styleOf(chart).minHeight).toBeGreaterThanOrEqual(142);
     expect(styleOf(chart).height).toBeUndefined();
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('Home tools: the chip and the search disc in a row, then stacked right-aligned', async () => {
@@ -302,13 +348,13 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     expect(tools.flexDirection).toBe(reflows(scale) ? 'column' : 'row');
     expect(tools.alignItems).toBe(reflows(scale) ? 'flex-end' : 'center');
     expect(screen.getByTestId('coming-soon-search')).toBeOnTheScreen();
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the greeting is two lines at most and never a fixed height', async () => {
     await render(<GreetingHeader name="Marta" today="2026-10-14" />);
     expect(screen.getByTestId('home-greeting').props.numberOfLines).toBe(2);
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the Now card: a 64 dp thumbnail, 48 from 1.15, the title to two lines', async () => {
@@ -319,7 +365,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     expect(screen.getByText('Portugal Road Trip').props.numberOfLines).toBe(
       reflows(scale) ? 2 : 1,
     );
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the Up next row: a 48 dp thumbnail, the lines to two from 1.15', async () => {
@@ -327,7 +373,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     expect(screen.getByText('Iceland Ring Road').props.numberOfLines).toBe(
       reflows(scale) ? 2 : 1,
     );
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the Nights stepper wraps under its words and keeps a minimum', async () => {
@@ -336,7 +382,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     expect(tile.flexWrap).toBe('wrap');
     expect(tile.minHeight).toBe(64);
     expect(tile.height).toBeUndefined();
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the form footer: Save is a button that grows, never a fixed height', async () => {
@@ -351,7 +397,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     const save = styleOf(screen.getByTestId('add-trip-save'));
     expect(save.height).toBeUndefined();
     expect(save.minHeight).toBe(buttonFrame('lg', false, scale).minHeight);
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 
   test('the +N photograph tile shrinks a long count to fit its tile instead of clipping', async () => {
@@ -376,6 +422,45 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     ]);
   });
 
+  test('the area header: the title wraps, the subtitle takes a second line from 1.15', async () => {
+    await render(
+      <AreaHeader
+        title="Photographs"
+        subtitle="Portugal Road Trip with the whole family · 128 photos"
+        titleTestID="area-title"
+        subtitleTestID="area-subtitle"
+      />,
+    );
+    expect(screen.getByTestId('area-title').props.numberOfLines).toBeUndefined();
+    expect(screen.getByTestId('area-subtitle').props.numberOfLines).toBe(
+      reflows(scale) ? 2 : 1,
+    );
+    expectNoFixedTextSize(scale);
+  });
+
+  test('the day header: the place takes a second line from 1.15', async () => {
+    await render(<DayHeader group={DAY} />);
+    expect(
+      screen.getByText('Sintra and the Serra with the whole family').props.numberOfLines,
+    ).toBe(reflows(scale) ? 2 : 1);
+    expectNoFixedTextSize(scale);
+  });
+
+  test('the expense extras row: the summary takes a second line from 1.15', async () => {
+    await render(
+      <ExpenseExtras
+        summary="Note, date and a place"
+        expanded={false}
+        onToggle={jest.fn()}>
+        {null}
+      </ExpenseExtras>,
+    );
+    expect(screen.getByTestId('add-expense-more-summary').props.numberOfLines).toBe(
+      reflows(scale) ? 2 : 1,
+    );
+    expectNoFixedTextSize(scale);
+  });
+
   test('the tab pill is a minimum and grows; a label wraps, capped at 1.3', async () => {
     useAppearance.mockReturnValue(appearanceOf('light', { fontScale: scale }));
     await render(<TabBar {...tabProps()} />);
@@ -390,7 +475,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
       expect(label.props.maxFontSizeMultiplier).toBe(1.3);
       expect(label.props.numberOfLines).toBeUndefined();
     }
-    expectNoFixedTextHeight();
+    expectNoFixedTextSize(scale);
   });
 });
 
@@ -409,6 +494,27 @@ describe('every scroller of the components keeps scrolling at the largest size',
     expect(hostsWhere((node) => node.type === 'RCTScrollView')).toHaveLength(1);
   });
 });
+
+const ROUTE: RoutePreviewModel = {
+  nodes: [
+    { code: 'LIS', name: 'Lisboa', isNew: false },
+    { code: 'SIN', name: 'Sintra', isNew: false },
+    { code: 'POR', name: 'Porto', isNew: true },
+  ],
+  position: 3,
+  fromName: 'Sintra',
+  km: 270,
+};
+
+const DAY: DayGroup = {
+  key: '2026-10-14',
+  numeral: '14',
+  place: 'Sintra and the Serra with the whole family',
+  meta: 'Wed · Oct · 14 photos',
+  label: 'Wednesday 14 October 2026, Sintra',
+  count: 14,
+  photos: [],
+};
 
 const PHOTO: PhotoWithPlace = {
   id: 'aaaaaaaa-1111-4111-8111-111111111111',

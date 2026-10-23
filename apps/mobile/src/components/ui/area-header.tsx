@@ -32,10 +32,12 @@ import { useContext, type ReactNode } from 'react';
 import { Platform, View } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
+import { useFontScale } from '@/hooks/use-font-scale';
 import { ScreenMargin, Space } from '@/theme';
 
 import { HeaderBackButton } from './header-back-button';
 import { PrivacyChip } from './privacy-chip';
+import { metaLines } from './reflow';
 import { Text } from './text';
 
 export interface AreaHeaderProps {
@@ -72,6 +74,7 @@ export function AreaHeader({
   // The provider is expo-router's; outside one (a component test) there is no inset.
   const insets = useContext(SafeAreaInsetsContext) ?? NO_INSETS;
   const margin = areaMargin();
+  const fontScale = useFontScale();
 
   return (
     <View
@@ -99,7 +102,7 @@ export function AreaHeader({
           <Text
             variant="label"
             tone="muted"
-            numberOfLines={1}
+            numberOfLines={metaLines(fontScale)}
             ellipsizeMode="tail"
             testID={subtitleTestID}
             className="mt-1">

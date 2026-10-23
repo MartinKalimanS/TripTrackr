@@ -39,6 +39,12 @@ export interface FixedHeight {
   height: number;
 }
 
+export interface FixedWidth {
+  type: string;
+  testID: string | null;
+  width: number;
+}
+
 type Root = HostNode | HostNode[] | null;
 
 /** Text that grows with the system setting: a node that opts out (a flag, a cover letter) does not. */
@@ -75,5 +81,32 @@ export function fixedHeightTextContainers(
   const found: FixedHeight[] = [];
   if (root === null) return found;
   (Array.isArray(root) ? root : [root]).forEach((node) => walk(node, found, allow));
+  return found;
+}
+
+function walkWidths(node: HostNode | string, found: FixedWidth[], allow: RegExp[]): void {
+  if (typeof node === 'string') return;
+  const { width } = styleOf(node);
+  const testID = typeof node.props.testID === 'string' ? node.props.testID : null;
+  const allowed = testID !== null && allow.some((pattern) => pattern.test(testID));
+  if (typeof width === 'number' && !allowed && holdsScalingText(node)) {
+    found.push({ type: node.type, testID, width });
+  }
+  (node.children ?? []).forEach((child) => walkWidths(child, found, allow));
+}
+
+/**
+ * Every host node of the render whose own style has a numeric `width` and which holds text that
+ * scales: a column that cannot widen when the text does (a code or a label wider than its
+ * column is cut to an ellipsis). A `minWidth` is not listed, and neither is a share of the row
+ * ('50%'): only a fixed number of dp.
+ */
+export function fixedWidthTextContainers(
+  root: Root = screen.toJSON() as Root,
+  allow: RegExp[] = [],
+): FixedWidth[] {
+  const found: FixedWidth[] = [];
+  if (root === null) return found;
+  (Array.isArray(root) ? root : [root]).forEach((node) => walkWidths(node, found, allow));
   return found;
 }
