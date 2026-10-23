@@ -118,10 +118,17 @@ export function StateBox({ children, ...rest }: ViewProps) {
   );
 }
 
-export function Detail({ children }: { children?: string }) {
+export function Detail({
+  children,
+  testID,
+}: {
+  children?: string;
+  /** An id on the words, for a flow that waits on them. */
+  testID?: string;
+}) {
   if (!children) return null;
   return (
-    <Text variant="body" tone="muted" className="text-center">
+    <Text variant="body" tone="muted" className="text-center" testID={testID}>
       {children}
     </Text>
   );

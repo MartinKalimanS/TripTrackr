@@ -63,6 +63,8 @@ export const GALLERY_COPY = {
   addLabel: 'Add photos from your library',
   takeText: 'Take a photo',
   takeLabel: 'Take a photo with the camera',
+  /** The title of the camera refusal the system will not ask about again. */
+  cameraOffTitle: 'Camera access is off',
   openSettingsLabel: 'Open Settings',
   dismissText: 'Dismiss',
   dismissLabel: 'Dismiss this message',
