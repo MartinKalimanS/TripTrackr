@@ -1,13 +1,15 @@
 /**
  * What stands in for the pieces of the trip screen until they exist - tasks.md T546 (spec
  * FR-042, FR-043, FR-064; contract C5-31): the trip itself (a skeleton shaped like the screen,
- * an error in words, or "not here"), and the stops (a skeleton, an error, a ghost stamp for a
- * trip with none, or the timeline with its dashed "Add stop" row at the end).
+ * an error in words, or "not here", which names the way back as T559 asks of every empty
+ * state), and the stops (a skeleton, an error, a ghost stamp for a trip with none, or the
+ * timeline with its dashed "Add stop" row at the end).
  *
  * The error comes first: a live read that fails can still report `loading` (its first-result
  * timestamp never arrives), and the words must win over the skeleton. A screen never shows its
  * empty state while its first read is resolving.
  */
+import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,7 @@ export function TripPlaceholder({
   loading: boolean;
   failed: boolean;
 }) {
+  const router = useRouter();
   if (!failed && loading) {
     return (
       <View testID="trip-screen" className="flex-1 bg-background">
@@ -58,6 +61,12 @@ export function TripPlaceholder({
         <EmptyState
           title="This trip isn’t on this device"
           detail="It may have been removed, or it has not synced here yet."
+          action={{
+            label: 'Back to your trips',
+            testID: 'trip-missing-back',
+            onPress: () =>
+              router.canGoBack() ? router.back() : router.replace('/trips'),
+          }}
         />
       )}
     </Screen>

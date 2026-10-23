@@ -233,11 +233,13 @@ function ViewerBar({ title, onBack }: { title: string | null; onBack: () => void
 function DocumentContent({
   document,
   openForReview,
+  onBack,
   onDeleted,
   onRetry,
 }: {
   document: ReturnType<typeof useDocument>;
   openForReview: boolean;
+  onBack: () => void;
   onDeleted: () => void;
   onRetry: () => void;
 }) {
@@ -256,6 +258,11 @@ function DocumentContent({
       <EmptyState
         title="This document isn’t on this device"
         detail="It may have been deleted, or it has not come across to this device yet."
+        action={{
+          label: 'Back to documents',
+          testID: 'document-missing-back',
+          onPress: onBack,
+        }}
       />
     );
   }
@@ -285,6 +292,7 @@ function DocumentBody({
         <DocumentContent
           document={document}
           openForReview={openForReview}
+          onBack={onBack}
           onDeleted={onDeleted}
           onRetry={onRetry}
         />
