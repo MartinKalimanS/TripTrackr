@@ -67,21 +67,26 @@ describe('TOKEN_OF - C5-6', () => {
 });
 
 describe('useColors', () => {
-  test('hands each key the colour of its variable, in one kit call', async () => {
+  test('hands each key the colour of its variable, in one kit call per render', async () => {
     const useThemeColor = jest.spyOn(HeroUI, 'useThemeColor');
     useThemeColor.mockImplementation(((tokens: string[]) =>
       tokens.map((token) => `colour:${token}`)) as never);
 
-    const { result } = await renderHook(() =>
-      useColors(['pressed', 'ink', 'accentLine']),
-    );
+    let renders = 0;
+    const { result } = await renderHook(() => {
+      renders += 1;
+      return useColors(['pressed', 'ink', 'accentLine']);
+    });
 
-    expect(useThemeColor).toHaveBeenCalledTimes(1);
-    expect(useThemeColor).toHaveBeenCalledWith([
-      'surface-tertiary',
-      'foreground',
-      'accent-line',
-    ]);
+    // One kit call per render (the hook also hears the shared accessibility store, whose
+    // first read re-renders it once), and the `surface` rides as its last colour: what a
+    // tint settles onto when it must be opaque (T562).
+    expect(useThemeColor).toHaveBeenCalledTimes(renders);
+    for (const call of useThemeColor.mock.calls) {
+      expect(call).toEqual([
+        ['surface-tertiary', 'foreground', 'accent-line', 'surface'],
+      ]);
+    }
     expect(result.current).toEqual({
       pressed: 'colour:surface-tertiary',
       ink: 'colour:foreground',

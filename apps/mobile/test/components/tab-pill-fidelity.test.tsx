@@ -21,7 +21,7 @@ import { TabBar } from '@/components/navigation/tab-bar';
 import { PillMetrics } from '@/components/navigation/tab-metrics';
 import { tabTint } from '@/components/navigation/tab-surface';
 import { TAB_ICONS } from '@/components/navigation/tab-shared';
-import { Palettes, Radii, withAlpha, type PaletteName } from '@/theme';
+import { Palettes, Radii, blend, withAlpha, type PaletteName } from '@/theme';
 
 import { appearanceOf } from '../helpers/appearance';
 import { glyphsIn } from '../helpers/icons';
@@ -182,17 +182,25 @@ describe('the selected capsule per theme (.tab.is-on)', () => {
     },
   );
 
-  test.each(['dark', 'dark-contrast'] as const)(
-    'is white at 14 percent in %s (the picture, not the coral tint)',
-    async (theme) => {
-      setup(theme);
-      await render(<TabBar {...makeProps(1)} />);
-      expect(styleOf(byId(/^tab-mark-/)).backgroundColor).toBe(
-        withAlpha(Palettes[theme].onPhoto, 0.14),
-      );
-      expect(withAlpha('#FFFFFF', 0.14)).toBe('#FFFFFF24');
-    },
-  );
+  test('is white at 14 percent in dark (the picture, not the coral tint)', async () => {
+    setup('dark');
+    await render(<TabBar {...makeProps(1)} />);
+    expect(styleOf(byId(/^tab-mark-/)).backgroundColor).toBe(
+      withAlpha(Palettes.dark.onPhoto, 0.14),
+    );
+    expect(withAlpha('#FFFFFF', 0.14)).toBe('#FFFFFF24');
+  });
+
+  // FR-072: increased contrast draws no translucent surface, and the pill is the opaque paper
+  // there, so the white at 14 percent is laid over that paper beforehand (T562).
+  test('is that white laid over the paper, opaque, in dark-contrast', async () => {
+    setup('dark-contrast');
+    await render(<TabBar {...makeProps(1)} />);
+    const { onPhoto, surface } = Palettes['dark-contrast'];
+    expect(styleOf(byId(/^tab-mark-/)).backgroundColor).toBe(
+      blend(onPhoto, surface, 0.14),
+    );
+  });
 });
 
 describe('the surface per theme (.tabbar)', () => {

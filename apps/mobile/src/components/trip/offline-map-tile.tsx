@@ -6,17 +6,20 @@
  * coastlines, so the tile is sea tint, a few hairline graticule lines and the saved area as
  * the picture draws it: a dashed coral box for a map not saved yet, a solid, softly filled
  * one for a map that is. It is decoration (hidden from assistive technology): the row says
- * the state in words.
+ * the state in words. The soft fill is the coral at 14 percent; under increased contrast or
+ * reduced transparency it is that colour already laid over the sea tint, so it is opaque
+ * (FR-072, FR-073).
  */
 import { View } from 'react-native';
 
+import { useOpaqueSurfaces } from '@/components/ui/solid-ground';
 import { useColors } from '@/components/ui/theme-tokens';
-import { Radii } from '@/theme';
+import { Radii, blend } from '@/theme';
 
 export const MAP_TILE_SIZE = 72;
 const BOX = { width: 32, height: 26 } as const;
 const COLOR_KEYS = ['aquaTint', 'hairline', 'accentLine'] as const;
-const AREA_FILL = 0.14;
+export const AREA_FILL = 0.14;
 const GRATICULE = [24, 48] as const;
 
 export type OfflineMapTileProps = {
@@ -28,6 +31,7 @@ export type OfflineMapTileProps = {
 
 export function OfflineMapTile({ saved, cityId }: OfflineMapTileProps) {
   const colors = useColors(COLOR_KEYS);
+  const opaque = useOpaqueSurfaces();
   return (
     <View
       testID={`offline-tile-${cityId}`}
@@ -85,7 +89,14 @@ export function OfflineMapTile({ saved, cityId }: OfflineMapTileProps) {
         {saved ? (
           <View
             testID={`offline-tile-${cityId}-fill`}
-            style={{ flex: 1, backgroundColor: colors.accentLine, opacity: AREA_FILL }}
+            style={
+              opaque
+                ? {
+                    flex: 1,
+                    backgroundColor: blend(colors.accentLine, colors.aquaTint, AREA_FILL),
+                  }
+                : { flex: 1, backgroundColor: colors.accentLine, opacity: AREA_FILL }
+            }
           />
         ) : null}
       </View>
