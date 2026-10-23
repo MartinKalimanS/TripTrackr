@@ -22,10 +22,13 @@
  * documents directory (features/photos/photo-files.ts), because the absolute
  * container path changes across iOS app updates.
  *
- * Visibility posture: owner + explicit public (data-model.md §5), and every
- * row written here is private — `is_public` is always false, and nothing in
- * this story can change it (per-photo visibility is User Story 7). Screening
- * state starts `pending` and is only ever copied from the server (FR-056).
+ * Visibility posture: owner + explicit public (data-model.md §5). A row is
+ * private unless the capture was given the traveller's explicit choice of
+ * public (`is_public`, spec 006 FR-009: asked once per pick, per photo, and
+ * no answer is private); nothing else writes it, and changing it afterwards
+ * is User Story 7. A public photo is still unreachable to everyone but its
+ * owner: screening state starts `pending` and is only ever copied from the
+ * server (FR-056), and the public-read policy needs `approved`.
  *
  * `coverCandidatesQuery` (feature 004 T429; FR-012; research D4-09) adds one
  * read and no write. Posture: private. It reads the signed-in traveller's own
@@ -53,6 +56,8 @@ export interface CreatePhotoInput {
   exif_lng: number | null;
   /** The staged JPEG, relative to the documents directory. */
   local_file_uri: string;
+  /** The traveller's explicit choice at capture (spec 006); absent means private (FR-052). */
+  is_public?: boolean;
 }
 
 /** A photo with its filed city from the geography cache — nulls when never cached. */
@@ -176,7 +181,7 @@ function create(db: AppDatabase, input: CreatePhotoInput): PhotoRow {
     .insert(photos)
     .values({
       ...input,
-      is_public: false,
+      is_public: input.is_public ?? false,
       upload_state: 'pending',
       moderation_state: 'pending',
       has_thumbnail: false,

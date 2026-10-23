@@ -113,6 +113,28 @@ describe('photosRepository.create', () => {
     expect(PhotoPullRecord.safeParse(wire).success).toBe(true);
   });
 
+  test('is private unless the capture says otherwise (FR-052)', () => {
+    const trip = newTrip();
+
+    expect(addPhoto(trip.id).is_public).toBe(false);
+    expect(addPhoto(trip.id, { is_public: false }).is_public).toBe(false);
+    expect(addPhoto(trip.id, { is_public: undefined }).is_public).toBe(false);
+  });
+
+  test('stores the visibility the traveller chose, per photo (FR-053), moderation still pending', () => {
+    const trip = newTrip();
+    const shared = addPhoto(trip.id, { is_public: true });
+    const kept = addPhoto(trip.id, { is_public: false });
+
+    expect(rawRow(shared.id)).toMatchObject({
+      is_public: true,
+      moderation_state: 'pending',
+      upload_state: 'pending',
+      is_dirty: true,
+    });
+    expect(rawRow(kept.id)).toMatchObject({ is_public: false });
+  });
+
   test('a photo with no metadata is still a photo', () => {
     const trip = newTrip();
     const photo = addPhoto(trip.id);
