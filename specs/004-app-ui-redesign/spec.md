@@ -487,3 +487,7 @@ and haptics on selection, save and destructive confirmation (and not under reduc
 - **Feature 003 (globe-first home)**: FR-013 to FR-018 (flat tab bar, sideways areas row, one-line
   currency) are **kept**; FR-019 (no control, name or test identifier removed) is **extended** to this
   feature as FR-037.
+  **Final state (feature 005, 2026-10-22):** the Atlas look of this feature is retired; its structure,
+  adapters, token pipeline and the identifier parity rule remain, and the flat tab bar became the floating
+  pill. The retired Atlas values and the aliases that were kept (with their readers) are listed in
+  `005 .../reference/as-built/f14-atlas.md`.
