@@ -26,11 +26,10 @@ const settleMs = (spring: Spring) =>
   (4 / (dampingRatio(spring) * Math.sqrt(spring.stiffness))) * 1000;
 
 describe('Motion — contract C4-6', () => {
-  test('holds the three timings of the 004 contract', () => {
+  test('holds the two timings of the 004 contract that Sunrise keeps', () => {
     expect(Motion).toMatchObject({
       pressMs: 100,
       transitionMs: 200,
-      listEntranceMs: 150,
     });
   });
 
@@ -39,14 +38,9 @@ describe('Motion — contract C4-6', () => {
   });
 
   test('every in-place transition completes within 200 ms (FR-022)', () => {
-    for (const name of ['pressMs', 'transitionMs', 'listEntranceMs'] as const) {
+    for (const name of ['pressMs', 'transitionMs'] as const) {
       expect(Motion[name]).toBeLessThanOrEqual(200);
     }
-  });
-
-  test('the list entrance sits between a press and a transition', () => {
-    expect(Motion.listEntranceMs).toBeGreaterThan(Motion.pressMs);
-    expect(Motion.listEntranceMs).toBeLessThan(Motion.transitionMs);
   });
 
   test('is deeply frozen', () => {
@@ -165,7 +159,6 @@ describe('Motion — contract C5-9', () => {
     expect(Motion).toMatchObject({
       pressMs: 100,
       transitionMs: 200,
-      listEntranceMs: 150,
     });
   });
 });

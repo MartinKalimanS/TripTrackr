@@ -44,8 +44,6 @@ export const AtlasSpacing = deepFreeze({
   six: 64,
 } as const);
 
-export type AtlasSpacingName = keyof typeof AtlasSpacing;
-
 /**
  * The focus indicator (contracts C4-3 and C5-4 P13): a ring `width` dp thick (2.5 since
  * feature 005, FR-071), drawn `offset` dp OUTSIDE the control with the surrounding neutral
