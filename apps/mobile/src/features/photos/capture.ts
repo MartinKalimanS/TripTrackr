@@ -19,8 +19,12 @@
  * Running out of space is the traveller's circumstance and is only shown; any
  * other failure is also reported, as a defect (FR-073).
  *
- * Visibility posture: every photo is written private (photos repository);
- * nothing here reaches the network — the upload is upload.ts's.
+ * Visibility posture: a photo is written private unless the caller passes the
+ * traveller's explicit choice of `public` (spec 006: the sheet asks once per
+ * pick, and any dismissal is private); each row stores its own `is_public`.
+ * A public photo is still `pending` screening and unreachable to anyone but
+ * its owner (FR-056). Nothing here reaches the network — the upload is
+ * upload.ts's, and a public flag follows the bytes there.
  */
 import { randomUUID } from 'expo-crypto';
 
@@ -56,6 +60,9 @@ export interface CaptureAsset {
 
 export type CaptureReason = 'noSpace' | 'unreadable' | 'failed';
 
+/** Who may see the photos of one pick: the traveller's answer, or private when there is none. */
+export type PhotoVisibility = 'private' | 'public';
+
 export type CaptureOutcome =
   { kind: 'added'; photoId: string } | { kind: 'skipped'; reason: CaptureReason };
 
@@ -83,6 +90,7 @@ async function savePhoto(
   tripId: string,
   asset: CaptureAsset,
   stops: readonly StopWithPlace[],
+  visibility: PhotoVisibility,
 ): Promise<PhotoRow> {
   requireRoomFor(MIN_FREE_BYTES);
   const reading = readExif(asset.exif);
@@ -98,6 +106,7 @@ async function savePhoto(
       exif_lat: reading.lat,
       exif_lng: reading.lng,
       local_file_uri: localFileUri,
+      is_public: visibility === 'public',
     });
   } catch (error) {
     deletePhotoFiles(localFileUri);
@@ -110,9 +119,10 @@ async function saveOne(
   tripId: string,
   asset: CaptureAsset,
   stops: readonly StopWithPlace[],
+  visibility: PhotoVisibility,
 ): Promise<CaptureOutcome> {
   try {
-    const row = await savePhoto(db, tripId, asset, stops);
+    const row = await savePhoto(db, tripId, asset, stops, visibility);
     return { kind: 'added', photoId: row.id };
   } catch (error) {
     const reason = reasonFor(error);
@@ -124,19 +134,21 @@ async function saveOne(
 }
 
 /**
- * Save each asset into the trip, in order. Never rejects: each asset's
- * outcome says whether it was added and, if not, why.
+ * Save each asset into the trip, in order, each with its own `is_public` from
+ * `visibility` (private by default). Never rejects: each asset's outcome says
+ * whether it was added and, if not, why.
  */
 export async function saveCapturedPhotos(
   db: AppDatabase,
   tripId: string,
   assets: readonly CaptureAsset[],
+  visibility: PhotoVisibility = 'private',
 ): Promise<CaptureOutcome[]> {
   // Read once, fresh: the stops as they are now, not as a screen last drew them.
   const stops = stopsRepository.forTripQuery(db, tripId).all();
   const outcomes: CaptureOutcome[] = [];
   for (const asset of assets) {
-    outcomes.push(await saveOne(db, tripId, asset, stops));
+    outcomes.push(await saveOne(db, tripId, asset, stops, visibility));
   }
   return outcomes;
 }
