@@ -26,7 +26,10 @@ type Root = HostNode | HostNode[] | null;
 
 /** One stop of the reading order. */
 export interface AccessibleNode {
-  /** The spoken name: the label, else the text inside; `''` when the element has neither. */
+  /**
+   * The spoken name: the label, else the text inside, with every run of white space (a
+   * no-break space in a price, a newline) as one space; `''` when the element has neither.
+   */
   name: string;
   /** The `testID`, when it has one. */
   id?: string;
@@ -116,7 +119,7 @@ function describe(node: HostNode): AccessibleNode {
   const props = node.props;
   const role = props.accessibilityRole ?? props.role;
   const entry: AccessibleNode = {
-    name: labelOf(node) ?? squash(spokenText(node)),
+    name: squash(labelOf(node) ?? spokenText(node)),
     kind: node.type,
     state: stateOf(node),
     actions: actionsOf(node),
