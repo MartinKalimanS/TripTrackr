@@ -172,6 +172,11 @@ jest.mock('react-native-sortables', () => {
 // bare package, the 1,500-icon barrel, is refused in jest.config.js (D5-07).
 jest.mock('expo-glass-effect', () => require('./test/mocks/expo-glass-effect'));
 jest.mock('react-native-view-shot', () => require('./test/mocks/react-native-view-shot'));
+// Sign in with Apple's own button (F12): a native view and a native module, held to the real
+// package's contract by test/mocks/expo-apple-authentication.test.tsx.
+jest.mock('expo-apple-authentication', () =>
+  require('./test/mocks/expo-apple-authentication'),
+);
 jest.mock('react-native-zoom-toolkit', () =>
   require('./test/mocks/react-native-zoom-toolkit'),
 );

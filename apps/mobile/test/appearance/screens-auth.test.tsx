@@ -34,12 +34,6 @@ jest.mock('@/features/auth/use-session', () => ({
   useGoogleSignIn: () => mockMutation(),
 }));
 
-jest.mock('expo-apple-authentication', () => ({
-  isAvailableAsync: jest.fn(async () => true),
-  signInAsync: jest.fn(),
-  AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
-}));
-
 jest.mock('@expo/vector-icons/Ionicons', () => {
   const { Text } = jest.requireActual('react-native');
   return function MockIonicons({ name }: { name: string }) {

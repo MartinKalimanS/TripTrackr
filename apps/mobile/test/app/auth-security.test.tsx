@@ -75,9 +75,8 @@ jest.mock('@/features/auth/use-session', () => ({
 }));
 
 jest.mock('expo-apple-authentication', () => ({
+  ...require('../mocks/expo-apple-authentication'),
   isAvailableAsync: jest.fn(async () => false),
-  signInAsync: jest.fn(),
-  AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
 }));
 
 jest.mock('@expo/vector-icons/Ionicons', () => {
