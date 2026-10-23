@@ -195,7 +195,7 @@ export function DayBars({ days, todayIndex, homeCurrency, fontScale = 1 }: DayBa
         accessible
         accessibilityRole="image"
         accessibilityLabel={describeChart(days, homeCurrency)}
-        style={{ height: PLOT_HEIGHT + 38 + Space[2], paddingTop: Space[2] }}>
+        style={{ minHeight: PLOT_HEIGHT + 38 + Space[2], paddingTop: Space[2] }}>
         <ScrollView
           ref={scroller}
           horizontal

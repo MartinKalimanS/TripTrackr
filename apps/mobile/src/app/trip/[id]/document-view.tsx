@@ -49,6 +49,7 @@ import type { IconName } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { InlineError } from '@/components/ui/inline-error';
 import { PrivacyChip } from '@/components/ui/privacy-chip';
+import { metaLines } from '@/components/ui/reflow';
 import { Screen } from '@/components/ui/screen';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
 import { Text } from '@/components/ui/text';
@@ -61,6 +62,7 @@ import {
 import { DOCUMENT_FORM_COPY } from '@/features/documents/document-form';
 import { useDocument, useDocumentActions } from '@/features/documents/use-documents';
 import { useScreenCaptureGuard } from '@/features/documents/use-screen-capture-guard';
+import { useFontScale } from '@/hooks/use-font-scale';
 import { useWriteAttempt } from '@/hooks/use-write-attempt';
 import { Space } from '@/theme';
 
@@ -194,6 +196,7 @@ const CLOSE: IconName = 'x';
 function ViewerBar({ title, onBack }: { title: string | null; onBack: () => void }) {
   const insets = useContext(SafeAreaInsetsContext) ?? NO_INSETS;
   const margin = areaMargin();
+  const fontScale = useFontScale();
 
   return (
     <View
@@ -216,7 +219,7 @@ function ViewerBar({ title, onBack }: { title: string | null; onBack: () => void
         {title ? (
           <Text
             variant="callout"
-            numberOfLines={1}
+            numberOfLines={metaLines(fontScale)}
             accessibilityRole="header"
             testID="document-view-title"
             className="text-center">

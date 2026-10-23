@@ -35,12 +35,14 @@ import { View } from 'react-native';
 import { FlagChip } from '@/components/ui/flag-chip';
 import { Icon } from '@/components/ui/icon';
 import { useLiftStyle } from '@/components/ui/lift';
+import { metaLines } from '@/components/ui/reflow';
 import { Scrim } from '@/components/ui/scrim';
 import { SyncBadge } from '@/components/ui/sync-badge';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
 import { describeStopCount, eyebrowOf, heroDates } from '@/features/trips/trip-card-copy';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
+import { useFontScale } from '@/hooks/use-font-scale';
 import { cornerOf } from '@/theme';
 
 import { PhotoStatusPill } from './photo-status-pill';
@@ -68,12 +70,17 @@ const CAPTION_BLOCK = { paddingHorizontal: 16, paddingBottom: 16, gap: 4 } as co
 const STRIP_MARGIN = { marginTop: 6 } as const;
 
 function Eyebrow({ trip }: { trip: TripCardModel }) {
+  const fontScale = useFontScale();
   return (
     <View className="flex-row items-center gap-2">
       {trip.country ? (
         <FlagChip iso2={trip.country.iso2} testID={`trip-card-${trip.id}-flag`} />
       ) : null}
-      <Text variant="eyebrow" tone="onPhoto" numberOfLines={1} className="shrink">
+      <Text
+        variant="eyebrow"
+        tone="onPhoto"
+        numberOfLines={metaLines(fontScale)}
+        className="shrink">
         {eyebrowOf(trip)}
       </Text>
     </View>

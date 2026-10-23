@@ -13,7 +13,9 @@
  *
  * The drawing is decorative; the whole is ONE image-role element named by a sentence ("Route:
  * Lisboa, Sintra, then Porto as Stop 3, 270 kilometres from Sintra"), and the line of words
- * under it is read as it is. The dots are fixed size; the codes follow the text size.
+ * under it is read as it is. The dots are fixed size; the codes follow the text size, and a
+ * stop's column is a minimum (40 dp) that widens with its code, so a code is never cut to an
+ * ellipsis at large text.
  */
 import { View } from 'react-native';
 
@@ -55,7 +57,7 @@ function Dot({ node, colors }: { node: RouteNode; colors: Colors }) {
 
 function Stop({ node, colors }: { node: RouteNode; colors: Colors }) {
   return (
-    <View style={{ width: COLUMN, alignItems: 'center', gap: Space[1] }}>
+    <View style={{ minWidth: COLUMN, alignItems: 'center', gap: Space[1] }}>
       <Dot node={node} colors={colors} />
       <Text variant="caption" tone={node.isNew ? 'default' : 'muted'} numberOfLines={1}>
         {node.code}

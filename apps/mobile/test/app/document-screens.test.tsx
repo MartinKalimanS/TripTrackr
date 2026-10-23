@@ -28,7 +28,7 @@ import { scanFromURLAsync } from 'expo-camera';
 import * as ExpoHaptics from 'expo-haptics';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { usePreventScreenCapture } from 'expo-screen-capture';
-import { Alert, Linking, Share, StyleSheet } from 'react-native';
+import { Alert, Dimensions, Linking, Share, StyleSheet } from 'react-native';
 
 import DocumentCaptureScreen from '@/app/trip/[id]/document-capture';
 import DocumentViewScreen from '@/app/trip/[id]/document-view';
@@ -971,6 +971,23 @@ describe('<DocumentViewScreen> — the document and its fields (T118, T119)', ()
       UPLOAD_STATUS_TEXT.pending,
     );
   });
+
+  test.each([
+    [1, 1],
+    [1.15, 2],
+    [2, 2],
+  ])(
+    'the bar title takes one line, two from a font scale of 1.15 (at %s: %s)',
+    async (fontScale, lines) => {
+      const window = jest
+        .spyOn(Dimensions, 'get')
+        .mockReturnValue({ width: 390, height: 844, scale: 3, fontScale });
+      await render(<DocumentViewScreen />);
+
+      expect(screen.getByTestId('document-view-title').props.numberOfLines).toBe(lines);
+      window.mockRestore();
+    },
+  );
 
   test('blocks screen capture while the document is shown (Acceptance 5.4)', async () => {
     await render(<DocumentViewScreen />);

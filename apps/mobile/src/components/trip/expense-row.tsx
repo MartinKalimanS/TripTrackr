@@ -28,10 +28,12 @@ import { Button } from '@/components/ui/button';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SyncBadge } from '@/components/ui/sync-badge';
 import { Tappable } from '@/components/ui/tappable';
+import { metaLines } from '@/components/ui/reflow';
 import { Text } from '@/components/ui/text';
 import type { ExpenseRow as ExpenseRecord } from '@/db/schema';
 import { categoryTone } from '@/features/expenses/spending-summary';
 import { formatIsoDate } from '@/features/trips/stop-dates';
+import { useFontScale } from '@/hooks/use-font-scale';
 import { formatMoney } from '@/lib/locale';
 import { Space } from '@/theme';
 
@@ -140,6 +142,7 @@ export function ExpenseRow({
   onRemove,
 }: ExpenseRowProps) {
   const [open, setOpen] = useState(false);
+  const fontScale = useFontScale();
   const paid = formatMoney(expense.amount, expense.currency);
   const home =
     expense.amount_home !== null && !expense.fx_pending
@@ -178,7 +181,11 @@ export function ExpenseRow({
             className="flex-row flex-wrap items-center"
             style={{ columnGap: Space[2] }}>
             {meta ? (
-              <Text variant="label" tone="muted" numberOfLines={1} className="shrink">
+              <Text
+                variant="label"
+                tone="muted"
+                numberOfLines={metaLines(fontScale)}
+                className="shrink">
                 {meta}
               </Text>
             ) : null}

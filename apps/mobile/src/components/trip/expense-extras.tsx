@@ -18,8 +18,10 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
+import { metaLines } from '@/components/ui/reflow';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
+import { useFontScale } from '@/hooks/use-font-scale';
 
 export const EXTRAS_LABEL = 'Add note, date or place';
 
@@ -41,6 +43,7 @@ export function ExpenseExtras({
   onToggle,
   children,
 }: ExpenseExtrasProps) {
+  const fontScale = useFontScale();
   return (
     <View className="gap-4">
       <Tappable
@@ -60,7 +63,7 @@ export function ExpenseExtras({
             testID="add-expense-more-summary"
             variant="label"
             tone="muted"
-            numberOfLines={1}>
+            numberOfLines={metaLines(fontScale)}>
             {summary}
           </Text>
         </View>

@@ -7,6 +7,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Platform, StyleSheet } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
+import { phoneAtFontScale } from '../../../test/helpers/text-scale';
 import { Text } from './text';
 import { AreaHeader, areaMargin } from './area-header';
 
@@ -29,7 +30,9 @@ const flat = (node: { props: { style?: unknown } }) =>
 beforeEach(() => {
   jest.clearAllMocks();
   mockCanGoBack.mockReturnValue(true);
+  phoneAtFontScale(1);
 });
+afterEach(() => jest.restoreAllMocks());
 
 describe('<AreaHeader>', () => {
   test('draws the title as a header and the subtitle under it, each with its id', async () => {
@@ -62,6 +65,14 @@ describe('<AreaHeader>', () => {
       <AreaHeader title="Photos" subtitle={null} subtitleTestID="area-subtitle" />,
     );
     expect(screen.queryByTestId('area-subtitle')).toBeNull();
+  });
+
+  test('the subtitle takes a second line from a font scale of 1.15, so a long trip name is wrapped, not cut', async () => {
+    phoneAtFontScale(1.15);
+    await render(
+      <AreaHeader title="Photos" subtitle="x" subtitleTestID="area-subtitle" />,
+    );
+    expect(screen.getByTestId('area-subtitle').props.numberOfLines).toBe(2);
   });
 
   test('Back is the one control named exactly "Back"; it goes back, or home with nothing beneath', async () => {
