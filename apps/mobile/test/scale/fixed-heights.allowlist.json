@@ -1,0 +1,394 @@
+{
+  "entries": [
+    {
+      "file": "src/components/auth/social-sign-in.tsx",
+      "count": 1,
+      "reason": "A hairline or separator: no text in it (the rule beside \"or\")"
+    },
+    {
+      "file": "src/components/auth/welcome-globe.tsx",
+      "count": 1,
+      "reason": "The Welcome globe illustration: art sized from the window width, hidden from assistive technology"
+    },
+    {
+      "file": "src/components/globe/active-callout.tsx",
+      "count": 5,
+      "reason": "Map callout pieces: the arrow, the live ring and the dot are shapes; the card itself has no height and its text is one line measured by onCardLayout"
+    },
+    {
+      "file": "src/components/globe/arc-source.tsx",
+      "count": 1,
+      "reason": "The 44 dp hit target of a map arc: no text"
+    },
+    {
+      "file": "src/components/globe/callout-layout.ts",
+      "count": 1,
+      "reason": "A measured size (a layout event or a window reading), not a style that pins a height (the callout card size the placement arithmetic reads)"
+    },
+    {
+      "file": "src/components/globe/pin-layer.tsx",
+      "count": 1,
+      "reason": "The 44 dp hit target of a map pin: no text"
+    },
+    {
+      "file": "src/components/globe/roundel-badge.tsx",
+      "count": 4,
+      "reason": "Map pin roundels: fixed discs drawn on the map layer (the count badge opts out of font scaling on purpose; pins are not text containers)"
+    },
+    {
+      "file": "src/components/globe/use-callout-placement.ts",
+      "count": 2,
+      "reason": "A measured size (a layout event or a window reading), not a style that pins a height (the first guess for the callout card before it is laid out)"
+    },
+    {
+      "file": "src/components/home/countries-list.tsx",
+      "count": 1,
+      "reason": "A 1 by 1 dp absolute anchor the sticky continent header measures against: no text"
+    },
+    {
+      "file": "src/components/home/country-row.tsx",
+      "count": 1,
+      "reason": "A status dot or its halo: a shape with no text in it (the visited marker)"
+    },
+    {
+      "file": "src/components/home/now-card.tsx",
+      "count": 2,
+      "reason": "A status dot or its halo: a shape with no text in it (the live dot and its halo)"
+    },
+    {
+      "file": "src/components/home/stats-row.tsx",
+      "count": 1,
+      "reason": "A hairline or separator: no text in it (the figures divider: h-px stacked, w-px in columns)"
+    },
+    {
+      "file": "src/components/home/stop-dots.tsx",
+      "count": 3,
+      "reason": "A status dot or its halo: a shape with no text in it (the stop strip of the Now card)"
+    },
+    {
+      "file": "src/components/home/trip-thumb.tsx",
+      "count": 1,
+      "reason": "A thumbnail or cover frame: art with no scaling text (cover letters and flags opt out with allowFontScaling false)"
+    },
+    {
+      "file": "src/components/navigation/android-nav-bar.tsx",
+      "count": 1,
+      "reason": "The Android indicator behind the selected icon: a 56 by 32 shape, the tab around it and its label grow (tabMinHeight is a minimum)"
+    },
+    {
+      "file": "src/components/navigation/tab-metrics.ts",
+      "count": 2,
+      "reason": "Named MINIMUMS read as minHeight by the pill and the Android bar (PillMetrics.height, AndroidBarMetrics.height): the bars grow with the text"
+    },
+    {
+      "file": "src/components/navigation/tab-pill.tsx",
+      "count": 1,
+      "reason": "The gradient fade under the pill: a ground colour ramp, no text"
+    },
+    {
+      "file": "src/components/profile/passport-card.tsx",
+      "count": 1,
+      "reason": "A 300 dp decorative disc on the passport cover, clipped by the card and hidden from assistive technology"
+    },
+    {
+      "file": "src/components/profile/passport-skeleton.tsx",
+      "count": 4,
+      "reason": "Skeleton bones: placeholder shapes that hold no text (the real content replaces them)"
+    },
+    {
+      "file": "src/components/profile/raster-stamp.tsx",
+      "count": 3,
+      "reason": "A stamp image: decorative art hidden from assistive technology (FR-076); the traveller reads the country in the list"
+    },
+    {
+      "file": "src/components/profile/recap-entry.tsx",
+      "count": 1,
+      "reason": "The 48 dp tile with a sparkle icon; the words beside it grow and the row has a minimum"
+    },
+    {
+      "file": "src/components/profile/stamps-page.tsx",
+      "count": 1,
+      "reason": "The decorative ticket notch at the corner of the stamps page, hidden from assistive technology"
+    },
+    {
+      "file": "src/components/trip/category-bar.tsx",
+      "count": 2,
+      "reason": "The 12 dp category bar and the legend swatch: shapes; the legend text wraps beside them"
+    },
+    {
+      "file": "src/components/trip/day-bars.tsx",
+      "count": 3,
+      "reason": "The bars of the per-day chart: a 2 dp dash, the 4 dp stub and each bar are shapes; the chart box is a MINIMUM since T561 (its labels grow)"
+    },
+    {
+      "file": "src/components/trip/document-details.tsx",
+      "count": 1,
+      "reason": "A hairline or separator: no text in it"
+    },
+    {
+      "file": "src/components/trip/document-ticket.tsx",
+      "count": 2,
+      "reason": "The ticket notch (decoration, gone when stacked) and the 44 dp icon disc: no scaling text"
+    },
+    {
+      "file": "src/components/trip/documents-skeleton.tsx",
+      "count": 1,
+      "reason": "Skeleton bones: placeholder shapes that hold no text (the real content replaces them)"
+    },
+    {
+      "file": "src/components/trip/expense-day-group.tsx",
+      "count": 1,
+      "reason": "A hairline or separator: no text in it"
+    },
+    {
+      "file": "src/components/trip/expense-extras.tsx",
+      "count": 1,
+      "reason": "The 36 dp pencil disc of the \"More details\" row: an icon; the row has a minimum height and its words wrap"
+    },
+    {
+      "file": "src/components/trip/expense-row.tsx",
+      "count": 1,
+      "reason": "An icon, disc or glyph box: holds an icon, never text that scales (the category disc)"
+    },
+    {
+      "file": "src/components/trip/nights-stepper.tsx",
+      "count": 1,
+      "reason": "The two 44 dp round steppers hold a minus or plus icon; the tile around them is a minimum and wraps"
+    },
+    {
+      "file": "src/components/trip/note-card.tsx",
+      "count": 1,
+      "reason": "A status dot or its halo: a shape with no text in it (between the time and the place)"
+    },
+    {
+      "file": "src/components/trip/notes-skeleton.tsx",
+      "count": 6,
+      "reason": "Skeleton bones: placeholder shapes that hold no text (the real content replaces them)"
+    },
+    {
+      "file": "src/components/trip/now-chip.tsx",
+      "count": 1,
+      "reason": "A status dot or its halo: a shape with no text in it (the live dot of the chip)"
+    },
+    {
+      "file": "src/components/trip/offline-city-card.tsx",
+      "count": 1,
+      "reason": "A hairline or separator: no text in it"
+    },
+    {
+      "file": "src/components/trip/offline-map-tile.tsx",
+      "count": 4,
+      "reason": "The offline map thumbnail and its pin: art with no text"
+    },
+    {
+      "file": "src/components/trip/offline-maps-skeleton.tsx",
+      "count": 6,
+      "reason": "Skeleton bones: placeholder shapes that hold no text (the real content replaces them)"
+    },
+    {
+      "file": "src/components/trip/photo-mosaic.tsx",
+      "count": 1,
+      "reason": "The photograph grid: its height is the sum of its photograph rows; the only text in a cell is the +N count, which shrinks to fit (T561)"
+    },
+    {
+      "file": "src/components/trip/photo-status-pill.tsx",
+      "count": 1,
+      "reason": "A status dot or its halo: a shape with no text in it"
+    },
+    {
+      "file": "src/components/trip/photo-status.tsx",
+      "count": 1,
+      "reason": "An icon, disc or glyph box: holds an icon, never text that scales (the upload badge on a photograph tile)"
+    },
+    {
+      "file": "src/components/trip/photo-viewer.tsx",
+      "count": 1,
+      "reason": "The 36 by 5 grabber of the photograph sheet: decorative"
+    },
+    {
+      "file": "src/components/trip/photos-skeleton.tsx",
+      "count": 4,
+      "reason": "Skeleton bones: placeholder shapes that hold no text (the real content replaces them)"
+    },
+    {
+      "file": "src/components/trip/pinned-strip.tsx",
+      "count": 1,
+      "reason": "A hairline or separator: no text in it (the pinned days strip border)"
+    },
+    {
+      "file": "src/components/trip/place-field.tsx",
+      "count": 1,
+      "reason": "An icon, disc or glyph box: holds an icon, never text that scales (the flag disc beside a place)"
+    },
+    {
+      "file": "src/components/trip/progress-row.tsx",
+      "count": 1,
+      "reason": "A status dot or its halo: a shape with no text in it"
+    },
+    {
+      "file": "src/components/trip/route-preview.tsx",
+      "count": 2,
+      "reason": "The route preview nodes and the dashed link: shapes; the stop captions beside them wrap"
+    },
+    {
+      "file": "src/components/trip/spending-skeleton.tsx",
+      "count": 17,
+      "reason": "Skeleton bones: placeholder shapes that hold no text (the real content replaces them)"
+    },
+    {
+      "file": "src/components/trip/spine.tsx",
+      "count": 1,
+      "reason": "The 3 dp spine lead of the stop timeline: a line, no text"
+    },
+    {
+      "file": "src/components/trip/stop-dates-block.tsx",
+      "count": 1,
+      "reason": "A hairline or separator: no text in it (between the stacked halves)"
+    },
+    {
+      "file": "src/components/trip/stop-rail.tsx",
+      "count": 3,
+      "reason": "The 28 dp stop node holds one capped (1.3) figure whose line is 23.4 dp at most, and the spine lead is a line"
+    },
+    {
+      "file": "src/components/trip/stop-strip.tsx",
+      "count": 2,
+      "reason": "The stop strip dots and halos on the hero card: shapes; the codes beside them are capped at 1.3 and one line"
+    },
+    {
+      "file": "src/components/trip/stop-thumb.tsx",
+      "count": 1,
+      "reason": "A thumbnail or cover frame: art with no scaling text (cover letters and flags opt out with allowFontScaling false)"
+    },
+    {
+      "file": "src/components/trip/storage-bar.tsx",
+      "count": 2,
+      "reason": "The storage bar and the legend swatch: shapes"
+    },
+    {
+      "file": "src/components/trip/ticket-card.tsx",
+      "count": 2,
+      "reason": "The ticket notches (decoration, gone when stacked) and the 88 dp thumbnail when stacked: art"
+    },
+    {
+      "file": "src/components/trip/trip-row.tsx",
+      "count": 1,
+      "reason": "A thumbnail or cover frame: art with no scaling text (cover letters and flags opt out with allowFontScaling false) (56 or 64 dp)"
+    },
+    {
+      "file": "src/components/trip/trip-states.tsx",
+      "count": 1,
+      "reason": "The ghost stamp of the empty trip: decorative art hidden from assistive technology"
+    },
+    {
+      "file": "src/components/trip/trips-list-parts.tsx",
+      "count": 1,
+      "reason": "The list footer spacer that clears the pill and the New trip button: no text"
+    },
+    {
+      "file": "src/components/trip/upload-summary-pill.tsx",
+      "count": 1,
+      "reason": "A status dot or its halo: a shape with no text in it"
+    },
+    {
+      "file": "src/components/ui/area-pill.tsx",
+      "count": 2,
+      "reason": "The lock badge and the warning dot of an area tile: icon shapes; the tile has a minimum height that scales"
+    },
+    {
+      "file": "src/components/ui/button.tsx",
+      "count": 1,
+      "reason": "The icon-only square of Button: no label; every label button has a minHeight that scales with the font"
+    },
+    {
+      "file": "src/components/ui/chip.tsx",
+      "count": 1,
+      "reason": "A status dot or its halo: a shape with no text in it"
+    },
+    {
+      "file": "src/components/ui/flag-chip.tsx",
+      "count": 5,
+      "reason": "The flag box: the emoji and the letters opt out of font scaling on purpose (a flag is a picture); the country name beside it scales"
+    },
+    {
+      "file": "src/components/ui/form-modal.tsx",
+      "count": 1,
+      "reason": "The 36 by 5 grabber of a form sheet: decorative"
+    },
+    {
+      "file": "src/components/ui/form-sheet.tsx",
+      "count": 3,
+      "reason": "The window height reading and the 32 by 4 grabber of a form sheet"
+    },
+    {
+      "file": "src/components/ui/generated-cover.tsx",
+      "count": 1,
+      "reason": "The cover letter: a picture inside a fixed frame, opts out of font scaling on purpose; hidden from assistive technology"
+    },
+    {
+      "file": "src/components/ui/icon-button.tsx",
+      "count": 1,
+      "reason": "The round icon button: no label; its disc is the 44 dp touch target"
+    },
+    {
+      "file": "src/components/ui/list-screen.tsx",
+      "count": 1,
+      "reason": "The gap between list rows: no text"
+    },
+    {
+      "file": "src/components/ui/permission-state.tsx",
+      "count": 1,
+      "reason": "The 72 dp icon medallion of a permission screen; the words below it wrap"
+    },
+    {
+      "file": "src/components/ui/photo-viewer.tsx",
+      "count": 5,
+      "reason": "A measured size (a layout event or a window reading), not a style that pins a height (the photograph fitted to the viewer)"
+    },
+    {
+      "file": "src/components/ui/progress-ring.tsx",
+      "count": 1,
+      "reason": "The upload ring: a drawing with no text in it"
+    },
+    {
+      "file": "src/components/ui/screen-skeletons.tsx",
+      "count": 33,
+      "reason": "Skeleton bones: placeholder shapes that hold no text (the real content replaces them)"
+    },
+    {
+      "file": "src/components/ui/scrim.tsx",
+      "count": 2,
+      "reason": "The scrim ramps over a photograph or the sky: colour gradients, no text"
+    },
+    {
+      "file": "src/components/ui/sheet.tsx",
+      "count": 6,
+      "reason": "The Home sheet: its height is the detent (the open owner question in as-built/f14-scale.md), the grab zone and the 36 by 5 handle are shapes; the body scrolls at full"
+    },
+    {
+      "file": "src/components/ui/stamp.tsx",
+      "count": 2,
+      "reason": "The stamp art: decorative, hidden from assistive technology (FR-076)"
+    },
+    {
+      "file": "src/components/ui/state-art.tsx",
+      "count": 4,
+      "reason": "The empty-state illustrations: decorative art hidden from assistive technology"
+    },
+    {
+      "file": "src/components/ui/state-view.tsx",
+      "count": 7,
+      "reason": "Skeleton bones: placeholder shapes that hold no text (the real content replaces them) (the state skeletons)"
+    },
+    {
+      "file": "src/components/ui/sync-badge.tsx",
+      "count": 1,
+      "reason": "The glyph-only 24 dp disc on a photograph: an icon; the labelled badge has no height"
+    },
+    {
+      "file": "src/components/ui/toast.tsx",
+      "count": 1,
+      "reason": "The 3 dp progress line along the edge of the toast: a shape"
+    }
+  ]
+}
