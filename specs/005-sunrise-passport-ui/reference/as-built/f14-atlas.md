@@ -81,3 +81,7 @@ the bundle is nil. The tree shrinks by 513 lines and 18 files touched (source of
 
 None: no screen, style or token value changed. Check that the contrast themes, the Home statistics and the photo gallery look as before
 on the next device run (T566); they were not touched.
+
+## Addendum 2026-10-23: the shape tables are gone
+
+`AtlasSpacing` (`date-field`, `conflict-notice`, `form-sheet`) became `Space[2|3|4]` (8, 12, 16) and `cornerStyle` (`photo-tile`, `pictured-rows`, `stop-list`, `tappable`) became `cornerOf` (`pill` is `full`): every value and the continuous curve are the same, so no visual changed. `AtlasRadius`, `AtlasSpacing`, `AtlasRadiusName` and `cornerStyle` are deleted from `theme/shape.ts` and the barrel with their tests; the shape ratchet ceiling is 0. `ATLAS_RETIREMENT=1` now has one red test, the text roles. Also fixed: `document-upload.test.ts` pinned which of two same-millisecond documents uploads first, but the repository breaks the tie with a random id (it failed about 1 run in 4); it now pins the sequence (start, end, start, end) only.

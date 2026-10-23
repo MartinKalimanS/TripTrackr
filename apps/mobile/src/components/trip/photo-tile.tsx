@@ -50,7 +50,7 @@ import { thumbnailUri } from '@/features/photos/photo-files';
 import { photoLabel } from '@/features/photos/photo-labels';
 import type { Frame } from '@/features/photos/photo-mosaic';
 import { isJustSynced } from '@/features/photos/upload-summary';
-import { cornerStyle } from '@/theme';
+import { cornerOf } from '@/theme';
 
 export interface MoreTile {
   /** The number on the tile: how many photographs the day has that are not shown yet. */
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   // The control's corner is the frame's (a photograph's 16 dp), so the ring follows the
   // picture; it fills the tile, whatever its minimum touch height.
   open: {
-    ...cornerStyle('lg'),
+    ...cornerOf('lg'),
     position: 'absolute',
     top: 0,
     start: 0,

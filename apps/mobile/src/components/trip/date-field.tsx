@@ -42,7 +42,7 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
 import { formatIsoDate, fromIsoDate, toIsoDate } from '@/features/trips/stop-dates';
-import { AtlasSpacing } from '@/theme';
+import { Space } from '@/theme';
 
 export type DateFieldProps = {
   label: string;
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: AtlasSpacing.two,
-    paddingHorizontal: AtlasSpacing.twelve,
+    gap: Space[2],
+    paddingHorizontal: Space[3],
   },
 });

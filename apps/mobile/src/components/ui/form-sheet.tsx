@@ -74,7 +74,7 @@ import {
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { useFontScale } from '@/hooks/use-font-scale';
-import { AtlasSpacing, Space } from '@/theme';
+import { Space } from '@/theme';
 
 import { FormActions, FormCancel, type FormActionsProps } from './form-actions';
 import { Text } from './text';
@@ -125,9 +125,9 @@ export const formSheetOptions = {
 } as const satisfies NativeStackNavigationOptions;
 
 /** The strip of the window a router sheet leaves above itself, below the status bar. */
-export const SHEET_TOP_GAP = AtlasSpacing.three;
+export const SHEET_TOP_GAP = Space[4];
 /** Room above and below the footer's buttons, and between a field and the footer. */
-export const FOOTER_GAP = AtlasSpacing.three;
+export const FOOTER_GAP = Space[4];
 /** The side gutter of the body and the footer: the 20 dp screen margin (UI-SPEC 2.3, 3.6). */
 const GUTTER = Space[5];
 /** The header row's least height (the prototype's `.sheet-head`, 56). */
@@ -352,5 +352,5 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: GUTTER, paddingTop: Space[3] },
   footerWithAccessory: { gap: Space[2] },
   /** The Android sheet's own handle: 32 x 4 (the prototype's Android `.grab`). */
-  handle: { width: 32, height: 4, marginTop: AtlasSpacing.twelve },
+  handle: { width: 32, height: 4, marginTop: Space[3] },
 });

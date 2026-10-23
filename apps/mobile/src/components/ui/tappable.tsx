@@ -52,7 +52,7 @@ import {
 
 import { MinTouchTarget } from '@/constants/theme';
 import { useFontScale } from '@/hooks/use-font-scale';
-import { cornerStyle } from '@/theme';
+import { cornerOf } from '@/theme';
 
 import { assertAccessibleName, assertNotBusyAndDisabled } from './adapter-guards';
 import { focusRingStyle, useFocusRing } from './focus-ring';
@@ -110,7 +110,7 @@ export function tappableStyle(
     minHeight: MinTouchTarget * Math.max(1, fontScale),
     minWidth: MinTouchTarget,
     justifyContent: 'center',
-    ...cornerStyle('md'),
+    ...cornerOf('md'),
     ...(pressed && feedback === 'fill' ? { backgroundColor: pressedColor } : {}),
     ...(ringed ? focusRingStyle(focusColor) : {}),
   };

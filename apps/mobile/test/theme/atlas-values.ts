@@ -142,9 +142,9 @@ export interface AtlasTreatment {
 
 /**
  * The Atlas-only treatments of FR-083 and what is left of each after T564: the 004 shape
- * tables (`AtlasRadius` and `AtlasSpacing`, still read by `cornerStyle`, `date-field`,
- * `conflict-notice` and `form-sheet`), the flat tab strip's selection mark (none left: the
- * ceiling is zero, a regression guard) and the two 004 text roles that have no Sunrise name
+ * tables (`AtlasRadius` and `AtlasSpacing`, gone since their readers moved to `Radii` and
+ * `Space`: the ceiling is zero, a regression guard), the flat tab strip's selection mark (none
+ * left: the ceiling is zero, a regression guard) and the two 004 text roles that have no Sunrise name
  * (`largeTitle` and `numeric`, still read by `Text` itself, `date-field` and the photo viewer).
  */
 export const ATLAS_TREATMENTS: readonly AtlasTreatment[] = Object.freeze([
@@ -152,7 +152,7 @@ export const ATLAS_TREATMENTS: readonly AtlasTreatment[] = Object.freeze([
     label: 'the Atlas radius and spacing tables (Radii and Space are the Sunrise ones)',
     pattern: /\bAtlas(?:Radius|Spacing)(?:Name)?\b/,
     sample: 'borderRadius: AtlasRadius.lg',
-    ceiling: 23,
+    ceiling: 0,
   },
   {
     label: "the flat tab strip's selection mark (the Sunrise tab bar is a floating pill)",

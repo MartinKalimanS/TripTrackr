@@ -6,8 +6,6 @@
  * than in a screen.
  */
 import {
-  AtlasRadius,
-  AtlasSpacing,
   ContrastFloor,
   FocusRing,
   IconSize,
@@ -73,8 +71,6 @@ describe('token layer public API — contract C7', () => {
     expect(Object.keys(TextRoles)).toEqual(
       expect.arrayContaining(['largeTitle', 'body', 'numeric']),
     );
-    expect(AtlasRadius.pill).toBe(999);
-    expect(AtlasSpacing.twelve).toBe(12);
     expect(FocusRing).toEqual({ width: 2.5, offset: 2 });
     expect(Motion.transitionMs).toBe(200);
   });

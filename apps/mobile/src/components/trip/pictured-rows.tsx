@@ -23,7 +23,7 @@ import { COMING_SOON_HINT, useComingSoon } from '@/components/ui/coming-soon-but
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
-import { cornerStyle } from '@/theme';
+import { cornerOf } from '@/theme';
 
 /** The cover tile's side, the prototype's `.cv` (76 dp). */
 export const COVER_TILE = 76;
@@ -82,7 +82,7 @@ function PicturedRow({
       accessibilityHint={COMING_SOON_HINT}
       onPress={onPress}
       className={ROW}
-      style={[cornerStyle(shape === 'capsule' ? 'pill' : 'md'), { minHeight: 56 }]}>
+      style={[cornerOf(shape === 'capsule' ? 'full' : 'md'), { minHeight: 56 }]}>
       <Icon name={icon} size={20} tone="muted" />
       <Text variant="body" tone="muted" className="flex-1">
         {text}
@@ -122,7 +122,7 @@ export function PicturedCover() {
           onPress={onPress}
           className="items-center gap-1 border-[1.5px] border-dashed border-border"
           style={[
-            cornerStyle('lg'),
+            cornerOf('lg'),
             { width: COVER_TILE, minHeight: COVER_TILE, justifyContent: 'center' },
           ]}>
           <Icon name="image" size={24} tone="ink" />

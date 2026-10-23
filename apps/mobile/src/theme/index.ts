@@ -59,8 +59,6 @@ export {
 } from './typography';
 
 export {
-  AtlasRadius,
-  AtlasSpacing,
   FocusRing,
   IconSize,
   IconWeights,
@@ -71,10 +69,8 @@ export {
   ScreenMargin,
   Space,
   cornerOf,
-  cornerStyle,
   innerRadius,
   liftOf,
-  type AtlasRadiusName,
   type IconWeight,
   type LiftLayer,
   type LiftName,
