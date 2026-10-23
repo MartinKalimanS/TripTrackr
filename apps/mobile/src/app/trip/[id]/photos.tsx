@@ -26,8 +26,17 @@
  * sentence that names the next step and "Add photos". The camera's refusal is said under the
  * header with "Open Settings" and never replaces the gallery.
  *
- * Visibility posture: every photograph is private and nothing on this screen offers to change
- * that (per-photograph visibility is User Story 7); the note says so at the foot of the list.
+ * Adding asks twice (spec 006; owner decision 2026-10-22). "Add photos" first asks for the photo
+ * library, in the system's own dialog, and opens the picker only once it is allowed; a refusal is
+ * the notice under the header ("Photo access is off", with "Allow photo access" or "Open
+ * Settings"). Then, once the picker or the camera has handed back photographs, the
+ * `PhotoVisibilitySheet` asks who can see them, before anything is written: no answer, in any
+ * form, is private.
+ *
+ * Visibility posture: a photograph is private unless the traveller chose public for it in that
+ * sheet, and a public one is seen by nobody else yet (screening and the sharing story are not
+ * built). Changing a photograph's visibility afterwards is User Story 7; the note at the foot of
+ * the list says photographs are private.
  */
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -35,6 +44,7 @@ import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { PrivateNote } from '@/components/trip/private-note';
 import { DaySection } from '@/components/trip/photo-mosaic';
+import { PhotoVisibilitySheet } from '@/components/trip/photo-visibility-sheet';
 import { PhotosHeader } from '@/components/trip/photos-header';
 import { PhotosSkeleton } from '@/components/trip/photos-skeleton';
 import { PhotoViewer } from '@/components/trip/photo-viewer';
@@ -232,6 +242,11 @@ function PhotosGallery({ tripId, onReread }: GalleryProps) {
         busy={capture.busy}
         hidden={empty}
         onPress={() => void capture.addFromLibrary()}
+      />
+      <PhotoVisibilitySheet
+        prompt={capture.prompt}
+        onChoose={capture.answerPrompt}
+        onDismiss={capture.dismissPrompt}
       />
       {gallery.viewing ? (
         <PhotoViewer
