@@ -4,7 +4,7 @@
  * cover with its heading, four figures (countries "/195", trips, distance, continents "/7"),
  * the lap line and the machine-readable strip. Every figure is the one it is given.
  */
-import { render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { appearance } from '../../../../test/helpers/appearance';
@@ -19,9 +19,11 @@ const { useAppearance } = jest.requireMock('@/hooks/use-appearance') as {
   useAppearance: jest.Mock;
 };
 
+let intervals: ReturnType<typeof captureIntervals>;
+
 beforeEach(() => {
   useAppearance.mockReturnValue(appearance({ prefersLessMotion: true }));
-  captureIntervals();
+  intervals = captureIntervals();
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -119,6 +121,39 @@ describe('<PassportCard> - what it says', () => {
     const figure = screen.getByTestId('passport-distance');
     expect(figure.props.numberOfLines).toBe(1);
     expect(figure.props.adjustsFontSizeToFit).toBe(true);
+  });
+});
+
+describe('<PassportCard> - the figures count once per appearance (T558; FR-060)', () => {
+  beforeEach(() =>
+    useAppearance.mockReturnValue(appearance({ prefersLessMotion: false })),
+  );
+
+  test('four figures count, each named by its final value from the first render', async () => {
+    await render(card());
+    expect(intervals.all).toHaveLength(4);
+    expect(screen.getByTestId('passport-countries')).toHaveTextContent(/^0$/);
+    expect(screen.getByLabelText('14 of 195 countries')).toBeOnTheScreen();
+    expect(screen.getByLabelText('61,480 kilometres travelled')).toBeOnTheScreen();
+  });
+
+  test('switching the period (new totals) after the count draws them at once, with no replay', async () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(80_000);
+    await render(card());
+    await act(async () => {
+      now.mockReturnValue(80_000 + 5_000);
+      intervals.all.forEach((_, index) => intervals.tick(index));
+    });
+    expect(screen.getByTestId('passport-countries')).toHaveTextContent(/^14$/);
+    await screen.rerender(
+      card({ period: '2026', countries: 3, trips: 5, distanceKm: 8200, continents: 2 }),
+    );
+    expect(screen.getByTestId('passport-countries')).toHaveTextContent(/^3$/);
+    expect(screen.getByTestId('passport-trips')).toHaveTextContent(/^5$/);
+    expect(screen.getByTestId('passport-distance')).toHaveTextContent(/^8,200$/);
+    expect(screen.getByTestId('passport-continents')).toHaveTextContent(/^2$/);
+    expect(intervals.all).toHaveLength(4);
+    expect(intervals.live()).toHaveLength(0);
   });
 });
 

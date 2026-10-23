@@ -117,17 +117,25 @@ describe('AnimatedNumber - the count-up', () => {
     expect(shown()).toHaveTextContent('14');
   });
 
-  test('counts on from where it was when the value changes', async () => {
+  test('counts on from where it was when the value changes mid-count', async () => {
+    const view = await render(<AnimatedNumber value={100} testID="n" />);
+    await frame(Motion.countUpMs / 2);
+    const before = Number(shown().props.children);
+    await view.rerender(<AnimatedNumber value={200} testID="n" />);
+    const mid = Number(shown().props.children);
+    expect(mid).toBeGreaterThanOrEqual(before);
+    expect(mid).toBeLessThan(200);
+    await frame(Motion.countUpMs * 3);
+    expect(shown()).toHaveTextContent('200');
+  });
+
+  test('a new value after the count is drawn at once (the policy is in count-up-policy.test)', async () => {
     const view = await render(<AnimatedNumber value={14} testID="n" />);
     await frame(Motion.countUpMs);
     expect(shown()).toHaveTextContent('14');
     await view.rerender(<AnimatedNumber value={20} testID="n" />);
-    await frame(Motion.countUpMs + Motion.countUpMs / 2);
-    const mid = Number(shown().props.children);
-    expect(mid).toBeGreaterThanOrEqual(14);
-    expect(mid).toBeLessThan(20);
-    await frame(Motion.countUpMs * 3);
     expect(shown()).toHaveTextContent('20');
+    expect(intervals.live()).toHaveLength(0);
   });
 
   test('a value that is not a number is zero, not a NaN on the screen', async () => {

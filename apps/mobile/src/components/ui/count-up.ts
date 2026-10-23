@@ -14,7 +14,8 @@
  * which also keeps every screen's test free of a Reanimated double.
  *
  * Reduced motion and unsupported cases are the caller's: `enabled: false` returns the target
- * at once and sets no timer.
+ * at once and sets no timer. When a count runs, and when it does not, is `useCountUp`'s trigger
+ * policy (FR-060): once per appearance, never on a refresh of the data.
  */
 import { useEffect, useRef, useState } from 'react';
 
@@ -87,43 +88,57 @@ export interface CountUpOptions {
   delayMs: number;
 }
 
+/** Where a figure is in its appearance: before it counts, counting, or done with it. */
+type Phase = 'fresh' | 'counting' | 'spent';
+
+/** A figure that mounts with nothing to count (0) waits; one that mounts without motion is done. */
+function firstPhase(enabled: boolean, target: number): Phase {
+  if (!enabled) return 'spent';
+  return target === 0 ? 'fresh' : 'counting';
+}
+
 /**
- * The number to draw. It counts from 0 to `target` on mount, and on a new target it counts on
- * from the figure last drawn (a count in flight is replaced, never stacked). With
- * `enabled: false` it is the target on every render, and switching `enabled` live neither
- * restarts nor strands a count.
+ * The number to draw, under the trigger policy of FR-060 (T558): a figure counts ONCE per
+ * appearance (a mount), from 0 to `target`, and then every new target is drawn at once (a refresh
+ * of the data is not a new appearance). Three details make that safe:
+ *
+ * - **In flight**: a target that changes while the count is under way is counted on to from the
+ *   figure last drawn (a count in flight is replaced, never stacked, never restarted from 0).
+ * - **Late data**: a figure whose first target is 0 has nothing to count; the first real
+ *   target it is given is its count (the store answered after the screen did).
+ * - **Motion**: with `enabled: false` it is the target on every render and sets no timer; an
+ *   appearance without motion is over, so motion coming back does not start a count, and
+ *   switching `enabled` off mid-count settles on the target during that render.
+ *
+ * The phase changes are made while rendering (the derived-state pattern), so no frame ever
+ * shows the final figure before a count that is about to begin.
  */
 export function useCountUp(
   target: number,
   { enabled, durationMs, delayMs }: CountUpOptions,
 ): number {
-  const [frame, setFrame] = useState(enabled ? 0 : target);
-  const [wasEnabled, setWasEnabled] = useState(enabled);
-  const drawn = useRef(enabled ? 0 : target);
+  const [phase, setPhase] = useState<Phase>(() => firstPhase(enabled, target));
+  const [frame, setFrame] = useState(0);
+  const drawn = useRef(0);
 
-  // A change of `enabled` settles on the target during this render, so a count that was
-  // interrupted cannot leave a stale figure behind when motion comes back.
-  if (wasEnabled !== enabled) {
-    setWasEnabled(enabled);
-    setFrame(target);
-  }
+  if (!enabled && phase !== 'spent') setPhase('spent');
+  if (enabled && phase === 'fresh' && target !== 0) setPhase('counting');
 
   useEffect(() => {
-    if (!enabled) {
-      drawn.current = target;
-      return undefined;
-    }
+    if (phase !== 'counting' || !enabled) return undefined;
     const from = drawn.current;
-    if (from === target) return undefined;
     const startAt = Date.now() + delayMs;
     const timer = setInterval(() => {
       const value = countUpValue(from, target, Date.now() - startAt, durationMs);
       drawn.current = value;
       setFrame(value);
-      if (value === target) clearInterval(timer);
+      if (value === target) {
+        clearInterval(timer);
+        setPhase('spent');
+      }
     }, FRAME_MS);
     return () => clearInterval(timer);
-  }, [enabled, target, durationMs, delayMs]);
+  }, [phase, enabled, target, durationMs, delayMs]);
 
-  return enabled ? frame : target;
+  return enabled && phase === 'counting' ? frame : target;
 }

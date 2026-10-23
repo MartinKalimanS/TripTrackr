@@ -13,7 +13,7 @@ import type { CountrySummary } from '@/features/passport/country-summary';
 
 import { appearance } from '../../../../test/helpers/appearance';
 import { clearRasterCache } from '../raster-stamp';
-import { resetLanded } from '../stamp-landing';
+import { LANDING_STAGGER_MS, resetLanded } from '../stamp-landing';
 import { STAMP_RASTER_FROM, STAMP_SIZE, StampsPage } from '../stamps-page';
 
 jest.mock('@/hooks/use-appearance');
@@ -27,7 +27,12 @@ jest.mock('@/hooks/use-haptics');
 jest.mock('react-native-reanimated', () => {
   const { View } = require('react-native') as typeof import('react-native');
   class MockKeyframe {
+    delayMs = 0;
     duration() {
+      return this;
+    }
+    delay(ms: number) {
+      this.delayMs = ms;
       return this;
     }
   }
@@ -199,6 +204,48 @@ describe('<StampsPage> - the landing (T558)', () => {
   test('nothing moves under reduced motion', async () => {
     await render(page(FOUR));
     expect(screen.getByTestId('stamp-in-PT').props.entering).toBeUndefined();
+  });
+
+  const WEEK = [
+    summary('FR', 'France', '2026-10-10'),
+    summary('PT', 'Portugal', '2026-10-12'),
+    summary('IT', 'Italy', '2026-10-13'),
+    summary('JP', 'Japan', '2026-03-03'),
+  ];
+  const wait = (iso2: string) =>
+    (screen.getByTestId(`stamp-in-${iso2}`).props.entering as { delayMs: number })
+      .delayMs;
+
+  test('several stamps earned this week come down one after another, newest first', async () => {
+    useAppearance.mockReturnValue(appearance({ prefersLessMotion: false }));
+    await render(page(WEEK));
+    expect(wait('IT')).toBe(0);
+    expect(wait('PT')).toBe(LANDING_STAGGER_MS);
+    expect(wait('FR')).toBe(LANDING_STAGGER_MS * 2);
+    expect(screen.getByTestId('stamp-in-JP').props.entering).toBeUndefined();
+  });
+
+  test('a stamp that appears later lands on its own, first in line; the others do not play again', async () => {
+    useAppearance.mockReturnValue(appearance({ prefersLessMotion: false }));
+    const view = await render(page(WEEK.slice(0, 2)));
+    expect(wait('PT')).toBe(0);
+    expect(wait('FR')).toBe(LANDING_STAGGER_MS);
+    await view.rerender(page(WEEK));
+    // Italy is new and recent: it is the only one that lands. France and Portugal changed
+    // column (the columns alternate by position) and so were drawn again: they have landed.
+    expect(wait('IT')).toBe(0);
+    expect(screen.getByTestId('stamp-in-FR').props.entering).toBeUndefined();
+    expect(screen.getByTestId('stamp-in-PT').props.entering).toBeUndefined();
+  });
+
+  test('a passport drawn again (a year chosen, the tab revisited) does not play a stamp that has landed', async () => {
+    useAppearance.mockReturnValue(appearance({ prefersLessMotion: false }));
+    const view = await render(page(WEEK));
+    await view.unmount();
+    await render(page(WEEK, '2026'));
+    for (const iso2 of ['IT', 'PT', 'FR']) {
+      expect(screen.getByTestId(`stamp-in-${iso2}`).props.entering).toBeUndefined();
+    }
   });
 });
 

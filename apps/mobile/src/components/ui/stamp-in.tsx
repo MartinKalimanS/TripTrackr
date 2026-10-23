@@ -17,6 +17,9 @@
  * only (FR-022). `play` is read at mount: the screen decides ("earned in the last seven days and
  * not yet landed this session", data-model section 11) and keeps its own once-per-session set.
  *
+ * `delayMs` is the stamp's place in a queue (the stamps page lands several one after another,
+ * so each thud is felt on its own): the keyframe starts that much later and the thud follows it.
+ *
  * It does NOT move, wait or buzz when the traveller asked for reduced motion (the stamp simply
  * appears, FR-073), nor when `play` is false (it landed before). There is then no animation, no
  * timer and no haptic; the haptic hook is silent under reduced motion as well. The timer is
@@ -36,14 +39,16 @@ export interface StampInProps {
   tiltDeg?: number;
   /** Whether it lands. Default true; read at mount. */
   play?: boolean;
+  /** Wait this long before landing (its turn after another stamp). Default 0; read at mount. */
+  delayMs?: number;
   style?: StyleProp<ViewStyle>;
   /** Default `stamp-in`. */
   testID?: string;
 }
 
 /** The landing as a keyframe animation: from big, turned and unseen, to rest. */
-function landing(tiltDeg: number) {
-  return new Keyframe({
+function landing(tiltDeg: number, delayMs: number) {
+  const keyframe = new Keyframe({
     from: {
       transform: [
         { scale: Motion.stampScaleFrom },
@@ -57,12 +62,14 @@ function landing(tiltDeg: number) {
       easing: Easing.out(Easing.cubic),
     },
   }).duration(Motion.stampLandMs);
+  return delayMs > 0 ? keyframe.delay(delayMs) : keyframe;
 }
 
 export function StampIn({
   children,
   tiltDeg = 0,
   play = true,
+  delayMs = 0,
   style,
   testID = 'stamp-in',
 }: StampInProps) {
@@ -72,15 +79,15 @@ export function StampIn({
 
   useEffect(() => {
     if (!animate) return undefined;
-    const timer = setTimeout(() => haptics.stamp(), Motion.stampLandMs);
+    const timer = setTimeout(() => haptics.stamp(), Motion.stampLandMs + delayMs);
     return () => clearTimeout(timer);
-  }, [animate, haptics]);
+  }, [animate, haptics, delayMs]);
 
   return (
     <Animated.View
       testID={testID}
       style={style}
-      entering={animate ? landing(tiltDeg) : undefined}>
+      entering={animate ? landing(tiltDeg, delayMs) : undefined}>
       {children}
     </Animated.View>
   );

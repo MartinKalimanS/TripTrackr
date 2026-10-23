@@ -11,7 +11,8 @@
  * October 2026" (the stamp itself is decoration, FR-076) with the country's name under it.
  *
  * - A stamp earned in the last seven days lands once per session (`StampIn`, the heavy haptic;
- *   nothing under reduced motion): `stamp-landing.ts` remembers which have landed.
+ *   nothing under reduced motion): `stamp-landing.ts` remembers which have landed, and queues
+ *   the ones that land together, newest first, `LANDING_STAGGER_MS` apart (T558).
  * - From `STAMP_RASTER_FROM` (100) stamps each one is baked to a bitmap once (`RasterStamp`) so a
  *   long passport scrolls without two hundred masked SVGs; below it they are vector stamps.
  * - With no stamp the page is not empty of meaning: a ghost stamp and the next step, in words
@@ -34,7 +35,7 @@ import { deviceLocale } from '@/lib/locale';
 import { Radii, Space } from '@/theme';
 
 import { RasterStamp } from './raster-stamp';
-import { hasLanded, markLanded } from './stamp-landing';
+import { LANDING_STAGGER_MS, landingSlots, markLanded } from './stamp-landing';
 
 /** The side of a stamp on the page, in dp. */
 export const STAMP_SIZE = 124;
@@ -45,8 +46,15 @@ export const SECOND_COLUMN_OFFSET = Space[5];
 
 const COLORS = ['surfaceSecondary', 'hairline'] as const;
 
-function StampCell({ stamp, raster }: { stamp: PassportStamp; raster: boolean }) {
-  const [play] = useState(() => stamp.recent && !hasLanded(stamp.iso2, stamp.firstVisit));
+interface StampCellProps {
+  stamp: PassportStamp;
+  raster: boolean;
+  /** Its place in the landing queue when the cell is first drawn; none if it does not land. */
+  slot: number | undefined;
+}
+
+function StampCell({ stamp, raster, slot }: StampCellProps) {
+  const [landing] = useState(slot);
   useEffect(() => {
     if (stamp.recent) markLanded(stamp.iso2, stamp.firstVisit);
   }, [stamp.iso2, stamp.firstVisit, stamp.recent]);
@@ -64,7 +72,8 @@ function StampCell({ stamp, raster }: { stamp: PassportStamp; raster: boolean })
       accessibilityLabel={stamp.label}
       className="min-w-0 items-center justify-center">
       <StampIn
-        play={play}
+        play={landing !== undefined}
+        delayMs={(landing ?? 0) * LANDING_STAGGER_MS}
         tiltDeg={stamp.spec.rotationDeg}
         testID={`stamp-in-${stamp.key}`}>
         {art}
@@ -82,6 +91,8 @@ function StampCell({ stamp, raster }: { stamp: PassportStamp; raster: boolean })
 
 function Columns({ stamps }: { stamps: readonly PassportStamp[] }) {
   const raster = stamps.length >= STAMP_RASTER_FROM;
+  // Read before the cells mark themselves landed: a cell keeps the place it had when it was drawn.
+  const slots = landingSlots(stamps);
   const columns = [
     stamps.filter((_, index) => index % 2 === 0),
     stamps.filter((_, index) => index % 2 === 1),
@@ -98,7 +109,12 @@ function Columns({ stamps }: { stamps: readonly PassportStamp[] }) {
             paddingTop: index === 1 ? SECOND_COLUMN_OFFSET : 0,
           }}>
           {column.map((stamp) => (
-            <StampCell key={stamp.key} stamp={stamp} raster={raster} />
+            <StampCell
+              key={stamp.key}
+              stamp={stamp}
+              raster={raster}
+              slot={slots.get(stamp.key)}
+            />
           ))}
         </View>
       ))}

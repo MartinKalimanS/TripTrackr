@@ -10,7 +10,7 @@
  * chevron after "Kilometres" and there is nothing to open (FR-014), so by owner answer Q-11
  * that tile is a coming-soon control: a button whose only effect is the toast.
  */
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { getLocales } from 'expo-localization';
@@ -221,6 +221,32 @@ describe('<StatsRow> counting up', () => {
     await render(row());
     await screen.rerender(row());
     expect(intervals.all).toHaveLength(3);
+  });
+
+  test('a refresh of the figures after the count draws the new ones at once, with no second count', async () => {
+    useAppearance.mockReturnValue(appearance({ prefersLessMotion: false }));
+    const now = jest.spyOn(Date, 'now').mockReturnValue(50_000);
+    await render(row());
+    await act(async () => {
+      now.mockReturnValue(50_000 + 5_000);
+      intervals.all.forEach((_, index) => intervals.tick(index));
+    });
+    expect(screen.getByTestId('globe-stat-trips')).toHaveTextContent(/^22$/);
+    await screen.rerender(row({ countries: 15, trips: 23, distanceKm: 70000 }));
+    expect(screen.getByTestId('globe-stat-countries')).toHaveTextContent(/^15$/);
+    expect(screen.getByTestId('globe-stat-trips')).toHaveTextContent(/^23$/);
+    expect(screen.getByTestId('globe-stat-distance')).toHaveTextContent(/^70,000$/);
+    expect(intervals.all).toHaveLength(3);
+    expect(intervals.live()).toHaveLength(0);
+  });
+
+  test('every tile is named by its FINAL figures from the first render, mid-count too', async () => {
+    useAppearance.mockReturnValue(appearance({ prefersLessMotion: false }));
+    await render(row());
+    expect(screen.getByLabelText('14 of 195 countries')).toBeOnTheScreen();
+    expect(screen.getByLabelText('22 trips')).toBeOnTheScreen();
+    expect(screen.getByLabelText('61,480 kilometres travelled')).toBeOnTheScreen();
+    expect(screen.getByTestId('globe-stat-countries')).toHaveTextContent(/^0$/);
   });
 
   test('draws the final figures at once under reduced motion, with no timer at all', async () => {
