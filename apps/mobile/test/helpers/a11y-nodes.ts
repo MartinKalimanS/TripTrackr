@@ -226,7 +226,7 @@ export function unnamed(nodes: readonly AccessibleNode[]): AccessibleNode[] {
 
 /** What a drawing leaves in the host tree: a vector element, an icon glyph, a scrim, a cover. */
 const ART_ID =
-  /^(svg-|phosphor-react-native-|scrim-|stamp-art-|ghost-stamp|generated-cover|state-art|trip-cover-art)/;
+  /^(svg-|phosphor-react-native-|scrim-(?!caption$|caption-block$)|stamp-art-|ghost-stamp|generated-cover|state-art|trip-cover-art)/;
 
 const isArt = (node: HostNode) =>
   node.type.startsWith('RNSVG') || ART_ID.test(String(node.props.testID ?? ''));
