@@ -4,9 +4,9 @@
  *
  * - `literal`: a colour in a style or a colour prop that is not a token of the theme being
  *   painted (a raw literal, or a token of ANOTHER theme: a screen left in the previous theme);
- * - `translucent`: a background whose opacity is between 0 and 1, on anything that is not a
- *   documented exception (`allow-list.ts`); only when `opaque` is set (the contrast themes,
- *   reduced transparency);
+ * - `translucent`: a background whose opacity is between 0 and 1, or a fill drawn at an opacity
+ *   between 0 and 1, on anything that is not a documented exception (`allow-list.ts`); only
+ *   when `opaque` is set (the contrast themes, reduced transparency);
  * - `blur` and `glass`: a blur view or a glass effect; only when `opaque` is set.
  *
  * Pure over `screen.toJSON()`: the `host-nodes.ts` shape.
@@ -193,23 +193,31 @@ function allowedBackground(theme: PaletteName, rgba: Rgba, side: number): string
 }
 
 function opacityFindings(node: HostNode, where: string, theme: PaletteName): Finding[] {
+  const found: Finding[] = [];
   const style = flat(node.props.style);
-  const background = style.backgroundColor;
-  if (typeof background === 'string') {
-    const rgba = parseColour(background);
-    if (rgba !== null && rgba.a > 0 && rgba.a < 1) {
-      if (allowedBackground(theme, rgba, sideOf(style)) === null) {
-        return [
-          {
-            kind: 'translucent',
-            node: where,
-            detail: `backgroundColor: ${background} (opacity ${rgba.a.toFixed(2)})`,
-          },
-        ];
-      }
+  const background =
+    typeof style.backgroundColor === 'string' ? style.backgroundColor : '';
+  const rgba = background === '' ? null : parseColour(background);
+  if (rgba !== null && rgba.a > 0 && rgba.a < 1) {
+    if (allowedBackground(theme, rgba, sideOf(style)) === null) {
+      found.push({
+        kind: 'translucent',
+        node: where,
+        detail: `backgroundColor: ${background} (opacity ${rgba.a.toFixed(2)})`,
+      });
     }
   }
-  const found: Finding[] = [];
+  // A fill drawn at less than full opacity is as translucent as one written with an alpha.
+  const { opacity } = style;
+  if (rgba !== null && rgba.a > 0 && typeof opacity === 'number') {
+    if (opacity > 0 && opacity < 1) {
+      found.push({
+        kind: 'translucent',
+        node: where,
+        detail: `opacity: ${opacity} over backgroundColor: ${background}`,
+      });
+    }
+  }
   const { type, props } = node;
   if (
     /blur/i.test(type) ||

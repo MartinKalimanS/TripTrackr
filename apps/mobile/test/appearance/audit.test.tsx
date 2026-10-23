@@ -77,6 +77,20 @@ describe('transparency (FR-072, FR-073, SC-008)', () => {
     expect(kinds(paint({ backgroundColor: paper }), 'light', false)).toEqual([]);
   });
 
+  test('a fill drawn at less than full opacity is as translucent as one with an alpha', () => {
+    const fill = { backgroundColor: Palettes.light.accentLine, opacity: 0.14 };
+    expect(kinds(paint(fill), 'light', true)).toEqual(['translucent']);
+    expect(kinds(paint(fill), 'light', false)).toEqual([]);
+    expect(
+      kinds(
+        paint({ backgroundColor: Palettes.light.accentLine, opacity: 0 }),
+        'light',
+        true,
+      ),
+    ).toEqual([]);
+    expect(kinds(paint({ opacity: 0.5 }), 'light', true)).toEqual([]);
+  });
+
   test('the dark tints are translucent: a finding until they are laid over the paper', () => {
     expect(
       kinds(paint({ backgroundColor: Palettes.dark.accentTint }), 'dark', true),

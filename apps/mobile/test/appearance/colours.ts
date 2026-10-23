@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { AndroidBarMetrics, PillMetrics } from '@/components/navigation/tab-metrics';
+import { AREA_FILL } from '@/components/trip/offline-map-tile';
 import { GlobeColors, GlobeStyle } from '@/constants/theme';
 import { Palettes, blend, type PaletteName } from '@/theme';
 import { CoverGlow, Passport, Scrim, Sky } from '@/theme/scrim';
@@ -92,9 +93,9 @@ const GROUNDS = ['canvas', 'surface', 'surfaceSecondary', 'pressed'] as const;
 
 /**
  * The opaque colours a translucent token settles into over a ground: every translucent
- * palette colour (the dark tints) and the two fills the navigation bars draw at a stated
- * opacity (the dark capsule, the Android indicator), each over the paper, the cream and the
- * canvas. Under increased contrast or reduced transparency the adapters hand these over
+ * palette colour (the dark tints) and the fills the navigation bars and the offline tile draw at
+ * a stated opacity (the dark capsule, the Android indicator, the saved area), each over the
+ * paper, the cream and the canvas. Under increased contrast or reduced transparency the adapters hand these over
  * instead of the translucent colour (`components/ui/solid-ground.ts`).
  */
 function solidComposites(theme: PaletteName): string[] {
@@ -110,9 +111,17 @@ function solidComposites(theme: PaletteName): string[] {
       fills.push([`#${value.slice(1, 7)}`, rgba.a]);
     }
   }
-  return fills.flatMap(([colour, alpha]) =>
+  const solid = fills.flatMap(([colour, alpha]) =>
     GROUNDS.map((ground) => blend(colour, palette[ground], alpha)),
   );
+  // The saved area of an offline map tile: the coral at 14 percent over the sea tint, itself
+  // laid over the paper where it is translucent.
+  const sea = parseColour(palette.aquaTint);
+  const seaSolid =
+    sea !== null && sea.a < 1
+      ? blend(`#${palette.aquaTint.slice(1, 7)}`, palette.surface, sea.a)
+      : palette.aquaTint;
+  return [...solid, blend(palette.accentLine, seaSolid, AREA_FILL)];
 }
 
 /**

@@ -248,6 +248,36 @@ function prepareTrip(): void {
   });
 }
 
+/** Rome's map is saved on the device (a finished pack an earlier session left). */
+async function seedSavedMap() {
+  const { offlineManager } = jest.requireMock('@rnmapbox/maps') as {
+    offlineManager: {
+      createPack: (options: object, progress: () => void) => Promise<void>;
+      unsubscribe: (name: string) => void;
+      __emitProgress: (name: string, update: object) => void;
+      __reset: () => void;
+    };
+  };
+  offlineManager.__reset();
+  const name = `city-${rome.city_id}`;
+  await offlineManager.createPack(
+    {
+      name,
+      bounds: [
+        [0, 0],
+        [0, 0],
+      ],
+    },
+    () => undefined,
+  );
+  offlineManager.__emitProgress(name, {
+    state: 2,
+    percentage: 100,
+    completedResourceSize: 12_000_000,
+  });
+  offlineManager.unsubscribe(name);
+}
+
 const loaded = async () =>
   waitFor(() => expect(screen.queryByLabelText('Checking saved maps')).toBeNull());
 
@@ -258,7 +288,15 @@ sweepScreen('Spending', () => <ExpensesScreen />, prepareTrip);
 sweepScreen('Documents', () => <DocumentsScreen />, prepareTrip);
 sweepScreen('Document viewer', () => <DocumentViewScreen />, prepareTrip);
 sweepScreen('Document capture', () => <DocumentCaptureScreen />, prepareTrip);
-sweepScreen('Offline maps', () => <OfflineMapsScreen />, prepareTrip, loaded);
+sweepScreen(
+  'Offline maps',
+  () => <OfflineMapsScreen />,
+  async () => {
+    prepareTrip();
+    await seedSavedMap();
+  },
+  loaded,
+);
 sweepScreen('Plan a trip (sheet)', () => <AddTripScreen />, prepareTrip);
 sweepScreen('Add an expense (sheet)', () => <AddExpenseScreen />, prepareTrip);
 
