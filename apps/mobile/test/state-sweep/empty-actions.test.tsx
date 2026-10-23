@@ -7,6 +7,8 @@
  * an id of its own, keeps the header's "Back" where it was, and leaves no control that does
  * nothing.
  *
+ * The document viewer's wait is a skeleton shaped like the screen (FR-064), not a spinner.
+ *
  * The live queries are replaced by plain objects, as in the screens' own suites.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
@@ -209,5 +211,21 @@ describe('offline maps for a trip with no city to save', () => {
     mockStops.error = new Error('store closed');
     await screen.rerender(<OfflineMapsScreen />);
     expect(screen.queryByTestId('offline-maps-empty-back')).toBeNull();
+  });
+});
+
+describe('a document that is still being read (FR-064: a skeleton shaped like the screen)', () => {
+  it('is a skeleton under ONE progressbar with the name the spinner had, never the empty state', async () => {
+    mockDocument.loading = true;
+    await render(<DocumentViewScreen />);
+
+    const region = screen.getByLabelText('Loading the document');
+    expect(region).toBe(screen.getByTestId('document-view-skeleton'));
+    expect(region.props.accessibilityRole).toBe('progressbar');
+    expect(screen.queryByText('This document isn’t on this device')).toBeNull();
+    expect(screen.queryByTestId('document-missing-back')).toBeNull();
+    // The bar is there, so the wait can be left.
+    expect(screen.getByLabelText('Back')).toBeTruthy();
+    expect(deadControls()).toEqual([]);
   });
 });

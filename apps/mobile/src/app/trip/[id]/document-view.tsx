@@ -43,6 +43,7 @@ import {
   DocumentUploadStatus,
 } from '@/components/trip/document-details';
 import { DocumentImage } from '@/components/trip/document-image';
+import { DocumentViewSkeleton } from '@/components/trip/document-view-skeleton';
 import { areaMargin } from '@/components/ui/area-header';
 import { Button } from '@/components/ui/button';
 import type { IconName } from '@/components/ui/icon';
@@ -50,7 +51,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { InlineError } from '@/components/ui/inline-error';
 import { PrivacyChip } from '@/components/ui/privacy-chip';
 import { Screen } from '@/components/ui/screen';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
+import { EmptyState, ErrorState } from '@/components/ui/state-view';
 import { Text } from '@/components/ui/text';
 import type { DocumentRow } from '@/db/schema';
 import {
@@ -252,7 +253,7 @@ function DocumentContent({
       />
     );
   }
-  if (document.loading) return <LoadingState title="Loading the document" />;
+  if (document.loading) return <DocumentViewSkeleton />;
   if (!document.data) {
     return (
       <EmptyState
