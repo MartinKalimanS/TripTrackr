@@ -119,7 +119,13 @@ function MoreCount({ count }: { count: number }) {
   return (
     <TileScrim>
       <Scrim kind="bottom" />
-      <Text testID="photo-more-count" variant="headline" tone="onPhoto">
+      <Text
+        testID="photo-more-count"
+        variant="headline"
+        tone="onPhoto"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}>
         {`+${count}`}
       </Text>
     </TileScrim>
