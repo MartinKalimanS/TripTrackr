@@ -14,7 +14,12 @@ import { render } from '@testing-library/react-native';
 import TripScreen from '@/app/trip/[id]/index';
 
 import { florence, live, resetTripScreen, rome } from '../app/trip-screen-harness';
-import { accessibleNodes, expectReadingOrder, unnamed } from '../helpers/a11y-nodes';
+import {
+  accessibleNodes,
+  exposedArt,
+  expectReadingOrder,
+  unnamed,
+} from '../helpers/a11y-nodes';
 
 jest.mock('expo-router', () => require('../app/trip-screen-harness').routerModule());
 jest.mock('@/lib/sentry', () => ({
@@ -131,5 +136,11 @@ describe('Trip reading order', () => {
     ]);
     expect(nodes.filter((node) => node.id === 'trip-add-stop')).toHaveLength(1);
     expect(nodes.some((node) => node.id?.startsWith('trip-day-'))).toBe(false);
+  });
+
+  test('no drawing is left exposed to assistive technology (FR-076)', async () => {
+    live.stops.data = [rome, florence];
+    await render(<TripScreen />);
+    expect(exposedArt()).toEqual([]);
   });
 });

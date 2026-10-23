@@ -25,6 +25,7 @@ import {
 import { globe } from '../helpers/home-state';
 import {
   accessibleNodes,
+  exposedArt,
   expectReadingOrder,
   unnamed,
   type OrderMatcher,
@@ -173,5 +174,11 @@ describe('Home reading order: header, globe, sheet (contract C5-32)', () => {
     ]);
     expect(nodes.filter((node) => node.id?.startsWith('home-skeleton'))).toHaveLength(1);
     expect(unnamed(nodes)).toEqual([]);
+  });
+
+  test('no drawing is left exposed to assistive technology (FR-076)', async () => {
+    withLiveTrip();
+    await renderHome();
+    expect(exposedArt()).toEqual([]);
   });
 });

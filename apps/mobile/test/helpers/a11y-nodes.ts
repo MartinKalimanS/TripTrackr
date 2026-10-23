@@ -220,3 +220,28 @@ export function unnamed(nodes: readonly AccessibleNode[]): AccessibleNode[] {
       (node.kind === 'TextInput' || (node.role !== undefined && node.role !== 'text')),
   );
 }
+
+/** What a drawing leaves in the host tree: a vector element, an icon glyph, a scrim, a cover. */
+const ART_ID =
+  /^(svg-|phosphor-react-native-|scrim-|stamp-art-|ghost-stamp|generated-cover|state-art|trip-cover-art)/;
+
+const isArt = (node: HostNode) =>
+  node.type.startsWith('RNSVG') || ART_ID.test(String(node.props.testID ?? ''));
+
+/**
+ * The drawings a reader is offered: art that is not under a hidden subtree and that is an
+ * element itself, or inside a node that speaks for it (an element with its own name) only when
+ * nothing hides it. A drawing inside an accessible group is covered by the group's name; one
+ * with no such cover and no hiding flag is decoration left exposed (FR-076). Returns the
+ * `testID` (or host type) of each, in tree order.
+ */
+export function exposedArt(root: Root = screen.toJSON() as Root): string[] {
+  const walkArt = (node: HostNode | string, grouped: boolean): string[] => {
+    if (typeof node === 'string' || hidesDescendants(node)) return [];
+    const inside = grouped || isElement(node);
+    const here = isArt(node) && !grouped ? [String(node.props.testID ?? node.type)] : [];
+    return [...here, ...(node.children ?? []).flatMap((child) => walkArt(child, inside))];
+  };
+  if (root === null) return [];
+  return (Array.isArray(root) ? root : [root]).flatMap((node) => walkArt(node, false));
+}

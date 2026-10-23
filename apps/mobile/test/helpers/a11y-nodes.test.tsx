@@ -9,6 +9,7 @@ import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import {
   accessibleNodes,
   describeNodes,
+  exposedArt,
   expectReadingOrder,
   firstOutOfOrder,
   hostById,
@@ -163,5 +164,28 @@ describe('the order assertions', () => {
     expect(describeNodes([{ name: '', kind: 'View', state: [], actions: [] }])).toBe(
       '1. (unnamed)',
     );
+  });
+});
+
+describe('exposedArt', () => {
+  test('finds a drawing that nothing hides and nothing speaks for', async () => {
+    await render(
+      <View>
+        <View testID="scrim-top" accessibilityElementsHidden />
+        <View
+          testID="card"
+          accessible
+          accessibilityLabel="Trip"
+          accessibilityRole="button">
+          <View testID="phosphor-react-native-caret-right-regular" />
+        </View>
+        <View accessibilityElementsHidden>
+          <View testID="svg-Path" />
+        </View>
+        <View testID="stamp-art-PT" />
+        <Text>Words</Text>
+      </View>,
+    );
+    expect(exposedArt()).toEqual(['stamp-art-PT']);
   });
 });

@@ -16,7 +16,12 @@ import type { TripsSync } from '@/features/trips/use-trips-sync';
 
 import { resetKeyboard } from '../helpers/keyboard';
 import { cardModel } from '../helpers/trip-card-fixture';
-import { accessibleNodes, expectReadingOrder, unnamed } from '../helpers/a11y-nodes';
+import {
+  accessibleNodes,
+  exposedArt,
+  expectReadingOrder,
+  unnamed,
+} from '../helpers/a11y-nodes';
 
 // The first render of a suite pays for transforming every module the screen touches.
 jest.setTimeout(60_000);
@@ -244,5 +249,11 @@ describe('Trips reading order', () => {
     expect(accessibleNodes().filter((node) => node.role === 'progressbar')).toEqual([
       expect.objectContaining({ name: 'Loading trips' }),
     ]);
+  });
+
+  test('no drawing is left exposed to assistive technology (FR-076)', async () => {
+    mockTrips.data = MIXED();
+    platform = await renderOn('ios');
+    expect(exposedArt()).toEqual([]);
   });
 });
