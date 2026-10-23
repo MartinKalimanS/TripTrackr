@@ -13,7 +13,7 @@
  * file, no cache file, the traveller's circumstance shown in words and not
  * reported as a defect, and no upload queued for a photo that does not exist.
  */
-import { act, renderHook } from '@testing-library/react-native';
+import { renderHook } from '@testing-library/react-native';
 import { randomUUID } from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
 import type { PropsWithChildren } from 'react';
@@ -29,6 +29,7 @@ import { useCapture } from '@/features/photos/use-capture';
 import { Sentry } from '@/lib/sentry';
 import { kickUploadQueue } from '@/sync/upload-queue';
 
+import { captureAnswering } from './photo-capture-prompt';
 import { createTestDatabase, type TestSqlite } from '../db/sqlite-harness';
 import {
   CACHE,
@@ -47,6 +48,10 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
   launchCameraAsync: jest.fn(),
   requestCameraPermissionsAsync: jest.fn(),
+}));
+jest.mock('@/features/photos/library-permission', () => ({
+  checkLibraryAccess: jest.fn(async () => ({ state: 'granted' })),
+  requestLibraryAccess: jest.fn(),
 }));
 jest.mock('@/sync/upload-queue', () => ({
   kickUploadQueue: jest.fn(async () => undefined),
@@ -174,7 +179,7 @@ describe('the disk fills at each step of a photo capture', () => {
       step.fill();
       const { result } = await renderHook(() => useCapture(tripId), { wrapper });
 
-      await act(() => result.current.addFromLibrary());
+      await captureAnswering({ result });
 
       expect(allRows()).toEqual([]);
       expect(stagedFiles()).toEqual([]);
@@ -197,7 +202,7 @@ describe('the disk fills at each step of a photo capture', () => {
     const { result } = await renderHook(() => useCapture(tripId), { wrapper });
 
     try {
-      await act(() => result.current.addFromLibrary());
+      await captureAnswering({ result });
     } finally {
       create.mockRestore();
     }
@@ -215,7 +220,7 @@ describe('the disk fills at each step of a photo capture', () => {
     __fs.state.failMove = () => new Error('Unable to move file or directory: denied');
     const { result } = await renderHook(() => useCapture(tripId), { wrapper });
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     expect(allRows()).toEqual([]);
     expect(stagedFiles()).toEqual([]);
@@ -238,7 +243,7 @@ describe('a pick the disk fills part-way through', () => {
     };
     const { result } = await renderHook(() => useCapture(tripId), { wrapper });
 
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     const [saved, ...others] = allRows();
     expect(others).toEqual([]);
@@ -258,12 +263,12 @@ describe('a pick the disk fills part-way through', () => {
     libraryReturns([pickedAsset('rome')]);
     __fs.state.failMove = () => new Error('No space left on device');
     const { result } = await renderHook(() => useCapture(tripId), { wrapper });
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
     expect(allRows()).toEqual([]);
 
     __fs.state.failMove = null;
     libraryReturns([pickedAsset('rome-again')]);
-    await act(() => result.current.addFromLibrary());
+    await captureAnswering({ result });
 
     expect(allRows()).toHaveLength(1);
     expect(stagedFiles()).toHaveLength(2);

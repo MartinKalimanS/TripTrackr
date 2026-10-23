@@ -6,9 +6,11 @@
  * the camera is allowed) and the gallery's "Take a photo" (a notice under the header: the
  * screen's own primary is "Add photos").
  *
- * The photo library has no denial to design: the system picker is itself the grant (research
- * D-34; `app.config.ts` blocks the storage and media permissions), so no photographs permission
- * is ever asked for or refused.
+ * The photo library has one too since spec 006 (owner decision 2026-10-22: "Add photos" asks for
+ * the permission): a notice under the gallery's header, "Photo access is off", with the ONE
+ * action that can fix it, "Allow photo access" while the system will still ask and "Open
+ * Settings" when it will not, and a text Dismiss. Like the camera's it is a secondary, because
+ * the screen's own primary is "Add photos".
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Linking } from 'react-native';
@@ -111,7 +113,11 @@ describe('the gallery: the camera is refused for good', () => {
     busy: false,
     message,
     clearMessage: jest.fn(),
+    prompt: null,
+    answerPrompt: jest.fn(),
+    dismissPrompt: jest.fn(),
     addFromLibrary: jest.fn(),
+    allowLibraryAccess: jest.fn(),
     takePhoto: jest.fn(),
   });
   const blocked: CaptureMessage = {
@@ -187,5 +193,138 @@ describe('the gallery: the camera is refused for good', () => {
     );
     expect(screen.queryByLabelText('Open Settings')).toBeNull();
     expect(screen.getByLabelText('Dismiss this message')).toBeTruthy();
+  });
+});
+
+describe('the gallery: the photo library is refused (spec 006)', () => {
+  const capture = (
+    message: CaptureMessage | null,
+    overrides: Partial<PhotoCapture> = {},
+  ): PhotoCapture => ({
+    busy: false,
+    message,
+    clearMessage: jest.fn(),
+    prompt: null,
+    answerPrompt: jest.fn(),
+    dismissPrompt: jest.fn(),
+    addFromLibrary: jest.fn(),
+    allowLibraryAccess: jest.fn(),
+    takePhoto: jest.fn(),
+    ...overrides,
+  });
+  const blocked: CaptureMessage = {
+    tone: 'error',
+    text: PHOTO_COPY.libraryBlocked,
+    permission: 'library',
+    openSettings: true,
+  };
+  const askAgain: CaptureMessage = {
+    tone: 'error',
+    text: PHOTO_COPY.libraryDeclined,
+    permission: 'library',
+  };
+
+  const renderHeader = (
+    message: CaptureMessage | null,
+    overrides: Partial<PhotoCapture> = {},
+  ) =>
+    render(
+      <PhotosHeader
+        tripTitle="Rome"
+        count={0}
+        summary={null}
+        capture={capture(message, overrides)}
+        writeError={null}
+        onRetryFailed={jest.fn()}
+      />,
+    );
+
+  it('says what is off and what to do, in the same state as every refusal', async () => {
+    await renderHeader(blocked);
+
+    expect(screen.getByText('Photo access is off')).toBeTruthy();
+    expect(screen.getByTestId('photos-capture-error')).toHaveTextContent(
+      PHOTO_COPY.libraryBlocked,
+    );
+    expect(screen.getByTestId('photos-library-denied-icon', hidden)).toBeTruthy();
+    expect(
+      screen.getByTestId('photos-library-denied').props.accessibilityLiveRegion,
+    ).toBe('polite');
+    expect(screen.queryByTestId('photos-camera-denied')).toBeNull();
+  });
+
+  it('refused for good: "Open Settings" is the one action, opens Settings, and is no primary', async () => {
+    const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
+    const allow = jest.fn();
+    await renderHeader(blocked, { allowLibraryAccess: allow });
+
+    const settings = screen.getByLabelText('Open Settings');
+    expect(settings).toBe(screen.getByTestId('photos-library-settings'));
+    expect(settings.props.variant).toBe('secondary');
+    expect(screen.queryByLabelText('Allow photo access')).toBeNull();
+    expect(
+      screen.queryAllByRole('button').filter((b) => b.props.variant === 'primary'),
+    ).toHaveLength(0);
+
+    await fireEvent.press(settings);
+    expect(openSettings).toHaveBeenCalledTimes(1);
+    expect(allow).not.toHaveBeenCalled();
+  });
+
+  it('the system will still ask: "Allow photo access" is the one action and asks again', async () => {
+    const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
+    const allow = jest.fn();
+    await renderHeader(askAgain, { allowLibraryAccess: allow });
+
+    expect(screen.getByTestId('photos-capture-error')).toHaveTextContent(
+      PHOTO_COPY.libraryDeclined,
+    );
+    const button = screen.getByLabelText('Allow photo access');
+    expect(button).toBe(screen.getByTestId('photos-library-allow'));
+    expect(button.props.variant).toBe('secondary');
+    expect(screen.queryByLabelText('Open Settings')).toBeNull();
+
+    await fireEvent.press(button);
+    expect(allow).toHaveBeenCalledTimes(1);
+    expect(openSettings).not.toHaveBeenCalled();
+  });
+
+  it('Dismiss clears the notice and nothing else, in both states', async () => {
+    const clearMessage = jest.fn();
+    await renderHeader(askAgain, { clearMessage });
+
+    await fireEvent.press(screen.getByLabelText('Dismiss this message'));
+
+    expect(clearMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('says in words when Settings cannot be opened', async () => {
+    jest.spyOn(Linking, 'openSettings').mockRejectedValue(new Error('no settings app'));
+    await renderHeader(blocked);
+
+    await fireEvent.press(screen.getByLabelText('Open Settings'));
+
+    expect(await screen.findByTestId('photos-settings-error')).toHaveTextContent(
+      PHOTO_COPY.settingsUnavailable,
+    );
+  });
+
+  it('has no control that does nothing', async () => {
+    await renderHeader(askAgain);
+    expect(deadControls()).toEqual([]);
+    await renderHeader(blocked);
+    expect(deadControls()).toEqual([]);
+  });
+
+  it('the camera notice is unchanged: its refusal is still the camera’s', async () => {
+    await renderHeader({
+      tone: 'error',
+      text: PHOTO_COPY.cameraBlocked,
+      openSettings: true,
+    });
+
+    expect(screen.getByText('Camera access is off')).toBeTruthy();
+    expect(screen.queryByText('Photo access is off')).toBeNull();
+    expect(screen.getByTestId('photos-camera-denied')).toBeTruthy();
   });
 });

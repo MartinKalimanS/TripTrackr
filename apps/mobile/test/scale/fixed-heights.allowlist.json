@@ -211,6 +211,11 @@
       "reason": "An icon, disc or glyph box: holds an icon, never text that scales (the upload badge on a photograph tile)"
     },
     {
+      "file": "src/components/trip/photo-visibility-sheet.tsx",
+      "count": 3,
+      "reason": "The ring and the dot of a radio (selected and unselected ring, and the inner dot): drawn shapes with no text in them; the row beside them wraps and the sheet body scrolls"
+    },
+    {
       "file": "src/components/trip/photo-viewer.tsx",
       "count": 1,
       "reason": "The 36 by 5 grabber of the photograph sheet: decorative"

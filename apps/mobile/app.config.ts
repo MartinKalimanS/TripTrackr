@@ -39,8 +39,11 @@ const SPLASH_BACKGROUND = '#208AEF';
 const PERMISSION_COPY = {
   camera:
     'TripTrackr uses the camera to photograph your trip and to scan boarding passes into your documents.',
+  // Spec 006 (owner decision 2026-10-22): "Add photos" now asks for the photo library, so the
+  // old sentence ("It never browses your library on its own") was no longer a promise the
+  // permission keeps. One honest sentence: why, and what is read from the photo.
   photos:
-    'TripTrackr reads the photos you choose so you can add them to a trip. It never browses your library on its own.',
+    'TripTrackr uses your photo library so you can add photos to a trip and read where and when they were taken.',
   photosAdd: 'TripTrackr saves photos you export from a trip to your library.',
 };
 
@@ -138,22 +141,39 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // Keystore-protected key's absence would make it useless — so nothing is
     // gained and a copy of private data leaves the device. Off.
     allowBackup: false,
+    // The photo library (spec 006, owner decision 2026-10-22: "Add photos" asks for it).
+    // These used to be blocked because the system picker needs no permission; the request
+    // the traveller now sees needs them declared, so they are added here and no longer
+    // blocked below:
+    //   READ_MEDIA_IMAGES                 — Android 13 and above; asked through
+    //                                        PermissionsAndroid (expo-image-picker asks nothing
+    //                                        on those levels: features/photos/library-permission.ts).
+    //   READ_MEDIA_VISUAL_USER_SELECTED   — Android 14 and above; what lets the system offer
+    //                                        "Select photos" instead of all or nothing.
+    //   READ_EXTERNAL_STORAGE (unblocked) — Android 12 and below only (the libraries declare it
+    //                                        with maxSdkVersion 32); the picker's own request
+    //                                        asks it, and a blocked permission cannot be asked.
+    // Not declared: ACCESS_MEDIA_LOCATION (photo positions on Android need it AND a native
+    // read of the original, which expo-image-picker does not do: plan D6-06) and
+    // READ_MEDIA_VIDEO (images only). Google Play's "Photo and video permissions" policy
+    // restricts READ_MEDIA_IMAGES: docs/release/store-readiness.md. A new native build is
+    // required: a permission cannot be added by a JavaScript update.
+    permissions: [
+      'android.permission.READ_MEDIA_IMAGES',
+      'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
+    ],
     // Removed from the merged manifest with `tools:node="remove"`. Each entry
     // is a permission a dependency declares and this product does not use:
     //   AD_ID                 — no advertising SDK; Play's Data safety form
     //                            must be able to say so truthfully.
-    //   READ_MEDIA_*,
-    //   READ_EXTERNAL_STORAGE — photos arrive through the system photo picker,
-    //                            which needs no storage permission; Play
-    //                            restricts these to core photo/video apps.
+    //   READ_MEDIA_VIDEO      — the app adds images only, never videos.
     //   ACCESS_*_LOCATION     — @rnmapbox/maps declares them; the globe draws
     //                            trips, never the device's position. Re-enable
     //                            only with a spec'd feature (see STORE_COMPLIANCE.md).
+    // (READ_MEDIA_IMAGES and READ_EXTERNAL_STORAGE were blocked here until spec 006.)
     blockedPermissions: [
       'com.google.android.gms.permission.AD_ID',
-      'android.permission.READ_MEDIA_IMAGES',
       'android.permission.READ_MEDIA_VIDEO',
-      'android.permission.READ_EXTERNAL_STORAGE',
       'android.permission.ACCESS_COARSE_LOCATION',
       'android.permission.ACCESS_FINE_LOCATION',
     ],

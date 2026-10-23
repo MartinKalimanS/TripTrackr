@@ -494,6 +494,16 @@ describe('<PhotoViewer> - pictured controls with no capability (Q-11)', () => {
     expect(screen.getByText('Private — only you can see your photos.')).toBeTruthy();
   });
 
+  test('a photo the traveller chose public says so, and that for now only they can see it (spec 006)', async () => {
+    await open({ photo: photo('dddddddd', { is_public: true }) });
+
+    expect(
+      screen.getByText('Public — for now only you can see this photo.'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Private — only you can see your photos.')).toBeNull();
+    expect(screen.queryByLabelText(/public|visibility/i)).toBeNull();
+  });
+
   test('the pictured controls reach no router, store or network', () => {
     const source = readFileSync(
       join(__dirname, '..', '..', 'src', 'components', 'trip', 'photo-viewer.tsx'),

@@ -23,6 +23,13 @@
  * is off", what to do, "Open Settings" (`Linking.openSettings` —
  * https://reactnative.dev/docs/linking) as a secondary action and a text "Dismiss". It is a
  * secondary because the screen's one primary is "Add photos".
+ *
+ * The photo library has the same notice since spec 006 (the app now asks for the permission):
+ * the images icon, "Photo access is off", what to do, and ONE action, a secondary beside the
+ * text "Dismiss": "Allow photo access" while the system will still ask (it asks again through
+ * `capture.allowLibraryAccess`) and "Open Settings" once it will not. The two notices differ
+ * only in their words, icon, ids (`photos-library-denied`, `photos-library-allow`,
+ * `photos-library-settings`) and action; the camera's ids and names are unchanged.
  */
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
@@ -56,9 +63,14 @@ export type PhotosHeaderProps = {
   onRetryFailed: () => void;
 };
 
-type CaptureNoticeProps = { message: CaptureMessage; onDismiss: () => void };
+type CaptureNoticeProps = {
+  message: CaptureMessage;
+  onDismiss: () => void;
+  /** "Allow photo access": ask for the library again. */
+  onAllow: () => void;
+};
 
-function CaptureNotice({ message, onDismiss }: CaptureNoticeProps) {
+function CaptureNotice({ message, onDismiss, onAllow }: CaptureNoticeProps) {
   const [settingsFailed, setSettingsFailed] = useState(false);
 
   const openSettings = () => {
@@ -74,6 +86,34 @@ function CaptureNotice({ message, onDismiss }: CaptureNoticeProps) {
       message={settingsFailed ? PHOTO_COPY.settingsUnavailable : null}
     />
   );
+  const dismiss = {
+    label: GALLERY_COPY.dismissText,
+    accessibilityLabel: GALLERY_COPY.dismissLabel,
+    onPress: onDismiss,
+  };
+
+  if (message.permission === 'library') {
+    const blocked = message.openSettings === true;
+    return (
+      <View className="gap-2">
+        <PermissionState
+          testID="photos-library-denied"
+          accessibilityLiveRegion="polite"
+          icon="images"
+          title={GALLERY_COPY.libraryOffTitle}
+          detail={message.text}
+          detailTestID="photos-capture-error"
+          settingsLabel={
+            blocked ? GALLERY_COPY.openSettingsLabel : GALLERY_COPY.allowLabel
+          }
+          settingsTestID={blocked ? 'photos-library-settings' : 'photos-library-allow'}
+          onOpenSettings={blocked ? openSettings : onAllow}
+          alternative={dismiss}
+        />
+        {settingsError}
+      </View>
+    );
+  }
 
   if (message.openSettings) {
     return (
@@ -87,11 +127,7 @@ function CaptureNotice({ message, onDismiss }: CaptureNoticeProps) {
           detailTestID="photos-capture-error"
           settingsLabel={GALLERY_COPY.openSettingsLabel}
           onOpenSettings={openSettings}
-          alternative={{
-            label: GALLERY_COPY.dismissText,
-            accessibilityLabel: GALLERY_COPY.dismissLabel,
-            onPress: onDismiss,
-          }}
+          alternative={dismiss}
         />
         {settingsError}
       </View>
@@ -181,7 +217,11 @@ export function PhotosHeader({
         style={{ paddingHorizontal: areaMargin(), paddingTop: Space[2], gap: Space[3] }}>
         <UploadSummaryPill summary={summary} onRetry={onRetryFailed} />
         {capture.message ? (
-          <CaptureNotice message={capture.message} onDismiss={capture.clearMessage} />
+          <CaptureNotice
+            message={capture.message}
+            onDismiss={capture.clearMessage}
+            onAllow={() => void capture.allowLibraryAccess()}
+          />
         ) : null}
         <InlineError testID="photos-write-error" message={writeError} />
       </View>
