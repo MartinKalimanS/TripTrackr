@@ -6,8 +6,10 @@
  *   <AnimatedNumber value={61480} format={{ maximumFractionDigits: 0 }} delay={Motion.countUpStaggerMs} />
  *   <AnimatedNumber value={14} accessibilityLabel="14 of 195 countries" />
  *
- * It counts from 0 to `value` once per appearance in `Motion.countUpMs` (700 ms), eased out, and
- * on a new `value` counts on from the figure last drawn. Under reduced motion the final text is
+ * It counts from 0 to `value` once per appearance (a mount) in `Motion.countUpMs` (700 ms), eased
+ * out. A new `value` while it counts is counted on to from the figure drawn; one after the count
+ * is drawn at once, because a refresh of the data is not a new appearance (FR-060; the trigger
+ * policy is `useCountUp`'s). Under reduced motion the final text is
  * there on the first render, in a single text, with no timer (FR-073). The engine is `count-up.ts`
  * (a small interval driven by the clock; why not a Reanimated value is written there); the digits
  * are an ordinary `Text`, never a `TextInput`.
