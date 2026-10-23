@@ -55,12 +55,6 @@ jest.mock('@/features/auth/use-session', () => ({
   useAppleSignIn: () => mockMutations.apple,
   useGoogleSignIn: () => mockMutations.google,
 }));
-jest.mock('@expo/vector-icons/Ionicons', () => {
-  const { Text: MockText } = jest.requireActual('react-native');
-  return function MockIonicons({ name }: { name: string }) {
-    return <MockText testID={`icon-${name}`}>{name}</MockText>;
-  };
-});
 jest.mock('expo-auth-session/providers/google', () => ({
   useIdTokenAuthRequest: () => [{ loaded: true }, null, jest.fn()],
 }));

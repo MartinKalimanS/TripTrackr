@@ -1,17 +1,13 @@
 /**
- * A "Continue with Google / Apple" button - FR-002; spec Edge Cases (Accounts); drawn as
- * pictured by F12 (owner decision Q-11; UI-SPEC 7 and 3.1): a 52 dp pill (`PillButton`) with
- * the provider's own logo (`BrandGlyph`) and its name in words, as wide as the screen's
- * content so the thumb finds it.
+ * A "Continue with Google" button - FR-002; spec Edge Cases (Accounts); drawn as pictured by
+ * F12 (owner decision Q-11; UI-SPEC 7 and 3.1): a 52 dp pill (`PillButton`) with Google's own
+ * four-colour "G" (`BrandGlyph`) and its name in words, as wide as the screen's content so the
+ * thumb finds it, in Google's own light (dark) button.
  *
- * Apple is the Sign in with Apple button (black with a white logo and label; white with black in
- * the dark themes) and Google is its own light (dark) button with the four-colour "G": the same size, the
- * same type and the same width, so neither has more weight (App Store Review Guideline 4.8,
- * docs/release/store-readiness.md "Branded sign-in buttons"). They are secondary controls
- * (FR-005): the screen's own coral action is the only primary one. The Apple logo is the
- * glyph of `BrandGlyph`, not Apple's downloaded artwork: that swap is a release checklist item
- * and touches `components/ui/brand-glyph.tsx` only. How Sign in with Apple is started
- * (`signInAsync`, `apple-sign-in-button.tsx`) is as it was.
+ * Sign in with Apple is NOT drawn here: Apple's logo is only ever drawn by Apple's own button
+ * (`apple-official-button.tsx`, owner decision 2026-10-22), which is the same size and width, so
+ * neither has more weight (App Store Review Guideline 4.8). This is a secondary control
+ * (FR-005): the screen's own coral action is the only primary one.
  *
  * Without `onPress` the provider cannot work on this build or platform yet: the button is
  * disabled - dimmed, inert, announced unavailable - and its NAME says it is coming soon
@@ -25,18 +21,15 @@
  */
 import { View, useWindowDimensions } from 'react-native';
 
-import { BrandGlyph, type BrandGlyphName } from '@/components/ui/brand-glyph';
-import { PillButton, pillMinHeight, type PillLook } from './pill-button';
+import { BrandGlyph } from '@/components/ui/brand-glyph';
 
-export type SignInProvider = 'apple' | 'google';
+import { PillButton, pillMinHeight } from './pill-button';
 
-const PROVIDERS: Record<
-  SignInProvider,
-  { name: string; logo: BrandGlyphName; look: PillLook }
-> = {
-  apple: { name: 'Apple', logo: 'logo-apple', look: 'apple' },
-  google: { name: 'Google', logo: 'logo-google', look: 'google' },
-};
+export type SignInProvider = 'google';
+
+const PROVIDERS = {
+  google: { name: 'Google' },
+} as const;
 
 export type ProviderButtonProps = {
   provider: SignInProvider;
@@ -54,7 +47,7 @@ export function ProviderButton({
   busy = false,
   disabled = false,
 }: ProviderButtonProps) {
-  const { name, logo, look } = PROVIDERS[provider];
+  const { name } = PROVIDERS[provider];
   const available = onPress !== undefined;
   const working = available && busy;
 
@@ -65,8 +58,8 @@ export function ProviderButton({
         available ? `Continue with ${name}` : `Continue with ${name}, coming soon`
       }
       label={working ? 'Signing in…' : `Continue with ${name}`}
-      look={look}
-      leading={<BrandGlyph name={logo} />}
+      look="google"
+      leading={<BrandGlyph name="logo-google" />}
       busy={working}
       disabled={!available || (disabled && !working)}
       onPress={onPress}

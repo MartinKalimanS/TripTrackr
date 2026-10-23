@@ -7,7 +7,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 import { StyleSheet, Text } from 'react-native';
 
 import { MinTouchTarget } from '@/constants/theme';
-import { AppleButton, GoogleButton } from '@/theme/brand-artwork';
+import { GoogleButton } from '@/theme/brand-artwork';
 
 import { PILL_MIN_HEIGHT, PillButton } from '../pill-button';
 
@@ -76,24 +76,6 @@ describe('<PillButton>', () => {
     expect(press).toHaveBeenCalledTimes(1);
   });
 
-  test('the Apple look is the brand button: black with a white label, white with black in the dark', async () => {
-    const { rerender } = await render(
-      <PillButton testID="p" label="Continue with Apple" look="apple" onPress={press} />,
-    );
-    const label = () =>
-      StyleSheet.flatten(screen.getByText('Continue with Apple').props.style);
-    expect(resting(screen.getByTestId('p')).backgroundColor).toBe(AppleButton.light.fill);
-    expect(label().color).toBe(AppleButton.light.ink);
-    expect(classesOf(screen.getByTestId('p'))).not.toContain('border');
-
-    mockScheme = 'dark';
-    await rerender(
-      <PillButton testID="p" label="Continue with Apple" look="apple" onPress={press} />,
-    );
-    expect(resting(screen.getByTestId('p')).backgroundColor).toBe(AppleButton.dark.fill);
-    expect(label().color).toBe(AppleButton.dark.ink);
-  });
-
   test('the Google look is its own button: white with a grey line and dark ink, near-black in the dark; the cream look fills with the secondary surface', async () => {
     await render(
       <>
@@ -113,6 +95,18 @@ describe('<PillButton>', () => {
     expect(classesOf(screen.getByTestId('c'))).toEqual(
       expect.arrayContaining(['border', 'border-border', 'bg-surface-secondary']),
     );
+  });
+
+  test('the Google look in the dark is its near-black button with a light line and light ink', async () => {
+    mockScheme = 'dark';
+    await render(<PillButton testID="o" label="Continue with Google" look="google" />);
+    expect(resting(screen.getByTestId('o'))).toMatchObject({
+      backgroundColor: GoogleButton.dark.fill,
+      borderColor: GoogleButton.dark.border,
+    });
+    expect(
+      StyleSheet.flatten(screen.getByText('Continue with Google').props.style).color,
+    ).toBe(GoogleButton.dark.ink);
   });
 
   test('busy: inert, announced busy, the name unchanged; disabled: dimmed and inert', async () => {

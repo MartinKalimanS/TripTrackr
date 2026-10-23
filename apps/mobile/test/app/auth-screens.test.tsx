@@ -69,13 +69,6 @@ jest.mock('expo-apple-authentication', () => ({
   isAvailableAsync: jest.fn(async () => false),
 }));
 
-jest.mock('@expo/vector-icons/Ionicons', () => {
-  const { Text } = jest.requireActual('react-native');
-  return function MockIonicons({ name }: { name: string }) {
-    return <Text testID={`icon-${name}`}>{name}</Text>;
-  };
-});
-
 const mockPromptAsync = jest.fn();
 let mockGoogleResponse: {
   type: string;

@@ -1,14 +1,12 @@
 /**
- * `ProviderButton` - the "Continue with Google / Apple" button (feature 004, T446; FR-005,
+ * `ProviderButton` - the "Continue with Google" button (feature 004, T446; FR-005,
  * FR-024, FR-025, FR-026, FR-029, FR-030; contract C4-11 "outline social buttons").
  *
- * A 52 dp pill (F12, owner decision Q-11): Google outlined with a boundary the colour gate
- * measures at 3:1 (FR-024), Apple as the Sign in with Apple button (black, white in the dark),
- * each with the provider's logo and its name in words, as wide as the screen's content so the
- * thumb finds it. It is a secondary control (FR-005): only the screen's own action is primary.
- *
- * Both providers are drawn the same size and with the same prominence (App Store Review
- * Guideline 4.8, docs/release/store-readiness.md): one component, the same size, shape and type.
+ * A 52 dp pill (F12, owner decision Q-11): Google's own button with a boundary the colour gate
+ * measures at 3:1 (FR-024), with Google's logo and its name in words, as wide as the screen's
+ * content so the thumb finds it. It is a secondary control (FR-005): only the screen's own
+ * action is primary. Sign in with Apple is Apple's own native button
+ * (`apple-official-button.test.tsx`), the same height and width (Guideline 4.8).
  *
  * Jest renders no styles: classes and props are what is asserted. That the outline draws,
  * and how it looks in four themes, is a device check.
@@ -20,14 +18,6 @@ import { MinTouchTarget } from '@/constants/theme';
 import { GoogleButton } from '@/theme/brand-artwork';
 
 import { ProviderButton, ProviderButtonSpacer } from '../provider-button';
-
-// The glyph font is not the subject; which logo is.
-jest.mock('@expo/vector-icons/Ionicons', () => {
-  const { Text } = jest.requireActual('react-native');
-  return function MockIonicons({ name }: { name: string }) {
-    return <Text testID={`icon-${name}`}>{name}</Text>;
-  };
-});
 
 const classesOf = (node: { props: { className?: unknown } }) =>
   String(node.props.className ?? '')
@@ -48,21 +38,15 @@ const resting = (node: { props: { style?: unknown } }) =>
 const hidden = { includeHiddenElements: true };
 
 describe('<ProviderButton> - what it says', () => {
-  test.each([
-    ['google', 'Google', 'google-sign-in'],
-    ['apple', 'Apple', 'apple-sign-in'],
-  ] as const)(
-    '%s: a button named "Continue with %s", the same words visible beside the logo',
-    async (provider, name, id) => {
-      await render(<ProviderButton provider={provider} onPress={jest.fn()} />);
+  test('a button named "Continue with Google", the same words visible beside the logo', async () => {
+    await render(<ProviderButton provider="google" onPress={jest.fn()} />);
 
-      const button = screen.getByTestId(id);
-      expect(button.props.accessibilityRole).toBe('button');
-      expect(button.props.accessibilityLabel).toBe(`Continue with ${name}`);
-      expect(within(button).getByText(`Continue with ${name}`)).toBeTruthy();
-      expect(within(button).getByTestId('brand-glyph', hidden)).toBeTruthy();
-    },
-  );
+    const button = screen.getByTestId('google-sign-in');
+    expect(button.props.accessibilityRole).toBe('button');
+    expect(button.props.accessibilityLabel).toBe('Continue with Google');
+    expect(within(button).getByText('Continue with Google')).toBeTruthy();
+    expect(within(button).getByTestId('brand-glyph', hidden)).toBeTruthy();
+  });
 
   test('presses through to the provider flow', async () => {
     const onPress = jest.fn();
@@ -85,8 +69,8 @@ describe('<ProviderButton> - a pill, a secondary control (FR-005, FR-024)', () =
   });
 
   test('is not a primary control: it is a bare pressable, not the kit’s Button', async () => {
-    await render(<ProviderButton provider="apple" onPress={jest.fn()} />);
-    expect(screen.getByTestId('apple-sign-in').props.variant).toBeUndefined();
+    await render(<ProviderButton provider="google" onPress={jest.fn()} />);
+    expect(screen.getByTestId('google-sign-in').props.variant).toBeUndefined();
   });
 
   test('lays the logo and the words out in one centred row', async () => {
@@ -112,35 +96,6 @@ describe('<ProviderButton> - a pill, a secondary control (FR-005, FR-024)', () =
     expect(words.props.numberOfLines).toBeUndefined();
   });
 
-  test('draws Google and Apple at the same size and weight: same shape, type and width, only the brand fills and lines differ (Guideline 4.8)', async () => {
-    await render(
-      <>
-        <ProviderButton provider="google" onPress={jest.fn()} />
-        <ProviderButton provider="apple" onPress={jest.fn()} />
-      </>,
-    );
-    const google = screen.getByTestId('google-sign-in');
-    const apple = screen.getByTestId('apple-sign-in');
-    const { backgroundColor: appleFill, ...appleShape } = resting(apple);
-    const { backgroundColor: googleFill, borderColor, ...googleShape } = resting(google);
-
-    expect(appleShape).toEqual(googleShape);
-    expect(appleFill).toBeDefined();
-    expect(googleFill).toBeDefined();
-    expect(borderColor).toBeDefined();
-    expect(classesOf(apple)).toEqual(
-      expect.arrayContaining([
-        'flex-row',
-        'items-center',
-        'justify-center',
-        'self-stretch',
-      ]),
-    );
-    expect(screen.getByText('Continue with Apple').props.className).toBe(
-      screen.getByText('Continue with Google').props.className,
-    );
-  });
-
   test('is 52 dp tall at least, a full-radius pill', async () => {
     await render(<ProviderButton provider="google" onPress={jest.fn()} />);
     const style = resting(screen.getByTestId('google-sign-in'));
@@ -162,13 +117,6 @@ describe('<ProviderButton> - states in words, not colour alone (FR-025)', () => 
     expect(classesOf(button)).toContain('opacity-disabled');
   });
 
-  test('an unavailable provider does nothing when pressed', async () => {
-    await render(<ProviderButton provider="apple" />);
-    await fireEvent.press(screen.getByTestId('apple-sign-in-unavailable'));
-    // Nothing to assert on but the absence of a throw: there is no handler to call.
-    expect(screen.getByTestId('apple-sign-in-unavailable')).toBeTruthy();
-  });
-
   test('its own sign-in in flight: busy, inert, and the words say so', async () => {
     const onPress = jest.fn();
     await render(<ProviderButton provider="google" onPress={onPress} busy />);
@@ -187,8 +135,8 @@ describe('<ProviderButton> - states in words, not colour alone (FR-025)', () => 
 
   test('another sign-in in flight: disabled, dimmed, still in words', async () => {
     const onPress = jest.fn();
-    await render(<ProviderButton provider="apple" onPress={onPress} disabled />);
-    const button = screen.getByTestId('apple-sign-in');
+    await render(<ProviderButton provider="google" onPress={onPress} disabled />);
+    const button = screen.getByTestId('google-sign-in');
 
     expect(button.props.accessibilityState).toMatchObject({ disabled: true });
     expect(classesOf(button)).toContain('opacity-disabled');
