@@ -131,6 +131,11 @@
       "reason": "The ticket notch (decoration, gone when stacked) and the 44 dp icon disc: no scaling text"
     },
     {
+      "file": "src/components/trip/document-view-skeleton.tsx",
+      "count": 2,
+      "reason": "Skeleton bones: placeholder shapes that hold no text (the real content replaces them)"
+    },
+    {
       "file": "src/components/trip/documents-skeleton.tsx",
       "count": 1,
       "reason": "Skeleton bones: placeholder shapes that hold no text (the real content replaces them)"
