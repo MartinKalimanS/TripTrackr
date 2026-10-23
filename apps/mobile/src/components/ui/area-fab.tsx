@@ -44,6 +44,8 @@ export interface AreaFabProps {
   testID: string;
   /** What a screen reader says; default `label`. */
   accessibilityLabel?: string;
+  /** Said after the name: a coming-soon control says "Not available yet" (FR-080). */
+  accessibilityHint?: string;
   /** An operation is in flight: announced busy, presses ignored. */
   busy?: boolean;
   /** Draws nothing at all (not an invisible button an assistive technology could find). */
@@ -74,6 +76,7 @@ export function AreaFab({
   onPress,
   testID,
   accessibilityLabel,
+  accessibilityHint,
   busy = false,
   hidden = false,
   bottomInset = 0,
@@ -90,6 +93,7 @@ export function AreaFab({
       size="lg"
       icon={icon}
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
       testID={testID}
       busy={busy}
       onPress={() => onPress()}

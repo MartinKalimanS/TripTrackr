@@ -42,7 +42,7 @@ import { StorageBar } from '@/components/trip/storage-bar';
 import { describePlace } from '@/components/trip/stop-row';
 import { AreaFab, areaFabClearance } from '@/components/ui/area-fab';
 import { AreaHeader, areaMargin } from '@/components/ui/area-header';
-import { useComingSoon } from '@/components/ui/coming-soon-button';
+import { COMING_SOON_HINT, useComingSoon } from '@/components/ui/coming-soon-button';
 import { EmptyState, ErrorState } from '@/components/ui/state-view';
 import { Text } from '@/components/ui/text';
 import type { StopWithPlace } from '@/db/repositories/stops';
@@ -331,6 +331,7 @@ export default function OfflineMapsScreen() {
       <AreaFab
         label="New area"
         accessibilityLabel="Download a new area"
+        accessibilityHint={COMING_SOON_HINT}
         icon="map-pin"
         testID="coming-soon-offline-new-area"
         onPress={newArea}
