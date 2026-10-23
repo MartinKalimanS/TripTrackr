@@ -17,6 +17,8 @@ import {
 const appRoot = path.resolve(__dirname, '../..');
 const read = (file: string) => fs.readFileSync(path.join(appRoot, file), 'utf8');
 
+const NOTE = '../../specs/005-sunrise-passport-ui/reference/as-built/f14-states.md';
+
 function routeFiles(directory: string): string[] {
   return fs
     .readdirSync(path.join(appRoot, directory), { withFileTypes: true })
@@ -101,6 +103,17 @@ describe('the route inventory', () => {
       return rendersIt ? [] : [`${row.route} is not rendered by ${row.sweep}`];
     });
     expect(problems).toEqual([]);
+  });
+
+  it('is the table of the as-built note, which lists every route and the evidence', () => {
+    const note = fs.readFileSync(path.join(appRoot, NOTE), 'utf8');
+    const missing = ROUTE_INVENTORY.map((row) => row.route.replace(/^src\//, '')).filter(
+      (route) => !note.includes(`\`${route}\``),
+    );
+    expect(missing).toEqual([]);
+    for (const layout of LAYOUT_ROUTES) {
+      expect(note).toContain(layout.replace(/^src\/app\//, '').replace(/\.tsx$/, ''));
+    }
   });
 
   it('keeps the gallery out of the sweep and the gates in it', () => {
