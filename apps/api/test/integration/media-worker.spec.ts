@@ -281,6 +281,9 @@ describe('the media worker on PostgreSQL and RustFS', () => {
       it('moves updated_at, so a device learns of it on its next pull', async () => {
         const photo = await seedPhoto();
         const before = (await rowOf(photo.id)).updated_at;
+        // Postgres keeps microseconds, a JS Date milliseconds: two writes inside one millisecond
+        // would read as equal, so leave a gap the comparison can see.
+        await harness.owner`SELECT pg_sleep(0.02)`;
 
         await record(photo.id, PARIS);
 
