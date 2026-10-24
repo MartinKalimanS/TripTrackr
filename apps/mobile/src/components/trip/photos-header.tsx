@@ -141,7 +141,7 @@ function CaptureNotice({ message, onDismiss, onAllow }: CaptureNoticeProps) {
       ) : (
         <Text
           testID="photos-capture-message"
-          type="callout"
+          variant="label"
           accessibilityLiveRegion="polite">
           {message.text}
         </Text>

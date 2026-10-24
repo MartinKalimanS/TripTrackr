@@ -204,7 +204,7 @@ export function StopDatesBlock(props: StopDatesBlockProps) {
         <Text
           testID="stop-editor-depart-error"
           accessibilityRole="alert"
-          type="callout"
+          variant="label"
           tone="danger">
           {error}
         </Text>

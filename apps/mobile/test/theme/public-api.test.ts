@@ -20,7 +20,6 @@ import {
   Scrim,
   Sky,
   Space,
-  TextRoles,
   TypeRoles,
   blend,
   colourAt,
@@ -67,10 +66,7 @@ describe('token layer public API — contract C7', () => {
     expect(Palettes.light.canvas).toMatch(/^#[0-9A-F]{6}$/);
   });
 
-  test('exports the Atlas type, shape and motion tables as data (004 C4-6)', () => {
-    expect(Object.keys(TextRoles)).toEqual(
-      expect.arrayContaining(['largeTitle', 'body', 'numeric']),
-    );
+  test('exports the focus ring and motion tables as data (004 C4-6)', () => {
     expect(FocusRing).toEqual({ width: 2.5, offset: 2 });
     expect(Motion.transitionMs).toBe(200);
   });

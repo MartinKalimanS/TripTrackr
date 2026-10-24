@@ -131,7 +131,7 @@ export function DateField({
         onPress={calendar.toggle}
         className={`${BOX} ${refused ? BOUNDARY.refused : BOUNDARY.ok}`}
         style={[styles.field, { minHeight: fieldMinHeight(fontScale) }]}>
-        <Text type="numeric" className="shrink font-normal">
+        <Text variant="body" className="shrink">
           {day}
         </Text>
         <Icon name={CALENDAR} size={20} tone="muted" />
@@ -151,7 +151,7 @@ export function DateField({
         <Text
           testID={testID ? `${testID}-error` : undefined}
           accessibilityRole="alert"
-          type="callout"
+          variant="label"
           tone="danger">
           {error}
         </Text>

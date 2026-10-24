@@ -52,7 +52,7 @@ const OFFLINE_NOTE = 'Offline — showing saved places';
 
 function OfflineNote() {
   return (
-    <Text type="callout" tone="muted" accessibilityRole="alert" className="px-1">
+    <Text variant="label" tone="muted" accessibilityRole="alert" className="px-1">
       {OFFLINE_NOTE}
     </Text>
   );
@@ -93,7 +93,7 @@ function CountryRows({ countries, hasMore, onPick }: CountryRowsProps) {
         ))}
       </ListGroup>
       {hasMore ? (
-        <Text type="caption" tone="muted" className="px-1">
+        <Text variant="caption" tone="muted" className="px-1">
           Keep typing to narrow the list
         </Text>
       ) : null}
@@ -220,7 +220,7 @@ function CityStep({ country, onChangeCountry, onPick }: CityStepProps) {
           title={country.name}
           accessibilityLabel={`Country: ${country.name}. Change country`}
           trailing={
-            <Text type="callout" tone="accent">
+            <Text variant="label" tone="accent">
               Change
             </Text>
           }

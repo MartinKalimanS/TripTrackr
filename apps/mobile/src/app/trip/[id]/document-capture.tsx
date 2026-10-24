@@ -148,7 +148,7 @@ export default function DocumentCaptureScreen() {
           selectedKey={type}
           onSelect={(key) => setType(key as DocumentType)}
         />
-        <Text type="callout" tone="muted" testID="document-capture-hint">
+        <Text variant="label" tone="muted" testID="document-capture-hint">
           {HINTS[type]}
         </Text>
 
@@ -161,7 +161,7 @@ export default function DocumentCaptureScreen() {
 
         <CaptureProblems problem={capture.problem} />
         {capture.busy ? (
-          <Text type="callout" accessibilityLiveRegion="polite">
+          <Text variant="label" accessibilityLiveRegion="polite">
             Saving to this device…
           </Text>
         ) : null}

@@ -10,8 +10,7 @@
  * globe colours and the comments in one change, so the search was already empty and T564
  * (which found no Atlas value left in `src/`) leaves it as a standing regression test: a new
  * literal, in a component or a comment, fails it. The Atlas-only TREATMENTS are guarded in
- * `no-neumorphism.test.ts` (a ratchet at the counts T564 left, red-able on demand with
- * `ATLAS_RETIREMENT=1`).
+ * `no-neumorphism.test.ts` (a plain zero since T564 retired them).
  */
 import path from 'node:path';
 

@@ -34,7 +34,11 @@ function open(document: LegalDocument) {
 
 export function LegalLine({ lead, size = 'caption' }: LegalLineProps) {
   return (
-    <Text testID="legal-line" type={size} tone="muted" className="text-center">
+    <Text
+      testID="legal-line"
+      variant={size === 'callout' ? 'label' : 'caption'}
+      tone="muted"
+      className="text-center">
       {lead}{' '}
       <NativeText
         testID="legal-terms-link"

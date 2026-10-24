@@ -79,7 +79,7 @@ export function PhotoStatusBadge({ status }: { status: PhotoStatus }) {
       accessibilityLabel={label}
       className={`${CAPSULE} ${box}`}>
       <Icon testID="photo-status-icon" name={icon} size={16} tone={tone} />
-      <Text type="caption" className={`shrink ${ink}`}>
+      <Text variant="caption" className={`shrink ${ink}`}>
         {label}
       </Text>
     </View>

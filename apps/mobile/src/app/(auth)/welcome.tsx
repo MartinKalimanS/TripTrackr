@@ -175,7 +175,7 @@ export default function WelcomeScreen() {
             />
             <ProviderStatus status={social.status} />
             {social.soon ? (
-              <Text type="callout" tone="muted" className="text-center">
+              <Text variant="label" tone="muted" className="text-center">
                 {social.soon}
               </Text>
             ) : null}

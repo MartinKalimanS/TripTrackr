@@ -1,33 +1,20 @@
 /**
- * The type scales — feature 005 contract C5-7, data-model section 2, research D5-06 (the
- * Sunrise roles); feature 004 contract C4-6 (the Atlas roles, kept until Phase 10).
+ * The type scale: nine roles and the serif accent (feature 005 contract C5-7, data-model
+ * section 2, research D5-06), in three families (Bricolage Grotesque for display and numerals,
+ * DM Sans for body text, Instrument Serif Italic for the one accent word) and three weights
+ * (400, 600, 700). The 004 (Atlas) table was deleted by T564: `Text` takes `variant` only.
  *
- * TWO tables live here, with different names on purpose.
- *
- * `TypeRoles` is Sunrise: nine roles and the serif accent, in three families (Bricolage
- * Grotesque for display and numerals, DM Sans for body text, Instrument Serif Italic for the
- * one accent word) and three weights (400, 600, 700). Five of its names (`title`, `headline`,
- * `callout`, `caption`, `body`) are also names of 004 roles with another size, and the 004
- * call sites and tests pin the old values, so the 004 table keeps its exports
- * (`TextRoles`, `textStyle`, ...) and `Text` selects the new one with `variant` instead of
- * `type`. Phase 10 (T564) deletes the 004 table and renames `TypeRoles` to `TextRoles`.
- * `LegacyRoleMap` is the mapping that rename needs.
- *
- * Neither table writes a `fontFamily`: one family per weight is a CSS variable of
- * `src/global.css`, and `fontClassOf` names the semantic class (`font-display-bold`,
- * `font-body-semibold`, ...) that Uniwind turns into it on both platforms. Sizes are in dp
- * and are scaled by the platform's font scale; every line height exceeds its size so
- * enlarged text does not clip (FR-074).
+ * No role writes a `fontFamily`: one family per weight is a CSS variable of `src/global.css`,
+ * and `fontClassOf` names the semantic class (`font-display-bold`, `font-body-semibold`, ...)
+ * that Uniwind turns into it on both platforms. Sizes are in dp and are scaled by the
+ * platform's font scale; every line height exceeds its size so enlarged text does not clip
+ * (FR-074).
  *
  * Pure data and pure helpers.
  */
 import type { TextStyle } from 'react-native';
 
 import { deepFreeze, type DeepReadonly } from './freeze';
-
-// ---------------------------------------------------------------------------------------
-// Sunrise (feature 005)
-// ---------------------------------------------------------------------------------------
 
 /** Bricolage Grotesque, DM Sans, Instrument Serif Italic. */
 export type TypeFamily = 'display' | 'body' | 'serif';
@@ -256,148 +243,5 @@ export function typeStyle(role: TypeRole): TextStyle {
     ...(size === null ? {} : { fontSize: size }),
     ...(lineHeight === null ? {} : { lineHeight }),
     ...typeExtras(role),
-  };
-}
-
-// ---------------------------------------------------------------------------------------
-// Atlas (feature 004), kept until Phase 10
-// ---------------------------------------------------------------------------------------
-
-export type FontFamilyRole = 'system' | 'display' | 'displayBold';
-export type FontWeight = 400 | 500 | 600 | 700;
-/** Five sizes, plus the iOS headline at 17. */
-export type TextSize = 12 | 14 | 16 | 17 | 22 | 32;
-
-export type TextRole =
-  'largeTitle' | 'title' | 'headline' | 'body' | 'callout' | 'caption' | 'numeric';
-
-export interface TextStyleToken {
-  family: FontFamilyRole;
-  size: TextSize;
-  lineHeight: number;
-  weight: FontWeight;
-  /** Tabular numerals: money, distance, counts and dates must not jitter. */
-  tabularNumbers: boolean;
-}
-
-/** In reading order, largest first. */
-export const TextRoleNames: readonly TextRole[] = deepFreeze([
-  'largeTitle',
-  'title',
-  'headline',
-  'body',
-  'callout',
-  'caption',
-  'numeric',
-]);
-
-const roles: Record<TextRole, TextStyleToken> = {
-  // Trip title, screen hero, statistics figures.
-  largeTitle: {
-    family: 'displayBold',
-    size: 32,
-    lineHeight: 38,
-    weight: 700,
-    tabularNumbers: false,
-  },
-  // Header titles, sheet titles.
-  title: {
-    family: 'display',
-    size: 22,
-    lineHeight: 28,
-    weight: 600,
-    tabularNumbers: false,
-  },
-  // Row titles, section headers.
-  headline: {
-    family: 'system',
-    size: 17,
-    lineHeight: 24,
-    weight: 600,
-    tabularNumbers: false,
-  },
-  // Default text.
-  body: {
-    family: 'system',
-    size: 16,
-    lineHeight: 24,
-    weight: 400,
-    tabularNumbers: false,
-  },
-  // Secondary lines, chips.
-  callout: {
-    family: 'system',
-    size: 14,
-    lineHeight: 20,
-    weight: 500,
-    tabularNumbers: false,
-  },
-  // Footnotes, captions.
-  caption: {
-    family: 'system',
-    size: 12,
-    lineHeight: 16,
-    weight: 500,
-    tabularNumbers: false,
-  },
-  // Money, distance, counts, dates. Size and line height are per context: this is the
-  // default (body), and `numericStyle` borrows them from the role it sits in.
-  numeric: {
-    family: 'system',
-    size: 16,
-    lineHeight: 24,
-    weight: 600,
-    tabularNumbers: true,
-  },
-};
-
-export const TextRoles: DeepReadonly<Record<TextRole, TextStyleToken>> =
-  deepFreeze(roles);
-
-/**
- * The shim: each 004 role and the Sunrise role it becomes when Phase 10 retires the 004
- * table (data-model section 2). `largeTitle` is `display` by default (a trip title that
- * needs 28 asks for `title`); `numeric` is `numeral`; the rest keep their name.
- */
-export const LegacyRoleMap: Readonly<Record<TextRole, TypeRole>> = deepFreeze({
-  largeTitle: 'display',
-  title: 'title',
-  headline: 'headline',
-  body: 'body',
-  callout: 'callout',
-  caption: 'caption',
-  numeric: 'numeral',
-} satisfies Record<TextRole, TypeRole>);
-
-function weightOf(weight: FontWeight): NonNullable<TextStyle['fontWeight']> {
-  return `${weight}` as NonNullable<TextStyle['fontWeight']>;
-}
-
-/**
- * The size, line height and weight of a 004 role as a React Native text style, plus tabular
- * numerals for `numeric`. A new object each call, so a caller may extend it.
- */
-export function textStyle(role: TextRole): TextStyle {
-  const token = TextRoles[role];
-  const style: TextStyle = {
-    fontSize: token.size,
-    lineHeight: token.lineHeight,
-    fontWeight: weightOf(token.weight),
-  };
-  return token.tabularNumbers ? { ...style, fontVariant: [...TABULAR] } : style;
-}
-
-/**
- * Numerals in the context of another 004 role: the size and line height of `base`, with the
- * `numeric` role's weight and tabular figures. A large total sits in `largeTitle`, a
- * price in a row in `body`.
- */
-export function numericStyle(base: Exclude<TextRole, 'numeric'> = 'body'): TextStyle {
-  const { size, lineHeight } = TextRoles[base];
-  return {
-    fontSize: size,
-    lineHeight,
-    fontWeight: weightOf(TextRoles.numeric.weight),
-    fontVariant: [...TABULAR],
   };
 }

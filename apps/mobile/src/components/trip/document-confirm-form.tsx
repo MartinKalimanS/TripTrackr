@@ -180,8 +180,8 @@ export function DocumentConfirmForm({
     <Card testID="document-confirm-form" variant="tile">
       <View className="gap-4">
         <View className="gap-1">
-          <Text type="headline">Flight details</Text>
-          <Text testID="document-confirm-intro" type="callout" tone="muted">
+          <Text variant="callout">Flight details</Text>
+          <Text testID="document-confirm-intro" variant="label" tone="muted">
             {intro}
           </Text>
         </View>

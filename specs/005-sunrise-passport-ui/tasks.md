@@ -601,10 +601,11 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 ## Phase 10: Retire Atlas
 
-- [ ] T564 Remove every Atlas palette value, the flat tab strip code, the Atlas-only adapters and the 004 aliases that
+- [x] T564 Remove every Atlas palette value, the flat tab strip code, the Atlas-only adapters and the 004 aliases that
       nothing uses; `test/theme/atlas-values.test.ts` turns green; the neumorphism search stays empty (FR-083;
       SC-001)
       _Partly built (f14-atlas, 2026-10-22), NOT ticked:_ every dead Atlas value, alias and the unused adapters are removed with proof; what a live screen or adapter still reads (`AtlasSpacing`, `AtlasRadius`, `cornerStyle`, the 004 text roles, `LegacyRoleMap`, palette aliases) is kept and listed with its readers in `reference/as-built/f14-atlas.md`; `ATLAS_RETIREMENT=1` still has 2 red tests until those move to the Sunrise names.
+      _Done 2026-10-24: the 004 text roles are gone too._ `Text` takes `variant` only (default `body`); the 44 `type=` call sites moved BY SIZE (old callout 14 to `label`, headline 17 to `callout`, title 22 to `headline`, caption 12 to `caption`, `numeric` to `body` or `label`), so no layout moved but those texts now draw in the Sunrise faces; `TextRoles`, `LegacyRoleMap`, `textStyle`, `numericStyle` and `context` are deleted and the ratchet is a plain zero (`ATLAS_RETIREMENT` is gone). Figures in a date field or the photo pill no longer use tabular figures (DM Sans has none). `reference/as-built/f14-atlas.md`.
       _Shape tables done (2026-10-23):_ `AtlasSpacing`, `AtlasRadius` and `cornerStyle` are deleted, their seven readers moved to `Space` and `cornerOf` (same values, no visual change), the ratchet is at zero and `ATLAS_RETIREMENT=1` has 1 red test left: the text roles `largeTitle` and `numeric` (`date-field`, `photo-viewer`, `Text` and its tests). Moving `numeric` to `variant="numeral"` changes a size, so it waits for the owner.
 - [ ] T565 Docs as built: `AGENTS.md` (the look, the chrome, the libraries), `research.md` spike results, the
       amendments of 003 and 004 pointing at their final state, the as-built notes of the contracts (FR-083; D5-20)

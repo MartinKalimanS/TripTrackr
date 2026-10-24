@@ -75,7 +75,7 @@ export type PhotoTileProps = {
 function Placeholder() {
   return (
     <View className="flex-1 items-center justify-center bg-surface p-1">
-      <Text type="caption" tone="muted" className="text-center">
+      <Text variant="caption" tone="muted" className="text-center">
         {GALLERY_COPY.noPreview}
       </Text>
     </View>

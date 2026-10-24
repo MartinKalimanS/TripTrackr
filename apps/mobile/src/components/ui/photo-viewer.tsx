@@ -201,7 +201,7 @@ const naturalOf = ({ source }: LoadedEvent): Size | null =>
 function Unavailable({ text, broken = false }: { text: string; broken?: boolean }) {
   return (
     <Text
-      type="callout"
+      variant="label"
       tone="onPhoto"
       testID={broken ? 'photo-viewer-image-unavailable' : undefined}
       className="px-4 text-center">

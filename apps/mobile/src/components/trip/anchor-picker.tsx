@@ -54,9 +54,9 @@ export function AnchorPicker({
 }: AnchorPickerProps) {
   return (
     <View className="gap-2" testID={testID}>
-      <Text type="callout">{label}</Text>
+      <Text variant="label">{label}</Text>
       {targets.length === 0 ? (
-        <Text type="callout" tone="muted">
+        <Text variant="label" tone="muted">
           Add a stop to this trip first — notes are filed under its countries and cities.
         </Text>
       ) : (

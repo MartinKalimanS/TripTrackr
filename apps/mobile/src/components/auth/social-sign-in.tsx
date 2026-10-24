@@ -143,7 +143,7 @@ export function SocialSignIn({ disabled = false, appleIntent }: SocialSignInProp
       </View>
       <ProviderStatus status={status} />
       {soon ? (
-        <Text type="callout" tone="muted" className="text-center">
+        <Text variant="label" tone="muted" className="text-center">
           {soon}
         </Text>
       ) : null}
@@ -157,7 +157,7 @@ export function ProviderStatus({ status }: { status: string | null }) {
   if (!status) return null;
   return (
     <Text
-      type="callout"
+      variant="label"
       tone="muted"
       className="text-center"
       accessibilityLiveRegion="polite">
@@ -171,7 +171,7 @@ function Divider() {
   return (
     <View className="flex-row items-center gap-2">
       <View className="flex-1 bg-border" style={styles.rule} />
-      <Text type="callout" tone="muted">
+      <Text variant="label" tone="muted">
         or continue with
       </Text>
       <View className="flex-1 bg-border" style={styles.rule} />

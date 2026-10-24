@@ -25,7 +25,7 @@ export function PrivateNote({ isPublic = false }: { isPublic?: boolean }) {
   return (
     <View className="flex-row items-start gap-2">
       <Icon name={LOCK} size={16} tone="muted" />
-      <Text type="callout" tone="muted" className="shrink">
+      <Text variant="label" tone="muted" className="shrink">
         {isPublic ? PUBLIC_PENDING_COPY : PRIVATE_COPY}
       </Text>
     </View>

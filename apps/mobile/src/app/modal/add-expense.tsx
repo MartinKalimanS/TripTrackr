@@ -321,7 +321,7 @@ function CityField({ stops, cityId, onSelect }: CityFieldProps) {
 
   return (
     <View className="gap-2">
-      <Text type="callout">City</Text>
+      <Text variant="label">City</Text>
       <ChipGroup
         scroll
         accessibilityLabel="City"

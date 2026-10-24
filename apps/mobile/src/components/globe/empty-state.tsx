@@ -147,13 +147,13 @@ function Headline({
   const at = accent ? title.indexOf(accent) : -1;
   if (!accent || at === -1) {
     return (
-      <Text type="title" className={className}>
+      <Text variant="headline" className={className}>
         {title}
       </Text>
     );
   }
   return (
-    <Text type="title" className={className}>
+    <Text variant="headline" className={className}>
       {title.slice(0, at)}
       <Text variant="accent">{accent}</Text>
       {title.slice(at + accent.length)}
@@ -190,7 +190,7 @@ export function GlobeEmptyState({
   return (
     <OverlayCard testID="globe-empty-state" topInset={topInset} invite={invite}>
       <Headline title={copy.title} accent={accent} className={centred} />
-      <Text type="callout" tone="muted" className={centred}>
+      <Text variant="label" tone="muted" className={centred}>
         {copy.detail}
       </Text>
       <Button
@@ -242,11 +242,11 @@ function NoticeBody({ title, detail }: GlobeNoticeProps) {
         <Icon name={ALERT_ICON} size={20} tone="danger" />
       </View>
       <View style={styles.noticeText}>
-        <Text type="headline" tone="danger">
+        <Text variant="callout" tone="danger">
           {title}
         </Text>
         {detail ? (
-          <Text type="callout" tone="muted">
+          <Text variant="label" tone="muted">
             {detail}
           </Text>
         ) : null}

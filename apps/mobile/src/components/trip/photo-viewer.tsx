@@ -164,7 +164,7 @@ function PositionPill({ index, total }: { index: number; total: number }) {
       accessible
       accessibilityLabel={`Photo ${index + 1} of ${total}`}
       className="rounded-full border border-scrim-button-line bg-scrim-button px-3 py-1">
-      <Text type="numeric" context="callout" tone="onPhoto">
+      <Text variant="label" tone="onPhoto">
         {`${index + 1} of ${total}`}
       </Text>
     </View>
@@ -257,17 +257,17 @@ function WhenAndWhere({ photo }: { photo: PhotoWithPlace }) {
     <View className="gap-2">
       <View className="flex-row items-center justify-between" style={{ gap: Space[3] }}>
         <View className="shrink flex-1 gap-1">
-          <Text testID="photo-viewer-place" type="headline">
+          <Text testID="photo-viewer-place" variant="callout">
             {place ? `Filed under ${place}` : 'Not filed under a city'}
           </Text>
-          <Text type="callout" tone="muted">
+          <Text variant="label" tone="muted">
             {takenAtLine(photo)}
           </Text>
         </View>
         {status !== 'uploaded' ? <PhotoStatusBadge status={status} /> : null}
       </View>
       {mismatch ? (
-        <Text testID="photo-viewer-mismatch" type="callout">
+        <Text testID="photo-viewer-mismatch" variant="label">
           {mismatch}
         </Text>
       ) : null}
@@ -314,7 +314,7 @@ function TileFace({ icon, text, tone = 'default' }: TileFaceProps) {
   return (
     <>
       <Icon name={icon} size={24} tone={tone} />
-      <Text type="callout" tone={tone} className="text-center font-semibold">
+      <Text variant="label" tone={tone} className="text-center font-semibold">
         {text}
       </Text>
     </>
@@ -394,7 +394,7 @@ function UploadDetail({
   const status = photo.upload_state;
   return (
     <View className="gap-2">
-      <Text type="callout" tone="muted">
+      <Text variant="label" tone="muted">
         {UPLOAD_STATE_COPY[status].detail}
       </Text>
       {status === 'failed' ? <PhotoRetryButton onPress={onRetry} /> : null}
@@ -426,7 +426,7 @@ function Filing({ photo, stops, onRefile }: FilingProps) {
 
   return (
     <View className="gap-2">
-      <Text type="headline">{GALLERY_COPY.fileUnder}</Text>
+      <Text variant="callout">{GALLERY_COPY.fileUnder}</Text>
       <ChipGroup options={options} selectedKey={selectedKey} onSelect={select} />
     </View>
   );

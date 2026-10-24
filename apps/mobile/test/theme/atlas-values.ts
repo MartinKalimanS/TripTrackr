@@ -132,40 +132,29 @@ export interface AtlasTreatment {
   pattern: RegExp;
   /** A line the pattern is meant to catch: the pattern itself is pinned by a test. */
   sample: string;
-  /**
-   * The most lines under `src/` that may match: the count T564 found, never raised. A
-   * ratchet: a NEW use of an Atlas-only treatment fails the build, and a removal never does
-   * (lower the number when you remove one). `ATLAS_RETIREMENT=1` ignores it and demands zero.
-   */
-  ceiling: number;
 }
 
 /**
- * The Atlas-only treatments of FR-083 and what is left of each after T564: the 004 shape
- * tables (`AtlasRadius` and `AtlasSpacing`, gone since their readers moved to `Radii` and
- * `Space`: the ceiling is zero, a regression guard), the flat tab strip's selection mark (none
- * left: the ceiling is zero, a regression guard) and the two 004 text roles that have no Sunrise name
- * (`largeTitle` and `numeric`, still read by `Text` itself, `date-field` and the photo viewer).
+ * The Atlas-only treatments of FR-083. T564 retired all three, so each is a regression guard:
+ * no line under `src/` may match. The 004 shape tables (`AtlasRadius`, `AtlasSpacing`; the
+ * Sunrise ones are `Radii` and `Space`), the flat tab strip's selection mark, and the 004 text
+ * roles (`type="..."` on `Text`; the Sunrise prop is `variant`).
  */
 export const ATLAS_TREATMENTS: readonly AtlasTreatment[] = Object.freeze([
   {
     label: 'the Atlas radius and spacing tables (Radii and Space are the Sunrise ones)',
     pattern: /\bAtlas(?:Radius|Spacing)(?:Name)?\b/,
     sample: 'borderRadius: AtlasRadius.lg',
-    ceiling: 0,
   },
   {
     label: "the flat tab strip's selection mark (the Sunrise tab bar is a floating pill)",
     pattern: /\bmark(?:Width|Height)\b/,
     sample: 'width: TabMetrics.markWidth,',
-    ceiling: 0,
   },
   {
-    label:
-      'the 004 text roles largeTitle and numeric (Sunrise: variant="display" and "numeral")',
-    pattern: /\btype="(?:largeTitle|numeric)"/,
+    label: 'the 004 text roles (Sunrise: <Text variant=...>)',
+    pattern: /\btype="(?:largeTitle|title|headline|body|callout|caption|numeric)"/,
     sample: '<Text type="largeTitle">',
-    ceiling: 21,
   },
 ]);
 

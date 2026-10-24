@@ -89,7 +89,7 @@ describe('<GlobeEmptyState> — no trips yet', () => {
     await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
     const title = screen.getByText('Your globe is waiting for its first trip');
     expect(tokens(title.props.className)).toEqual(
-      expect.arrayContaining(['font-display', 'text-[22px]']),
+      expect.arrayContaining(['font-display-bold', 'text-[22px]']),
     );
     expect(title.props.accessibilityRole).toBe('header');
   });

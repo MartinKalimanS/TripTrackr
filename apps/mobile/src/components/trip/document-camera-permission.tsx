@@ -55,8 +55,8 @@ export function DocumentCameraPermission({
   return (
     <Card variant="tile">
       <View className="items-start gap-2">
-        <Text type="headline">Allow the camera</Text>
-        <Text testID="document-camera-permission" type="callout" tone="muted">
+        <Text variant="callout">Allow the camera</Text>
+        <Text testID="document-camera-permission" variant="label" tone="muted">
           {DOCUMENT_CAPTURE_COPY.cameraAsk}
         </Text>
         <Button

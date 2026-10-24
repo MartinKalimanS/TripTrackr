@@ -74,11 +74,11 @@ export function ConflictNoticeBanner({
     <Card testID={base} className="gap-2">
       <View className="flex-row items-center gap-2">
         <Icon name={UPDATED} size={20} tone="accent" testID={`${base}-icon`} />
-        <Text type="headline" className="shrink">
+        <Text variant="callout" className="shrink">
           {CONFLICT_COPY.heading}
         </Text>
       </View>
-      <Text type="callout">{notice.summary}</Text>
+      <Text variant="label">{notice.summary}</Text>
       <View className="flex-row flex-wrap gap-2">
         {onOpenTrip ? (
           <Button
@@ -127,7 +127,7 @@ function OverflowRow({
 }) {
   return (
     <View className="flex-row flex-wrap items-center justify-between gap-2">
-      <Text type="callout" tone="muted">
+      <Text variant="label" tone="muted">
         {describeMoreNotices(hidden)}
       </Text>
       <Button
