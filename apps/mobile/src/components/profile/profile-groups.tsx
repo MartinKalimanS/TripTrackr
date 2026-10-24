@@ -6,7 +6,7 @@
  *
  * - Account: the email (`profile-email`, now a row: the identity block is drawn as pictured and
  *   the picture has no email line) and "Home currency: EUR" said as the one phrase it always was.
- * - App: the version, read from the embedded config (`Constants.expoConfig`, which is what a
+ * - App: "Take the tour" (replays the first-run tour, feature 007) and the version, read from the embedded config (`Constants.expoConfig`, which is what a
  *   traveller reads back to support).
  * - Set apart (FR-016): Sign out and Delete account, each in the danger ink AND with an icon,
  *   never colour alone (FR-025), in a block of their own. Sign out revokes this device's refresh
@@ -69,9 +69,17 @@ export function Account({ user }: { user: UserProfile }) {
   );
 }
 
-export function AppInfo() {
+export function AppInfo({ onTakeTour }: { onTakeTour: () => void }) {
   return (
     <ListGroup header="App" testID="profile-app-group">
+      <ListRow
+        testID="profile-take-tour"
+        title="Take the tour"
+        description="A quick look at how the app works"
+        accessibilityLabel="Take the tour"
+        accessibilityHint="Opens the Globe and walks you through the app"
+        onPress={onTakeTour}
+      />
       <ListRow
         title="Version"
         trailing={

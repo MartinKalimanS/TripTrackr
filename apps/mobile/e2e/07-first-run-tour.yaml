@@ -1,0 +1,103 @@
+# Feature 007 - the first-run tour and the open empty Home (specs/007-first-run-tour).
+#
+# A new account has no trips: the globe is there with the sheet and the one "Plan a trip" button,
+# nothing covers it, and a tour of at most five steps starts by itself. It can be walked to its
+# end, closed at any moment, never comes back unasked, and You can replay it.
+#
+# PREREQUISITES: those of 01-account-and-trip.yaml (development build, reachable API).
+appId: com.triptrackr.app
+tags:
+  - tour
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    id: 'welcome-screen'
+
+# --- Register ---------------------------------------------------------------
+- evalScript: ${output.email = 'maestro-tour-' + Date.now() + '@example.com'}
+- tapOn:
+    id: 'welcome-create-account'
+- tapOn:
+    id: 'register-display-name'
+- inputText: 'Maestro Tourist'
+- tapOn:
+    id: 'register-email'
+- inputText: ${output.email}
+- tapOn:
+    id: 'register-password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'register-confirm-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register-submit'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+
+# --- The tour starts by itself, over an open globe -------------------------------
+- extendedWaitUntil:
+    visible:
+      id: 'tour-card'
+    timeout: 15000
+- assertVisible: 'Your globe'
+- assertVisible: '1 of 5'
+- assertNotVisible: 'Your globe is waiting for its first trip'
+- assertNotVisible: '0 of 195 countries'
+- takeScreenshot: 07-tour-step-1
+
+# --- Walk it: step by step, to Done ---------------------------------------------------
+- tapOn:
+    id: 'tour-next'
+- assertVisible: 'Add a trip'
+- tapOn:
+    id: 'tour-next'
+- assertVisible: 'Your trips'
+- tapOn:
+    id: 'tour-next'
+- assertVisible: 'Inside a trip'
+- tapOn:
+    id: 'tour-next'
+- assertVisible: 'Your passport and stamps are here.*'
+- assertVisible: '5 of 5'
+- assertVisible: 'Done'
+- takeScreenshot: 07-tour-step-5
+- tapOn:
+    id: 'tour-next'
+- assertNotVisible:
+    id: 'tour-card'
+- assertVisible:
+    id: 'home-plan-trip-fab'
+
+# --- It never comes back unasked ------------------------------------------------------
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+- assertNotVisible:
+    id: 'tour-card'
+
+# --- You can replay it, and close it at any moment -------------------------------------
+- tapOn:
+    id: 'tab-profile'
+- scrollUntilVisible:
+    element:
+      id: 'profile-take-tour'
+- tapOn:
+    id: 'profile-take-tour'
+- assertVisible:
+    id: 'tour-card'
+- assertVisible: '1 of 5'
+- tapOn:
+    id: 'tour-next'
+- tapOn:
+    id: 'tour-close'
+- assertNotVisible:
+    id: 'tour-card'

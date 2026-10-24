@@ -42,6 +42,8 @@ import { Spacing } from '@/constants/theme';
 import { fabShapeOf } from '@/constants/platform-shapes';
 import { Space, cornerOf } from '@/theme';
 
+import { useTourTarget } from '@/components/tour/tour-targets';
+
 import { Button } from './button';
 import { useLiftStyle } from './lift';
 
@@ -109,6 +111,8 @@ export function PlanTripFab({
   // The provider is expo-router's; outside one (a component test) there is no inset.
   const insets = useContext(SafeAreaInsetsContext) ?? NO_INSETS;
   const lift = useLiftStyle('lift2');
+  // The first-run tour lights the Home's button (feature 007); the Trips screen's is not a stop.
+  const tourRef = useTourTarget(screen === 'home' ? 'plan-trip' : null);
   // The keyboard takes the room the button floats in: it goes while a field is open.
   const keyboardUp = useKeyboardState((state) => state.isVisible);
   if (hidden || keyboardUp) return null;
@@ -122,6 +126,7 @@ export function PlanTripFab({
   if (collapsed) {
     return (
       <Button
+        ref={tourRef}
         variant="primary"
         size="lg"
         iconOnly
@@ -136,6 +141,7 @@ export function PlanTripFab({
 
   return (
     <Button
+      ref={tourRef}
       variant="primary"
       size="lg"
       icon="plus"

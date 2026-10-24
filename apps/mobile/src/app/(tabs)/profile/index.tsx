@@ -25,6 +25,7 @@
  * The Maestro flows `offline/11-*` scroll to `profile-sign-out`: the passport pushes it below the
  * first screenful.
  */
+import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 
 import { ProfileIdentity } from '@/components/profile/profile-identity';
@@ -33,6 +34,7 @@ import { PassportSection } from '@/components/profile/passport-section';
 import { Screen } from '@/components/ui/screen';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useSignOut } from '@/features/auth/use-sign-out';
+import { useTourStore } from '@/features/tour/tour-store';
 import { usePassport } from '@/features/passport/use-passport';
 import { todayIso } from '@/features/trips/stop-dates';
 import { ScreenMargin, Space } from '@/theme';
@@ -41,6 +43,12 @@ export default function ProfileScreen() {
   const android = Platform.OS === 'android';
   const user = useSessionStore((session) => session.user);
   const signOut = useSignOut();
+  const router = useRouter();
+  // The tour lights the Home's controls, so replaying it goes to the Globe first (feature 007).
+  const takeTour = () => {
+    router.navigate('/');
+    useTourStore.getState().start();
+  };
   // One calendar day for the whole screen, as the Home does.
   const today = todayIso();
   const passport = usePassport(today);
@@ -63,7 +71,7 @@ export default function ProfileScreen() {
         today={today}
       />
       {user ? <Account user={user} /> : null}
-      <AppInfo />
+      <AppInfo onTakeTour={takeTour} />
       <SetApart signOut={signOut} />
     </Screen>
   );

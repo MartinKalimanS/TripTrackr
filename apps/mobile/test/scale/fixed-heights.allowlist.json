@@ -76,6 +76,16 @@
       "reason": "A thumbnail or cover frame: art with no scaling text (cover letters and flags opt out with allowFontScaling false)"
     },
     {
+      "file": "src/components/tour/tour-geometry.ts",
+      "count": 5,
+      "reason": "Rectangles measured from a real control and the window (the dim around it, the ring on it): geometry, not the height of any text, which sits in the card"
+    },
+    {
+      "file": "src/components/tour/tour-overlay.tsx",
+      "count": 1,
+      "reason": "The 6 dp progress dot of the tour card: decoration hidden from assistive technology, beside the text that says the step"
+    },
+    {
       "file": "src/components/navigation/tab-metrics.ts",
       "count": 1,
       "reason": "Named MINIMUMS read as minHeight by the pill (PillMetrics.height): the bar grows with the text"

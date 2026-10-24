@@ -78,19 +78,22 @@ env:
     visible:
       id: 'tab-bar'
     timeout: 20000
+- runFlow: _helpers/dismiss-tour.yaml
 
-# --- No trips: the globe is there, with an invitation over it (FR-051; 003 FR-001) ---
+# --- No trips: the globe is there with the sheet and the one button, and no card over it (feature 007) ---
 - extendedWaitUntil:
     visible:
       id: 'globe-map'
     timeout: 20000
 - assertVisible:
+    id: 'home-plan-trip-fab'
+- assertNotVisible:
     id: 'globe-empty-state'
-- assertVisible: 'Your globe is waiting for its first trip'
+- assertNotVisible: 'Your globe is waiting for its first trip'
 
 # --- A trip without a stop: the card opens it to add one (spec Edge Cases, Globe; 003 FR-002) ---
 - tapOn:
-    id: 'home-plan-trip'
+    id: 'home-plan-trip-fab'
 - tapOn:
     id: 'add-trip-title'
 - inputText: 'Past trip'

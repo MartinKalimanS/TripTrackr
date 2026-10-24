@@ -389,6 +389,7 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
       'coming-soon-share-passport',
       'coming-soon-profile-settings',
       'coming-soon-recap',
+      'profile-take-tour',
       'profile-sign-out',
       'profile-delete-account',
     ]);

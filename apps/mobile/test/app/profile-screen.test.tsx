@@ -9,6 +9,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 
 import ProfileScreen from '@/app/(tabs)/profile';
+import { useTourStore } from '@/features/tour/tour-store';
 import { useSessionStore } from '@/features/auth/session-store';
 import { toGlobeTrips, type GlobeStopRow } from '@/features/globe/globe-data';
 import {
@@ -65,6 +66,12 @@ const mockSignOut = {
 jest.mock('@/features/auth/use-sign-out', () => ({
   ...jest.requireActual('@/features/auth/use-sign-out'),
   useSignOut: () => mockSignOut,
+}));
+
+const mockRouter = { navigate: jest.fn(), push: jest.fn() };
+jest.mock('expo-router', () => ({
+  ...jest.requireActual('expo-router'),
+  useRouter: () => mockRouter,
 }));
 
 jest.mock('@/lib/sentry', () => ({
@@ -251,6 +258,31 @@ describe("<ProfileScreen> - the figures are the traveller's own", () => {
     mockPassport.data = { ...realData(), periods: ['all', '2026'] };
     await view.rerender(<ProfileScreen />);
     expect(screen.getByText('Passport \u00b7 all time')).toBeOnTheScreen();
+  });
+});
+
+describe('<ProfileScreen> - Take the tour (feature 007, FR-007)', () => {
+  beforeEach(() => {
+    mockRouter.navigate.mockClear();
+    useTourStore.setState({ open: false, step: 0 });
+  });
+
+  test('the App group offers a row that replays the tour', async () => {
+    await render(<ProfileScreen />);
+    const row = screen.getByTestId('profile-take-tour');
+    expect(row.props.accessibilityRole).toBe('button');
+    expect(screen.getByText('Take the tour')).toBeOnTheScreen();
+    expect(
+      within(screen.getByTestId('profile-app-group')).getByTestId('profile-take-tour'),
+    ).toBeTruthy();
+  });
+
+  test('pressing it goes to the Globe and starts the tour at step 1', async () => {
+    useTourStore.setState({ open: false, step: 3 });
+    await render(<ProfileScreen />);
+    await fireEvent.press(screen.getByTestId('profile-take-tour'));
+    expect(mockRouter.navigate).toHaveBeenCalledWith('/');
+    expect(useTourStore.getState()).toMatchObject({ open: true, step: 0 });
   });
 });
 

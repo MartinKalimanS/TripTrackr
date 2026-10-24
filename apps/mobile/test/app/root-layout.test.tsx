@@ -42,6 +42,8 @@ jest.setTimeout(60_000);
 // The device scheme as a store, so a test can flip it with the app mounted: what
 // `Appearance` does when the traveller switches the system between light and dark.
 const mockScheme = { value: 'light', listeners: new Set<() => void>() };
+// The first-run tour has suites of its own (it reads the local store).
+jest.mock('@/components/tour/first-run-tour', () => ({ FirstRunTour: () => null }));
 jest.mock('@/hooks/use-color-scheme', () => {
   const { useSyncExternalStore } = require('react') as typeof import('react');
   return {

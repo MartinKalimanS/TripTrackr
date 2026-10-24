@@ -132,8 +132,12 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
   date line and poles). Map colours are the `GlobeColors` tokens with their own contrast gate; no
   map mounts before `useMapboxReady()` says `ready` (token set, telemetry off).
 - **The home is always the globe** (feature 003): it is mounted with no trips, with trips but no stop
-  and when the store cannot be read; a flat bordered card (`empty-state.tsx`, contract C12) floats over
-  it instead of replacing it. The legs between trips are a second, non-tappable source derived by
+  and when the store cannot be read. With no trips it shows the sheet at zero and the one "Plan a trip"
+  button, no card and no counter (feature 007); with trips but no stop, or an unreadable store, a flat
+  bordered card (`empty-state.tsx`, contract C12) floats over it instead of replacing it. A new
+  traveller (no trips, not seen) gets the **first-run tour** (`features/tour`, `components/tour`): at
+  most five steps (`MAX_TOUR_STEPS`), a spotlight on a real control registered with `useTourTarget`,
+  closable at any moment, remembered per traveller in the keychain, replayable from You. The legs between trips are a second, non-tappable source derived by
   `features/globe/journey.ts` and drawn under the trip arcs in the past style. The tab bar is a floating
   pill (`TabBar`, one `Tappable` per tab; a tab may have a surface, feature 005 amends 003 FR-013 to
   FR-015): keep its testIDs.

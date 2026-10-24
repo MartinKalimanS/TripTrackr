@@ -43,10 +43,12 @@
  * Colours come from the kit's theme (`useThemeColor`) and never from a literal.
  */
 import { useThemeColor, type ThemeColor } from 'heroui-native';
+import type { Ref } from 'react';
 import {
   Pressable,
   type PressableProps,
   type StyleProp,
+  type View,
   type ViewStyle,
 } from 'react-native';
 
@@ -78,6 +80,8 @@ export type TappableProps = Omit<PressableProps, 'style' | 'disabled'> & {
    */
   feedback?: TappableFeedback;
   style?: StyleProp<ViewStyle>;
+  /** The native node (React 19 passes `ref` as a prop): the first-run tour measures with it. */
+  ref?: Ref<View>;
 };
 
 export type TappableFeedback = 'fill' | 'ring';

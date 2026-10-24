@@ -37,12 +37,12 @@ to be seen and the app to be learned from a short, closable tour instead, inform
   ONE real control (or none), and shows a card with a title, one or two sentences, the step position, a primary
   "Next" (the last: "Done") and a text "Skip tour". The card has a close (X) with the label "Close tour".
 - **FR-004** Steps, in order:
-  1. *Your globe*: lights the totals row. "Every trip you take draws an arc on the globe. Your totals are here."
-  2. *Add a trip*: lights "Plan a trip". "Tap here, name the trip and add its first stop."
-  3. *Your trips*: lights the Trips tab. "All your trips live here. Tap one to open it."
-  4. *Inside a trip*: lights nothing (centred card). "Each trip holds its stops, photos, spending, notes, documents
-     and offline maps. Open a trip's menu to edit or delete it."  (No real trip exists yet, hence no spotlight.)
-  5. *You*: lights the You tab. "Your passport and stamps are here, and you can replay this tour any time."
+  1. _Your globe_: lights the totals row. "Every trip you take draws an arc on the globe. Your totals are here."
+  2. _Add a trip_: lights "Plan a trip". "Tap here, name the trip and add its first stop."
+  3. _Your trips_: lights the Trips tab. "All your trips live here. Tap one to open it."
+  4. _Inside a trip_: lights nothing (centred card). "Each trip holds its stops, photos, spending, notes, documents
+     and offline maps. Open a trip's menu to edit or delete it." (No real trip exists yet, hence no spotlight.)
+  5. _You_: lights the You tab. "Your passport and stamps are here, and you can replay this tour any time."
 - **FR-005** Closing (X, Skip, the Android back button, or Done) ends the tour and records it as seen. A touch on
   the dimmed area does nothing (it does not close the tour and does not reach the screen below).
 - **FR-006** The tour starts by itself once per traveller per device: when the tab navigator is open (the first

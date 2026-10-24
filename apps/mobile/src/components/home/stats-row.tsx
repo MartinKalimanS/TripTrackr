@@ -34,6 +34,7 @@ import { StatTile } from '@/components/ui/stat-tile';
 import { countOf, figureFormat } from '@/features/home/home-format';
 import { WORLD_COUNTRIES } from '@/features/passport/country-summary';
 import { useAppearance } from '@/hooks/use-appearance';
+import { useTourTarget } from '@/components/tour/tour-targets';
 import { deviceLocale, distanceFigure, formatDistance } from '@/lib/locale';
 import { Motion } from '@/theme';
 
@@ -143,11 +144,15 @@ export function StatsRow({
   onOpenTrips,
 }: StatsRowProps) {
   const { fontScale } = useAppearance();
+  // The first-run tour lights the totals (feature 007).
+  const tourRef = useTourTarget('totals');
   const stacked = isLargeText(fontScale);
   const cells = stacked ? ['', '', ''] : ['flex-1 pr-3', 'flex-1 px-3', 'flex-1 pl-3'];
 
   return (
     <View
+      ref={tourRef}
+      collapsable={false}
       testID="globe-stats"
       className={stacked ? '' : 'items-stretch'}
       style={{ flexDirection: stacked ? 'column' : 'row' }}>

@@ -5,8 +5,9 @@
  * its lower part with three detents; "Plan a trip" floats above the tab pill. Layers, bottom up:
  * sky, globe (pins and callout inside it), header, sheet or card, button, the pill.
  *
- * - The globe is ALWAYS here (feature 003): with no trips, with trips but no stop and when the
- *   store cannot be read, a card floats over it instead (`InvitationCard`, `GlobeNotice`) in the
+ * - The globe is ALWAYS here (feature 003): with no trips it has the sheet at zero and the button
+ *   (feature 007); with trips but no stop, or when the store cannot be read, a card floats over it
+ *   instead (`GlobeEmptyState`, `GlobeNotice`) in the
  *   place of the sheet. While loading the screen is the skeleton (`HomeLoading`), not this.
  * - The camera follows the sheet (`useHomeCamera`): the first frame already fitted, a 280 ms ease
  *   on every settle, the logo and the attribution kept above the sheet. The map mounts when the
@@ -16,8 +17,8 @@
  * - Reading order is the header, the globe, then the sheet or card (the header is first in the
  *   tree and stacked over the globe by `zIndex`). `home-overlay` is the transparent layer that
  *   holds the header and lets every other touch through to the map.
- * - ONE "Plan a trip" button when trips exist (collapsed to its plus at peek, hidden at full);
- *   with none, the invitation carries the action and the button is not drawn (FR-018).
+ * - ONE "Plan a trip" button, with trips or none (collapsed to its plus at peek, hidden at full):
+ *   with no trips the first-run tour (feature 007) points at it.
  *
  * Read-only: the screen reads the traveller's own local records (FR-084), writes nothing and
  * makes no request. Every id of the feature 003 screen survives (FR-081).

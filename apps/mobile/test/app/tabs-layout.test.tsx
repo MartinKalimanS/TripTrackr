@@ -24,6 +24,8 @@ jest.setTimeout(60_000);
 
 jest.mock('@/hooks/use-appearance');
 // The gates in front of the tabs have suites of their own; here the tabs are the subject.
+// The first-run tour has suites of its own (it reads the local store).
+jest.mock('@/components/tour/first-run-tour', () => ({ FirstRunTour: () => null }));
 jest.mock('@/components/require-local-store', () => ({
   RequireLocalStore: ({ children }: { children: unknown }) => children,
 }));

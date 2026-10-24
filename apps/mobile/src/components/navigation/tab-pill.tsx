@@ -46,6 +46,9 @@ import { Text } from '@/components/ui/text';
 import { useHaptics } from '@/hooks/use-haptics';
 import { Radii } from '@/theme';
 
+import { useTourTarget } from '@/components/tour/tour-targets';
+import type { TourTarget } from '@/features/tour/tour-steps';
+
 import { TabCapsule } from './tab-capsule';
 import { PillMetrics, pillBottomOffset, pillReportedHeight } from './tab-metrics';
 import {
@@ -64,6 +67,12 @@ import { TabSurface } from './tab-surface';
  */
 const FADE_GROUND: Readonly<Record<string, FadeGround>> = { index: 'surface' };
 
+/** The tabs the first-run tour can light (feature 007); the Globe tab is where it happens. */
+const TOUR_TAB_TARGETS: Readonly<Record<string, TourTarget>> = {
+  trips: 'tab-trips',
+  profile: 'tab-profile',
+};
+
 interface TabButtonProps {
   route: TabRoute;
   options: TabOptions;
@@ -75,12 +84,14 @@ function TabButton({ route, options, focused, navigation }: TabButtonProps) {
   const label = tabLabel(options, route.name);
   const icon = TAB_ICONS[route.name];
   const haptics = useHaptics();
+  const tourRef = useTourTarget(TOUR_TAB_TARGETS[route.name] ?? null);
   const { onPress, onLongPress } = tabPressHandlers(route, navigation, focused, () =>
     haptics.tabChange(),
   );
 
   return (
     <Tappable
+      ref={tourRef}
       testID={options.tabBarButtonTestID ?? `tab-${route.name}`}
       accessibilityRole="tab"
       accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
