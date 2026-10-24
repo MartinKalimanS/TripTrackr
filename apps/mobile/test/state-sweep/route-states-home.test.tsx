@@ -94,9 +94,10 @@ describe('Home states: no control is a dead end', () => {
     expectHealthy();
   });
 
-  it('no trips: the invitation, "Plan a trip" as its one primary', async () => {
+  it('no trips: the globe, the sheet and "Plan a trip" as its one primary, no card', async () => {
     await renderHome();
-    expect(screen.getByTestId('globe-empty-state')).toBeTruthy();
+    expect(screen.queryByTestId('globe-empty-state')).toBeNull();
+    expect(screen.getByTestId('home-sheet')).toBeTruthy();
     expectHealthy();
     expect(primaryControls()).toEqual(['"Plan a trip"']);
   });

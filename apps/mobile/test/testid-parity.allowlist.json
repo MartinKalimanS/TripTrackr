@@ -1,6 +1,10 @@
 {
   "testIDs": [
     {
+      "id": "home-plan-trip",
+      "reason": "The empty Home's invitation card was removed (feature 007, T701): with no trips the Home shows the sheet and the one \"Plan a trip\" button, id home-plan-trip-fab. The Maestro flows 03, 04 and 05 tap the new id."
+    },
+    {
       "id": "notes-title",
       "reason": "The in-page title line ('Notes · <trip>') became the native header's title 'Notes' (FR-007), T440; recorded in the T440 note in tasks.md. No Maestro flow or test reads it."
     },

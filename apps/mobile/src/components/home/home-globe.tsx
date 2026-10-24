@@ -26,7 +26,7 @@ import { useIsFocused, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { GlobeNotice } from '@/components/globe/empty-state';
+import { GlobeEmptyState, GlobeNotice } from '@/components/globe/empty-state';
 import { GlobeView, type LiveTrip } from '@/components/globe/globe-view';
 import { useGlobeActions, type GlobeActions } from '@/components/globe/use-globe-actions';
 import { useIdleSpin } from '@/components/globe/use-idle-spin';
@@ -52,7 +52,6 @@ import { Space } from '@/theme';
 import { HomeHeader } from './home-header';
 import { HomeSheet } from './home-sheet';
 import { BottomCard } from './home-states';
-import { InvitationCard } from './invitation-card';
 import { useHomeCamera, type HomeCamera } from './use-home-camera';
 import { useHomeLayout, type HomeLayout } from './use-home-layout';
 
@@ -87,7 +86,6 @@ function invitationAction(
   router: ReturnType<typeof useRouter>,
   invitation: GlobeInvitation,
 ): () => void {
-  if (invitation.reason === 'no-trips') return () => router.push('/modal/add-trip');
   const { tripId } = invitation;
   return tripId ? () => router.push(`/trip/${tripId}`) : () => router.navigate('/trips');
 }
@@ -184,9 +182,9 @@ function FloatingCard({
     );
   }
   return (
-    <InvitationCard
+    <GlobeEmptyState
       reason={invitation.reason}
-      tripTitle={invitation.reason === 'no-stops' ? invitation.tripTitle : undefined}
+      tripTitle={invitation.tripTitle}
       onAction={invitationAction(router, invitation)}
     />
   );
@@ -211,7 +209,6 @@ export function HomeGlobe(props: HomeGlobeProps) {
   const full = sheetShown && camera.detent === 'full';
   // The banner is the top of the half sheet; elsewhere it stays under the greeting.
   const bannerInSheet = sheetShown && camera.detent === 'half';
-  const welcome = !failed && data.trips.length === 0;
 
   return (
     <View testID="home-screen" className="flex-1 bg-background">
@@ -225,7 +222,6 @@ export function HomeGlobe(props: HomeGlobeProps) {
             onRecentre={camera.recentre}
             onMeasured={layout.setHeaderBottom}
             banner={!bannerInSheet}
-            welcome={welcome ? { countries: 0 } : undefined}
           />
         )}
       </View>
@@ -260,10 +256,7 @@ export function HomeGlobe(props: HomeGlobeProps) {
         onPress={() => router.push('/modal/add-trip')}
         bottomInset={layout.tabZone}
         collapsed={camera.detent === 'peek'}
-        hidden={
-          !sheetShown ||
-          planTripFabHidden({ tripCount: data.trips.length, sheetFull: full })
-        }
+        hidden={!sheetShown || planTripFabHidden({ sheetFull: full })}
       />
     </View>
   );

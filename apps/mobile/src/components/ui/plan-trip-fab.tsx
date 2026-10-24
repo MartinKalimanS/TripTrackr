@@ -6,7 +6,7 @@
  *
  *   <PlanTripFab screen="trips" onPress={openAddTrip} bottomInset={tabZone} />
  *   <PlanTripFab screen="home" onPress={openAddTrip} bottomInset={tabZone}
- *                hidden={planTripFabHidden({ tripCount, sheetFull })} />
+ *                hidden={planTripFabHidden({ sheetFull })} />
  *
  * It is a `Button`: `primary` (the screen's one, FR-006), a plus and the words "Plan a trip" (capped
  * at 1.3 times the text size, FR-074), on the second lift, padded 16 dp before the plus and 20
@@ -30,8 +30,7 @@
  * `fabHeightAt` is its height at a text size, for the list's clearance.
  *
  * `hidden` draws nothing at all (not an invisible button an assistive technology could still
- * find). Home hides it at the full detent and while there are no trips (the invitation card
- * carries the action then): `planTripFabHidden` is that rule. Trips never hides it, in the empty
+ * find). Home hides it at the full detent: `planTripFabHidden` is that rule. Trips never hides it, in the empty
  * state either: the empty state has a secondary action of its own.
  */
 import { useContext } from 'react';
@@ -88,17 +87,15 @@ const FAB_IDS: Record<PlanTripFabScreen, string> = {
 const NO_INSETS = { top: 0, bottom: 0, left: 0, right: 0 };
 
 /**
- * Whether Home leaves the button out: at the full detent (the Countries list fills the sheet)
- * and with no trips (the invitation card carries the action, FR-018, FR-020).
+ * Whether Home leaves the button out: at the full detent (the Countries list fills the sheet).
+ * With no trips it is shown: it is the first thing the tour points at (feature 007).
  */
 export function planTripFabHidden({
-  tripCount,
   sheetFull = false,
 }: {
-  tripCount: number;
   sheetFull?: boolean;
 }): boolean {
-  return sheetFull || tripCount === 0;
+  return sheetFull;
 }
 
 export function PlanTripFab({

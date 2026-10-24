@@ -200,19 +200,14 @@ describe('<PlanTripFab collapsed> is the round button of the peek sheet (contrac
   });
 });
 
-describe('planTripFabHidden: when Home does not show the button (FR-018)', () => {
-  test('is shown with trips below the full detent', () => {
-    expect(planTripFabHidden({ tripCount: 3, sheetFull: false })).toBe(false);
-    expect(planTripFabHidden({ tripCount: 1 })).toBe(false);
+describe('planTripFabHidden: when Home does not show the button (FR-018, feature 007)', () => {
+  test('is shown below the full detent, with trips or with none (the tour points at it)', () => {
+    expect(planTripFabHidden({ sheetFull: false })).toBe(false);
+    expect(planTripFabHidden({})).toBe(false);
   });
 
   test('is hidden at the full detent, where the Countries list fills the sheet', () => {
-    expect(planTripFabHidden({ tripCount: 3, sheetFull: true })).toBe(true);
-  });
-
-  test('is hidden with no trips: the invitation card carries the action then', () => {
-    expect(planTripFabHidden({ tripCount: 0, sheetFull: false })).toBe(true);
-    expect(planTripFabHidden({ tripCount: 0, sheetFull: true })).toBe(true);
+    expect(planTripFabHidden({ sheetFull: true })).toBe(true);
   });
 });
 

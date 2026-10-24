@@ -148,16 +148,12 @@ describe('Home reading order: header, globe, sheet (contract C5-32)', () => {
     expect(globeStop?.name).toMatch(/Every trip is also listed in the Trips tab/);
   });
 
-  test('no trips: the greeting, the globe, the invitation (its headline, words and buttons), nothing else', async () => {
+  test('no trips: the greeting, the globe, the sheet, then the one button, and no card', async () => {
     await renderHome();
     const nodes = accessibleNodes();
-    expectReadingOrder(nodes, [
-      'home-greeting',
-      'globe-map',
-      'Your globe is waiting for its first trip',
-      'home-plan-trip',
-    ]);
-    expect(nodes.filter((node) => node.id === 'home-plan-trip')).toHaveLength(1);
+    expectReadingOrder(nodes, ['home-greeting', 'globe-map', 'home-plan-trip-fab']);
+    expect(nodes.filter((node) => node.id === 'home-plan-trip-fab')).toHaveLength(1);
+    expect(nodes.some((node) => node.id === 'globe-empty-state')).toBe(false);
     expect(unnamed(nodes)).toEqual([]);
   });
 

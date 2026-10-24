@@ -62,9 +62,9 @@ export const ROUTE_INVENTORY: readonly RouteRow[] = [
     },
     empty: {
       shows:
-        'the globe with the invitation over it ("Plan a trip", or "Add a first stop"); Countries: "No countries yet"',
+        'the globe with the sheet at zero and "Plan a trip" (a trip with no stop: the "Add a first stop" card); Countries: "No countries yet"',
       pins: [
-        [HOME, 'home-invitation'],
+        [HOME, 'home-plan-trip-fab'],
         [COUNTRIES, 'No countries yet'],
       ],
     },
@@ -89,7 +89,7 @@ export const ROUTE_INVENTORY: readonly RouteRow[] = [
         },
       },
     ],
-    primary: '"Plan a trip" (the invitation or the button above the pill)',
+    primary: '"Plan a trip" (the button above the pill)',
     sweep: SWEEP('home'),
   },
   {

@@ -4,9 +4,9 @@
  * Globe); restyled by feature 004 (T428; FR-005, FR-018, FR-029, FR-033, research
  * D4-11).
  *
- * The globe stays; a traveller with no trips is invited to create the first
- * one, a traveller whose trips have no stop is invited to add one. Both are
- * designed states: a title, a reason, and the one primary action that moves the
+ * The globe stays; a traveller whose trips have no stop is invited to add one (a traveller
+ * with no trip at all gets the sheet and the button instead, feature 007). It is a designed
+ * state: a title, a reason, and the one primary action that moves the
  * traveller forward. The card sits over map content, so it is an opaque `Card
  * overMap` (hairline, no shadow, no translucency). Under Jest the kit renders plain
  * views carrying the classes they were given: what is pinned is what the cards ASKED
@@ -64,30 +64,10 @@ function findByType(node: unknown, type: string): Json | undefined {
   return json.type === type ? json : findByType(json.children ?? [], type);
 }
 
-describe('<GlobeEmptyState> — no trips yet', () => {
-  test('invites the traveller to create their first trip', async () => {
-    const onAction = jest.fn();
-    await render(<GlobeEmptyState reason="no-trips" onAction={onAction} />);
-
-    expect(screen.getByText('Your globe is waiting for its first trip')).toBeTruthy();
-    expect(
-      screen.getByText('Add where you are going and the arcs draw themselves.'),
-    ).toBeTruthy();
-
-    await fireEvent.press(screen.getByTestId('home-plan-trip'));
-    expect(onAction).toHaveBeenCalledTimes(1);
-  });
-
-  test('its one action is a labelled button', async () => {
-    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
-    const action = screen.getByLabelText('Plan a trip');
-    expect(action.props.accessibilityRole).toBe('button');
-    expect(action.props.testID).toBe('home-plan-trip');
-  });
-
-  test('the title is a title in the display face, announced as a heading', async () => {
-    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
-    const title = screen.getByText('Your globe is waiting for its first trip');
+describe('<GlobeEmptyState> — the copy', () => {
+  test('the title is a headline in the display face, announced as a heading', async () => {
+    await render(<GlobeEmptyState reason="no-stops" onAction={jest.fn()} />);
+    const title = screen.getByText('Your trips need a first stop');
     expect(tokens(title.props.className)).toEqual(
       expect.arrayContaining(['font-display-bold', 'text-[22px]']),
     );
@@ -104,7 +84,6 @@ describe('<GlobeEmptyState> — no trips yet', () => {
 
 describe('<GlobeEmptyState> — one primary action (FR-005)', () => {
   test.each([
-    ['no-trips', undefined, 'home-plan-trip', 'Plan a trip'],
     ['no-stops', 'Alps, spring', 'home-add-stop', 'Add a first stop'],
     ['no-stops', undefined, 'home-open-trips', 'Open your trips'],
   ] as const)('%s / %s: a single primary button, %s', async (reason, trip, id, label) => {
@@ -121,14 +100,14 @@ describe('<GlobeEmptyState> — one primary action (FR-005)', () => {
 
 describe('<GlobeEmptyState> — a card over the map, never a replacement for it (FR-018, FR-033)', () => {
   test('is the opaque surface with a hairline: bg-surface, border, border-separator', async () => {
-    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
+    await render(<GlobeEmptyState reason="no-stops" onAction={jest.fn()} />);
     expect(classesOf('globe-empty-state')).toEqual(
       expect.arrayContaining(['bg-surface', 'border', 'border-separator']),
     );
   });
 
   test('carries only the second lift over the map and is never translucent', async () => {
-    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
+    await render(<GlobeEmptyState reason="no-stops" onAction={jest.fn()} />);
     const classes = classesOf('globe-empty-state');
     expect(classes).toContain('shadow-none');
     expect(classes.filter((token) => /(^|:)(inset-|drop-)?shadow/.test(token))).toEqual([
@@ -143,19 +122,19 @@ describe('<GlobeEmptyState> — a card over the map, never a replacement for it 
   });
 
   test('mounts no map of its own: the screen owns the one globe', async () => {
-    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
+    await render(<GlobeEmptyState reason="no-stops" onAction={jest.fn()} />);
     expect(screen.queryByTestId(/^mapbox-|^globe-map$/)).toBeNull();
   });
 
   test('stays a compact card: a capped width, never the whole screen', async () => {
-    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
+    await render(<GlobeEmptyState reason="no-stops" onAction={jest.fn()} />);
     expect(classesOf('globe-empty-state')).toEqual(
       expect.arrayContaining(['self-stretch', 'max-w-md']),
     );
   });
 
   test('keeps every word reachable at the largest text size: its own scroller, capped in height', async () => {
-    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
+    await render(<GlobeEmptyState reason="no-stops" onAction={jest.fn()} />);
     const scroller = findByType(screen.toJSON(), 'RCTScrollView') as Json;
     const style = StyleSheet.flatten(scroller.props.style as never) as {
       maxHeight: number;
@@ -177,7 +156,7 @@ describe('<GlobeEmptyState> — a card over the map, never a replacement for it 
   });
 
   test('owns its padding: none on the card, the inset on the scroller content', async () => {
-    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
+    await render(<GlobeEmptyState reason="no-stops" onAction={jest.fn()} />);
     // The kit surface pads 16 dp by class; an explicit style says what this card means,
     // and with nothing outside the scroller the cap IS the card's whole height.
     expect(styleOf('globe-empty-state').padding).toBe(0);
@@ -194,21 +173,21 @@ describe('<GlobeEmptyState> — a card over the map, never a replacement for it 
 
 describe('<GlobeEmptyState> — what a screen reader meets (FR-030)', () => {
   test('is not one merged focus stop: the title, the reason and the button stay separate', async () => {
-    await render(<GlobeEmptyState reason="no-trips" onAction={jest.fn()} />);
+    await render(<GlobeEmptyState reason="no-stops" onAction={jest.fn()} />);
     const card = screen.getByTestId('globe-empty-state');
     expect(card.props.accessible).toBeUndefined();
     expect(card.props.accessibilityLabel).toBeUndefined();
     expect(card.props.accessibilityRole).toBeUndefined();
     // The button is its own, labelled focus stop.
-    const action = screen.getByTestId('home-plan-trip');
+    const action = screen.getByTestId('home-open-trips');
     expect(action.props.accessible).toBe(true);
-    expect(action.props.accessibilityLabel).toBe('Plan a trip');
+    expect(action.props.accessibilityLabel).toBe('Open your trips');
   });
 
   test('presses call onAction with no arguments: the press event is not its business', async () => {
     const onAction = jest.fn();
-    await render(<GlobeEmptyState reason="no-trips" onAction={onAction} />);
-    await fireEvent.press(screen.getByTestId('home-plan-trip'));
+    await render(<GlobeEmptyState reason="no-stops" onAction={onAction} />);
+    await fireEvent.press(screen.getByTestId('home-open-trips'));
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(onAction).toHaveBeenCalledWith();
   });
@@ -229,7 +208,6 @@ describe('<GlobeEmptyState> — trips without a stop', () => {
     await fireEvent.press(screen.getByTestId('home-open-trips'));
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(screen.getByLabelText('Open your trips')).toBeTruthy();
-    expect(screen.queryByTestId('home-plan-trip')).toBeNull();
   });
 
   test('one trip: names it and offers to add its first stop', async () => {
