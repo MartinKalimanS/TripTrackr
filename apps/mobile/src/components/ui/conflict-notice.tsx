@@ -47,7 +47,7 @@ import { CONFLICT_COPY, describeMoreNotices } from '@/features/sync/sync-copy';
 import { announceWhereNoLiveRegion } from '@/hooks/use-announcement';
 import { useConflictNotices, useConflictStore } from '@/sync/conflicts';
 import type { ConflictNotice } from '@/sync/types';
-import { AtlasSpacing } from '@/theme';
+import { Space } from '@/theme';
 
 /** Notices shown in full at once; the rest are counted. */
 export const MAX_VISIBLE_NOTICES = 3;
@@ -74,11 +74,11 @@ export function ConflictNoticeBanner({
     <Card testID={base} className="gap-2">
       <View className="flex-row items-center gap-2">
         <Icon name={UPDATED} size={20} tone="accent" testID={`${base}-icon`} />
-        <Text type="headline" className="shrink">
+        <Text variant="callout" className="shrink">
           {CONFLICT_COPY.heading}
         </Text>
       </View>
-      <Text type="callout">{notice.summary}</Text>
+      <Text variant="label">{notice.summary}</Text>
       <View className="flex-row flex-wrap gap-2">
         {onOpenTrip ? (
           <Button
@@ -127,7 +127,7 @@ function OverflowRow({
 }) {
   return (
     <View className="flex-row flex-wrap items-center justify-between gap-2">
-      <Text type="callout" tone="muted">
+      <Text variant="label" tone="muted">
         {describeMoreNotices(hidden)}
       </Text>
       <Button
@@ -182,7 +182,7 @@ export function ConflictNotices() {
       style={styles.region}
       contentContainerStyle={[
         styles.stack,
-        { paddingTop: AtlasSpacing.two + (insets?.top ?? 0) },
+        { paddingTop: Space[2] + (insets?.top ?? 0) },
       ]}>
       {visible.map((notice) => (
         <ConflictNoticeBanner
@@ -209,8 +209,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   stack: {
-    gap: AtlasSpacing.two,
-    paddingHorizontal: AtlasSpacing.three,
-    paddingBottom: AtlasSpacing.two,
+    gap: Space[2],
+    paddingHorizontal: Space[4],
+    paddingBottom: Space[2],
   },
 });

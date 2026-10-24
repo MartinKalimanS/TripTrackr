@@ -12,6 +12,15 @@ export function isLargeText(fontScale: number): boolean {
   return fontScale >= REFLOW_FONT_SCALE;
 }
 
+/**
+ * The lines a one-line title or meta line may take: one, and two from a font scale of 1.15
+ * (the prototype's `:root[data-bigtext] .clamp-1 { -webkit-line-clamp: 2 }`), so a long name is
+ * wrapped, not cut, when the text is large.
+ */
+export function metaLines(fontScale: number): 1 | 2 {
+  return isLargeText(fontScale) ? 2 : 1;
+}
+
 /** The columns of the trip's areas grid: four, and two at large text. */
 export function areaColumns(fontScale: number): 2 | 4 {
   return isLargeText(fontScale) ? 2 : 4;

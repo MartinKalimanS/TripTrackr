@@ -98,17 +98,26 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
   `src/`. `useAppearance().tokens` is `Colors[themeName]`, which has all four themes (light, dark and
   the two contrast ones). Tabs use `expo-router` `Tabs` with a custom bar, not native tabs (D-17,
   rationale amended by research D4-06: the native module is still `unstable-` in SDK 57).
-- **The look is Sunrise Passport** (feature 005, which replaces the rejected Atlas look of feature 004; its
-  structure, adapters and token pipeline stay). The spike (004 T409) is a conditional go: the desk checks
-  passed and the device checks are still pending. UI primitives come from `components/ui/*` only, and only
-  that folder imports `heroui-native` (research D4-02, D4-03); a failed device check switches the adapters
-  to the fallback without touching a screen. Read `specs/005-sunrise-passport-ui/tasks.md` (and
-  `specs/004-app-ui-redesign/tasks.md`) before touching shared UI.
-- **Navigation chrome (feature 004).** `(tabs)/trips` and `(tabs)/profile` are nested stacks with a large
-  title (`useStackHeaderOptions`); `trip/[id]` has a native header per screen, built by `titled()` in
-  `trip/[id]/_layout.tsx` (title in `useHeaderTitleStyle`, Back is the `HeaderBackButton` adapter so
-  `tapOn: 'Back'` resolves); the `modal` group is ONE `formSheet` presented by the root stack
-  (`formSheetOptions`) with no header, no nested navigator (Android limits) and a `Slot` layout.
+- **The look is Sunrise Passport** (feature 005, built F1 to F13; it replaces the rejected Atlas look of feature 004,
+  whose structure, adapters and token pipeline stay). The pictures and the measured prototype are the
+  specification: `specs/005-sunrise-passport-ui/reference/` (`README.md`, `UI-SPEC.md`, `IMPLEMENTATION-PLAN.md`,
+  `screens/`, `prototype/`, and one `as-built/*.md` note per feature with its deviations and device checks).
+  UI primitives come from `components/ui/*` only, and only that folder imports `heroui-native` (research D4-02,
+  D4-03). **Owner rule Q-11:** a control the pictures draw for a capability the app does not have (search, share,
+  more, settings, budget, formatting) is drawn as pictured through `components/ui/coming-soon-button.tsx`: one
+  toast, no navigation, no write, never invented data. Do not add a dead control any other way, and do not
+  reintroduce neumorphism (`test/no-neumorphism.test.ts`). Hermes has no `Intl.PluralRules`: use `countParts`.
+- **Test kits that guard the look.** `test/scale/` (reflow at 1, 1.15, 1.5, 2 and the fixed-height ratchet with
+  its allow-list), `test/a11y/` (reading order per screen, decorative art hidden, reach-all lists, final values),
+  `test/appearance/` (every screen in four themes, reduced transparency and motion, live switching, the
+  translucent-surface allow-list), `test/theme/` (contrast gate, token sync) and the testID/label parity check
+  (`scripts/testid-baseline.mjs`). A new screen joins them.
+- **Navigation chrome (features 004 and 005).** `(tabs)/trips` and `(tabs)/profile` are nested stacks;
+  `trip/[id]` is a stack whose screens ALL draw their own bar (the hero's transparent header, then
+  `AreaHeader` for photos, spending, notes, documents and offline maps, the viewer's close bar), so no native
+  sub-screen header remains; Back is `HeaderBackButton` so `tapOn: 'Back'` resolves. The `modal` group is ONE
+  `formSheet` presented by the root stack (`formSheetOptions`) with no header, no nested navigator (Android
+  limits) and a `Slot` layout.
 - **Forms are sheets.** A router form is a route under `modal/` built on `FormSheet` (title, scrolling
   keyboard-aware body, sticky `FormActions` footer above the keyboard); a state-driven form is a
   `FormSheet host="modal"` inside a `FormModal`. Every form has a keyboard-visibility test written
@@ -123,8 +132,12 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
   date line and poles). Map colours are the `GlobeColors` tokens with their own contrast gate; no
   map mounts before `useMapboxReady()` says `ready` (token set, telemetry off).
 - **The home is always the globe** (feature 003): it is mounted with no trips, with trips but no stop
-  and when the store cannot be read; a flat bordered card (`empty-state.tsx`, contract C12) floats over
-  it instead of replacing it. The legs between trips are a second, non-tappable source derived by
+  and when the store cannot be read. With no trips it shows the sheet at zero and the one "Plan a trip"
+  button, no card and no counter (feature 007); with trips but no stop, or an unreadable store, a flat
+  bordered card (`empty-state.tsx`, contract C12) floats over it instead of replacing it. A new
+  traveller (no trips, not seen) gets the **first-run tour** (`features/tour`, `components/tour`): at
+  most five steps (`MAX_TOUR_STEPS`), a spotlight on a real control registered with `useTourTarget`,
+  closable at any moment, remembered per traveller in the keychain, replayable from You. The legs between trips are a second, non-tappable source derived by
   `features/globe/journey.ts` and drawn under the trip arcs in the past style. The tab bar is a floating
   pill (`TabBar`, one `Tappable` per tab; a tab may have a surface, feature 005 amends 003 FR-013 to
   FR-015): keep its testIDs.
@@ -147,6 +160,9 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
 | A recurring server job      | BullMQ job scheduler (`upsertJobScheduler`) in `apps/api/src/common/queue/`, not `setInterval` or `@nestjs/schedule`     |
 | Expense categories          | System rows are `SYSTEM_EXPENSE_CATEGORIES` in contracts (fixed ids, seeded by migration 0009)                           |
 | UI components (feature 005) | `heroui-native` on `uniwind` via `components/ui/` only (T409); icons: Phosphor; Home sheet: custom `ui/sheet.tsx`        |
+| Photo zoom, swipe           | `react-native-zoom-toolkit` `Gallery`, only inside `components/ui/photo-viewer.tsx`                                      |
+| Glass, blur, haptics        | `expo-glass-effect`, `expo-blur`, `expo-haptics`, each behind an adapter that honours reduced motion and transparency    |
+| Rasterise a stamp page      | `react-native-view-shot` (`captureRef`), from 100 stamps up (`components/profile/`)                                      |
 
 Native modules (`flash-list`, `keyboard-controller`, `expo-localization`) follow the SDK 57 pin in
 `node_modules/expo/bundledNativeModules.json`; check it before bumping.

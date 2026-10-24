@@ -29,6 +29,7 @@ import type { TripCardModel } from '@/features/trips/trip-card-model';
 import type { TripListItem } from '@/features/trips/trip-sections';
 import type { TripsSync } from '@/features/trips/use-trips-sync';
 
+import { resetKeyboard, setWindow } from '../helpers/keyboard';
 import { cardModel, manyTrips } from '../helpers/trip-card-fixture';
 
 // The first render of a suite pays for transforming every module the screen touches, and a long list
@@ -82,6 +83,16 @@ jest.mock('@/components/ui/list-screen', () => {
   };
 });
 
+// The toast zone lives in the layout; here the screen only asks whether a toast is up.
+const mockToastUp = { current: false };
+jest.mock('@/components/ui/toast-zone', () => ({
+  ...jest.requireActual('@/components/ui/toast-zone'),
+  useToastVisible: () => mockToastUp.current,
+}));
+const { mockToast } = jest.requireMock('heroui-native') as {
+  mockToast: { show: jest.Mock };
+};
+
 const mockTrips: { data: TripCardModel[]; loading: boolean; error: Error | null } = {
   data: [],
   loading: false,
@@ -119,6 +130,7 @@ async function renderOn(os: 'ios' | 'android', tabZone = TAB_ZONE) {
 
 let platform: { restore: () => void } | undefined;
 afterEach(() => {
+  resetKeyboard();
   platform?.restore();
   platform = undefined;
 });
@@ -131,6 +143,8 @@ beforeEach(() => {
   mockPush.mockReset();
   mockRetry.mockReset();
   mockStackScreen.mockClear();
+  mockToastUp.current = false;
+  mockToast.show.mockClear();
 });
 
 const past = (id: string, year: number, overrides: Partial<TripCardModel> = {}) =>
@@ -583,30 +597,37 @@ describe('<TripsScreen> - Plan a trip: one button above the pill, on both platfo
 });
 
 describe('<TripsScreen> - nothing behind the pill or the button (FR-024)', () => {
-  test('the list ends past the pill, then the button, then a margin', async () => {
-    mockTrips.data = MIXED();
-    platform = await renderOn('ios');
+  // UI-SPEC section 5: bottom = tab zone 88 + 16 + FAB + 16 = 172 (176 on Android, whose FAB is
+  // 56). The old assertion was ">= 176" on both platforms from a 56 dp button; the picture's
+  // iOS pill is 52 dp, so the iOS foot is exactly 172.
+  test.each([
+    ['ios', 172],
+    ['android', 176],
+  ] as const)(
+    'on %s the list ends %i dp from the bottom: pill zone, 16, the button, 16',
+    async (os, foot) => {
+      setWindow({ width: 390, height: 844, fontScale: 1 });
+      mockTrips.data = MIXED();
+      platform = await renderOn(os);
 
-    const content = flat({
-      props: { style: screen.getByTestId('trips-list').props.contentContainerStyle },
-    });
-    const clearance = flat(screen.getByTestId('trips-fab-clearance', hidden));
-    // The button is 56 dp at least and floats 16 dp above the pill's zone: the content's
-    // foot (its padding and the clearance) is more than all of that.
-    const foot = (content.paddingBottom as number) + (clearance.height as number);
-    expect(foot).toBeGreaterThanOrEqual(TAB_ZONE + Spacing.three + 56 + Spacing.three);
-    expect(
-      within(screen.getByTestId('trips-list')).getByTestId('trips-fab-clearance', hidden),
-    ).toBeTruthy();
-  });
+      const list = screen.getAllByTestId('trips-list').at(-1)!;
+      const content = flat({ props: { style: list.props.contentContainerStyle } });
+      const clearance = flat(screen.getByTestId('trips-fab-clearance', hidden));
+      expect((content.paddingBottom as number) + (clearance.height as number)).toBe(foot);
+      expect(within(list).getByTestId('trips-fab-clearance', hidden)).toBeTruthy();
+    },
+  );
 
-  test('the clearance is decoration, and grows with the text size (a minimum)', async () => {
+  test('the clearance is decoration and stops growing where the button does (words capped at 1.3)', async () => {
     mockTrips.data = MIXED();
     platform = await renderOn('ios');
     const clearance = screen.getByTestId('trips-fab-clearance', hidden);
     expect(clearance.props.accessibilityElementsHidden).toBe(true);
-    // The jest window reports a font scale of 2: the button is 96 dp, not 56.
-    expect(flat(clearance).height).toBeGreaterThan(56 + Spacing.three);
+    // The jest window reports a font scale of 2, past the cap: 53 dp of button and 16 above.
+    expect(flat(clearance).height).toBe(53 + Spacing.three);
+    // The old rule (96 dp at scale 2) left a 40 dp hole under the last card; trips-scale2.png
+    // shows the button at its normal size.
+    expect(flat(clearance).height).toBeLessThan(56 + Spacing.three + 8);
   });
 
   test('ends the list 16 dp above the pill, whatever its zone is (ListScreen reads the pill)', async () => {
@@ -647,7 +668,109 @@ describe('<TripsScreen> - nothing behind the pill or the button (FR-024)', () =>
   });
 });
 
+describe('<TripsScreen> - the header: the sync chip and the pictured Search (Q-11)', () => {
+  test.each(['ios', 'android'] as const)(
+    'on %s: Search is drawn as pictured, a real button that answers with one toast',
+    async (os) => {
+      mockTrips.data = MIXED();
+      platform = await renderOn(os);
+
+      const search = screen.getByTestId('coming-soon-trips-search');
+      expect(search.props.accessibilityRole).toBe('button');
+      expect(search.props.accessibilityLabel).toBe('Search');
+      expect(search.props.accessibilityHint).toBe('Not available yet');
+      // The picture's disc: cream with a hairline (the `tonal` look), 44 dp.
+      expect(flat(search)).toMatchObject({
+        borderWidth: 1,
+        width: 44,
+        height: 44,
+      });
+
+      await fireEvent.press(search);
+      expect(mockToast.show).toHaveBeenCalledTimes(1);
+      expect(mockToast.show.mock.calls[0]?.[0]).toMatchObject({ id: 'coming-soon' });
+      expect(mockPush).not.toHaveBeenCalled();
+    },
+  );
+
+  test('is in the header with nothing waiting to sync, and in an empty or failed store too', async () => {
+    for (const state of ['empty', 'loading', 'error'] as const) {
+      mockTrips.data = [];
+      mockTrips.loading = state === 'loading';
+      mockTrips.error = state === 'error' ? new Error('x') : null;
+      platform = await renderOn('ios');
+      expect(screen.getAllByTestId('coming-soon-trips-search').length).toBeGreaterThan(0);
+      platform.restore();
+      platform = undefined;
+    }
+  });
+
+  test('the sync chip comes first and Search is the last control, at the trailing edge', async () => {
+    mockTrips.data = MIXED();
+    mockSync.current = { chip: { kind: 'waiting', count: 3 }, banner: null };
+    platform = await renderOn('ios');
+
+    const order = screen
+      .getAllByTestId(/^(sync-chip|coming-soon-trips-search)$/)
+      .map((node) => node.props.testID);
+    expect(order).toEqual(['sync-chip', 'coming-soon-trips-search']);
+  });
+
+  test('the two sit in one row 8 dp apart, centred on each other', async () => {
+    mockTrips.data = MIXED();
+    mockSync.current = { chip: { kind: 'waiting', count: 3 }, banner: null };
+    platform = await renderOn('ios');
+
+    const row = screen.getByTestId('trips-header-tools');
+    expect(flat(row)).toMatchObject({
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    });
+  });
+});
+
+describe('<TripsScreen> - the filter sits 16 dp from what is above and below it (.list gap)', () => {
+  test('the header gap is 16, the count line stays 12 above the filter', async () => {
+    mockTrips.data = MIXED();
+    mockSync.current = {
+      chip: { kind: 'offline', count: 3 },
+      banner: { tone: 'offline', message: 'Offline.' },
+    };
+    platform = await renderOn('ios');
+
+    expect(flat(screen.getByTestId('trips-header')).gap).toBe(16);
+    expect(flat(screen.getByTestId('trips-count')).marginBottom).toBe(-4);
+  });
+});
+
+describe('<TripsScreen> - the toast pattern (trips-toast.png)', () => {
+  test('the button rises above a toast while one is up, and sits on the pill otherwise', async () => {
+    mockTrips.data = MIXED();
+    platform = await renderOn('ios');
+    expect(flat(screen.getByTestId('trips-plan-trip')).bottom).toBe(TAB_ZONE + 16);
+    platform.restore();
+
+    mockToastUp.current = true;
+    platform = await renderOn('ios');
+    expect(flat(screen.getAllByTestId('trips-plan-trip').at(-1)!).bottom).toBe(
+      TAB_ZONE + 16 + 68,
+    );
+  });
+});
+
 describe('<TripsScreen> - 200 trips (FR-035; SC-006)', () => {
+  test('the year strip is at right 4, top 250 (.year-scrub), clear of the tab zone', async () => {
+    mockTrips.data = manyTrips(214);
+    platform = await renderOn('ios');
+
+    expect(flat(screen.getByTestId('trips-year-strip'))).toMatchObject({
+      position: 'absolute',
+      top: 250,
+      end: 4,
+    });
+  });
+
   test('stays a virtualised list: far fewer cards are drawn than there are trips', async () => {
     mockTrips.data = manyTrips(214);
     platform = await renderOn('ios');

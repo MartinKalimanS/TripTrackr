@@ -1,0 +1,41 @@
+# Answer the sheet "Who can see these photos?" that follows a library or camera pick
+# (spec 006). Documents never raise it: do not call this after a document pick.
+#
+# VISIBILITY (optional, default `private`):
+#   private   keep the default, Private, and tap "Add N photos"
+#   public    select Public, then tap "Add N photos"
+#   dismiss   leave the sheet with Android's Back: the photos are added, private
+#
+# The ids are `photo-visibility-sheet`, `-private`, `-public` and `-confirm`.
+appId: com.triptrackr.app
+env:
+  VISIBILITY: 'private'
+---
+- extendedWaitUntil:
+    visible:
+      id: 'photo-visibility-sheet'
+    timeout: 10000
+- assertVisible: 'Who can see (these photos|this photo)\?'
+- assertVisible:
+    id: 'photo-visibility-private'
+    checked: true
+- runFlow:
+    when:
+      true: ${VISIBILITY == 'public'}
+    commands:
+      - tapOn:
+          id: 'photo-visibility-public'
+      - assertVisible:
+          id: 'photo-visibility-public'
+          checked: true
+- runFlow:
+    when:
+      true: ${VISIBILITY == 'dismiss'}
+    commands:
+      - pressKey: back
+- runFlow:
+    when:
+      true: ${VISIBILITY != 'dismiss'}
+    commands:
+      - tapOn:
+          id: 'photo-visibility-confirm'

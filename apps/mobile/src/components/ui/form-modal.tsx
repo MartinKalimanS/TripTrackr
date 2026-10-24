@@ -50,7 +50,7 @@ function SheetHandle({ testID }: { testID: string }) {
       testID={testID}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      className="mt-3 h-1 w-8 self-center rounded-full bg-border"
+      className="mt-2 h-[5px] w-9 self-center rounded-full bg-grab"
     />
   );
 }

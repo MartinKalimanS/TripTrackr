@@ -22,8 +22,10 @@ import {
   packName,
   packProgress,
   packStatusText,
+  splitByPack,
   tripCities,
   type OfflineCity,
+  type OfflinePackState,
 } from '@/features/trips/offline-packs';
 
 const KM_PER_DEGREE = 111.32;
@@ -366,5 +368,35 @@ describe('packStatusText — state as words, never colour alone (feature 002 FR-
         partial: false,
       }),
     ).toEqual({ text: OFFLINE_PACK_COPY.failed, spoken: OFFLINE_PACK_COPY.failed });
+  });
+});
+
+describe('splitByPack - the two lists of the offline maps screen (F11)', () => {
+  const city = (cityId: number) => ({
+    cityId,
+    cityName: `City ${cityId}`,
+    countryName: null,
+    lat: 1,
+    lng: 2,
+  });
+  const states: Record<number, OfflinePackState> = {
+    1: { kind: 'none' },
+    2: { kind: 'ready', bytes: 5 },
+    3: { kind: 'downloading', percent: 10 },
+    4: { kind: 'error', message: 'x', partial: true },
+    5: { kind: 'ready', bytes: 7 },
+  };
+
+  test('finished maps are "saved"; everything else is still "to do", each in the trip’s order', () => {
+    const cities = [1, 2, 3, 4, 5].map(city);
+    const { todo, saved } = splitByPack(cities, (c) => states[c.cityId]);
+    expect(todo.map((c) => c.cityId)).toEqual([1, 3, 4]);
+    expect(saved.map((c) => c.cityId)).toEqual([2, 5]);
+  });
+
+  test('no city is dropped or repeated', () => {
+    const cities = [1, 2, 3, 4, 5].map(city);
+    const { todo, saved } = splitByPack(cities, (c) => states[c.cityId]);
+    expect(todo.length + saved.length).toBe(cities.length);
   });
 });

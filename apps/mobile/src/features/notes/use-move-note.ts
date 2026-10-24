@@ -26,6 +26,13 @@ export interface AnchorTarget extends NoteAnchor {
   label: string;
   /** Stable key for lists: `country:1`, `city:101`. */
   key: string;
+  /** The country's ISO alpha-2 code, for the flag beside the label; absent when never cached. */
+  iso2?: string | null;
+}
+
+/** The flag's code when the country has one cached; no key at all when it has not. */
+function withIso(iso: string | null | undefined): Pick<AnchorTarget, 'iso2'> {
+  return iso ? { iso2: iso } : {};
 }
 
 /** Which level a note currently sits at (FR-017). */
@@ -41,20 +48,28 @@ export function levelOf(anchor: NoteAnchor): AnchorLevel {
  */
 export function anchorTargets(stops: readonly StopWithPlace[]): AnchorTarget[] {
   const countries = new Map<number, string>();
-  const cities = new Map<number, { name: string; country: string; countryId: number }>();
+  const isoOf = new Map<number, string | null>();
+  const cities = new Map<
+    number,
+    { name: string; country: string; countryId: number; iso: string | null }
+  >();
 
   for (const stop of stops) {
     // A stop whose city is not in the cache has no country id to offer.
     const cityName = stop.city_name ?? `City #${stop.city_id}`;
     const countryName = stop.country_name ?? 'Unknown country';
     const countryId = stop.country_id ?? null;
-    if (countryId !== null && !countries.has(countryId))
+    const iso = stop.country_iso ?? null;
+    if (countryId !== null && !countries.has(countryId)) {
       countries.set(countryId, countryName);
+      isoOf.set(countryId, iso);
+    }
     if (!cities.has(stop.city_id)) {
       cities.set(stop.city_id, {
         name: cityName,
         country: countryName,
         countryId: countryId ?? 0,
+        iso,
       });
     }
   }
@@ -66,6 +81,7 @@ export function anchorTargets(stops: readonly StopWithPlace[]): AnchorTarget[] {
     label: single ? `Whole trip (${name})` : name,
     country_id: id,
     city_id: null,
+    ...withIso(isoOf.get(id)),
   }));
   const cityTargets: AnchorTarget[] = [...cities].map(([id, city]) => ({
     level: 'city',
@@ -73,6 +89,7 @@ export function anchorTargets(stops: readonly StopWithPlace[]): AnchorTarget[] {
     label: `${city.name}, ${city.country}`,
     country_id: city.countryId || null,
     city_id: id,
+    ...withIso(city.iso),
   }));
 
   return [...countryTargets, ...cityTargets].filter((target) =>

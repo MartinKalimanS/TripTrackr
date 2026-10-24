@@ -71,16 +71,12 @@ const SUB_SCREENS = [
 
 /**
  * The sub-screens that moved to Atlas and so have a native header (004 phase 5); each is
- * asserted in its own suite (offline-maps-header, photos-header, the document block below).
+ * asserted in its own suite. Since feature 005 (T549 to T552, F11) NONE of them is: `photos`, `notes`,
+ * `expenses`, the document screens and `offline-maps` each draw their own bar (`AreaHeader`, the viewer's
+ * close bar), so every native header is hidden (photos-header, notes-pictured, spending-pictured,
+ * offline-maps-header and the document block below).
  */
-const MIGRATED_HEADERS = new Set<string>([
-  'notes',
-  'expenses',
-  'offline-maps',
-  'photos',
-  'documents',
-  'document-view',
-]);
+const MIGRATED_HEADERS = new Set<string>([]);
 
 function routes(root: object) {
   return {
@@ -185,16 +181,9 @@ describe('trip/[id]/_layout - the header is on for the overview and the migrated
     expect(contentBackground('index')).toBe(COLOURS.background);
   });
 
-  test('the sub-screens keep an opaque bar of the canvas colour', async () => {
-    await openTrip(anchored, '/trip/abc/notes');
-    const header = tripHeaders().notes;
-    expect(header?.translucent).toBe(false);
-    expect(header?.backgroundColor).toBe(COLOURS.background);
-  });
-
   test('every other trip screen is painted with the same background', async () => {
-    await openTrip(anchored, '/trip/abc/notes');
-    expect(contentBackground('notes')).toBe(COLOURS.background);
+    await openTrip(anchored, '/trip/abc/expenses');
+    expect(contentBackground('expenses')).toBe(COLOURS.background);
   });
 });
 
@@ -241,6 +230,56 @@ describe('trip/[id]/_layout - Back (FR-008, research "Items to verify" item 7)',
   });
 });
 
+describe('trip/[id]/_layout - Share and More as pictured, coming soon (Q-11; UI-SPEC 6 and 10)', () => {
+  const { mockToast } = jest.requireMock('heroui-native') as {
+    mockToast: { show: jest.Mock };
+  };
+
+  beforeEach(() => mockToast.show.mockClear());
+
+  test('the overview header draws Share and More at the end, as buttons named from the picture', async () => {
+    await openTrip(anchored, '/trip/abc');
+    for (const [id, name] of [
+      ['coming-soon-trip-share', 'Share'],
+      ['coming-soon-trip-more', 'More'],
+    ] as const) {
+      const button = screen.getByTestId(id);
+      expect(button.props.accessibilityRole).toBe('button');
+      expect(button.props.accessibilityLabel).toBe(name);
+      expect(button.props.accessibilityHint).toBe('Not available yet');
+      expect(StyleSheet.flatten(button.props.style)).toMatchObject({
+        width: 44,
+        height: 44,
+      });
+    }
+  });
+
+  test('only the overview has them: the sub-screens keep Back alone', async () => {
+    await openTrip(anchored, '/trip/abc/notes');
+    expect(screen.queryByTestId('coming-soon-trip-share')).toBeNull();
+    expect(screen.queryByTestId('coming-soon-trip-more')).toBeNull();
+  });
+
+  test('each press is ONE toast and navigates nowhere', async () => {
+    const { app } = await openTrip(anchored, '/trip/abc');
+    await fireEvent.press(screen.getByTestId('coming-soon-trip-share'));
+    await fireEvent.press(screen.getByTestId('coming-soon-trip-more'));
+    expect(mockToast.show).toHaveBeenCalledTimes(2);
+    expect(mockToast.show.mock.calls.map(([call]) => call.id)).toEqual([
+      'coming-soon',
+      'coming-soon',
+    ]);
+    expect(app.getPathname()).toBe('/trip/abc');
+  });
+
+  test('Back, Share and More are still one of each', async () => {
+    await openTrip(anchored, '/trip/abc');
+    expect(screen.getAllByLabelText('Back')).toHaveLength(1);
+    expect(screen.getAllByLabelText('Share')).toHaveLength(1);
+    expect(screen.getAllByLabelText('More')).toHaveLength(1);
+  });
+});
+
 describe('trip/[id]/_layout - the header leaves the route alone (FR-030)', () => {
   test('hands the screen the same params as before', async () => {
     await openTrip(anchored, '/trip/abc');
@@ -262,145 +301,41 @@ describe('trip/[id]/_layout - the header leaves the route alone (FR-030)', () =>
   });
 });
 
-describe('trip/[id]/_layout - the document screens (004 T443; FR-007, FR-008, FR-033)', () => {
-  const DOC_COLOURS: Record<string, string> = {
-    ...COLOURS,
-    foreground: 'rgb(77, 88, 99)',
-  };
-
-  beforeEach(() => {
-    // The title face reads a THEME list (`useThemeColor([...])`); answer it by name too.
-    jest
-      .spyOn(HeroUI, 'useThemeColor')
-      .mockImplementation(((token: string | string[]) =>
-        Array.isArray(token)
-          ? token.map((name) => DOC_COLOURS[name] ?? '#808080')
-          : (DOC_COLOURS[token] ?? '#808080')) as never);
-  });
-
-  async function openDocuments() {
-    const { app } = await openTrip(anchored, '/trip/abc');
-    await act(async () => router.push('/trip/abc/documents'));
-    return { app };
-  }
-
-  test('the list and the viewer have a native header titled for them; the camera keeps its own bar', async () => {
+describe('trip/[id]/_layout - the document screens draw their own bars (005 T552; FR-044, FR-050)', () => {
+  test('the list, the viewer and the camera all hide the navigator header', async () => {
     await openTrip(anchored, '/trip/abc');
     await act(async () => router.push('/trip/abc/documents'));
     await act(async () => router.push('/trip/abc/document-view?documentId=d1'));
     await act(async () => router.push('/trip/abc/document-capture'));
 
     const headers = tripHeaders();
-    expect(headers.documents?.hidden).toBe(false);
-    expect(headers.documents?.title).toBe('Documents');
-    expect(headers['document-view']?.hidden).toBe(false);
-    expect(headers['document-view']?.title).toBe('Document');
-    // A camera surface: its own bar, with the Back and the title the flows know.
+    expect(headers.documents?.hidden).toBe(true);
+    expect(headers['document-view']?.hidden).toBe(true);
     expect(headers['document-capture']?.hidden).toBe(true);
   });
 
-  test('carry the tokens: canvas for the bar and the scene, accent tint, ink title in the display face, no hairline', async () => {
-    await openDocuments();
-
-    const header = tripHeaders().documents;
-    expect(header?.hideShadow).toBe(true);
-    expect(header?.backgroundColor).toBe(COLOURS.background);
-    expect(header?.color).toBe(COLOURS.accent);
-    expect(header?.titleColor).toBe(DOC_COLOURS.foreground);
-    expect(contentBackground('documents')).toBe(COLOURS.background);
-  });
-
-  test('Back on the list is the one control named "Back" on top, and goes to the overview', async () => {
-    const { app } = await openDocuments();
-    expect(app.getPathname()).toBe('/trip/abc/documents');
-
-    const backs = screen.getAllByLabelText('Back');
-    expect(backs.at(-1)?.props.accessibilityRole).toBe('button');
-    await fireEvent.press(backs.at(-1) as TestInstance);
-
-    expect(app.getPathname()).toBe('/trip/abc');
-    expect(screen.getByTestId('trip-index')).toBeTruthy();
-  });
-
-  test('Back on the viewer goes to the list, whatever it is called', async () => {
-    const { app } = await openDocuments();
-    await act(async () => router.push('/trip/abc/document-view?documentId=d1'));
-    expect(app.getPathname()).toBe('/trip/abc/document-view');
-
-    await fireEvent.press(screen.getAllByLabelText('Back').at(-1) as TestInstance);
-
-    expect(app.getPathname()).toBe('/trip/abc/documents');
-  });
-
-  test('a document opened by a link keeps its params and its header', async () => {
+  test('a document opened by a link keeps its params', async () => {
     const { app } = await openTrip(anchored, '/trip/abc/document-view?documentId=d9');
 
     expect(app.getPathname()).toBe('/trip/abc/document-view');
     expect(app.getSearchParams()).toEqual({ id: 'abc', documentId: 'd9' });
-    expect(tripHeaders()['document-view']?.hidden).toBe(false);
+  });
+
+  test('the scene behind them is the canvas', async () => {
+    await openTrip(anchored, '/trip/abc');
+    await act(async () => router.push('/trip/abc/documents'));
+
+    expect(contentBackground('documents')).toBe(COLOURS.background);
   });
 });
 
-describe('trip/[id]/_layout - notes and spending: a native header with a title and Back (T440, T441; FR-007, FR-008)', () => {
-  const TITLES = { notes: 'Notes', expenses: 'Spending' } as const;
-
-  test.each(Object.entries(TITLES))(
-    '%s is titled "%s" in the header (the title the screen used to draw as a line of its own)',
-    async (name, title) => {
-      await openTrip(anchored, `/trip/abc/${name}`);
-      expect(tripHeaders()[name]?.title).toBe(title);
-    },
-  );
-
-  test.each(Object.keys(TITLES))(
-    '%s paints its bar and scene with the canvas, tints the controls with the accent and draws no hairline',
+describe('trip/[id]/_layout - notes and spending draw their own header (F8, F9; FR-044)', () => {
+  test.each(['notes', 'expenses'])(
+    'the navigator’s header is hidden for %s: the screen draws the title and Back',
     async (name) => {
       await openTrip(anchored, `/trip/abc/${name}`);
-      const header = tripHeaders()[name];
-      expect(header?.backgroundColor).toBe(COLOURS.background);
-      expect(header?.color).toBe(COLOURS.accent);
-      expect(header?.hideShadow).toBe(true);
-      expect(contentBackground(name)).toBe(COLOURS.background);
+      expect(tripHeaders()[name]?.hidden).toBe(true);
+      expect(screen.queryAllByLabelText('Back')).toHaveLength(0);
     },
   );
-
-  test.each(Object.keys(TITLES))(
-    '%s sets its title in the foreground ink, not in the accent that tints the header (FR-003)',
-    async (name) => {
-      await openTrip(anchored, `/trip/abc/${name}`);
-      expect(tripHeaders()[name]?.titleColor).toBe(COLOURS.foreground);
-      expect(tripHeaders()[name]?.titleColor).not.toBe(COLOURS.accent);
-    },
-  );
-
-  test.each(Object.keys(TITLES))(
-    '%s replaces the native back button with the one control named "Back"',
-    async (name) => {
-      await openTrip(anchored, `/trip/abc/${name}`);
-      expect(screen.getAllByLabelText('Back')).toHaveLength(1);
-      expect(tripHeaders()[name]?.backButtonInCustomView).toBe(false);
-      expect(tripHeaders()[name]?.hideBackButton).toBe(false);
-    },
-  );
-
-  test('Back from notes pops to the trip overview, the screen the traveller came from', async () => {
-    const { app } = await openTrip(anchored, '/trip/abc');
-    await act(async () => router.push('/trip/abc/notes'));
-    expect(app.getPathname()).toBe('/trip/abc/notes');
-
-    const back = screen.getAllByLabelText('Back');
-    await fireEvent.press(back[back.length - 1]);
-
-    expect(app.getPathname()).toBe('/trip/abc');
-    expect(screen.getByTestId('trip-index')).toBeTruthy();
-  });
-
-  test('Back from spending, opened by a deep link with nothing beneath it, goes home instead of vanishing', async () => {
-    const { app } = await openTrip(unanchored, '/trip/abc/expenses');
-    expect(app.getPathname()).toBe('/trip/abc/expenses');
-
-    await fireEvent.press(screen.getByLabelText('Back'));
-
-    expect(app.getPathname()).toBe('/');
-  });
 });

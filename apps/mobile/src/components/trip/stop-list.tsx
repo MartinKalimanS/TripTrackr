@@ -59,7 +59,7 @@ import {
   type StopLeg,
   type StopNodeState,
 } from '@/features/trips/stop-timeline';
-import { Motion, cornerStyle } from '@/theme';
+import { Motion, cornerOf } from '@/theme';
 
 export type StopListProps = {
   stops: readonly StopWithPlace[];
@@ -275,7 +275,7 @@ export function StopList(props: StopListProps) {
 
 const styles = StyleSheet.create({
   grip: {
-    ...cornerStyle('md'),
+    ...cornerOf('md'),
     minWidth: MinTouchTarget,
     minHeight: MinTouchTarget,
     alignItems: 'center',

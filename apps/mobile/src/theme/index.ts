@@ -35,22 +35,12 @@ export {
 export {
   CappableInContext,
   CappedFontScale,
-  LegacyRoleMap,
-  TextRoleNames,
-  TextRoles,
   TypeRoleNames,
   TypeRoles,
   fontClassOf,
   maxFontScaleOf,
-  numericStyle,
-  textStyle,
   typeExtras,
   typeStyle,
-  type FontFamilyRole,
-  type FontWeight,
-  type TextRole,
-  type TextSize,
-  type TextStyleToken,
   type TypeFamily,
   type TypeRole,
   type TypeSize,
@@ -59,8 +49,6 @@ export {
 } from './typography';
 
 export {
-  AtlasRadius,
-  AtlasSpacing,
   FocusRing,
   IconSize,
   IconWeights,
@@ -71,11 +59,8 @@ export {
   ScreenMargin,
   Space,
   cornerOf,
-  cornerStyle,
   innerRadius,
   liftOf,
-  type AtlasRadiusName,
-  type AtlasSpacingName,
   type IconWeight,
   type LiftLayer,
   type LiftName,
@@ -97,6 +82,7 @@ export {
 } from './motion';
 
 export {
+  CoverGlow,
   Passport,
   Scrim,
   Sky,

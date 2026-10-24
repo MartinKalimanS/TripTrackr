@@ -50,6 +50,8 @@ export interface NotesFilter {
 export type NoteWithPlace = NoteRow & {
   country_name: string | null;
   city_name: string | null;
+  /** The country's ISO alpha-2 code, for its flag; optional so a row built by hand need not carry it. */
+  country_iso?: string | null;
 };
 
 export class NoteAnchorError extends Error {
@@ -69,6 +71,7 @@ function forTripQuery(db: AppDatabase, tripId: string, filter: NotesFilter = {})
     .select({
       ...getTableColumns(notes),
       country_name: countries.name,
+      country_iso: countries.iso_code,
       city_name: cities.name,
     })
     .from(notes)

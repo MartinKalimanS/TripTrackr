@@ -18,9 +18,6 @@
  * The header does not hide itself: at the full detent the Home leaves it out (it is the
  * parent's decision, `contracts/screens.md`). Ids: `home-greeting` (the heading),
  * `home-greeting-date`, `home-recentre`.
- *
- * `welcome` is the empty Home's header (`home-empty.png`): the given words ("0 of 195 countries")
- * stand in the eyebrow's place and the heading says "Welcome", the name still the one accent.
  */
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
@@ -39,8 +36,6 @@ export interface GreetingHeaderProps {
   trailing?: ReactNode;
   /** Present only after the globe was moved: recentres it. */
   onRecentre?: () => void;
-  /** The empty Home: these words replace the date and the heading welcomes. */
-  welcome?: string;
 }
 
 export function GreetingHeader({
@@ -48,25 +43,23 @@ export function GreetingHeader({
   today,
   trailing,
   onRecentre,
-  welcome,
 }: GreetingHeaderProps) {
   const { languageTag } = deviceLocale();
   const who = name?.trim() ?? '';
-  const hello = welcome === undefined ? 'Hello' : 'Welcome';
 
   return (
     <View className="gap-3">
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1 gap-0.5 pt-1">
           <Text variant="eyebrow" tone="muted" testID="home-greeting-date">
-            {welcome ?? eyebrowDate(today, languageTag)}
+            {eyebrowDate(today, languageTag)}
           </Text>
           <Text variant="display" numberOfLines={2} testID="home-greeting">
             {who === '' ? (
-              hello
+              'Hello'
             ) : (
               <>
-                {hello},{' '}
+                Hello,{' '}
                 <Text variant="accent" tone="accent">
                   {who}
                 </Text>

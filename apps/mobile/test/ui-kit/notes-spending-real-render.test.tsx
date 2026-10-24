@@ -214,16 +214,19 @@ describe('the notes screen over the real kit', () => {
     expect(screen.getByTestId('note-card-n2')).toBeTruthy();
   });
 
-  test('a note only on this device has the dashed pending edge on the real card, a saved one has none', async () => {
+  test('a note only on this device says so in words and a glyph on the real card; neither card has a dashed edge', async () => {
     await inKit(<NotesScreen />);
 
     expect(classesOf(screen.getByTestId('note-surface-n1'))).toEqual(
-      expect.arrayContaining(['bg-surface', 'border-dashed', 'border-amber-line']),
+      expect.arrayContaining(['bg-surface-secondary', 'border-separator']),
+    );
+    expect(classesOf(screen.getByTestId('note-surface-n1'))).not.toContain(
+      'border-dashed',
     );
     expect(classesOf(screen.getByTestId('note-surface-n2'))).not.toContain(
       'border-dashed',
     );
-    expect(screen.getByText('Not yet synced')).toBeTruthy();
+    expect(screen.getByText('On this device')).toBeTruthy();
   });
 
   test('Edit and Delete are buttons the kit names and presses', async () => {
@@ -265,7 +268,7 @@ describe('the notes screen over the real kit', () => {
 });
 
 describe('the spending screen over the real kit', () => {
-  test('renders the summary card and a grouped surface per day without error', async () => {
+  test('renders the summary and a group per day without error', async () => {
     await inKit(<ExpensesScreen />);
 
     expect(screen.getByTestId('expenses-screen')).toBeTruthy();
@@ -275,7 +278,7 @@ describe('the spending screen over the real kit', () => {
     expect(screen.getByTestId('expense-day-2026-05-10')).toBeTruthy();
   });
 
-  test('each day holds its rows, with the kit separator between a pair', async () => {
+  test('each day holds its rows, with a hairline between a pair', async () => {
     await inKit(<ExpensesScreen />);
 
     const day = within(screen.getByTestId('expense-day-2026-05-11'));
@@ -287,10 +290,11 @@ describe('the spending screen over the real kit', () => {
     ).toBeTruthy();
   });
 
-  test('a row is one element with its delete action, and Delete is a button the kit names', async () => {
+  test('a row is one element with its delete action, and Delete (shown by a tap on the row) is a button the kit names', async () => {
     await inKit(<ExpensesScreen />);
 
     expect(screen.getByTestId('expense-row-e1').props.accessible).toBe(true);
+    await fireEvent.press(screen.getByTestId('expense-row-e1'));
     const remove = screen.getByTestId('expense-remove-e1');
     expect(remove.props.accessibilityRole).toBe('button');
     expect(remove.props.accessibilityLabel).toContain('Delete Food expense of');

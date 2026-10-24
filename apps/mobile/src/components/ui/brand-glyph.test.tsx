@@ -1,70 +1,51 @@
 /**
- * `BrandGlyph` - feature 004, T446 (FR-024, FR-030; research D4-08: "Ionicons stay only for
- * the Google and Apple brand glyphs").
+ * `BrandGlyph` - feature 004, T446 (FR-024, FR-030; research D4-08), reduced by F12 to Google's
+ * logo: Apple's logo is drawn by Apple's own button, never by this adapter (owner decision
+ * 2026-10-22; `test/no-handmade-apple-logo.test.ts`).
  *
- * The glyph itself is Ionicons' (stood in below, so which logo and which ink are the
- * subject); what the adapter owns is the ink, which follows the active theme through the kit
- * and cannot be chosen by a caller, and that the glyph is decorative: the control it sits in
- * is named by its own label.
+ * What the adapter owns is the four-colour "G" in the brand's own colours in every scheme, its
+ * size, and that the glyph is decorative: the control it sits in is named by its own label.
  */
 import { render, screen } from '@testing-library/react-native';
-import * as HeroUI from 'heroui-native';
-import { StyleSheet } from 'react-native';
+
+import { GoogleG } from '@/theme/brand-artwork';
 
 import { BrandGlyph } from './brand-glyph';
 
-// The glyph font is not the subject; which logo, which size, in which colour, is.
-jest.mock('@expo/vector-icons/Ionicons', () => {
-  const { Text } = jest.requireActual('react-native');
-  return function MockIonicons({
-    name,
-    color,
-    size,
-  }: {
-    name: string;
-    color: string;
-    size: number;
-  }) {
-    return (
-      <Text testID={`icon-${name}`} style={{ color, fontSize: size }}>
-        {name}
-      </Text>
-    );
-  };
-});
-
-afterEach(() => jest.restoreAllMocks());
-
 const hidden = { includeHiddenElements: true };
 
+jest.mock('react-native-svg', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+  const standIn = (kind: string) => {
+    const StandIn = ({ children, ...props }: { children?: React.ReactNode }) =>
+      React.createElement(View, { testID: `svg-${kind}`, ...props }, children);
+    StandIn.displayName = kind;
+    return StandIn;
+  };
+  const Svg = standIn('Svg');
+  return { __esModule: true, default: Svg, Svg, Path: standIn('Path') };
+});
+
 describe('<BrandGlyph>', () => {
-  test.each(['logo-google', 'logo-apple'] as const)('draws the %s logo', async (name) => {
-    await render(<BrandGlyph name={name} />);
-    expect(screen.getByTestId(`icon-${name}`, hidden)).toBeTruthy();
-  });
-
-  test('is inked with the kit’s foreground, so it follows the four themes', async () => {
-    const spy = jest
-      .spyOn(HeroUI, 'useThemeColor')
-      .mockReturnValue('rgb(1, 2, 3)' as never);
+  test('Google: the four-colour G in its own artwork colours, in every scheme', async () => {
     await render(<BrandGlyph name="logo-google" />);
-
-    expect(spy).toHaveBeenCalledWith('foreground');
-    const style = StyleSheet.flatten(
-      screen.getByTestId('icon-logo-google', hidden).props.style,
-    );
-    expect(style.color).toBe('rgb(1, 2, 3)');
+    const fills = screen
+      .getAllByTestId('svg-Path', hidden)
+      .map((node) => node.props.fill);
+    for (const { fill } of GoogleG.paths) expect(fills).toContain(fill);
+    expect(new Set(GoogleG.paths.map((path) => path.fill)).size).toBe(4);
   });
 
   test('is 20 dp by default and takes the other icon sizes', async () => {
-    const { rerender } = await render(<BrandGlyph name="logo-apple" />);
-    const size = () =>
-      StyleSheet.flatten(screen.getByTestId('icon-logo-apple', hidden).props.style)
-        .fontSize;
-    expect(size()).toBe(20);
+    const { rerender } = await render(<BrandGlyph name="logo-google" />);
+    expect(screen.getByTestId('svg-Svg', hidden).props.width).toBe(20);
+    expect(screen.getByTestId('svg-Svg', hidden).props.height).toBe(20);
 
-    await rerender(<BrandGlyph name="logo-apple" size={24} />);
-    expect(size()).toBe(24);
+    await rerender(<BrandGlyph name="logo-google" size={24} />);
+    const svg = screen.getByTestId('svg-Svg', hidden);
+    expect(svg.props.viewBox).toBe(`0 0 ${GoogleG.box} ${GoogleG.box}`);
+    expect(svg.props.width).toBe(24);
   });
 
   test('is decorative: hidden from assistive technology on both platforms', async () => {

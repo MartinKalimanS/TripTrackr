@@ -37,6 +37,7 @@ import { Radii, withAlpha, type PaletteName } from '@/theme';
 import { focusRingStyle, useFocusRing } from './focus-ring';
 import { Icon, type IconName, type IconTone } from './icon';
 import { liftStyle } from './lift-style';
+import { useOpaqueSurfaces } from './solid-ground';
 import { Text, type TextTone } from './text';
 import { useColors } from './theme-tokens';
 
@@ -114,6 +115,7 @@ function chipStyle(
   colors: Colors,
   theme: PaletteName,
   focused: boolean,
+  opaque: boolean,
 ): ViewStyle {
   return {
     flexDirection: 'row',
@@ -123,7 +125,9 @@ function chipStyle(
     minHeight: MIN_HEIGHT,
     ...PADDING,
     borderRadius: Radii.full,
-    backgroundColor: withAlpha(colors.surface, PAPER_OPACITY),
+    // Paper at 92 percent over what it floats on; solid under increased contrast or reduced
+    // transparency (FR-072, FR-073).
+    backgroundColor: opaque ? colors.surface : withAlpha(colors.surface, PAPER_OPACITY),
     // Failed has an edge; the others keep its width, so a state change moves no pixel.
     borderWidth: 1,
     borderColor: failed ? colors.danger : 'transparent',
@@ -183,6 +187,7 @@ function SyncChipContent({ face, failed, colors }: ContentProps) {
 function VisibleSyncChip({ state, onRetry }: SyncChipProps & { state: Visible }) {
   const { themeName } = useAppearance();
   const colors = useColors(COLOR_KEYS);
+  const opaque = useOpaqueSurfaces();
   const focus = useFocusRing();
   const failed = state.kind === 'failed';
   const content = (
@@ -196,7 +201,7 @@ function VisibleSyncChip({ state, onRetry }: SyncChipProps & { state: Visible })
         accessible
         accessibilityRole="text"
         accessibilityLabel={syncChipLabel(state)}
-        style={chipStyle(failed, colors, themeName, false)}>
+        style={chipStyle(failed, colors, themeName, false, opaque)}>
         {content}
       </View>
     );
@@ -210,7 +215,7 @@ function VisibleSyncChip({ state, onRetry }: SyncChipProps & { state: Visible })
       onFocus={focus.onFocus}
       onBlur={focus.onBlur}
       hitSlop={SLOP}
-      style={chipStyle(failed, colors, themeName, focus.focused)}>
+      style={chipStyle(failed, colors, themeName, focus.focused, opaque)}>
       {content}
     </Pressable>
   );

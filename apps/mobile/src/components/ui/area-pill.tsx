@@ -15,7 +15,7 @@
  *   warning are then said as the accessibility VALUE after it, so the name does not change
  *   and nothing the tile draws goes unsaid.
  * - Look: 16 dp corners, the cream fill and a hairline, no lift; at least 72 dp tall (a
- *   minimum, so it grows with the text and the icon never clips); the icon (24 dp), the
+ *   minimum, so it grows with the text and the icon never clips); the icon (20 dp, the prototype's), the
  *   count (`callout`, one line, shrinking before it clips an amount) and the label (the
  *   capped `caption`, one line) stacked and centred. A trip lays four of them in a row,
  *   and two at a font scale of 1.15 and above (`areaColumns` in `reflow.ts`).
@@ -113,7 +113,7 @@ function Figures({
 }: Pick<AreaPillProps, 'icon' | 'label' | 'count'>) {
   return (
     <>
-      <Icon name={icon} size={24} tone="muted" />
+      <Icon name={icon} size={20} tone="muted" />
       <Text
         variant="callout"
         numberOfLines={1}

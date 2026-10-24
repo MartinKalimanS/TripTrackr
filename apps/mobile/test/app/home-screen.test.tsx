@@ -148,25 +148,15 @@ describe('Home states: the globe is always there, but while loading (FR-021, 003
     expect(screen.queryByTestId('home-plan-trip-fab')).toBeNull();
   });
 
-  test('with no trips: the globe, the invitation with its frames, one primary, no button and no sheet', async () => {
+  test('with no trips: the globe, the sheet at zero and ONE "Plan a trip" button, no card (feature 007)', async () => {
     await renderHome();
     expect(screen.getAllByTestId('globe-map')).toHaveLength(1);
-    expect(screen.getByTestId('globe-empty-state')).toBeTruthy();
-    expect(screen.getByText('Your globe is waiting for its first trip')).toBeTruthy();
-    expect(
-      screen.getByTestId('home-invitation-art', { includeHiddenElements: true }),
-    ).toBeTruthy();
-    expect(screen.queryByTestId('home-plan-trip-fab')).toBeNull();
-    expect(screen.queryByTestId('home-sheet')).toBeNull();
-    // home-empty.png draws no search disc in the header; the card has the primary and the
-    // pictured text button, which is a coming-soon control, never a second primary.
-    const buttons = screen.getAllByRole('button');
-    expect(buttons.map((b) => b.props.testID)).toEqual([
-      'home-plan-trip',
-      'coming-soon-find-trips',
-    ]);
-    expect(buttons.filter((b) => b.props.variant === 'primary')).toHaveLength(1);
-    await fireEvent.press(screen.getByTestId('home-plan-trip'));
+    expect(screen.queryByTestId('globe-empty-state')).toBeNull();
+    expect(screen.queryByText('Your globe is waiting for its first trip')).toBeNull();
+    expect(screen.getByTestId('home-sheet')).toBeTruthy();
+    const fab = screen.getByTestId('home-plan-trip-fab');
+    expect(fab.props.variant).toBe('primary');
+    await fireEvent.press(fab);
     expect(router.push).toHaveBeenCalledWith('/modal/add-trip');
   });
 
@@ -267,7 +257,8 @@ describe('Home layers and reading order (FR-010, FR-017)', () => {
     expect(screen.getAllByTestId('sync-banner')).toHaveLength(1);
   });
 
-  test('offline with no trips (no sheet): the banner is under the greeting', async () => {
+  test('offline with a trip that has no stop (no sheet): the banner is under the greeting', async () => {
+    globe.data = { ...globe.data, trips: [trip('lonely', 'planning', false)] };
     sync.current = { kind: 'offline', count: 3 };
     await renderHome();
     expect(screen.getByTestId('home-header')).toContainElement(
@@ -275,13 +266,11 @@ describe('Home layers and reading order (FR-010, FR-017)', () => {
     );
   });
 
-  test('with no trips the header welcomes, over "0 of 195 countries", and has no search disc', async () => {
+  test('with no trips the header greets as usual: no countries counter, and the search disc is there', async () => {
     await renderHome();
-    expect(screen.getByTestId('home-greeting')).toHaveTextContent('Welcome, Ana');
-    expect(screen.getByTestId('home-greeting-date')).toHaveTextContent(
-      '0 of 195 countries',
-    );
-    expect(screen.queryByTestId('coming-soon-search')).toBeNull();
+    expect(screen.getByTestId('home-greeting')).toHaveTextContent('Hello, Ana');
+    expect(screen.queryByText(/of 195 countries/)).toBeNull();
+    expect(screen.getByTestId('coming-soon-search')).toBeTruthy();
   });
 });
 

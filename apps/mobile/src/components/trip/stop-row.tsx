@@ -83,6 +83,16 @@ export type StopRowProps = {
   dragging?: boolean;
 };
 
+/** Dates are figures: they line up from one stop to the next. */
+const TABULAR = { fontVariant: ['tabular-nums' as const] };
+
+/**
+ * The card is the stop's own space, not an inset: its 8 dp padding is taken back by a -8 dp
+ * margin, so the place and the thumbnail sit exactly where `.stop .body` puts them whether or
+ * not the cream tile (the chosen day) or the dashed edge (pending) is drawn around them.
+ */
+const CARD_BLEED = '-m-2 p-2';
+
 const UP: IconName = 'chevron-up';
 const DOWN: IconName = 'chevron-down';
 const DATES: IconName = 'calendar';
@@ -232,7 +242,9 @@ function StopHeading({
   return (
     <View className="flex-row items-start gap-2">
       <View className="flex-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
-        <Text variant="callout">{place}</Text>
+        <Text variant="callout" testID={`stop-place-${id}`}>
+          {place}
+        </Text>
         {now ? <NowChip stopId={id} /> : null}
       </View>
       {handle}
@@ -261,18 +273,25 @@ function StopText(props: StopRowProps & { place: string; dates: string }) {
     <View className="flex-1 gap-0.5">
       <StopHeading id={stop.id} place={place} now={state === 'now'} handle={handle} />
       <Country stop={stop} />
-      <Text
-        type="numeric"
-        context="callout"
-        tone="muted"
-        testID={`stop-dates-${stop.id}`}>
-        {dates}
-      </Text>
-      {nights ? (
-        <Text variant="label" tone="muted" testID={`stop-nights-${stop.id}`}>
-          {nights}
+      <View testID={`stop-meta-${stop.id}`} className="flex-row flex-wrap items-baseline">
+        <Text
+          variant="label"
+          tone="muted"
+          style={TABULAR}
+          testID={`stop-dates-${stop.id}`}>
+          {dates}
         </Text>
-      ) : null}
+        {nights ? (
+          <>
+            <Text variant="label" tone="muted">
+              {' · '}
+            </Text>
+            <Text variant="label" tone="muted" testID={`stop-nights-${stop.id}`}>
+              {nights}
+            </Text>
+          </>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -285,7 +304,7 @@ function StopCard(props: StopRowProps & { place: string; dates: string }) {
       variant={highlighted ? 'tile' : 'flat'}
       pending={stop.is_dirty}
       testID={`stop-card-${stop.id}`}
-      className="p-3">
+      className={CARD_BLEED}>
       <View className="gap-2">
         <View className="flex-row items-center gap-3">
           <StopText {...props} place={place} dates={dates} />

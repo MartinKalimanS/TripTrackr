@@ -129,3 +129,39 @@ describe('<PermissionState> - words, an icon and a way forward', () => {
     expect(surface.props.accessibilityLiveRegion).toBe('polite');
   });
 });
+
+describe('<PermissionState> - when the screen has no primary of its own (T559)', () => {
+  test('`primary` makes Open Settings the ONE primary, with the same name and handler', async () => {
+    const onOpenSettings = jest.fn();
+    await render(photos({ onOpenSettings, primary: true, settingsTestID: 'settings' }));
+    const settings = screen.getByTestId('settings');
+    expect(settings).toBe(screen.getByLabelText('Open Settings'));
+    expect(settings.props.variant).toBe('primary');
+    expect(
+      screen.getAllByRole('button').filter((node) => node.props.variant === 'primary'),
+    ).toHaveLength(1);
+    await fireEvent.press(settings);
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+  });
+
+  test('the detail can carry an id, so a flow that waits on the words still finds them', async () => {
+    await render(photos({ detailTestID: 'permission-detail' }));
+    expect(screen.getByTestId('permission-detail')).toHaveTextContent(
+      'Turn it on in Settings to add photos from your library.',
+    );
+  });
+
+  test('an alternative keeps the longer name a screen reader hears', async () => {
+    await render(
+      photos({
+        alternative: {
+          label: 'Dismiss',
+          accessibilityLabel: 'Dismiss this message',
+          onPress: jest.fn(),
+        },
+      }),
+    );
+    expect(screen.getByLabelText('Dismiss this message')).toBeTruthy();
+    expect(screen.getByText('Dismiss')).toBeTruthy();
+  });
+});

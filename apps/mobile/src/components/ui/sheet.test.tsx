@@ -410,6 +410,45 @@ describe('the settle', () => {
     expect(sheetSnap).not.toHaveBeenCalled();
   });
 
+  test('a short drag that springs back to the same detent settles in silence (T558)', async () => {
+    await render(sheet({ detent: 'half' }));
+    await drag(BODY_DRAG, { translationY: -40, velocityY: 0 });
+    await finishSprings();
+    expect(onSettle).toHaveBeenCalledTimes(1);
+    expect(onSettle).toHaveBeenCalledWith('half');
+    expect(sheetSnap).not.toHaveBeenCalled();
+  });
+
+  test('plays one haptic for each change of detent, and none for a settle on the same one', async () => {
+    await render(sheet({ detent: 'half' }));
+    await drag(BODY_DRAG, { translationY: -250, velocityY: -500 });
+    await finishSprings();
+    expect(sheetSnap).toHaveBeenCalledTimes(1);
+    await drag(HANDLE_DRAG, { translationY: -30, velocityY: 0 });
+    await finishSprings();
+    expect(onSettle).toHaveBeenLastCalledWith('full');
+    expect(sheetSnap).toHaveBeenCalledTimes(1);
+    await drag(ZONE_DRAG, { translationY: 400, velocityY: 1500 });
+    await finishSprings();
+    expect(onSettle).toHaveBeenLastCalledWith('peek');
+    expect(sheetSnap).toHaveBeenCalledTimes(2);
+  });
+
+  test('a detent the parent chooses plays one when the sheet comes to rest on it', async () => {
+    await render(sheet({ detent: 'peek' }));
+    await screen.rerender(sheet({ detent: 'half' }));
+    expect(sheetSnap).not.toHaveBeenCalled();
+    await finishSprings();
+    expect(sheetSnap).toHaveBeenCalledTimes(1);
+  });
+
+  test('a tap that moves it a detent plays one', async () => {
+    await render(sheet({ detent: 'peek' }));
+    await fireEvent.press(screen.getByTestId('home-sheet-handle'));
+    await finishSprings();
+    expect(sheetSnap).toHaveBeenCalledTimes(1);
+  });
+
   test('a parent that changes the detent moves the sheet and hears one settle, no echo', async () => {
     await render(sheet({ detent: 'full' }));
     await screen.rerender(sheet({ detent: 'half' }));

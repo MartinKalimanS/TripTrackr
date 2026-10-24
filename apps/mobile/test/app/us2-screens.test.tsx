@@ -31,7 +31,8 @@ import type { CategoryOption } from '@/db/repositories/expenses';
 import type { NoteWithPlace } from '@/db/repositories/notes';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import type { ExpenseRow, TripRow } from '@/db/schema';
-import { formatIsoDate } from '@/features/trips/stop-dates';
+import { formatIsoDate, todayIso } from '@/features/trips/stop-dates';
+import { formatMoney, formatMoneyTight } from '@/lib/locale';
 
 import { containing, hostsWhere, scrollers } from '../helpers/host-nodes';
 import { glyphNamesIn } from '../helpers/icons';
@@ -217,6 +218,10 @@ const mockExpenseActions = {
   createCategory: jest.fn(() => ({ id: COFFEE, name: 'Coffee' })),
 };
 
+const mockFxSnapshot: {
+  current: null | { asOf: string; rates: Record<string, string> };
+} = { current: null };
+
 jest.mock('@/features/expenses/use-expenses', () => ({
   useExpenses: () => mockExpenses,
   useExpenseCategories: () => mockCategories,
@@ -227,6 +232,7 @@ jest.mock('@/features/expenses/use-expenses', () => ({
     source: 'https://www.exchangerate-api.com',
   }),
   useExpenseActions: () => mockExpenseActions,
+  useFxSnapshot: () => mockFxSnapshot.current,
 }));
 
 jest.mock('@/features/expenses/use-fx-rates', () => ({ useFxRates: jest.fn() }));
@@ -257,15 +263,18 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     expect(screen.getByTestId('notes-filter-city:101')).toBeTruthy();
   });
 
-  test('has no bar of its own: the title and Back are the native header’s (FR-007, FR-008)', async () => {
+  test('draws its own header, as pictured (T551): Back, "Notes", the trip and the count, the search; no old title line', async () => {
     mockNotes.data = [note({})];
     await render(<NotesScreen />);
 
-    // The old bar drew "Back", the title `notes-title` ("Notes · <trip>") and the controls.
-    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.getByLabelText('Back')).toBeTruthy();
+    expect(screen.getByTestId('notes-header-title')).toHaveTextContent('Notes');
+    expect(screen.getByTestId('notes-subtitle')).toHaveTextContent(
+      'Italy, spring 2026 · 1 note',
+    );
     expect(screen.queryByTestId('notes-title')).toBeNull();
-    expect(screen.queryByText(/^Notes/)).toBeNull();
-    // What is not title or back stays: the filters and the action, in their old order.
+    expect(screen.getByTestId('coming-soon-notes-search')).toBeTruthy();
+    // What is not title or back keeps its old reading order: the filters, then the action.
     const order = screen
       .getAllByTestId(/^notes-(filter-all|add)$/)
       .map((node) => node.props.testID);
@@ -324,12 +333,14 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     expect(scrollers().some((scroller) => scroller.props.horizontal === true)).toBe(true);
   });
 
-  test('the notes are a list below the native header, with the content inset it needs (the collapse is a device check, T408)', async () => {
+  test('the notes are a list of days below the fixed header, clear of the floating button', async () => {
     mockNotes.data = [note({})];
     await render(<NotesScreen />);
 
     const list = scrollers().find((scroller) => scroller.props.horizontal !== true);
-    expect(list?.props.contentInsetAdjustmentBehavior).toBe('automatic');
+    expect(list).toBeTruthy();
+    expect(list?.props.contentInsetAdjustmentBehavior).not.toBe('automatic');
+    expect(screen.getByTestId('notes-list')).toBeTruthy();
   });
 
   test('a filter narrows the live query to that anchor', async () => {
@@ -378,7 +389,7 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     await render(<NotesScreen />);
 
     expect(screen.getByTestId('note-anchor-note-1')).toHaveTextContent('Italy');
-    expect(screen.getByTestId('note-anchor-note-2')).toHaveTextContent('Firenze, Italy');
+    expect(screen.getByTestId('note-anchor-note-2')).toHaveTextContent('Firenze');
     expect(screen.getByTestId('note-body-note-2')).toHaveTextContent('Gelato.');
 
     await fireEvent.press(screen.getByTestId('note-remove-note-2'));
@@ -577,20 +588,23 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
 /** A decorative icon is hidden from assistive technology, and so from a default query. */
 const HIDDEN = { includeHiddenElements: true } as const;
 
-describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
+/** The rows of a screen test are about the summary's figures, not the rows' own. */
+function logOne(overrides: Partial<ExpenseRow> = {}) {
+  mockExpenses.data = [expense(overrides)];
+}
+
+describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441, T550)', () => {
   const primaries = () =>
     screen
       .getAllByRole('button')
       .filter((node) => node.props.variant === 'primary')
       .map((node) => node.props.testID);
 
-  test('shows the summary with totals, rates and pending rows, and the empty list', async () => {
+  test('is the pictured page, top to bottom: header, hero, rates, pending, per day, categories, then the days', async () => {
+    logOne();
     await render(<ExpensesScreen />);
 
-    expect(screen.getByTestId('summary-total')).toHaveTextContent(containing('18.00'));
-    expect(screen.getByTestId(`summary-category-${FOOD}`)).toHaveTextContent(
-      containing('Food'),
-    );
+    expect(screen.getByTestId('summary-total')).toHaveTextContent(containing('18'));
     expect(screen.getByTestId('summary-rates')).toHaveTextContent(
       containing('1 EUR = 0.888889 CHF'),
     );
@@ -598,29 +612,71 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
       containing('exchangerate-api.com'),
     );
     expect(screen.getByTestId('summary-pending')).toHaveTextContent(containing('XTS'));
-    expect(screen.getByText('Nothing logged yet')).toBeTruthy();
-  });
-
-  test('has no bar of its own: the title and Back are the native header’s (FR-007, FR-008)', async () => {
-    await render(<ExpensesScreen />);
-
-    // The old bar drew "Back" and `expenses-title` ("Spending · <trip>").
-    expect(screen.queryByLabelText('Back')).toBeNull();
-    expect(screen.queryByTestId('expenses-title')).toBeNull();
-    expect(screen.queryByText('Spending', { exact: false })).toBeNull();
-    // What is not title or back stays, in its old order: the action, the toggle, the summary.
-    const wanted = ['expenses-add', 'expenses-toggle-summary', 'spending-summary'];
+    expect(screen.getByTestId(`summary-category-${FOOD}`)).toHaveTextContent(
+      containing('Food'),
+    );
+    const wanted = [
+      'expenses-header',
+      'spending-hero',
+      'summary-rates',
+      'summary-pending',
+      'day-bars',
+      'category-spending',
+      'expense-day-2026-05-11',
+      'expenses-add',
+    ];
     const order = hostsWhere((node) => wanted.includes(String(node.props.testID))).map(
       (node) => node.props.testID,
     );
     expect(order).toEqual(wanted);
   });
 
+  test('draws its own header: Back, "Spending", the trip and the count, "Only you" and the coming-soon more', async () => {
+    logOne();
+    await render(<ExpensesScreen />);
+
+    expect(screen.getByLabelText('Back')).toBeTruthy();
+    expect(screen.getByTestId('expenses-title')).toHaveTextContent('Spending');
+    expect(screen.getByTestId('expenses-subtitle')).toHaveTextContent(
+      'Italy, spring 2026 · 1 expense',
+    );
+    expect(screen.getByTestId('privacy-chip')).toBeTruthy();
+    const more = screen.getByTestId('coming-soon-expenses-more');
+    expect(more.props.accessibilityLabel).toBe('More');
+    expect(more.props.accessibilityHint).toBe('Not available yet');
+  });
+
+  test('the count is not guessed while the store has not answered or could not be read', async () => {
+    mockExpenses.loading = true;
+    await render(<ExpensesScreen />);
+    expect(screen.getByTestId('expenses-subtitle')).toHaveTextContent(
+      'Italy, spring 2026',
+    );
+    expect(screen.getByTestId('expenses-subtitle')).not.toHaveTextContent(
+      containing('expense'),
+    );
+  });
+
+  test('nothing logged: the empty state alone, with the floating Add expense still there', async () => {
+    await render(<ExpensesScreen />);
+
+    expect(screen.getByText('Nothing logged yet')).toBeTruthy();
+    expect(screen.queryByTestId('spending-summary')).toBeNull();
+    expect(screen.queryByTestId('expenses-toggle-summary')).toBeNull();
+    expect(screen.getByTestId('expenses-add')).toBeTruthy();
+    expect(screen.getByTestId('expenses-add').props.accessibilityLabel).toBe(
+      'Add expense',
+    );
+  });
+
   test('the summary can be hidden, and "Add expense" opens the sheet for this trip', async () => {
+    logOne();
     await render(<ExpensesScreen />);
 
     await fireEvent.press(screen.getByTestId('expenses-toggle-summary'));
     expect(screen.queryByTestId('spending-summary')).toBeNull();
+    expect(screen.queryByTestId('summary-total')).toBeNull();
+    expect(screen.getByText(containing('Spent'))).toBeTruthy();
 
     await fireEvent.press(screen.getByTestId('expenses-add'));
     expect(mockPush).toHaveBeenCalledWith({
@@ -648,6 +704,7 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
   });
 
   test('the summary toggle is announced as before: named for what it will do, and expanded or not', async () => {
+    logOne();
     await render(<ExpensesScreen />);
 
     const toggle = () => screen.getByTestId('expenses-toggle-summary');
@@ -685,12 +742,12 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
     await render(<ExpensesScreen />);
     expect(primaries()).toEqual(['expenses-add']);
 
-    mockExpenses.data = [expense({})];
+    logOne();
     await screen.rerender(<ExpensesScreen />);
     expect(primaries()).toEqual(['expenses-add']);
   });
 
-  test('rows show the amount paid, the home amount or "awaiting a rate", and delete confirms', async () => {
+  test('rows show the amounts as pictured: the home figure over the amount paid, or the amount paid over "Awaiting a rate"; delete confirms', async () => {
     mockExpenses.data = [
       expense({}),
       expense({
@@ -714,18 +771,24 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
     });
     await render(<ExpensesScreen />);
 
-    expect(screen.getByTestId('expense-paid-exp-1')).toHaveTextContent(
-      containing('9.00'),
-    );
     expect(screen.getByTestId('expense-home-exp-1')).toHaveTextContent(
       containing('8.00'),
+    );
+    expect(screen.queryByTestId('expense-paid-exp-1')).toBeNull();
+    expect(screen.getByTestId('expense-row-exp-1')).toHaveTextContent(containing('9.00'));
+    expect(screen.getByTestId('expense-paid-exp-2')).toHaveTextContent(
+      containing('5.00'),
     );
     expect(screen.getByTestId('expense-home-exp-2')).toHaveTextContent(
       containing('Awaiting a rate'),
     );
     // Home-currency rows do not repeat themselves.
+    expect(screen.getByTestId('expense-paid-exp-3')).toBeTruthy();
     expect(screen.queryByTestId('expense-home-exp-3')).toBeNull();
 
+    // Delete is not drawn until the row is tapped (the picture has none).
+    expect(screen.queryByTestId('expense-remove-exp-1')).toBeNull();
+    await fireEvent.press(screen.getByTestId('expense-row-exp-1'));
     await fireEvent.press(screen.getByTestId('expense-remove-exp-1'));
     expect(mockExpenseActions.removeExpense).toHaveBeenCalledWith('exp-1');
   });
@@ -742,37 +805,37 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
     expect(first.getByTestId('expense-row-exp-1')).toBeTruthy();
     expect(first.getByTestId('expense-row-exp-2')).toBeTruthy();
     expect(first.queryByTestId('expense-row-exp-3')).toBeNull();
+    expect(first.getByTestId('expense-day-2026-05-12-separator-1')).toBeTruthy();
     const second = within(screen.getByTestId('expense-day-2026-05-11'));
     expect(second.getByTestId('expense-row-exp-3')).toBeTruthy();
 
-    // Top to bottom: each date, then the group it heads (the summary has headings of its own,
-    // and a group has separators between its rows).
-    const dates = [formatIsoDate('2026-05-12'), formatIsoDate('2026-05-11')];
-    const sequence = hostsWhere(
-      (node) =>
-        (node.props.accessibilityRole === 'header' &&
-          dates.includes(String(node.children?.join('')))) ||
-        /^expense-day-[\d-]+$/.test(String(node.props.testID ?? '')),
-    ).map((node) => node.props.testID ?? node.children?.join(''));
-    expect(sequence).toEqual([
-      formatIsoDate('2026-05-12'),
-      'expense-day-2026-05-12',
-      formatIsoDate('2026-05-11'),
-      'expense-day-2026-05-11',
-    ]);
+    const order = hostsWhere((node) =>
+      /^expense-day-[\d-]+$/.test(String(node.props.testID ?? '')),
+    ).map((node) => node.props.testID);
+    expect(order).toEqual(['expense-day-2026-05-12', 'expense-day-2026-05-11']);
   });
 
-  test('a day heading is announced as a heading', async () => {
-    mockExpenses.data = [expense({ spent_at: '2026-05-12' })];
+  test('a day heading is announced as a heading, with the day total from the summary', async () => {
+    logOne({ spent_at: '2026-05-11' });
     await render(<ExpensesScreen />);
 
-    expect(screen.getByText(formatIsoDate('2026-05-12')).props.accessibilityRole).toBe(
-      'header',
+    const heading = screen.getByLabelText(
+      `${formatIsoDate('2026-05-11')}, ${formatMoney('18.00', 'CHF')}`,
     );
+    expect(heading.props.accessibilityRole).toBe('header');
+    expect(within(heading).getByText(formatMoneyTight('18.00', 'CHF'))).toBeTruthy();
+  });
+
+  test('today\u2019s group says "Today" beside its date', async () => {
+    logOne({ spent_at: todayIso() });
+    await render(<ExpensesScreen />);
+
+    const group = within(screen.getByTestId(`expense-day-${todayIso()}`));
+    expect(group.getByText(containing('Today'))).toBeTruthy();
   });
 
   test('a category with an icon of its own leads its rows with that glyph', async () => {
-    mockExpenses.data = [expense({})];
+    logOne();
     await render(<ExpensesScreen />);
 
     expect(screen.getByTestId('expense-icon-exp-1', HIDDEN)).toBeTruthy();
@@ -780,7 +843,7 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
   });
 
   test('a category the list cannot name is "Other" and still has a glyph', async () => {
-    mockExpenses.data = [expense({ category_id: 'gone-category' })];
+    logOne({ category_id: 'gone-category' });
     await render(<ExpensesScreen />);
 
     expect(screen.getByTestId('expense-row-exp-1').props.accessibilityLabel).toContain(
@@ -789,15 +852,31 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
     expect(screen.getByTestId('expense-icon-exp-1', HIDDEN)).toBeTruthy();
   });
 
-  test('the list is a list below the native header, with the content inset it needs (the collapse is a device check, T408)', async () => {
-    mockExpenses.data = [expense({})];
+  test('the place beside the category is the city of the stop, where this device knows it', async () => {
+    logOne({ city_id: 100 });
     await render(<ExpensesScreen />);
+    expect(screen.getByText('Food · Roma')).toBeTruthy();
 
-    const list = scrollers().find((scroller) => scroller.props.horizontal !== true);
-    expect(list?.props.contentInsetAdjustmentBehavior).toBe('automatic');
+    logOne({ city_id: 9999 });
+    await screen.rerender(<ExpensesScreen />);
+    expect(
+      within(screen.getByTestId('expense-row-exp-1')).getByText('Food'),
+    ).toBeTruthy();
   });
 
-  test('the loading state is placeholders shaped like rows, ONE named region, never the empty state (FR-021)', async () => {
+  test('the header is fixed above a list that scrolls on its own', async () => {
+    logOne();
+    await render(<ExpensesScreen />);
+
+    const order = hostsWhere(
+      (node) =>
+        node.props.testID === 'expenses-header' ||
+        (node.type === 'RCTScrollView' && node.props.horizontal !== true),
+    ).map((node) => node.props.testID ?? 'list');
+    expect(order).toEqual(['expenses-header', 'list']);
+  });
+
+  test('the loading state is a page-shaped skeleton, ONE named region, never the empty state (FR-021)', async () => {
     mockExpenses.loading = true;
     await render(<ExpensesScreen />);
 
@@ -805,6 +884,7 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
     expect(region.props.accessibilityRole).toBe('progressbar');
     expect(screen.queryByText('Nothing logged yet')).toBeNull();
     expect(screen.queryByTestId('expenses-empty-add')).toBeNull();
+    expect(screen.queryByTestId('spending-summary')).toBeNull();
   });
 
   test('the error state is designed, in words and an icon, not blank', async () => {
@@ -826,12 +906,14 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
   });
 
   test('the summary waits for its figures: nothing is drawn for it while it loads', async () => {
+    logOne();
     mockSummary.loading = true;
     try {
       await render(<ExpensesScreen />);
 
       expect(screen.queryByTestId('spending-summary')).toBeNull();
-      expect(screen.getByTestId('expenses-toggle-summary')).toBeTruthy();
+      expect(screen.queryByTestId('summary-total')).toBeNull();
+      expect(screen.getByTestId('expense-row-exp-1')).toBeTruthy();
     } finally {
       mockSummary.loading = false;
     }
@@ -847,7 +929,7 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
   });
 
   test('a failed delete is shown', async () => {
-    mockExpenses.data = [expense({})];
+    logOne();
     mockExpenseActions.removeExpense.mockImplementationOnce(() => {
       throw new Error('locked');
     });
@@ -856,15 +938,17 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
     });
     await render(<ExpensesScreen />);
 
+    await fireEvent.press(screen.getByTestId('expense-row-exp-1'));
     await fireEvent.press(screen.getByTestId('expense-remove-exp-1'));
     expect(screen.getByTestId('expenses-write-error')).toBeTruthy();
   });
 
   test('deleting asks first, and Cancel removes nothing', async () => {
-    mockExpenses.data = [expense({})];
+    logOne();
     jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     await render(<ExpensesScreen />);
 
+    await fireEvent.press(screen.getByTestId('expense-row-exp-1'));
     await fireEvent.press(screen.getByTestId('expense-remove-exp-1'));
     expect(Alert.alert).toHaveBeenCalledWith(
       'Delete this expense?',
@@ -880,7 +964,13 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
       '@/app/trip/[id]/expenses',
       '@/components/trip/expenses-header',
       '@/components/trip/expense-row',
+      '@/components/trip/expense-day-group',
       '@/components/trip/spending-summary',
+      '@/components/trip/spending-hero',
+      '@/components/trip/day-bars',
+      '@/components/trip/category-bar',
+      '@/components/trip/category-look',
+      '@/components/trip/spending-skeleton',
     ]) {
       const source = readFileSync(require.resolve(module), 'utf8');
       expect(source).not.toMatch(/\bSurface\b|PressableSurface|ThemedText|ThemedView/);
@@ -890,9 +980,13 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441)', () => {
   });
 });
 
+/** F6: the day, the city and the note sit behind the pictured "Add note, date or place" row. */
+const openExtras = () => fireEvent.press(screen.getByTestId('add-expense-more'));
+
 describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
   test('defaults to the home currency, Food, and the stop of the day', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     expect(screen.getByTestId('currency-CHF').props.accessibilityState).toMatchObject({
       selected: true,
@@ -925,6 +1019,7 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
 
     await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '12,50');
     await fireEvent.press(screen.getByTestId('currency-EUR'));
+    await openExtras();
     await fireEvent.press(screen.getByTestId('add-expense-city-101'));
     await fireEvent.changeText(screen.getByTestId('add-expense-note'), '  Lunch  ');
     await act(async () => {
@@ -949,6 +1044,7 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
 
   test('the city pills are one radio group, and "No city" files the expense without one', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     await fireEvent.press(screen.getByTestId('add-expense-city-101'));
     expect(
@@ -988,6 +1084,7 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
     mockStops.data = [rome, florence, romeAgain];
     try {
       await render(<AddExpenseScreen />);
+      await openExtras();
 
       expect(screen.getAllByTestId('add-expense-city-100')).toHaveLength(1);
       expect(screen.getAllByLabelText('Roma')).toHaveLength(1);
@@ -1003,6 +1100,7 @@ describe('<AddExpenseScreen> — modal/add-expense (T086)', () => {
   test('a new custom category is created on the spot and selected (FR-024)', async () => {
     await render(<AddExpenseScreen />);
 
+    await fireEvent.press(screen.getByTestId('category-new-toggle'));
     await fireEvent.changeText(screen.getByTestId('category-new-name'), 'Coffee');
     await fireEvent.press(screen.getByTestId('category-new-add'));
 
@@ -1070,34 +1168,35 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
     await render(<AddExpenseScreen />);
 
     expect(screen.getByTestId('add-expense-screen')).toBeTruthy();
-    const title = within(screen.getByTestId('add-expense-screen-body')).getByText(
-      'New expense',
-    );
-    expect(title.props.accessibilityRole).toBe('header');
+    const header = within(screen.getByTestId('add-expense-screen-header'));
+    expect(header.getByText('New expense').props.accessibilityRole).toBe('header');
+    expect(header.getByTestId('add-expense-cancel')).toBeTruthy();
     const footer = within(screen.getByTestId('add-expense-screen-footer'));
-    expect(footer.getByTestId('add-expense-cancel')).toBeTruthy();
     expect(footer.getByTestId('add-expense-save')).toBeTruthy();
   });
 
-  test('keeps the reading order: title, amount, currency, category, day, city, note, then Cancel and Save', async () => {
+  test('keeps the reading order: Cancel, title, category, currency, the extras row, day, city, note, then Save (amount first, as pictured)', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     const order = screen
       .getAllByText(
-        /^(New expense|Amount|Home currency|Category|Paid on|City|Note \(optional\)|Cancel|Save expense)$/,
+        /^(Cancel|New expense|Category|Currency|Add note, date or place|Paid on|City|Note \(optional\)|Save expense)$/,
       )
       .map((node) => String(node.props.children));
     expect(order).toEqual([
+      'Cancel',
       'New expense',
-      'Amount',
-      'Home currency',
       'Category',
+      'Currency',
+      'Add note, date or place',
       'Paid on',
       'City',
       'Note (optional)',
-      'Cancel',
       'Save expense',
     ]);
+    const tree = JSON.stringify(screen.toJSON());
+    expect(tree.indexOf('add-expense-amount')).toBeLessThan(tree.indexOf('"Category"'));
   });
 
   test('has ONE primary control, Save; Cancel is a text button (FR-005)', async () => {
@@ -1112,7 +1211,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
     expect(saveButton().props.accessibilityLabel).toBe('Save expense');
   });
 
-  test('the amount is a Field: label on top, its own id and name, the keypad for decimals, words under it when refused (FR-025)', async () => {
+  test('the amount is the pictured figure: its own id and name, the keypad for decimals, words under it when refused (FR-025)', async () => {
     await render(<AddExpenseScreen />);
 
     const input = screen.getByTestId('add-expense-amount');
@@ -1172,6 +1271,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
 
   test('the note is a Field: its own id and name, a limit, a Done key, words under it when too long', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     const note = screen.getByTestId('add-expense-note');
     expect(note.props.accessibilityLabel).toBe('Note (optional)');
@@ -1204,6 +1304,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
 
   test('the city is one sideways radio group named "City", "No city" first, each city once (FR-009)', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     const group = screen.getByLabelText('City');
     expect(group.props.accessibilityRole).toBe('radiogroup');
@@ -1224,6 +1325,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
     mockStops.data = [];
     try {
       await render(<AddExpenseScreen />);
+      await openExtras();
 
       expect(screen.queryByLabelText('City')).toBeNull();
       expect(screen.queryByText('City')).toBeNull();
@@ -1256,6 +1358,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
     });
     try {
       await render(<AddExpenseScreen />);
+      await openExtras();
 
       expect(screen.getByTestId('add-expense-date').props.accessibilityValue).toEqual({
         text: formatIsoDate('2026-05-11'),
@@ -1278,6 +1381,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
 
   test('"Paid on" is a calendar field: named, valued with the day, and a day in a stop files the expense under its city', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
 
     const date = screen.getByTestId('add-expense-date');
     expect(date.props.accessibilityLabel).toBe('Paid on');
@@ -1296,6 +1400,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
 
   test('a day no stop covers keeps the city the traveller chose', async () => {
     await render(<AddExpenseScreen />);
+    await openExtras();
     await fireEvent.press(screen.getByTestId('add-expense-city-100'));
 
     await fireEvent.press(screen.getByTestId('add-expense-date'));
@@ -1381,6 +1486,7 @@ describe('<AddExpenseScreen> as a form sheet (T436; FR-005, FR-009, FR-024, FR-0
       await showKeyboard();
 
       await fireEvent.changeText(screen.getByTestId('add-expense-amount'), '12,50');
+      await openExtras();
       await fireEvent.changeText(screen.getByTestId('add-expense-note'), 'Lunch');
       expectActionAboveKeyboard('add-expense-screen', 'add-expense-save');
       await press('add-expense-save');
@@ -1542,6 +1648,7 @@ describe('save and destructive-confirmation haptics (T460; FR-020)', () => {
     const answer = holdConfirmation();
     await render(<ExpensesScreen />);
 
+    await fireEvent.press(screen.getByTestId('expense-row-exp-1'));
     await fireEvent.press(screen.getByTestId('expense-remove-exp-1'));
     haptics.notificationAsync.mockClear();
 

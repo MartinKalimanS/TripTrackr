@@ -1,23 +1,27 @@
 /**
- * `trip/[id]/_layout` - the native header of the offline maps screen (tasks.md T444;
- * 004 FR-007, FR-008, FR-030; research D4-06; contract C4-9, C4-10 rule 4).
+ * `trip/[id]/_layout` for the offline maps screen - the `offline-maps` route has NO native header
+ * (feature 005 F11, tasks.md T552; FR-007, FR-008, FR-030; research D4-06): the screen draws
+ * the pictured `AreaHeader` itself, with Back, so the navigator's header is hidden for it.
  *
- * Rendered through `expo-router/testing-library`, as trip-layout.test.tsx does: a real
- * router and the real native stack over an in-memory route map, so what is read is what the
- * navigator would hand the native header. The route's own screen is inert here (its suite
- * is offline-maps.test.tsx); under test is that the screen has a header, the title it
- * carries, the Back control it offers, and that nothing else of the trip stack changed.
+ * `trip-layout.test.tsx` pins which trip screens have a header at all; this suite pins the
+ * offline-maps route, rendered the same way: through `expo-router/testing-library`, a real router
+ * and the real native stack, so what is read is what the navigator would hand the native
+ * header. The screen itself is inert here, but for the `AreaHeader` it draws, so Back is
+ * proved through the real router (`offline-maps.test.tsx` covers the screen).
  *
  * NOT colocated in `src/app/`: expo-router treats every file there as a route.
  */
-import { fireEvent } from '@testing-library/react-native';
+import { fireEvent, within } from '@testing-library/react-native';
 import { Stack, router } from 'expo-router';
 import { act, renderRouter, screen } from 'expo-router/testing-library';
 import * as HeroUI from 'heroui-native';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+
+import { AreaHeader } from '@/components/ui/area-header';
 
 type TestInstance = typeof screen.container;
 
+// A cold first render of the router tree transforms every module it touches.
 jest.setTimeout(60_000);
 
 jest.mock('@/components/require-local-store', () => ({
@@ -26,28 +30,35 @@ jest.mock('@/components/require-local-store', () => ({
 
 const COLOURS: Record<string, string> = {
   background: 'rgb(11, 22, 33)',
+  foreground: 'rgb(77, 88, 99)',
   accent: 'rgb(44, 55, 66)',
 };
 
 beforeEach(() => {
+  // `useStackHeaderOptions` asks for its three colours in one call, `useHeaderTheme` one at a time.
+  const colourOf = (token: string) => COLOURS[token] ?? '#808080';
   jest
     .spyOn(HeroUI, 'useThemeColor')
-    .mockImplementation(((token: string) => COLOURS[token] ?? '#808080') as never);
+    .mockImplementation(((token: string | string[]) =>
+      Array.isArray(token) ? token.map(colourOf) : colourOf(token)) as never);
 });
 afterEach(() => jest.restoreAllMocks());
 
+/** The app's root: a headerless stack with the tabs (here `index`) as the anchor. */
 function RootStack() {
   return <Stack screenOptions={{ headerShown: false }} />;
 }
+const anchored = { default: RootStack, unstable_settings: { anchor: 'index' } };
 
 function routes() {
   return {
-    _layout: { default: RootStack, unstable_settings: { anchor: 'index' } },
+    _layout: anchored,
     index: () => <Text>home</Text>,
     'trip/[id]/_layout': require('@/app/trip/[id]/_layout'),
-    'trip/[id]/index': () => <Text>overview</Text>,
-    'trip/[id]/notes': () => <Text>notes</Text>,
-    'trip/[id]/offline-maps': () => <Text>offline maps</Text>,
+    'trip/[id]/index': () => <Text testID="trip-index">overview</Text>,
+    'trip/[id]/offline-maps': () => (
+      <AreaHeader title="Offline maps" testID="offline-maps-inert" />
+    ),
   };
 }
 
@@ -60,75 +71,87 @@ function insideTrip(node: TestInstance): boolean {
   return false;
 }
 
-/** The header config the navigator gave the trip stack's screen of this route name. */
-function headerOf(name: string): Record<string, unknown> | undefined {
-  const config = screen.container.queryAll(
+const routeName = (scene: TestInstance | null) =>
+  String(scene?.props.screenId).replace(/-[\w-]{21}$/, '');
+
+/** The header config the navigator gave each screen of the trip stack, by route name. */
+function tripHeaders(): Record<string, Record<string, unknown>> {
+  const configs = screen.container.queryAll(
     (node) =>
       node.type === 'RNSScreenStackHeaderConfig' &&
       !!node.parent &&
-      insideTrip(node.parent) &&
-      String(node.parent.props.screenId).startsWith(`${name}-`),
-  )[0];
-  return config?.props;
+      insideTrip(node.parent),
+  );
+  return Object.fromEntries(
+    configs.map((config) => [routeName(config.parent), config.props]),
+  );
 }
 
+function contentBackground(name: string): unknown {
+  const scene = screen.container.queryAll(
+    (node) =>
+      node.type === 'RNSScreen' &&
+      String(node.props.screenId).startsWith(`${name}-`) &&
+      insideTrip(node),
+  )[0];
+  const wrapper = scene?.children.find(
+    (child): child is TestInstance =>
+      typeof child !== 'string' && child.type === 'RNSScreenContentWrapper',
+  );
+  return StyleSheet.flatten(wrapper?.props.style).backgroundColor;
+}
+
+/** The overview, then the screen pushed on it, as a tap on the Offline maps row does. */
 async function openOfflineMaps() {
-  const app = renderRouter(routes(), { initialUrl: '/trip/abc/offline-maps' });
+  const app = renderRouter(routes(), { initialUrl: '/trip/abc' });
   await app;
+  await act(async () => router.push('/trip/abc/offline-maps'));
   return { app };
 }
 
-describe('trip/[id]/_layout - the offline maps screen has a native header (FR-007)', () => {
-  test('shows it, titled "Offline maps", the title the screen no longer draws itself', async () => {
+describe('trip/[id]/_layout - the offline maps route draws its own header (FR-044)', () => {
+  test('has no native header: the title and Back are the screen’s (AreaHeader)', async () => {
     await openOfflineMaps();
 
-    const header = headerOf('offline-maps');
-    expect(header?.hidden).toBe(false);
-    expect(header?.title).toBe('Offline maps');
+    expect(tripHeaders()['offline-maps']?.hidden).toBe(true);
+    expect(screen.getByTestId('offline-maps-inert')).toBeTruthy();
   });
 
-  test('is painted with the kit tokens and draws no hairline, as the overview’s is', async () => {
+  test('the scene behind it is still the canvas colour', async () => {
     await openOfflineMaps();
+    expect(contentBackground('offline-maps')).toBe(COLOURS.background);
+  });
 
-    const header = headerOf('offline-maps');
-    expect(header?.backgroundColor).toBe(COLOURS.background);
-    expect(header?.color).toBe(COLOURS.accent);
-    expect(header?.hideShadow).toBe(true);
+  test('leaves the overview’s own header exactly as it was (no title, a hairline-free bar)', async () => {
+    await openOfflineMaps();
+    const overview = tripHeaders().index;
+
+    expect(overview?.hidden).toBe(false);
+    expect(overview?.title).toBe('');
+    expect(overview?.hideShadow).toBe(true);
   });
 });
 
-describe('trip/[id]/_layout - Back on the offline maps screen (FR-008, item 7)', () => {
-  test('is the one control named "Back", replacing the native one rather than adding to it', async () => {
+describe('trip/[id]/_layout - Back on the offline maps screen (FR-008, FR-030)', () => {
+  test('is the one control named "Back", drawn by the screen', async () => {
     await openOfflineMaps();
 
-    const back = screen.getByLabelText('Back');
-    expect(back.props.accessibilityRole).toBe('button');
-    expect(screen.getAllByLabelText('Back')).toHaveLength(1);
-    expect(headerOf('offline-maps')?.backButtonInCustomView).toBe(false);
-    expect(headerOf('offline-maps')?.hideBackButton).toBe(false);
+    const back = within(screen.getByTestId('offline-maps-inert')).getAllByLabelText(
+      'Back',
+    );
+    expect(back).toHaveLength(1);
+    expect(back[0]?.props.accessibilityRole).toBe('button');
   });
 
-  test('goes back to the trip it was opened from', async () => {
+  test('goes back to the trip the traveller came from', async () => {
     const { app } = await openOfflineMaps();
-    await act(async () => {
-      router.push('/trip/abc');
-    });
-    await act(async () => {
-      router.push('/trip/abc/offline-maps');
-    });
     expect(app.getPathname()).toBe('/trip/abc/offline-maps');
 
-    await fireEvent.press(screen.getAllByLabelText('Back').at(-1) as never);
+    await fireEvent.press(
+      within(screen.getByTestId('offline-maps-inert')).getByLabelText('Back'),
+    );
 
     expect(app.getPathname()).toBe('/trip/abc');
-  });
-
-  test('goes home when the screen was opened with nothing beneath it', async () => {
-    const { app } = await openOfflineMaps();
-    expect(app.getPathname()).toBe('/trip/abc/offline-maps');
-
-    await fireEvent.press(screen.getAllByLabelText('Back').at(-1) as never);
-
-    expect(app.getPathname()).not.toBe('/trip/abc/offline-maps');
+    expect(screen.getByTestId('trip-index')).toBeTruthy();
   });
 });

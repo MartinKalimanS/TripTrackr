@@ -540,6 +540,19 @@ bundle) is in its task.
 
 **Result**: _pending; each device spike writes its result here in its task._
 
+**Status on 2026-10-22 (screens F1 to F13 and the sweeps built; no device run yet).** Every spike still needs a
+phone; what the code now offers to them:
+
+| Spike | Desk side done                                                                                             | Device check to run (note with the steps)                            |
+| ----- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| V1    | Six font files in the plugin, role scale and `tnum` rules, reflow tests at 1, 1.15, 1.5, 2 (`test/scale/`) | `as-built/f14-scale.md`                                              |
+| V2    | Globe style, roundels via `view-shot`, clusters, callout (F1)                                              | `as-built/f1-map-style.md`, `f1-map-pins.md`                         |
+| V3    | Custom sheet, three detents, FlashList hand-off (F2)                                                       | `as-built/f2-sheet-shell.md`                                         |
+| V4    | Pill and Android bar, opaque under reduced transparency and the contrast themes (F3, `test/appearance/`)   | `as-built/f3-tabbar-ios.md`, `f3-tabbar-android.md`, `f14-themes.md` |
+| V5    | Stamps, `react-native-zoom-toolkit` viewer (F7), stamp bitmaps past 100 stamps (F13)                       | `as-built/f7-photos-viewer.md`, `f13-you.md`                         |
+| V6    | Haptics map, count-up and stamp landing policy (`f14-delight`); `Link.AppleZoom` and WEBP stay unbuilt     | `as-built/f14-delight.md`                                            |
+| V7    | Header Back is `HeaderBackButton` everywhere, forms are sheets with keyboard tests                         | the `trip-layout` and form-keyboard suites, then a phone             |
+
 ### Desk spike T506 (no device; 2026-10-12): pass
 
 Run on `feat/005-fonts-mocks` with the six packages installed (T502), the six font entries (T504), the Jest

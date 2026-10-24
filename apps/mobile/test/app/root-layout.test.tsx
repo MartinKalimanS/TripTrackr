@@ -42,6 +42,8 @@ jest.setTimeout(60_000);
 // The device scheme as a store, so a test can flip it with the app mounted: what
 // `Appearance` does when the traveller switches the system between light and dark.
 const mockScheme = { value: 'light', listeners: new Set<() => void>() };
+// The first-run tour has suites of its own (it reads the local store).
+jest.mock('@/components/tour/first-run-tour', () => ({ FirstRunTour: () => null }));
 jest.mock('@/hooks/use-color-scheme', () => {
   const { useSyncExternalStore } = require('react') as typeof import('react');
   return {
@@ -264,14 +266,11 @@ describe('root layout — auth gate (R009, D-17)', () => {
     expect(source).toMatch(/preventAutoHideAsync\(\)\s*\.catch\(/);
   });
 
-  test('loads the provider-logo font behind the splash, and reports a failure', () => {
-    // The Google and Apple buttons draw Ionicons glyphs; an icon whose font is
-    // not loaded yet paints nothing, so the font is loaded before any auth
-    // screen can mount.
+  test('loads no icon font: the Google logo is SVG and the Apple logo is Apple\u2019s own button', () => {
     const source = jest
       .requireActual('fs')
       .readFileSync(require.resolve('@/app/_layout'), 'utf8') as string;
-    expect(source).toMatch(/Ionicons\.loadFont\(\)\s*\.catch\(/);
+    expect(source).not.toMatch(/Ionicons|loadFont/);
   });
 });
 

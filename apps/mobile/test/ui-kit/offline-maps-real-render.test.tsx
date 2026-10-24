@@ -30,6 +30,7 @@ jest.mock('@/lib/sentry', () => ({
   initSentry: jest.fn(),
 }));
 jest.mock('@/hooks/use-mapbox-ready', () => ({ useMapboxReady: () => 'ready' }));
+jest.mock('@/lib/disk-space', () => ({ freeDiskBytes: () => 1_700_000_000 }));
 
 const mockTrip: TripRow = {
   id: 'trip-42',
@@ -149,8 +150,9 @@ describe('the offline maps screen over the real kit', () => {
     await seedReady(101, 8_100_000);
     await renderScreen();
 
-    expect(screen.getByTestId('offline-maps-title')).toHaveTextContent(
-      'Italy, spring 2026',
+    expect(screen.getByTestId('offline-maps-title')).toHaveTextContent('Offline maps');
+    expect(screen.getByTestId('offline-maps-trip')).toHaveTextContent(
+      'For Italy, spring 2026',
     );
     expect(screen.getByTestId('offline-city-100')).toBeTruthy();
     expect(screen.getByTestId('offline-city-101')).toBeTruthy();
@@ -160,15 +162,17 @@ describe('the offline maps screen over the real kit', () => {
     expect(screen.getByTestId('offline-status-101')).toHaveTextContent(
       'Ready offline · 8.1 MB',
     );
-    expect(screen.getByTestId('offline-storage')).toHaveTextContent(
-      'Maps for this trip’s cities use 8.1 MB on this device.',
-    );
+    expect(screen.getByTestId('offline-storage')).toHaveTextContent(/8.1 MB/);
+    expect(screen.getByTestId('offline-storage')).toHaveTextContent(/1.7 GB free/);
   });
 
-  test('each city card is the kit’s surface and holds no card (the nesting guard would throw)', async () => {
+  test('the storage card is the kit’s cream tile and holds no card (the nesting guard would throw); a row is no card', async () => {
     await renderScreen();
 
-    expect(classesOf(screen.getByTestId('offline-city-100'))).toContain('bg-surface');
+    expect(classesOf(screen.getByTestId('offline-storage'))).toContain(
+      'bg-surface-secondary',
+    );
+    expect(classesOf(screen.getByTestId('offline-city-100'))).not.toContain('bg-surface');
   });
 
   test('each state is one announced text element, and a ready one is a soft success chip', async () => {

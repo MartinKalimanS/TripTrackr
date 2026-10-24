@@ -138,7 +138,7 @@ describe('the trip screen over the real kit', () => {
     await renderScreen();
 
     expect(screen.getByTestId('trip-title')).toHaveTextContent('Italy, spring 2026');
-    expect(within(screen.getByTestId('trip-header-row')).getByText('EUR')).toBeTruthy();
+    expect(within(screen.getByTestId('trip-header-row')).queryByText('EUR')).toBeNull();
     expect(screen.getByTestId(/^status-pill-/)).toBeTruthy();
     expect(screen.getByTestId('trip-links')).toBeTruthy();
     expect(screen.getByTestId('trip-days')).toBeTruthy();

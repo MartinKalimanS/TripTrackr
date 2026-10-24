@@ -13,6 +13,7 @@
  */
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import type * as HeroUI from 'heroui-native';
+import { StyleSheet } from 'react-native';
 
 import LoginScreen from '@/app/(auth)/login';
 import RegisterScreen from '@/app/(auth)/register';
@@ -43,17 +44,6 @@ jest.mock('@/features/auth/use-session', () => ({
   useGoogleSignIn: () => mockMutations.google,
 }));
 
-jest.mock('expo-apple-authentication', () => ({
-  isAvailableAsync: jest.fn(async () => true),
-  signInAsync: jest.fn(),
-  AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
-}));
-jest.mock('@expo/vector-icons/Ionicons', () => {
-  const { Text } = jest.requireActual('react-native');
-  return function MockIonicons({ name }: { name: string }) {
-    return <Text testID={`icon-${name}`}>{name}</Text>;
-  };
-});
 jest.mock('expo-auth-session/providers/google', () => ({
   useIdTokenAuthRequest: () => [{ loaded: true }, null, jest.fn()],
 }));
@@ -66,7 +56,10 @@ const CONFIG = { devInfo: { stylingPrinciples: false } };
 // the busy button's spinner gradient is given a colour that is not one. That is the test
 // environment, not the screens: only those two messages are dropped, every other one prints.
 const COLOUR_KIT_NOISE = /\[colorKit\.RGB\]/;
-const SPINNER_COLOUR_NOISE = /is not a valid color or ".*" is not a valid offset/;
+// The Phosphor icons the Welcome and the forms draw take their tint from the same kit call, so
+// the vector drawing reports the same placeholder ("invalid") as a colour it cannot read.
+const SPINNER_COLOUR_NOISE =
+  /is not a valid color or ".*" is not a valid offset|"invalid" is not a valid color or brush/;
 const consoleError = console.error.bind(console);
 const consoleWarn = console.warn.bind(console);
 beforeAll(() => {
@@ -98,14 +91,16 @@ const classesOf = (node: { props: { className?: unknown } }) =>
     .filter(Boolean);
 
 describe('the welcome screen over the real kit', () => {
-  test('renders its heading and two named buttons, the primary one first, and routes them', async () => {
+  test('renders its heading and its named buttons, and routes the email one and the link', async () => {
     await renderScreen(<WelcomeScreen />);
 
-    expect(screen.getByText('TripTrackr').props.accessibilityRole).toBe('header');
+    expect(
+      screen.getByText('Plan it. Live it. Share what you want.').props.accessibilityRole,
+    ).toBe('header');
     const create = screen.getByTestId('welcome-create-account');
     const signIn = screen.getByTestId('welcome-sign-in');
     for (const [button, name] of [
-      [create, 'Create account'],
+      [create, 'Continue with email'],
       [signIn, 'Sign in'],
     ] as const) {
       expect(button.props.accessibilityRole).toBe('button');
@@ -183,20 +178,24 @@ describe('the sign-in screen over the real kit', () => {
     expect(mockMutations.login.mutate).toHaveBeenCalledTimes(1);
   });
 
-  test('the provider buttons are outlined, named and in one column under the action', async () => {
+  test('the provider buttons are Google\u2019s pill and Apple\u2019s own button, named and in one column under the action', async () => {
     await renderScreen(<LoginScreen />);
 
     const google = screen.getByTestId('google-sign-in-unavailable');
     const apple = await screen.findByTestId('apple-sign-in');
     expect(google.props.accessibilityLabel).toBe('Continue with Google, coming soon');
-    expect(apple.props.accessibilityLabel).toBe('Continue with Apple');
+    expect(apple.props.accessibilityLabel).toBe('Sign in with Apple');
     for (const button of [google, apple]) {
       expect(button.props.accessibilityRole).toBe('button');
-      expect(classesOf(button)).toEqual(
-        expect.arrayContaining(['border', 'border-border', 'self-stretch']),
-      );
     }
-    expect(within(apple).getByText('Continue with Apple')).toBeTruthy();
+    expect(classesOf(google)).toContain('self-stretch');
+    expect(
+      StyleSheet.flatten(apple.props.style as never) as { alignSelf?: string },
+    ).toMatchObject({
+      alignSelf: 'stretch',
+    });
+    expect(classesOf(google)).toContain('border');
+    expect(apple.children).toHaveLength(0);
     expect(
       within(screen.getByTestId('login-actions')).getByTestId('social-sign-in'),
     ).toBeTruthy();

@@ -34,7 +34,10 @@ import { useRouter } from 'expo-router';
 
 import { IconButton } from './icon-button';
 
-export type HeaderBackVariant = 'default' | 'glass';
+export type HeaderBackVariant = 'default' | 'glass' | 'ghost';
+
+/** The disc each variant draws: cream on the canvas, glass over a photograph, bare on a bar. */
+const LOOK = { default: 'tonal', glass: 'glass', ghost: 'ghost' } as const;
 
 export interface HeaderBackButtonProps {
   /** Replaces the default `router.back()`. */
@@ -42,7 +45,7 @@ export interface HeaderBackButtonProps {
   /** From React Navigation's `headerLeft`: `false` means there is nothing to go back to. */
   canGoBack?: boolean;
   testID?: string;
-  /** `default` on the canvas; `glass` over a photograph. */
+  /** `default` on the canvas; `glass` over a photograph; `ghost` (no disc) on a solid bar. */
   variant?: HeaderBackVariant;
 }
 
@@ -61,7 +64,7 @@ export function HeaderBackButton({
     <IconButton
       icon="chevron-left"
       accessibilityLabel="Back"
-      variant={variant === 'glass' ? 'glass' : 'tonal'}
+      variant={LOOK[variant]}
       onPress={onPress ?? goBack}
       testID={testID}
     />

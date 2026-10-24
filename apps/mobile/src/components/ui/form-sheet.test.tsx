@@ -28,6 +28,8 @@ import {
 import {
   FOOTER_GAP,
   FormSheet,
+  HEADER_BIG_TEXT,
+  HEADER_MIN_HEIGHT,
   SHEET_TOP_GAP,
   formSheetOptions,
   sheetMaxHeight,
@@ -61,6 +63,10 @@ async function renderSheet(
 
 const flat = (node: { props: { style?: unknown } }) =>
   (StyleSheet.flatten(node.props.style as never) ?? {}) as Record<string, unknown>;
+
+function bodyContent() {
+  return screen.getByTestId('demo-sheet-body').props.contentContainerStyle;
+}
 
 /** The opaque view inside the footer that carries its padding and its fill. */
 function footerContent() {
@@ -110,7 +116,7 @@ describe('sheetMaxHeight - the room a form may take', () => {
 });
 
 describe('<FormSheet> - the parts and their order', () => {
-  test('reads title, fields, Cancel, Save; the title is a heading, in the exact words given', async () => {
+  test('reads Cancel, title, fields, Save; the title is a heading, in the exact words given', async () => {
     await renderSheet();
 
     const title = screen.getByText('New demo');
@@ -119,7 +125,7 @@ describe('<FormSheet> - the parts and their order', () => {
     const order = screen
       .getAllByText(/New demo|fields|Cancel|Save demo/)
       .map((node) => String(node.props.children));
-    expect(order).toEqual(['New demo', 'fields', 'Cancel', 'Save demo']);
+    expect(order).toEqual(['Cancel', 'New demo', 'fields', 'Save demo']);
   });
 
   test('forwards its testID to the root and names the body and the footer from it', async () => {
@@ -129,9 +135,12 @@ describe('<FormSheet> - the parts and their order', () => {
     const footer = screen.getByTestId('demo-sheet-footer');
     expect(screen.getByTestId('demo-sheet')).toBeTruthy();
     expect(within(body).getByText('fields')).toBeTruthy();
-    expect(within(body).getByText('New demo')).toBeTruthy();
+    expect(within(body).queryByText('New demo')).toBeNull();
     expect(within(footer).getByTestId('demo-save')).toBeTruthy();
-    expect(within(footer).getByTestId('demo-cancel')).toBeTruthy();
+    expect(within(footer).queryByTestId('demo-cancel')).toBeNull();
+    const header = within(screen.getByTestId('demo-sheet-header'));
+    expect(header.getByTestId('demo-cancel')).toBeTruthy();
+    expect(header.getByText('New demo')).toBeTruthy();
   });
 
   test('bodyTestID names the scrolling body when a field already owns `<testID>-body`', async () => {
@@ -361,6 +370,136 @@ describe('<FormSheet> - the handle (FR-009)', () => {
     os.restore();
 
     expect(screen.queryByTestId('demo-sheet-handle', hidden)).toBeNull();
+  });
+});
+
+describe('<FormSheet> - the Sunrise form sheet (F6; UI-SPEC 3.6, form.png, add-expense.png)', () => {
+  test('the header is Cancel at the left, the title centred, the trailing chip at the right', async () => {
+    setWindow({ width: 390, height: 844 });
+    await renderSheet({
+      headerTrailing: <NativeText testID="chip">Only you</NativeText>,
+    });
+
+    const header = within(screen.getByTestId('demo-sheet-header'));
+    const kids = header
+      .getAllByText(/Cancel|New demo|Only you/)
+      .map((n) => n.props.children);
+    expect(kids).toEqual(['Cancel', 'New demo', 'Only you']);
+    expect(flat(screen.getByTestId('demo-sheet-header')).minHeight).toBe(
+      HEADER_MIN_HEIGHT,
+    );
+    expect(HEADER_MIN_HEIGHT).toBe(56);
+    expect(String(screen.getByText('New demo').props.className)).toContain('text-center');
+  });
+
+  test('Cancel is a text button in the header; Save is the one primary, full width and 56 dp', async () => {
+    await renderSheet();
+
+    const cancel = screen.getByTestId('demo-cancel');
+    expect(cancel.props.variant).toBe('ghost');
+    const save = screen.getByTestId('demo-save');
+    expect(save.props.variant).toBe('primary');
+    expect(save.props.size).toBe('lg');
+    expect(String(save.props.className)).toContain('self-stretch');
+  });
+
+  test('a subtitle stands under the title and stays at large text (F9: the note editor’s state line)', async () => {
+    setWindow({ width: 390, height: 844 });
+    await renderSheet({ headerSubtitle: <NativeText>On this device</NativeText> });
+    const header = within(screen.getByTestId('demo-sheet-header'));
+    expect(
+      header.getAllByText(/Cancel|New demo|On this device/).map((n) => n.props.children),
+    ).toEqual(['Cancel', 'New demo', 'On this device']);
+
+    await screen.unmount();
+    setWindow({ width: 390, height: 844, fontScale: HEADER_BIG_TEXT });
+    await renderSheet({ headerSubtitle: <NativeText>On this device</NativeText> });
+    expect(screen.getByText('On this device')).toBeTruthy();
+  });
+
+  test('a footer accessory is in the footer, above Save, outside the scrolling body', async () => {
+    await renderSheet({
+      footerAccessory: <NativeText testID="strip">strip</NativeText>,
+    });
+    const footer = within(screen.getByTestId('demo-sheet-footer'));
+    expect(footer.getByTestId('strip')).toBeTruthy();
+    expect(footer.getByTestId('demo-save')).toBeTruthy();
+    expect(
+      within(screen.getByTestId('demo-sheet-body')).queryByTestId('strip'),
+    ).toBeNull();
+  });
+
+  test('without a subtitle or an accessory nothing extra is drawn', async () => {
+    await renderSheet();
+    expect(screen.queryByTestId('strip')).toBeNull();
+  });
+
+  test('from text scale 1.5 the trailing chip is dropped and the title keeps its room', async () => {
+    setWindow({ width: 390, height: 844, fontScale: HEADER_BIG_TEXT });
+    await renderSheet({ headerTrailing: <NativeText>Only you</NativeText> });
+
+    expect(screen.queryByText('Only you')).toBeNull();
+    expect(screen.getByText('New demo')).toBeTruthy();
+    expect(screen.getByTestId('demo-cancel')).toBeTruthy();
+  });
+
+  test('below that scale the chip stays', async () => {
+    setWindow({ width: 390, height: 844, fontScale: 1.49 });
+    await renderSheet({ headerTrailing: <NativeText>Only you</NativeText> });
+    expect(screen.getByText('Only you')).toBeTruthy();
+  });
+
+  test('the body and the footer are padded 20 dp at the sides, the body 8 dp at the top', async () => {
+    await renderSheet();
+
+    expect(flat({ props: { style: bodyContent() } })).toMatchObject({
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      gap: 16,
+    });
+    expect(flat(footerContent())).toMatchObject({
+      paddingHorizontal: 20,
+      paddingTop: 12,
+    });
+  });
+
+  test('gap sets the space between the fields', async () => {
+    await renderSheet({ gap: 24 });
+    expect(flat({ props: { style: bodyContent() } }).gap).toBe(24);
+  });
+
+  test('there is no hairline above the footer by default', async () => {
+    await renderSheet();
+    expect(String(footerContent().props.className)).not.toContain('border-t');
+  });
+
+  test('footerRule draws a hairline above the footer', async () => {
+    await renderSheet({ footerRule: true });
+    expect(String(footerContent().props.className)).toContain(
+      'border-t border-separator',
+    );
+  });
+
+  test('the Android handle is 32 x 4 in the grab colour', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    await renderSheet();
+    os.restore();
+
+    const handle = screen.getByTestId('demo-sheet-handle', hidden);
+    expect(flat(handle)).toMatchObject({ width: 32, height: 4 });
+    expect(String(handle.props.className)).toContain('bg-grab');
+  });
+
+  test('Cancel in the header still reaches the caller, and stays reachable with the keyboard up', async () => {
+    setWindow(PHONE_360X640);
+    const { actions } = await renderSheet();
+    await showKeyboard();
+
+    await fireEvent.press(screen.getByTestId('demo-cancel'));
+    expect(actions.onCancel).toHaveBeenCalledTimes(1);
+    expect(
+      within(screen.getByTestId('demo-sheet-body')).queryByTestId('demo-cancel'),
+    ).toBeNull();
   });
 });
 

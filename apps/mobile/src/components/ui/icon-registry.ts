@@ -33,6 +33,7 @@ import { CaretRightIcon } from 'phosphor-react-native/src/icons/CaretRight';
 import { CaretUpIcon } from 'phosphor-react-native/src/icons/CaretUp';
 import { CheckCircleIcon } from 'phosphor-react-native/src/icons/CheckCircle';
 import { CheckIcon } from 'phosphor-react-native/src/icons/Check';
+import { ChecksIcon } from 'phosphor-react-native/src/icons/Checks';
 import { ClockIcon } from 'phosphor-react-native/src/icons/Clock';
 import { CloudArrowUpIcon } from 'phosphor-react-native/src/icons/CloudArrowUp';
 import { CloudCheckIcon } from 'phosphor-react-native/src/icons/CloudCheck';
@@ -45,9 +46,10 @@ import { EnvelopeIcon } from 'phosphor-react-native/src/icons/Envelope';
 import { EyeSlashIcon } from 'phosphor-react-native/src/icons/EyeSlash';
 import { ExportIcon } from 'phosphor-react-native/src/icons/Export';
 import { FileTextIcon } from 'phosphor-react-native/src/icons/FileText';
+import { FootprintsIcon } from 'phosphor-react-native/src/icons/Footprints';
 import { ForkKnifeIcon } from 'phosphor-react-native/src/icons/ForkKnife';
 import { GearSixIcon } from 'phosphor-react-native/src/icons/GearSix';
-import { GlobeHemisphereEastIcon } from 'phosphor-react-native/src/icons/GlobeHemisphereEast';
+import { GlobeIcon } from 'phosphor-react-native/src/icons/Globe';
 import { ImageIcon } from 'phosphor-react-native/src/icons/Image';
 import { ImagesIcon } from 'phosphor-react-native/src/icons/Images';
 import { InfoIcon } from 'phosphor-react-native/src/icons/Info';
@@ -61,14 +63,20 @@ import { PathIcon } from 'phosphor-react-native/src/icons/Path';
 import { PencilSimpleIcon } from 'phosphor-react-native/src/icons/PencilSimple';
 import { PlusIcon } from 'phosphor-react-native/src/icons/Plus';
 import { QuestionIcon } from 'phosphor-react-native/src/icons/Question';
+import { ScanIcon } from 'phosphor-react-native/src/icons/Scan';
 import { ShieldCheckIcon } from 'phosphor-react-native/src/icons/ShieldCheck';
 import { ShoppingBagIcon } from 'phosphor-react-native/src/icons/ShoppingBag';
 import { SignOutIcon } from 'phosphor-react-native/src/icons/SignOut';
 import { SparkleIcon } from 'phosphor-react-native/src/icons/Sparkle';
 import { StampIcon } from 'phosphor-react-native/src/icons/Stamp';
 import { StopCircleIcon } from 'phosphor-react-native/src/icons/StopCircle';
+import { SunIcon } from 'phosphor-react-native/src/icons/Sun';
 import { SuitcaseIcon } from 'phosphor-react-native/src/icons/Suitcase';
+import { SuitcaseRollingIcon } from 'phosphor-react-native/src/icons/SuitcaseRolling';
 import { TagIcon } from 'phosphor-react-native/src/icons/Tag';
+import { ListBulletsIcon } from 'phosphor-react-native/src/icons/ListBullets';
+import { ListChecksIcon } from 'phosphor-react-native/src/icons/ListChecks';
+import { TextBIcon } from 'phosphor-react-native/src/icons/TextB';
 import { TicketIcon } from 'phosphor-react-native/src/icons/Ticket';
 import { TrashIcon } from 'phosphor-react-native/src/icons/Trash';
 import { TramIcon } from 'phosphor-react-native/src/icons/Tram';
@@ -83,8 +91,9 @@ import { XIcon } from 'phosphor-react-native/src/icons/X';
 
 export const ICONS = {
   // Tab bar, headers, row cues
-  globe: GlobeHemisphereEastIcon,
+  globe: GlobeIcon,
   suitcase: SuitcaseIcon,
+  'suitcase-rolling': SuitcaseRollingIcon,
   user: UserIcon,
   'user-circle': UserCircleIcon,
   'chevron-left': CaretLeftIcon,
@@ -98,6 +107,7 @@ export const ICONS = {
   minus: MinusIcon,
   x: XIcon,
   check: CheckIcon,
+  checks: ChecksIcon,
   search: MagnifyingGlassIcon,
   pencil: PencilSimpleIcon,
   trash: TrashIcon,
@@ -142,11 +152,18 @@ export const ICONS = {
   stamp: StampIcon,
   tag: TagIcon,
   mail: EnvelopeIcon,
+  // Writing (the note editor's pictured formatting bar)
+  bold: TextBIcon,
+  list: ListBulletsIcon,
+  'list-checks': ListChecksIcon,
   sparkle: SparkleIcon,
+  scan: ScanIcon,
+  sun: SunIcon,
   // Categories and transport
   plane: AirplaneIcon,
   car: CarIcon,
   tram: TramIcon,
+  footprints: FootprintsIcon,
   bed: BedIcon,
   'fork-knife': ForkKnifeIcon,
   ticket: TicketIcon,

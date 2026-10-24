@@ -7,6 +7,7 @@
 import { contrastRatio } from '@/theme/contrast';
 import { Palettes, PaletteNames } from '@/theme/palette';
 import {
+  CoverGlow,
   Passport,
   Scrim,
   Sky,
@@ -165,6 +166,16 @@ describe('Passport — C5-10', () => {
       alpha: 0.2,
       centre: [1, 0],
       radius: [0.7, 0.9],
+      fadeAt: 0.62,
+    });
+  });
+
+  test('a generated cover has its own, stronger corner glow: .62 amber, 85% by 95%, gone at 62%', () => {
+    expect(CoverGlow).toEqual({
+      colour: '#FFB547',
+      alpha: 0.62,
+      centre: [1, 0],
+      radius: [0.85, 0.95],
       fadeAt: 0.62,
     });
   });

@@ -87,22 +87,13 @@ describe('the neumorphic look is retired from the application source (SC-001, FR
 });
 
 /**
- * T517 — feature 005 FR-083, SC-001: no Atlas-only treatment may remain when the feature is
- * complete. They exist today (the 004 shape tables, the flat tab strip's mark, two 004 text
- * roles) and are removed screen by screen, then by T564, so the search is red-able on demand
- * and a ratchet otherwise:
+ * T517 — feature 005 FR-083, SC-001: no Atlas-only treatment may remain. T564 retired the three
+ * (the 004 shape tables, the flat tab strip's selection mark and the 004 text roles), so each
+ * is a plain regression guard: a new line that uses one fails here.
  *
- * - by default a treatment may not GAIN a line (its `ceiling` in `theme/atlas-values.ts`):
- *   a new component built on an Atlas-only table fails here;
- * - `ATLAS_RETIREMENT=1 npx jest test/no-neumorphism` demands zero of each, which is the
- *   state T564 must reach; T564 then deletes this flag, the ceilings and the skip, and the
- *   strict test becomes the only one.
- *
- * The Atlas palette VALUES are guarded without a ratchet by `theme/atlas-values.test.ts`.
+ * The Atlas palette VALUES are guarded by `theme/atlas-values.test.ts`.
  */
 describe('the Atlas-only treatments are retired from the application source (FR-083)', () => {
-  const strict = process.env.ATLAS_RETIREMENT === '1';
-  const strictTest = strict ? test : test.skip;
   const files = sourceFiles(SRC);
 
   test.each(ATLAS_TREATMENTS)(
@@ -113,22 +104,7 @@ describe('the Atlas-only treatments are retired from the application source (FR-
     },
   );
 
-  test.each(ATLAS_TREATMENTS)(
-    '$label: no new use (ratchet at $ceiling lines)',
-    (treatment) => {
-      const hits = files.flatMap((file) => treatmentHitsIn(treatment, file));
-      expect({
-        label: treatment.label,
-        over: Math.max(hits.length - treatment.ceiling, 0),
-      }).toEqual({ label: treatment.label, over: 0 });
-    },
-  );
-
-  // Red until T564 (and the screens it waits on): run with ATLAS_RETIREMENT=1.
-  strictTest.each(ATLAS_TREATMENTS)(
-    '$label: none remain (ATLAS_RETIREMENT=1)',
-    (treatment) => {
-      expect(files.flatMap((file) => treatmentHitsIn(treatment, file))).toEqual([]);
-    },
-  );
+  test.each(ATLAS_TREATMENTS)('$label: none remain', (treatment) => {
+    expect(files.flatMap((file) => treatmentHitsIn(treatment, file))).toEqual([]);
+  });
 });

@@ -1,59 +1,81 @@
 /**
- * One photo in the gallery grid — tasks.md T117, restyled for Atlas by T442 (FR-028,
- * FR-041; research D-23, D-27; 004 FR-015, FR-019, FR-024 to FR-026, FR-033, FR-034,
- * FR-037; contract C4-10 rule 9).
+ * One photograph on a day's mosaic — tasks.md T117, restyled by T442 (Atlas) and T549 (Sunrise
+ * Passport; FR-041, FR-045; research D-23, D-27, D5-09; pictures `more/photos*.png`; prototype
+ * `.pt`, `.ub`, `.fl`, `.mo`).
  *
- * The tile draws the LOCAL THUMBNAIL, never the full image (Acceptance Scenario 5.6): a
- * grid of full-size photos is how a gallery runs a phone out of memory. `recyclingKey`
- * blanks the view when `FlashList` reuses a row for other photos, so a recycled tile
- * never shows the previous photo while the new one loads, and `transition={0}` draws the
- * new one at once, with no fade.
+ * The tile draws the LOCAL THUMBNAIL, never the full image (Acceptance Scenario 5.6): a grid of
+ * full-size photographs is how a gallery runs a phone out of memory. `recyclingKey` blanks the
+ * view when `FlashList` reuses a row for other photographs, and `transition={0}` draws the new
+ * one at once. The photograph is a hairline `MediaFrame` (a near-white photograph on the light
+ * canvas needs an edge), filling its frame at full fidelity: no tint, no shadow, no opacity.
  *
- * Nothing is laid across the picture (FR-033, 002 C12). The photo is a `MediaFrame`: a
- * hairline on every photograph, whatever its tone (a near-white photo on the light canvas
- * needs an edge), no fill, no shadow, no opacity, and nothing else inside it. Its parents
- * are the control and the tile, which paint nothing either: the control shows a held
- * press and focus as a RING drawn outside it (`feedback="ring"`), because a pressed fill
- * behind an opaque thumbnail would show nowhere and one over it would be a tint.
+ * Where it sits and how big it is comes from the mosaic (`frame`, from `features/photos/photo-
+ * mosaic.ts`); the tile is `absolute` in it. What the tile says of the photograph's bytes is
+ * drawn as the pictures draw it, in an icon and a word and not a hue alone, and the tile's name
+ * says it in words (`photoLabel`):
+ *   - waiting to upload: the dashed cloud disc at the bottom end (`UploadBadge`);
+ *   - uploaded a moment ago from this device: the tick disc (`isJustSynced`); older ones carry
+ *     nothing, a tile with no mark is a safe photograph;
+ *   - failed: a scrim over the whole tile and the solid "Retry" pill (`FailedRetryPill`), a
+ *     control of its own beside the open button, never nested in it;
+ *   - `more`: the `+N` tile. A scrim over the whole tile (the dark button scrim and the bottom
+ *     one) and the count in white; pressing it shows the whole day instead of opening the photo.
+ * Those marks are the pictured exception to the 004 "no overlay" rule; the photograph itself is
+ * never tinted anywhere else. A photograph with no file here, or whose thumbnail will not draw,
+ * is a placeholder that says so.
  *
- * The photo and its caption are ONE button whose name says when, where and whether its
- * bytes have arrived (`photoLabel`). A photo still on this device alone, or one whose
- * upload failed, carries a caption in words below the picture (`PhotoStatusBadge`: an
- * icon, the words, a dashed or solid edge); the retry for a failed one is its own control
- * beside the button, not nested inside it. A photo with no file here, or whose thumbnail
- * will not draw, is a placeholder that says so.
- *
- * A tile has no chevron: a cue laid on a thumbnail would be an overlay (FR-033), and the
- * picture is itself the thing to open. At the largest text size the grid has fewer, wider
- * tiles (`photo-grid.ts`), and the caption wraps.
+ * The open button is one `Tappable` named by `photoLabel`, with `feedback="ring"`: a held press
+ * and focus are a ring drawn OUTSIDE the tile, because a fill behind an opaque thumbnail would
+ * show nowhere and one over it would be a tint.
  *
  * Visibility posture: private. A tile has no share or public control.
  */
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { PhotoRetryButton, PhotoStatusBadge } from '@/components/trip/photo-status';
+import {
+  FailedRetryPill,
+  UploadBadge,
+  type UploadBadgeKind,
+} from '@/components/trip/photo-status';
 import { MediaFrame } from '@/components/ui/media-frame';
+import { Scrim } from '@/components/ui/scrim';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
+import { useColors } from '@/components/ui/theme-tokens';
 import type { PhotoWithPlace } from '@/db/repositories/photos';
 import { GALLERY_COPY } from '@/features/photos/photo-copy';
 import { thumbnailUri } from '@/features/photos/photo-files';
-import { TILE_GAP } from '@/features/photos/photo-grid';
 import { photoLabel } from '@/features/photos/photo-labels';
-import { cornerStyle } from '@/theme';
+import type { Frame } from '@/features/photos/photo-mosaic';
+import { isJustSynced } from '@/features/photos/upload-summary';
+import { cornerOf } from '@/theme';
+
+export interface MoreTile {
+  /** The number on the tile: how many photographs the day has that are not shown yet. */
+  count: number;
+  /** Its name for a screen reader: "9 more photos from Wednesday 14 October". */
+  label: string;
+}
 
 export type PhotoTileProps = {
   photo: PhotoWithPlace;
+  frame: Frame;
+  /** The time the marks are judged at (a tick lasts a few minutes). */
+  now: number;
+  /** Makes this the `+N` tile. */
+  more?: MoreTile;
   onOpen: (photo: PhotoWithPlace) => void;
   onRetry: (photo: PhotoWithPlace) => void;
+  /** Pressing the `+N` tile. */
+  onMore?: () => void;
 };
 
 function Placeholder() {
   return (
     <View className="flex-1 items-center justify-center bg-surface p-1">
-      <Text type="caption" tone="muted" className="text-center">
+      <Text variant="caption" tone="muted" className="text-center">
         {GALLERY_COPY.noPreview}
       </Text>
     </View>
@@ -79,64 +101,90 @@ function TileImage({ photo }: { photo: PhotoWithPlace }) {
   );
 }
 
-export function PhotoTile({ photo, onOpen, onRetry }: PhotoTileProps) {
-  const status = photo.upload_state;
+const SCRIM_KEYS = ['scrimButton'] as const;
 
+/** A scrim over the whole tile: a failed photograph, and the `+N` tile. Takes no touch. */
+function TileScrim({ children }: { children?: ReactNode }) {
+  const { scrimButton } = useColors(SCRIM_KEYS);
   return (
-    <View testID={`photo-tile-${photo.id}`} className="flex-1 gap-1">
-      <Tappable
-        testID={`photo-open-${photo.id}`}
-        accessibilityLabel={photoLabel(photo)}
-        accessibilityHint={GALLERY_COPY.openHint}
-        feedback="ring"
-        onPress={() => onOpen(photo)}
-        className="gap-1"
-        style={styles.open}>
-        <MediaFrame testID={`photo-frame-${photo.id}`} radius="md" style={styles.frame}>
-          <TileImage photo={photo} />
-        </MediaFrame>
-        {status !== 'uploaded' ? <PhotoStatusBadge status={status} /> : null}
-      </Tappable>
-      {status === 'failed' ? (
-        <PhotoRetryButton compact onPress={() => onRetry(photo)} />
-      ) : null}
+    <View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, styles.centred, { backgroundColor: scrimButton }]}>
+      {children}
     </View>
   );
 }
 
-export type PhotoGridRowProps = {
-  photos: readonly PhotoWithPlace[];
-  columns: number;
-  onOpen: (photo: PhotoWithPlace) => void;
-  onRetry: (photo: PhotoWithPlace) => void;
-};
-
-/**
- * One row of the grid. `FlashList` recycles rows, and a row of tiles recycles
- * as well as a single tile (photo-grid.ts). A short last row is padded with
- * empty cells so its tiles keep the width of the rows above.
- */
-export function PhotoGridRow({ photos, columns, onOpen, onRetry }: PhotoGridRowProps) {
-  const padding = Math.max(0, columns - photos.length);
+function MoreCount({ count }: { count: number }) {
   return (
-    <View style={styles.row}>
-      {photos.map((photo) => (
-        // Keyed by photo, so a recycled row remounts its tiles and a tile's
-        // "did not draw" never follows the row to different photos.
-        <PhotoTile key={photo.id} photo={photo} onOpen={onOpen} onRetry={onRetry} />
-      ))}
-      {Array.from({ length: padding }, (_, index) => (
-        <View key={`padding-${index}`} style={styles.cell} />
-      ))}
+    <TileScrim>
+      <Scrim kind="bottom" />
+      <Text
+        testID="photo-more-count"
+        variant="headline"
+        tone="onPhoto"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}>
+        {`+${count}`}
+      </Text>
+    </TileScrim>
+  );
+}
+
+function badgeOf(photo: PhotoWithPlace, now: number): UploadBadgeKind | null {
+  if (photo.upload_state === 'pending') return 'queued';
+  return isJustSynced(photo, now) ? 'synced' : null;
+}
+
+export function PhotoTile({
+  photo,
+  frame,
+  now,
+  more,
+  onOpen,
+  onRetry,
+  onMore,
+}: PhotoTileProps) {
+  const failed = photo.upload_state === 'failed';
+  const badge = more ? null : badgeOf(photo, now);
+
+  return (
+    <View testID={`photo-tile-${photo.id}`} style={[styles.tile, frame]}>
+      <Tappable
+        testID={`photo-open-${photo.id}`}
+        accessibilityLabel={more ? more.label : photoLabel(photo)}
+        accessibilityHint={more ? undefined : GALLERY_COPY.openHint}
+        feedback="ring"
+        onPress={() => (more && onMore ? onMore() : onOpen(photo))}
+        style={styles.open}>
+        <MediaFrame
+          testID={`photo-frame-${photo.id}`}
+          radius="md"
+          style={StyleSheet.absoluteFill}>
+          <TileImage photo={photo} />
+          {failed ? <TileScrim /> : null}
+          {more ? <MoreCount count={more.count} /> : null}
+        </MediaFrame>
+        {badge ? <UploadBadge kind={badge} /> : null}
+      </Tappable>
+      {failed && !more ? <FailedRetryPill onPress={() => onRetry(photo)} /> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: TILE_GAP },
-  cell: { flex: 1 },
+  tile: { position: 'absolute' },
   // The control's corner is the frame's (a photograph's 16 dp), so the ring follows the
-  // picture; the content starts at the top rather than centred in the minimum target.
-  open: { ...cornerStyle('lg'), justifyContent: 'flex-start' },
-  frame: { aspectRatio: 1 },
+  // picture; it fills the tile, whatever its minimum touch height.
+  open: {
+    ...cornerOf('lg'),
+    position: 'absolute',
+    top: 0,
+    start: 0,
+    end: 0,
+    bottom: 0,
+    minHeight: 0,
+  },
+  centred: { alignItems: 'center', justifyContent: 'center' },
 });

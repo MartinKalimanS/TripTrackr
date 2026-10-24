@@ -5,10 +5,10 @@
  *
  *   <TripRow trip={card} onPress={() => router.push(`/trip/${card.id}`)} />
  *
- * A 64 dp thumbnail (56 dp at large text), 16 dp round, clipped, with a hairline round it (a
- * photograph can be any tone); beside it the title on one line, and under it the flag, the
- * country, the month and the length ("Japan · Mar 2026 · 9 days"); a trailing chevron cue (the
- * row's cue at 3:1, FR-069); and, while the trip has changes the server has not confirmed, the
+ * A 64 dp thumbnail (56 dp at large text), 16 dp round and clipped, as the pictures draw it with
+ * no edge; beside it the title on one line, and under it the flag, the
+ * country, the month and the length ("Japan · Mar 2026 · 9 days"); a trailing chevron cue (20 dp, `subtle`,
+ * 3:1 or more, FR-069); and, while the trip has changes the server has not confirmed, the
  * marker in words. At a font scale of 1.15 and above the title and the line may take two lines
  * and the thumbnail is 56 dp; the row is a 72 dp MINIMUM, never a height.
  *
@@ -27,7 +27,8 @@ import { View } from 'react-native';
 
 import { FlagChip } from '@/components/ui/flag-chip';
 import { StatusChip } from '@/components/ui/chip';
-import { PressCue } from '@/components/ui/press-cue';
+import { Icon } from '@/components/ui/icon';
+import { CHEVRON } from '@/components/ui/press-cue';
 import { isLargeText } from '@/components/ui/reflow';
 import { SyncBadge } from '@/components/ui/sync-badge';
 import { Tappable } from '@/components/ui/tappable';
@@ -48,6 +49,9 @@ const MIN_HEIGHT = 72;
 const THUMB = 64;
 const THUMB_LARGE = 56;
 
+/** `.meta-line { gap: 6px }`: the flag and the words. */
+const META_GAP = { gap: 6 } as const;
+
 /** The title, the line under it and the chips: what sits between the thumbnail and the cue. */
 function RowText({ trip, large }: { trip: TripCardModel; large: boolean }) {
   const { id } = trip;
@@ -57,7 +61,10 @@ function RowText({ trip, large }: { trip: TripCardModel; large: boolean }) {
       <Text variant="callout" numberOfLines={lines} accessibilityRole="text">
         {trip.title}
       </Text>
-      <View testID={`trip-card-${id}-meta-row`} className="flex-row items-center gap-2">
+      <View
+        testID={`trip-card-${id}-meta-row`}
+        className="flex-row items-center"
+        style={META_GAP}>
         {trip.country ? (
           <FlagChip iso2={trip.country.iso2} testID={`trip-card-${id}-flag`} />
         ) : null}
@@ -91,12 +98,11 @@ export function TripRow({ trip, onPress }: TripRowProps) {
       <View className="flex-row items-center gap-4">
         <View
           testID={`trip-card-${id}-thumb`}
-          className="border border-separator"
           style={[cornerOf('lg'), { width: side, height: side, overflow: 'hidden' }]}>
           <TripCoverArt trip={trip} thumb />
         </View>
         <RowText trip={trip} large={large} />
-        <PressCue testID={`trip-card-${id}-cue`} />
+        <Icon name={CHEVRON} size={20} tone="subtle" testID={`trip-card-${id}-cue`} />
       </View>
     </Tappable>
   );
