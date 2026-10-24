@@ -129,7 +129,7 @@ function Figure({ name, value, small, label, spoken, index, secondary }: FigureP
 function figuresOf(totals: PassportTotals, secondary: string): FigureProps[] {
   const locale = deviceLocale();
   const { languageTag } = locale;
-  const distance = distanceFigure(totals.distanceKm, locale);
+  const distance = distanceFigure(totals.distanceKm);
   const grouped = (count: number) => new Intl.NumberFormat(languageTag).format(count);
   return [
     {

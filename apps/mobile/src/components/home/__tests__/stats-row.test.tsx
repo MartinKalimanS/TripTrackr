@@ -114,7 +114,7 @@ describe('<StatsRow> figures', () => {
     expect(screen.getByTestId('globe-stat-distance')).toHaveTextContent(/^0$/);
   });
 
-  test('follows the measurement system: miles for a device that measures in them', async () => {
+  test('is always in kilometres, even on a device that measures in miles', async () => {
     (getLocales as jest.Mock).mockReturnValue([
       {
         languageTag: 'en-US',
@@ -124,10 +124,9 @@ describe('<StatsRow> figures', () => {
       },
     ]);
     await render(row());
-    expect(screen.queryByText('mi')).toBeNull();
-    expect(screen.getByText('Miles')).toBeOnTheScreen();
-    const miles = new Intl.NumberFormat('en-US').format(Math.round(61480.4 / 1.609344));
-    expect(screen.getByTestId('globe-stat-distance')).toHaveTextContent(miles);
+    expect(screen.queryByText('Miles')).toBeNull();
+    expect(screen.getByText('Kilometres')).toBeOnTheScreen();
+    expect(screen.getByTestId('globe-stat-distance')).toHaveTextContent(/^61,480$/);
   });
 
   test('follows the language for the grouping of digits', async () => {

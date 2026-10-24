@@ -10,8 +10,6 @@
  */
 import { getLocales } from 'expo-localization';
 
-export type MeasurementSystem = 'metric' | 'us' | 'uk';
-
 export interface DeviceLocale {
   /** BCP 47, e.g. "de-AT". */
   languageTag: string;
@@ -19,8 +17,6 @@ export interface DeviceLocale {
   decimalSeparator: string;
   /** The region's currency, or null when the platform cannot say. */
   currencyCode: string | null;
-  /** How the region measures; travel distances are miles in `us` and `uk`. */
-  measurementSystem: MeasurementSystem;
 }
 
 export function deviceLocale(): DeviceLocale {
@@ -29,7 +25,6 @@ export function deviceLocale(): DeviceLocale {
     languageTag: first?.languageTag ?? 'en',
     decimalSeparator: first?.decimalSeparator ?? '.',
     currencyCode: first?.currencyCode ?? null,
-    measurementSystem: first?.measurementSystem ?? 'metric',
   };
 }
 
@@ -159,8 +154,6 @@ export function describeRate(from: string, rate: string, to: string): string {
   return `1 ${from} = ${rate} ${to}`;
 }
 
-const KM_PER_MILE = 1.609344;
-
 export interface FormattedDistance {
   /** "12,346 km" — for the screen. */
   text: string;
@@ -168,13 +161,13 @@ export interface FormattedDistance {
   spoken: string;
 }
 
-/** A distance as the number and the unit of the device's measurement system, apart. */
+/** A distance as the number and its unit, apart. Always kilometres, whatever the device says. */
 export interface DistanceFigure {
-  /** Whole units: kilometres, or miles in `us` and `uk`. */
+  /** Whole kilometres. */
   value: number;
-  unit: 'km' | 'mi';
-  /** The unit spelled out, singular: "kilometre" or "mile". */
-  unitWord: 'kilometre' | 'mile';
+  unit: 'km';
+  /** The unit spelled out, singular, for a screen reader. */
+  unitWord: 'kilometre';
 }
 
 /**
@@ -182,16 +175,8 @@ export interface DistanceFigure {
  * on its own (the Home's kilometres counts up beside a lighter "km"). `formatDistance` is
  * built on it, so the two cannot disagree.
  */
-export function distanceFigure(
-  km: number,
-  locale: DeviceLocale = deviceLocale(),
-): DistanceFigure {
-  const miles = locale.measurementSystem !== 'metric';
-  return {
-    value: Math.round(miles ? km / KM_PER_MILE : km),
-    unit: miles ? 'mi' : 'km',
-    unitWord: miles ? 'mile' : 'kilometre',
-  };
+export function distanceFigure(km: number): DistanceFigure {
+  return { value: Math.round(km), unit: 'km', unitWord: 'kilometre' };
 }
 
 /**
@@ -204,7 +189,7 @@ export function formatDistance(
   km: number,
   locale: DeviceLocale = deviceLocale(),
 ): FormattedDistance {
-  const { value, unit, unitWord } = distanceFigure(km, locale);
+  const { value, unit, unitWord } = distanceFigure(km);
   const figure = new Intl.NumberFormat(locale.languageTag, {
     maximumFractionDigits: 0,
   }).format(value);

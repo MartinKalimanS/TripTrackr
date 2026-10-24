@@ -6,8 +6,8 @@
  *
  * Nothing in it is invented (owner answer Q-11; `features/trips/stop-route.ts`): the codes are
  * the first letters of the city names, the position is the count of stops, and the distance is
- * the straight-line distance between the two cities' real coordinates in the device's unit
- * (`formatDistance`: km, or miles in the US and UK). With no distance to give (the previous
+ * the straight-line distance between the two cities' real coordinates in kilometres
+ * (`formatDistance`). With no distance to give (the previous
  * stop's place is not cached on this device) the line says only "Stop 3 - after Sintra"; for
  * the first stop of a trip there is no route and nothing is drawn.
  *

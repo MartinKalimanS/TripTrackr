@@ -81,7 +81,7 @@ export function filingMismatchLine(
   if (photo.city_id === null) return null;
   const km = filingMismatchKm(photo, { lat: photo.city_lat, lng: photo.city_lng });
   if (km === null) return null;
-  // Kilometres, or miles where the device measures in them (FR-077), grouped in `languageTag`.
+  // Always kilometres (owner decision 2026-10-24), grouped in `languageTag`.
   const { text: distance } = formatDistance(km, { ...deviceLocale(), languageTag });
   const city = photo.city_name ?? `City #${photo.city_id}`;
   return `This photo was taken about ${distance} from ${city}, so it may be filed under the wrong city. You can change it below.`;

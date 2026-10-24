@@ -7,7 +7,7 @@
  * - PLURALS go through \`countParts\`, whose fallback is a plain comparison: Hermes has NO
  *   \`Intl.PluralRules\`, so the whole suite of copy runs with it removed, and a scan of the
  *   source fails on a call that is not behind the guard;
- * - UNITS are kilometres or miles by the device's measurement system, in every sentence that
+ * - UNITS are always kilometres, whatever the device's measurement system, in every sentence that
  *   states a distance (the photo viewer's "about 231 km from Firenze" was the one that did not).
  */
 import { getLocales } from 'expo-localization';
@@ -176,20 +176,23 @@ describe('units follow the measurement system, in every sentence that states a d
     );
   });
 
-  test.each(['us', 'uk'] as const)('and miles where the system is %s', (system) => {
-    device('en-US', system);
-    const line = filingMismatchLine(photo);
-    expect(line).toMatch(/^This photo was taken about 14\d mi from Firenze/);
-    expect(line).not.toMatch(/ km /);
-  });
+  test.each(['us', 'uk'] as const)(
+    'and still kilometres where the system is %s',
+    (system) => {
+      device('en-US', system);
+      const line = filingMismatchLine(photo);
+      expect(line).toMatch(/^This photo was taken about 23\d km from Firenze/);
+      expect(line).not.toMatch(/ mi /);
+    },
+  );
 
   test('the year header and the stop distances agree with it', () => {
     device('en-US', 'us');
     expect(yearHeaderCopy(2026, 2, 9380)).toMatchObject({
-      distance: '5,828 mi',
-      spoken: '5,828 miles',
+      distance: '9,380 km',
+      spoken: '9,380 kilometres',
     });
-    expect(formatDistance(1.7).spoken).toBe('1 mile');
+    expect(formatDistance(1.7).spoken).toBe('2 kilometres');
     device('de-DE', 'metric');
     expect(yearHeaderCopy(2026, 2, 9380)).toMatchObject({
       distance: '9.380 km',

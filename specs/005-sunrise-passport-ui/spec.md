@@ -568,6 +568,9 @@ confirms selections and saves. All of it is off when the traveller asks for redu
   meaning.
 - **FR-077** [Tier 1]: Figures, dates, plurals and units MUST follow the device's language and measurement
   system and MUST NOT be hard-coded.
+  _Amended 2026-10-24 (owner decision):_ distances are ALWAYS kilometres, whatever the device's measurement
+  system. Figures, dates and plurals still follow the device's language. `deviceLocale()` no longer carries a
+  measurement system and `distanceFigure` takes no locale.
 
 **Theming**
 
