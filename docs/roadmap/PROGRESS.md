@@ -1,7 +1,7 @@
 # Progress
 
 The single place that says what is done. Tick a box **only** with a link to the merged PR or the evidence file.
-Last updated: 2026-10-23 (UI features F1 to F14 built; T564 shape tables retired). Sessions end by updating this file (`P-HANDOFF`).
+Last updated: 2026-10-24 (UI features F1 to F14 built; T564 shape tables retired). Sessions end by updating this file (`P-HANDOFF`).
 
 ## Milestones
 
@@ -72,17 +72,17 @@ The owner asked (2026-10-22) to keep implementing without waiting at each featur
 
 - [x] F1 Map (approved 2026-10-19)
 - [x] F2 Home sheet (approved 2026-10-20)
-- [ ] F3 Tab bar (built 2026-10-20; awaiting approval)
-- [ ] F4 Trips cards and list (built 2026-10-21; awaiting approval)
-- [ ] F5 Trip screen (built 2026-10-21; awaiting approval)
-- [ ] F6 Forms (built 2026-10-21; awaiting approval)
-- [ ] F7 Photos and viewer (built 2026-10-21; awaiting approval)
-- [ ] F8 Spending (built 2026-10-21; awaiting approval)
-- [ ] F9 Notes (built 2026-10-21; awaiting approval)
-- [ ] F10 Documents (built 2026-10-22; awaiting approval)
-- [ ] F11 Offline maps (built 2026-10-22; awaiting approval)
-- [ ] F12 Welcome, sign in, create account (built 2026-10-22; awaiting approval)
-- [ ] F13 You (built 2026-10-22; awaiting approval)
+- [x] F3 Tab bar (built 2026-10-20; owner approved in chat 2026-10-24)
+- [x] F4 Trips cards and list (built 2026-10-21; owner approved in chat 2026-10-24)
+- [x] F5 Trip screen (built 2026-10-21; owner approved in chat 2026-10-24)
+- [x] F6 Forms (built 2026-10-21; owner approved in chat 2026-10-24)
+- [x] F7 Photos and viewer (built 2026-10-21; owner approved in chat 2026-10-24)
+- [x] F8 Spending (built 2026-10-21; owner approved in chat 2026-10-24)
+- [x] F9 Notes (built 2026-10-21; owner approved in chat 2026-10-24)
+- [x] F10 Documents (built 2026-10-22; owner approved in chat 2026-10-24)
+- [x] F11 Offline maps (built 2026-10-22; owner approved in chat 2026-10-24)
+- [x] F12 Welcome, sign in, create account (built 2026-10-22; owner approved in chat 2026-10-24)
+- [x] F13 You (built 2026-10-22; owner approved in chat 2026-10-24)
 - [ ] F14 Sweeps (T558 to T562 built 2026-10-22, T564 and T565 partly), device gates and release gates (the finer list is `specs/005-sunrise-passport-ui/reference/IMPLEMENTATION-PLAN.md`)
 
 ## Evidence log (small steps)
@@ -129,6 +129,7 @@ row here is not done. Test counts are the full Jest run of the workspace on that
 | 2026-10-22 | Merge both into the stack                                                                      | `feat/ui-stack` (`72018b2`)           | 429 suites / 9,929 tests, tsc, ESLint, Prettier, parity, theme green                                                                             |
 | 2026-10-23 | T564 part: retire AtlasSpacing, AtlasRadius, cornerStyle; fix flaky document-upload order test | `feat/ui-stack`                       | 429 suites / 9,912 tests, tsc, ESLint, Prettier, theme css green; `ATLAS_RETIREMENT=1` 1 red left (text roles); `as-built/f14-atlas.md` addendum |
 | 2026-10-23 | T569 review of the derived views and the sign-in restyle                                       | `feat/ui-stack`                       | read and grep review, no finding; `specs/005-sunrise-passport-ui/tasks.md` T569                                                                  |
+| 2026-10-24 | PR #30 CI: `stop-row` tests accept a month-first date (US-locale runner)                       | `feat/ui-stack`                       | CI run 39991038066 failed only there; 30 tests pass locally                                                                                      |
 
 ## Feature 001 open tasks (65 of 228 at 2026-10-21; the list moves to the steps above)
 
