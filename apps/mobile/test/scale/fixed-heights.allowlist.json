@@ -76,14 +76,9 @@
       "reason": "A thumbnail or cover frame: art with no scaling text (cover letters and flags opt out with allowFontScaling false)"
     },
     {
-      "file": "src/components/navigation/android-nav-bar.tsx",
-      "count": 1,
-      "reason": "The Android indicator behind the selected icon: a 56 by 32 shape, the tab around it and its label grow (tabMinHeight is a minimum)"
-    },
-    {
       "file": "src/components/navigation/tab-metrics.ts",
-      "count": 2,
-      "reason": "Named MINIMUMS read as minHeight by the pill and the Android bar (PillMetrics.height, AndroidBarMetrics.height): the bars grow with the text"
+      "count": 1,
+      "reason": "Named MINIMUMS read as minHeight by the pill (PillMetrics.height): the bar grows with the text"
     },
     {
       "file": "src/components/navigation/tab-pill.tsx",

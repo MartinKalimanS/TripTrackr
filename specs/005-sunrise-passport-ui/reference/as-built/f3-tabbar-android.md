@@ -55,3 +55,7 @@ never given 88 dp.
 5. Large text (Settings, Font size at maximum): the bar grows, nothing clips, labels wrap.
 6. Home: the "New trip" button floats 16 dp above the bar's hairline; Trips list ends clear of it.
 7. Dark theme and a contrast theme: cream becomes navy, hairline stays one line.
+
+## Superseded 2026-10-24: Android gets the pill
+
+The owner asked for the bar of `reference/screens/core/home-contrast.png` (the floating capsule with the wide highlighted tab) on Android instead of the flat Material 3 bar of `home-android.png`. `TabBar` now renders `TabPill` on every platform; `AndroidNavBar`, `AndroidBarMetrics`, their tests and the gallery frame are deleted. On Android the pill's surface is the opaque one of `TabSurface` (a blur there would be re-blurred every frame under the globe), with the hairline and the second lift. The ids `tab-bar`, `tab-<route>` and `tab-mark-<route>` are unchanged, so the Maestro flows are too. **Device check:** the pill on a gesture-navigation Android phone and one with three-button navigation (it floats at `max(inset - 10, 12)` above the bottom edge), over the globe and over a list.

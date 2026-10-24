@@ -1,11 +1,11 @@
 /**
- * The numbers the floating tab pill and the Android navigation bar are laid out with, in dp,
+ * The numbers the floating tab pill is laid out with, in dp,
  * and the pure arithmetic over them (feature 005, contract C5-21, research D5-05 and D5-21;
  * FR-022, FR-024). Exported so a test sums the same constants the components render with, and
  * so a screen that floats a control above the bar reads the same clearance.
  */
 
-/** The floating pill (iOS). */
+/** The floating pill (both platforms). */
 export const PillMetrics = {
   /** A MINIMUM: the pill grows with the text size, it is never given a height. */
   height: 64,
@@ -34,38 +34,6 @@ export const PillMetrics = {
   darkCapsuleAlpha: 0.14,
   /** 64 - 2 x 6: a tab is at least this tall, above 44 pt and 48 dp (FR-071). */
   tabMinHeight: 64 - 2 * 6,
-} as const;
-
-/**
- * The Android navigation bar (D5-21), measured from the reference (`reference/prototype/styles.css`,
- * `:root[data-platform='android'] .tabbar`: padding 12 8 24, a 64 dp bar and the 24 dp gesture
- * inset below it, edge to edge). The 24 is the system's own bottom inset, never a constant.
- */
-export const AndroidBarMetrics = {
-  /**
-   * A MINIMUM above the system inset, the top hairline and the 12 dp padding included: the bar
-   * grows with the text size, it is never given a height.
-   */
-  height: 64,
-  /** The hairline on the bar's top edge (1 dp, the reference's `0 -1px 0`). */
-  hairline: 1,
-  /** Above the indicator. */
-  paddingTop: 12,
-  /** Left and right, added to the system's side insets. */
-  paddingX: 8,
-  /** The least a tab is tall, the Android touch target. */
-  tabMinHeight: 48,
-  /** The indicator behind the selected icon. */
-  indicatorWidth: 56,
-  indicatorHeight: 32,
-  /** Between the indicator and the label. */
-  indicatorLabelGap: 4,
-  iconSize: 24,
-  /** The label: 12 / 14, semibold on every tab, capped at 1.3 times. */
-  labelSize: 12,
-  labelLineHeight: 14,
-  /** The indicator is the accent at this opacity: 26% in light, 28% in dark. */
-  indicatorOpacity: { light: 0.26, dark: 0.28 },
 } as const;
 
 /**

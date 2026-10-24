@@ -388,6 +388,7 @@ confirms selections and saves. All of it is off when the traveller asks for redu
   soft fade. The pill MUST be translucent glass on iOS 26 and later, blurred on earlier iOS, and solid
   whenever transparency is reduced or contrast is increased; on Android it MUST be a full-width navigation
   bar 64 dp tall plus the system inset with a 56 by 32 dp indicator. It amends feature 003 FR-013 to FR-015.
+  _Amended 2026-10-24 (owner decision):_ the floating pill is the tab bar on Android as well; the flat Material 3 bar of the Android reference is retired.
 - **FR-023** [Tier 1]: Each tab MUST keep its accessible name, role, selected state, platform touch target,
   visible focus and automated-test identifiers; labels MUST wrap rather than clip. The third tab's name
   becomes "You" (a deliberate label change).

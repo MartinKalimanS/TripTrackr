@@ -132,6 +132,7 @@ row here is not done. Test counts are the full Jest run of the workspace on that
 | 2026-10-24 | PR #30 CI: `stop-row` tests accept a month-first date (US-locale runner)                       | `feat/ui-stack`                       | CI run 39991038066 failed only there; 30 tests pass locally                                                                                      |
 | 2026-10-24 | Distances always in kilometres (owner decision); API media-worker test flake fixed             | `feat/ui-stack` (`cca7230`)           | 429 suites / 9,908 tests; spec 005 FR-077 amended                                                                                                |
 | 2026-10-24 | T564 done: 004 text roles removed, `Text` is `variant` only, ratchet is zero                   | `feat/ui-stack`                       | 429 suites / 9,850 tests, tsc, ESLint, Prettier green; `as-built/f14-atlas.md` addendum                                                          |
+| 2026-10-24 | Android tab bar is the floating pill (as `home-contrast.png`); `AndroidNavBar` deleted         | `feat/ui-stack`                       | 428 suites; tab-bar test pins the Android pill; `as-built/f3-tabbar-android.md` addendum                                                         |
 
 ## Feature 001 open tasks (65 of 228 at 2026-10-21; the list moves to the steps above)
 

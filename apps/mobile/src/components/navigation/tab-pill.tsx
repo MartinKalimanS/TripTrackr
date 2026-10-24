@@ -1,5 +1,5 @@
 /**
- * `TabPill` - the floating tab bar of iOS (feature 005, contract C5-21, research D5-05; FR-022,
+ * `TabPill` - the floating tab bar, on iOS and Android (feature 005, contract C5-21, research D5-05; FR-022,
  * FR-023, FR-024, FR-027, FR-071), over the JS `Tabs` navigator's custom `tabBar`
  * (https://docs.expo.dev/router/advanced/tabs.md; 001 D-17, 004 D4-06). It receives the
  * `BottomTabBarProps` the navigator passes and replaces the flat strip of feature 004.

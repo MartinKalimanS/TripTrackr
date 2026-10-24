@@ -28,7 +28,7 @@ import {
   type BottomTabBarProps,
 } from 'expo-router/js-tabs';
 import * as HeroUI from 'heroui-native';
-import { Dimensions, StyleSheet } from 'react-native';
+import { Dimensions, Platform, StyleSheet } from 'react-native';
 import { withSpring } from 'react-native-reanimated';
 
 import { TabBar } from '@/components/navigation/tab-bar';
@@ -215,6 +215,24 @@ describe('<TabBar> identity - C5-21, FR-023', () => {
     expect(screen.getByLabelText('Extra')).toBeTruthy();
     expect(screen.getAllByRole('tab')).toHaveLength(ROUTES.length + 1);
     expect(glyphsIn()).toHaveLength(ROUTES.length);
+  });
+});
+
+describe('<TabBar> one bar for both platforms - owner decision 2026-10-24', () => {
+  test('on Android it is the same floating pill, on the opaque surface', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    await render(<TabBar {...makeProps()} />);
+
+    expect(screen.getByTestId('tab-bar')).toBeTruthy();
+    expect(screen.getByTestId('tab-surface-solid')).toBeTruthy();
+    expect(
+      screen.getByTestId('tab-mark-index', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(styleOf(screen.getByTestId('tab-bar'))).toMatchObject({
+      position: 'absolute',
+      left: PillMetrics.sideMargin,
+      right: PillMetrics.sideMargin,
+    });
   });
 });
 

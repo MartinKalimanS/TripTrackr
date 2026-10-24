@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { AndroidBarMetrics, PillMetrics } from '@/components/navigation/tab-metrics';
+import { PillMetrics } from '@/components/navigation/tab-metrics';
 import { AREA_FILL } from '@/components/trip/offline-map-tile';
 import { GlobeColors, GlobeStyle } from '@/constants/theme';
 import { Palettes, blend, type PaletteName } from '@/theme';
@@ -94,17 +94,13 @@ const GROUNDS = ['canvas', 'surface', 'surfaceSecondary', 'pressed'] as const;
 /**
  * The opaque colours a translucent token settles into over a ground: every translucent
  * palette colour (the dark tints) and the fills the navigation bars and the offline tile draw at
- * a stated opacity (the dark capsule, the Android indicator, the saved area), each over the
+ * a stated opacity (the dark capsule, the saved area), each over the
  * paper, the cream and the canvas. Under increased contrast or reduced transparency the adapters hand these over
  * instead of the translucent colour (`components/ui/solid-ground.ts`).
  */
 function solidComposites(theme: PaletteName): string[] {
   const palette = Palettes[theme];
-  const fills: [string, number][] = [
-    [palette.onPhoto, PillMetrics.darkCapsuleAlpha],
-    [palette.accent, AndroidBarMetrics.indicatorOpacity.light],
-    [palette.accent, AndroidBarMetrics.indicatorOpacity.dark],
-  ];
+  const fills: [string, number][] = [[palette.onPhoto, PillMetrics.darkCapsuleAlpha]];
   for (const value of Object.values(palette)) {
     const rgba = parseColour(value);
     if (rgba !== null && rgba.a > 0 && rgba.a < 1) {

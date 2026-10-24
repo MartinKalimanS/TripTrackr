@@ -1,5 +1,5 @@
 /**
- * What the two tab bars (the iOS pill and the Android navigation bar) share: the icon of each
+ * What the tab pill and its tests share: the icon of each
  * route, the name of a tab and the press behaviour of React Navigation's own bar (feature
  * 005, contract C5-21; feature 004 C4-9).
  */

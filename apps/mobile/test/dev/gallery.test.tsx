@@ -379,12 +379,10 @@ describe('the tab bars', () => {
   const hidden = { includeHiddenElements: true };
   const frame = (name: string) => screen.getByTestId(`gallery-nav-${name}`);
 
-  test('a pill, the same pill without transparency, and the Android bar', async () => {
+  test('a pill, and the same pill without transparency', async () => {
     await mount(<Gallery />);
     expect(within(frame('pill')).getByTestId('tab-bar')).toBeTruthy();
     expect(within(frame('pill-solid')).getByTestId('tab-bar')).toBeTruthy();
-    expect(within(frame('android')).getByTestId('tab-bar')).toBeTruthy();
-    expect(within(frame('android')).getByTestId('tab-mark-index', hidden)).toBeTruthy();
     expect(within(frame('pill')).getByTestId('tab-mark-index', hidden)).toBeTruthy();
   });
 
@@ -410,7 +408,6 @@ describe('the tab bars', () => {
     expect(
       within(frame('pill-solid')).getByTestId('tab-mark-index', hidden),
     ).toBeTruthy();
-    expect(within(frame('android')).getByTestId('tab-mark-index', hidden)).toBeTruthy();
   });
 });
 
