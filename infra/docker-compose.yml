@@ -74,7 +74,7 @@ services:
   # Data stores
   # -------------------------------------------------------------------------
   postgres:
-    image: postgis/postgis:17-3.5
+    image: postgis/postgis:17-3.6
     restart: unless-stopped
     logging: *default-logging
     environment:
