@@ -1,0 +1,22 @@
+# Who must review what (docs/roadmap/CICD-AND-RELEASE.md section 1.1; step S-01).
+#
+# The owner is the only maintainer today, so these paths are the ones the owner must look at even
+# when an agent wrote the change: they can destroy data, widen access, move money or publish.
+# With the ruleset's "Require review from Code Owners" on, a PR touching one of them cannot merge
+# without the owner.
+
+# Database migrations: hand-written SQL, row-level security and role grants live here.
+/apps/api/src/db/migrations/ @MartinKalimanS
+
+# Infrastructure: the Compose stacks, the backup image and its scripts, the secrets layout.
+/infra/ @MartinKalimanS
+
+# The pipeline itself and the repository's automation.
+/.github/ @MartinKalimanS
+
+# Legal sources that the stores and the public pages quote.
+/docs/legal/ @MartinKalimanS
+
+# The constitution and the rules every session reads first.
+/.specify/memory/constitution.md @MartinKalimanS
+/AGENTS.md @MartinKalimanS

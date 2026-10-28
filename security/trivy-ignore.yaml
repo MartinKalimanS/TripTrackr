@@ -1,0 +1,21 @@
+# Waivers for the Trivy image scan (.github/workflows/security.yml, step S-01).
+#
+# Empty on purpose. The scan already skips vulnerabilities with no fix (`ignore-unfixed`); an
+# entry here is for a vulnerability that HAS a fix we cannot take yet. Each needs a `statement`
+# saying why it is not exploitable in the image and an `expired_at` (at most 90 days out), after
+# which the scan fails again. Format: https://trivy.dev/latest/docs/configuration/filtering/
+vulnerabilities:
+  - id: CVE-2026-113872
+    statement: >-
+      multer 2.4.0 (a dependency of @nestjs/platform-express): denial of service through an aborted request
+      during a multipart upload. The API declares no route that uses multer (no FileInterceptor: photos
+      go to the store by signed URL and documents arrive as base64 JSON), so the code path is not
+      reachable. Fixed by multer 2.5.0 with NestJS 12 (Dependabot PR open); re-review then.
+    expired_at: 2026-11-27
+  - id: CVE-2023-54404
+    statement: >-
+      zod 4.6.5: memory use while validating oversized constrained collections. Fixed in 4.6.6, a lockfile
+      update that is held for the dependency PR that also moves NestJS and Expo (the same advisory is
+      waived in security/audit-allowlist.json). Every body the API validates is size-capped by the
+      reverse proxy and by the schemas themselves.
+    expired_at: 2026-11-27

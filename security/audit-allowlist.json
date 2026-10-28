@@ -1,0 +1,40 @@
+{
+  "$comment": "Waivers for the dependency audit gate (scripts/audit-gate.mjs). One entry per advisory: id (GHSA), reason (why it is not exploitable here, or why no fix exists, and who tracks the fix), expires (YYYY-MM-DD, at most 90 days out). An entry past its date fails the gate again.",
+  "entries": [
+    {
+      "id": "GHSA-27R3-JXMH-P828",
+      "reason": "body-parser: found by the first run of the gate (2026-10-28) and NOT yet assessed beyond this note: a fix exists (npm audit fix, minor); the API sits behind the reverse proxy that caps request bodies. Fix tracked as S-22 follow-up in docs/roadmap/PROGRESS.md.",
+      "expires": "2026-11-27"
+    },
+    {
+      "id": "GHSA-Q7QP-RJG7-Q26M",
+      "reason": "multer: found by the first run of the gate (2026-10-28) and NOT yet assessed beyond this note: fixed only by NestJS platform-express 12 (a major, Dependabot PR open); the API accepts no multipart upload through multer (photos use signed URLs). Fix tracked as S-22 follow-up in docs/roadmap/PROGRESS.md.",
+      "expires": "2026-11-27"
+    },
+    {
+      "id": "GHSA-86W9-CPQP-85RV",
+      "reason": "node-forge: found by the first run of the gate (2026-10-28) and NOT yet assessed beyond this note: a fix exists (npm audit fix); a transitive dependency of the Expo tooling, never in the API image. Fix tracked as S-22 follow-up in docs/roadmap/PROGRESS.md.",
+      "expires": "2026-11-27"
+    },
+    {
+      "id": "GHSA-WQ5F-XC86-PV6W",
+      "reason": "sharp: found by the first run of the gate (2026-10-28) and NOT yet assessed beyond this note: a fix exists (npm audit fix); sharp only makes thumbnails of images the owner uploaded, never renders SVG from a stranger. Fix tracked as S-22 follow-up in docs/roadmap/PROGRESS.md.",
+      "expires": "2026-11-27"
+    },
+    {
+      "id": "GHSA-PQG4-J6R4-53MV",
+      "reason": "shell-quote: found by the first run of the gate (2026-10-28) and NOT yet assessed beyond this note: CRITICAL; a fix exists (npm audit fix); a transitive dependency of the Expo dev tooling that runs on a developer machine, never in the API image or the app bundle. Fix tracked as S-22 follow-up in docs/roadmap/PROGRESS.md.",
+      "expires": "2026-11-27"
+    },
+    {
+      "id": "GHSA-68FV-2MGG-JV7Q",
+      "reason": "source-map-js: found by the first run of the gate (2026-10-28) and NOT yet assessed beyond this note: a fix exists (npm audit fix); a build-time dependency, never in the API image or the app bundle. Fix tracked as S-22 follow-up in docs/roadmap/PROGRESS.md.",
+      "expires": "2026-11-27"
+    },
+    {
+      "id": "GHSA-MRHX-C7XC-M3W5",
+      "reason": "zod: found by the first run of the gate (2026-10-28) and NOT yet assessed beyond this note: fixed in zod 4.6.6; the contracts validate bodies the API already caps in size. Fix tracked as S-22 follow-up in docs/roadmap/PROGRESS.md.",
+      "expires": "2026-11-27"
+    }
+  ]
+}
