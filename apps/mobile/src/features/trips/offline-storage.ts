@@ -38,3 +38,48 @@ export function storageCaption(
     `Maps for this trip’s cities use ${figure} on this device.`;
   return { text: sentence(size.text), spoken: sentence(size.spoken) };
 }
+
+/** A map too small to see still gets a sliver of the bar, so the legend is not a lie. */
+const MIN_MAPS_SHARE = 0.02;
+
+export interface StorageFigures {
+  /** Whether any map of this trip is finished. */
+  saved: boolean;
+  mapsBytes: number;
+  maps: FormattedText;
+  /** Null when the device cannot say how much room is left. */
+  free: FormattedText | null;
+  /** The shares of the bar (Maps, then Free), summing to 1; null without a free figure. */
+  bar: { maps: number; free: number } | null;
+}
+
+/**
+ * The storage card's numbers: what this trip's finished maps take (the same sum as
+ * `storageCaption`), the room the device says it has, and the two shares of the bar. A free
+ * reading that is missing, zero or not a number means the platform cannot say: no figure and
+ * no bar are made up. Photos waiting to upload have no byte size in the store, so they have
+ * no segment.
+ */
+export function storageFigures(
+  states: readonly OfflinePackState[],
+  freeBytes: number | null,
+  languageTag: string = deviceLocale().languageTag,
+): StorageFigures {
+  const finished = states.filter((state) => state.kind === 'ready');
+  const mapsBytes = finished.reduce((sum, state) => sum + state.bytes, 0);
+  const room =
+    typeof freeBytes === 'number' && Number.isFinite(freeBytes) && freeBytes > 0
+      ? freeBytes
+      : null;
+  const mapsShare =
+    mapsBytes > 0
+      ? Math.min(Math.max(mapsBytes / (mapsBytes + (room ?? 0)), MIN_MAPS_SHARE), 1)
+      : 0;
+  return {
+    saved: finished.length > 0,
+    mapsBytes,
+    maps: formatPackSize(mapsBytes, languageTag),
+    free: room === null ? null : formatPackSize(room, languageTag),
+    bar: room === null ? null : { maps: mapsShare, free: 1 - mapsShare },
+  };
+}

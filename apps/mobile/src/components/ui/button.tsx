@@ -47,11 +47,13 @@
  * kit once, by palette key (`useColors`). There is no literal here.
  */
 import { Spinner } from 'heroui-native';
+import type { Ref } from 'react';
 import {
   Pressable,
   type GestureResponderEvent,
   type PressableProps,
   type StyleProp,
+  type View,
   type ViewStyle,
 } from 'react-native';
 
@@ -101,6 +103,8 @@ export type ButtonProps = ButtonContent & {
   /** Layout classes only (`self-stretch`): never colour. */
   className?: string;
   style?: StyleProp<ViewStyle>;
+  /** The native node (React 19 passes `ref` as a prop): the first-run tour measures with it. */
+  ref?: Ref<View>;
 };
 
 /** The minimum height of each size, in dp (C5-15): 52 / 56 / 44. */

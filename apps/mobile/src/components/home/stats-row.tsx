@@ -8,7 +8,7 @@
  *
  * What a flow reads is what it was: `globe-stat-countries` is the PLAIN number ("5": the
  * "/195" is a sibling, flow 03 asserts the number), `globe-stat-distance` the plain distance
- * (the unit is the label, "Kilometres" or "Miles", so the number has the room: a 36 dp numeral
+ * (the unit is the label, "Kilometres", so the number has the room: a 36 dp numeral
  * in a third of the width shrinks to fit rather than clip), `globe-stats` the container.
  * `globe-stat-trips` is new.
  *
@@ -20,8 +20,7 @@
  * button (hint "Not available yet", id `coming-soon-distance`) whose only effect is the
  * "Kilometres is coming soon" toast. The tile's own id `globe-stats-distance-tile` wraps it.
  *
- * Figures follow the device (FR-077): `Intl` groups the digits, the distance is in miles where
- * the device measures in them, and from seven digits a figure goes compact ("1.26M") instead of
+ * Figures follow the device (FR-077): `Intl` groups the digits, the distance is always in kilometres, and from seven digits a figure goes compact ("1.26M") instead of
  * overflowing. At a font scale of 1.15 and above the three stack into rows (the tile itself
  * trades its figure and label into a row, `StatTile`), with the hairlines across and no gap
  * between a row and its hairline (prototype `:root[data-bigtext] .stat`: 8 dp above and below).
@@ -35,6 +34,7 @@ import { StatTile } from '@/components/ui/stat-tile';
 import { countOf, figureFormat } from '@/features/home/home-format';
 import { WORLD_COUNTRIES } from '@/features/passport/country-summary';
 import { useAppearance } from '@/hooks/use-appearance';
+import { useTourTarget } from '@/components/tour/tour-targets';
 import { deviceLocale, distanceFigure, formatDistance } from '@/lib/locale';
 import { Motion } from '@/theme';
 
@@ -120,15 +120,14 @@ function TripsTile({ trips, onPress }: { trips: number; onPress: () => void }) {
 /** The kilometres: drawn as pictured, a coming-soon control (nothing to open yet). */
 function DistanceTile({ distanceKm }: { distanceKm: number }) {
   const locale = deviceLocale();
-  const { value, unit } = distanceFigure(distanceKm, locale);
-  const label = unit === 'mi' ? 'Miles' : 'Kilometres';
-  const soon = useComingSoon(label);
+  const { value } = distanceFigure(distanceKm);
+  const soon = useComingSoon('Kilometres');
   return (
     <View testID="globe-stats-distance-tile">
       <StatTile
         testID="coming-soon-distance"
         value={<Counting value={value} index={2} testID="globe-stat-distance" />}
-        label={label}
+        label="Kilometres"
         accessibilityLabel={`${formatDistance(distanceKm, locale).spoken} travelled`}
         accessibilityHint={COMING_SOON_HINT}
         onPress={soon}
@@ -145,11 +144,15 @@ export function StatsRow({
   onOpenTrips,
 }: StatsRowProps) {
   const { fontScale } = useAppearance();
+  // The first-run tour lights the totals (feature 007).
+  const tourRef = useTourTarget('totals');
   const stacked = isLargeText(fontScale);
   const cells = stacked ? ['', '', ''] : ['flex-1 pr-3', 'flex-1 px-3', 'flex-1 pl-3'];
 
   return (
     <View
+      ref={tourRef}
+      collapsable={false}
       testID="globe-stats"
       className={stacked ? '' : 'items-stretch'}
       style={{ flexDirection: stacked ? 'column' : 'row' }}>

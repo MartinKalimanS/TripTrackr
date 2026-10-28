@@ -14,10 +14,15 @@ import {
   COLLAPSE_FADE_DISTANCE,
   HERO_MIN_HEIGHT,
   PARALLAX_FACTOR,
+  PIN_AIR_ABOVE,
+  PIN_AIR_BELOW,
   SHEET_OVERLAP,
   collapseEnd,
   collapseProgress,
   heroImageTransform,
+  isPinned,
+  pinLineOf,
+  pinnedBottom,
   pinnedTranslate,
   useHeroCollapse,
 } from '@/components/trip/hero-collapse';
@@ -126,6 +131,30 @@ describe('pinnedTranslate: a strip that scrolls with the content, then stays und
 
   test('moves down with an overscroll, as the content does', () => {
     expect(pinnedTranslate(500, -60, 110)).toBe(560);
+  });
+});
+
+describe('the strip pinned under the bar (trip-collapsed.png: bar, 12, chips, 8, hairline)', () => {
+  test('keeps 12 dp of air under the bar above the chips and 8 dp below them', () => {
+    expect(PIN_AIR_ABOVE).toBe(12);
+    expect(PIN_AIR_BELOW).toBe(8);
+  });
+
+  test('the chips pin at the bar, the inset and the air above', () => {
+    expect(pinLineOf(54)).toBe(56 + 54 + 12);
+    expect(pinLineOf(0)).toBe(56 + 12);
+  });
+
+  test('what scrolls under the strip clears its bottom edge: bar, air, chips, air', () => {
+    expect(pinnedBottom(54, 56)).toBe(56 + 54 + 12 + 56 + 8);
+  });
+
+  test('is pinned from the moment the strip reaches the pin line, and not before', () => {
+    expect(isPinned(500, 0, 122)).toBe(false);
+    expect(isPinned(500, 377, 122)).toBe(false);
+    expect(isPinned(500, 378, 122)).toBe(true);
+    expect(isPinned(500, 5000, 122)).toBe(true);
+    expect(isPinned(500, -60, 122)).toBe(false);
   });
 });
 

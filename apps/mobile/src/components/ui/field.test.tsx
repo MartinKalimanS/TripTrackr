@@ -10,7 +10,8 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import * as HeroUI from 'heroui-native';
-import { StyleSheet } from 'react-native';
+import { createRef } from 'react';
+import { StyleSheet, Text, type TextInput } from 'react-native';
 
 import { Colors, MinTouchTarget } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
@@ -59,6 +60,26 @@ describe('<Field> identity - contract C4-8', () => {
     const node = screen.getByTestId('destination');
     expect(node.type).toBe('TextInput');
     expect(node).toBe(input());
+  });
+
+  test('hands the input its own ref, so a caller can move focus to it', async () => {
+    const ref = createRef<TextInput>();
+    await renderField({ testID: 'destination', inputRef: ref });
+    expect(ref.current).not.toBeNull();
+    expect(ref.current).toHaveProperty('props.testID', 'destination');
+  });
+
+  test('puts a label accessory in the label row, after the label and before the input', async () => {
+    await renderField({
+      testID: 'destination',
+      labelAccessory: <Text testID="forgot">Forgot?</Text>,
+    });
+    const order = screen
+      .getAllByText(/Destination|Forgot?/)
+      .map((node) => node.props.testID ?? 'label');
+    expect(order).toEqual(['label', 'forgot']);
+    expect(screen.getByTestId('forgot')).toBeTruthy();
+    expect(screen.queryByLabelText('Forgot?')).toBeNull();
   });
 
   test('shows the label as text and names the input by it', async () => {

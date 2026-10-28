@@ -917,6 +917,8 @@ language.
       `test/testid-parity.allowlist.json` with a T452 reason; the ids `notes-title` and `expenses-title` (T440, T441) are there too. The
       unresolved-id ratchet moved with the deletions (the retired primitives forwarded dynamic ids and labels) and with `FormSheet`,
       `FormModal` and the new adapters; its current value is in `test/fixtures/testid-unresolved-count.json`.
+      _Excused by 005 T564 (2026-10-23):_ the accessible name "`<param> <param> visited, <param> travelled`" of the retired `StatsOverlay` is
+      allowlisted in `test/testid-parity.allowlist.json` (the Home reads `stats-row.tsx`, whose ids serve the Maestro flows).
 - [x] T453 Remove the `treatment`, `depth`, `radius`, `pending` neumorphic props from
       `components/themed-view.tsx`; remove `Depth`, `LightSource`, `BorderHairline` uses that only served
       shadows, and the `shadowLight`, `shadowDark`, `surfaceSunk` keys from `constants/theme.ts`; delete

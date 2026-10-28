@@ -23,6 +23,8 @@ import { SECURE_KEYS, setSession } from '@/lib/secure-store';
 
 jest.setTimeout(60_000);
 
+// The first-run tour has suites of its own (it reads the local store).
+jest.mock('@/components/tour/first-run-tour', () => ({ FirstRunTour: () => null }));
 jest.mock('@/lib/sentry', () => ({
   Sentry: { captureException: jest.fn(), wrap: (component: unknown) => component },
   initSentry: jest.fn(),

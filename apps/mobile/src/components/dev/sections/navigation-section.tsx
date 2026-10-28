@@ -14,7 +14,6 @@ import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { AndroidNavBar } from '@/components/navigation/android-nav-bar';
 import { TabPill } from '@/components/navigation/tab-pill';
 import { AppearanceScope } from '@/components/ui/appearance-scope';
 import { Scrim } from '@/components/ui/scrim';
@@ -111,9 +110,6 @@ export function NavigationSection() {
           {(props) => <TabPill {...props} />}
         </BarFrame>
       </AppearanceScope>
-      <BarFrame label="Android navigation bar" name="android">
-        {(props) => <AndroidNavBar {...props} />}
-      </BarFrame>
     </Section>
   );
 }

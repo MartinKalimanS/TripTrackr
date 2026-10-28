@@ -11,6 +11,7 @@
  * write is reported and shown rather than swallowed.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import TripScreen from '@/app/trip/[id]/index';
 import { Sentry } from '@/lib/sentry';
@@ -190,6 +191,29 @@ describe('<TripScreen> the hero and the status row (FR-037, FR-038, FR-025)', ()
     expect(screen.getByTestId('trip-hero-generated', hidden)).toBeTruthy();
   });
 
+  test('the sheet overlaps the hero by 28 dp with 28 dp corners, padding 16 20 0 and 12 dp between its blocks', async () => {
+    live.stops.data = [rome];
+    await render(<TripScreen />);
+    const sheet = screen.getByTestId('trip-sheet');
+    expect(StyleSheet.flatten(sheet.props.style)).toMatchObject({
+      marginTop: -28,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+    });
+    const classes = String(sheet.props.className).split(' ');
+    expect(classes).toEqual(
+      expect.arrayContaining(['gap-3', 'px-5', 'pt-4', 'bg-surface']),
+    );
+  });
+
+  test('the day strip is laid over a placeholder and pinned 12 dp under the bar (bar, air, chips)', async () => {
+    live.stops.data = [rome];
+    await render(<TripScreen />);
+    expect(screen.getByTestId('trip-days-anchor')).toBeTruthy();
+    expect(screen.getByTestId('trip-days-pin-ground', hidden)).toBeTruthy();
+    expect(screen.getAllByTestId('trip-days')).toHaveLength(1);
+  });
+
   test('has the collapsed bar beneath the header, with the title, hidden from assistive technology', async () => {
     await render(<TripScreen />);
     const bar = screen.getByTestId('trip-collapsed-bar', hidden);
@@ -198,13 +222,13 @@ describe('<TripScreen> the hero and the status row (FR-037, FR-038, FR-025)', ()
     expect(screen.getAllByText('Italy, spring 2026')).toHaveLength(1);
   });
 
-  test('shows the derived status as text + icon, the currency, and a pending marker while dirty', async () => {
+  test('shows the derived status as text + icon and a pending marker while dirty', async () => {
     live.stops.data = [rome, florence];
     await render(<TripScreen />);
     const row = within(screen.getByTestId('trip-header-row'));
     expect(row.getByTestId('status-pill-planning')).toBeTruthy();
     expect(row.getByLabelText('Status: Planning')).toBeTruthy();
-    expect(row.getByText('EUR')).toBeTruthy();
+    expect(row.queryByText('EUR')).toBeNull();
     // The trip row and the Florence stop are dirty; Rome is synced.
     expect(screen.getAllByLabelText('Sync pending')).toHaveLength(2);
     expect(row.getByLabelText('Sync pending')).toBeTruthy();
@@ -422,7 +446,7 @@ describe('<TripScreen> the day strip (FR-040)', () => {
     live.stops.data = dated;
     await render(<TripScreen />);
     // Where things laid out: the stops section at 700 in the content, the list 40 into it,
-    // each row 110 tall, the pinned strip 68 tall under the 56 dp bar.
+    // each row 110 tall, the pinned strip 68 tall under the 56 dp bar (and 12 dp of air above it, 8 below).
     const at = (id: string, y: number, height: number) =>
       fireEvent(screen.getByTestId(id), 'layout', {
         nativeEvent: { layout: { x: 0, y, width: 390, height } },
@@ -435,12 +459,12 @@ describe('<TripScreen> the day strip (FR-040)', () => {
 
     const scrollTo = spyOnScroll();
     await fireEvent.press(screen.getByTestId('trip-day-4'));
-    // Day 4 starts with Beta: 700 + 40 + 110 - (56 + 68).
-    expect(scrollTo).toHaveBeenLastCalledWith({ y: 726, animated: true });
+    // Day 4 starts with Beta: 700 + 40 + 110 - (56 + 12 + 68 + 8).
+    expect(scrollTo).toHaveBeenLastCalledWith({ y: 706, animated: true });
 
     await fireEvent.press(screen.getByTestId('trip-day-1'));
-    // Day 1 is Alfa: 700 + 40 + 0 - 124.
-    expect(scrollTo).toHaveBeenLastCalledWith({ y: 616, animated: true });
+    // Day 1 is Alfa: 700 + 40 + 0 - 144.
+    expect(scrollTo).toHaveBeenLastCalledWith({ y: 596, animated: true });
   });
 
   test('"All" does not scroll', async () => {

@@ -64,3 +64,6 @@ yarn-error.*
 !.claude/skills/
 .claude/settings.local.json
 .specify/feature.json
+
+# brainstorming mockups
+.superpowers/

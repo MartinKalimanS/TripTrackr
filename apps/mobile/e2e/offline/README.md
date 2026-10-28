@@ -560,3 +560,8 @@ phase fails early: the Android system photo picker steps (`_helpers/pick-library
 `Photo taken on.*`, `Add`), the destructive button of `Alert.alert`
 (`_helpers/confirm-alert.yaml`: `android:id/button1`), and the city option text (`Rom(a|e)`,
 `Paris`) against the imported catalogue.
+Since spec 006 a photo pick is also preceded by the photo-library permission dialog
+(`_helpers/allow-photo-access.yaml`: `Allow`, `Allow all`, `Allow Full Access`; normally absent,
+because `launchApp` allows every permission) and followed by the visibility sheet
+(`_helpers/choose-photo-visibility.yaml`: `photo-visibility-*`; `VISIBILITY` is `private`, `public`
+or `dismiss`). A document pick has neither.

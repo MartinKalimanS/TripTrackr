@@ -1,0 +1,18 @@
+# Allow photo-library access if the system asks for it (spec 006: "Add photos" asks first).
+#
+# `launchApp` allows every permission by default (Maestro: "By default, all permissions are
+# allowed"), so normally no dialog appears and this does nothing. It is here for a run that
+# unsets the permission, or an OS image that asks again. The buttons are the platform's own and
+# vary by version, so the label is a pattern:
+#   Android 14   "Allow all" (beside "Select photos and videos" and "Don't allow")
+#   Android 13   "Allow", and 12 and below "Allow" (storage)
+#   iOS          "Allow Full Access" (17 and later), "Allow Access to All Photos" (14 to 16)
+# This is the one file to adjust if a new image words it differently. Choosing "Select photos"
+# instead is a manual check (quickstart.md of specs/006-photo-permission-visibility).
+appId: com.triptrackr.app
+---
+- runFlow:
+    when:
+      visible: '(Allow|Allow all|Allow Full Access|Allow Access to All Photos)'
+    commands:
+      - tapOn: '(Allow|Allow all|Allow Full Access|Allow Access to All Photos)'

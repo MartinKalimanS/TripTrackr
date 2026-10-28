@@ -1,13 +1,9 @@
 /**
- * Shape, spacing and lift — Atlas (contract C4-6, data-model section 3), then Sunrise
- * (feature 005 contract C5-8).
- *
- * These are separate names on purpose. `Radius` (8, 16, 24, pill) and `Spacing` in
- * `constants/theme.ts` keep their values for the code that reads them (`MediaFrame`, the
- * screen scaffolds); the Atlas components read `AtlasRadius` and `AtlasSpacing`, which
- * stay until Phase 10. The Sunrise adapters read `Space`, `Radii`, `Lift` and `IconSize`:
- * the data-model's `Radius` is `Radii` here because `constants/theme.ts` already owns
- * that name.
+ * Shape, spacing and lift (feature 005 contract C5-8). `Radius` (8, 16, 24, pill) and
+ * `Spacing` in `constants/theme.ts` keep their values for the code that reads them
+ * (`MediaFrame`, the screen scaffolds); the Sunrise adapters read `Space`, `Radii`, `Lift` and
+ * `IconSize`: the data-model's `Radius` is `Radii` here because `constants/theme.ts` already
+ * owns that name.
  *
  * Pure data and pure helpers.
  */
@@ -15,36 +11,6 @@ import type { BoxShadowValue, ViewStyle } from 'react-native';
 
 import { deepFreeze, type DeepReadonly } from './freeze';
 import { Palettes, type PaletteName } from './palette';
-
-/** Corner radii. Continuous curve everywhere except the capsule. */
-export const AtlasRadius = deepFreeze({
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  pill: 999,
-} as const);
-
-export type AtlasRadiusName = keyof typeof AtlasRadius;
-
-/**
- * The legacy 2, 4, 8, 16, 24, 32, 64 steps, unchanged and under the same names, plus 12
- * and 48. The legacy names are ordinals, not pixel values (`three` is 16), so the two new
- * steps are named by their value: `twelve` and `fortyEight`.
- */
-export const AtlasSpacing = deepFreeze({
-  half: 2,
-  one: 4,
-  two: 8,
-  twelve: 12,
-  three: 16,
-  four: 24,
-  five: 32,
-  fortyEight: 48,
-  six: 64,
-} as const);
-
-export type AtlasSpacingName = keyof typeof AtlasSpacing;
 
 /**
  * The focus indicator (contracts C4-3 and C5-4 P13): a ring `width` dp thick (2.5 since
@@ -71,16 +37,6 @@ export const PrimaryEdgeRing = deepFreeze({
   colourKey: 'accentLine',
 } as const);
 
-/**
- * A corner as a style: the radius, on the continuous (squircle) curve that matches the
- * platform's own corners. The capsule stays circular: a continuous curve on a pill reads
- * as a lopsided end.
- */
-export function cornerStyle(name: AtlasRadiusName): ViewStyle {
-  const borderRadius = AtlasRadius[name];
-  return name === 'pill' ? { borderRadius } : { borderRadius, borderCurve: 'continuous' };
-}
-
 // ---------------------------------------------------------------------------------------
 // Sunrise (feature 005, contract C5-8)
 // ---------------------------------------------------------------------------------------
@@ -105,8 +61,7 @@ export const ScreenMargin = deepFreeze({
 
 /**
  * Sunrise corner radii: 8, 12 (inputs), 16 (thumbnails, tiles), 24 (cards, hero, ticket,
- * passport), 28 (sheets) and full. A new name beside `AtlasRadius` (a `pill` there, a
- * `full` and a `sheet` here), which stays until Phase 10.
+ * passport), 28 (sheets) and full.
  */
 export const Radii = deepFreeze({
   sm: 8,

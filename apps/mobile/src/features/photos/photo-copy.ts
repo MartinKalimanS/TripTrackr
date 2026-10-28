@@ -16,6 +16,12 @@ export const PHOTO_COPY = {
     'TripTrackr needs your permission to use the camera. Tap “Take a photo” to be asked again.',
   cameraBlocked:
     'Camera access is turned off for TripTrackr. You can turn it on in Settings.',
+  /** The library permission was refused and the system will still ask (spec 006 FR-004). */
+  libraryDeclined:
+    'TripTrackr needs your permission to read the photos you choose. Tap “Allow photo access” to be asked again.',
+  /** ... and the system will not ask again. */
+  libraryBlocked:
+    'Photo access is turned off for TripTrackr. You can turn it on in Settings.',
   settingsUnavailable: 'Settings couldn’t be opened. Open them from your home screen.',
   /** A refile, a delete or a retry — all local writes — that did not commit. */
   writeFailed: 'That change couldn’t be saved on this device. Please try again.',
@@ -44,8 +50,37 @@ export const UPLOAD_STATE_COPY = {
   },
 } as const;
 
+/**
+ * The sheet that asks who can see the photos just chosen (spec 006 FR-006 to FR-010). The
+ * owner's words for the two choices; `note` is the honest line: the public trip view and the
+ * screening provider are not built, so a public photo is seen only by its owner for now, and
+ * leaving the sheet any way at all adds the photos as private.
+ */
+export const VISIBILITY_COPY = {
+  titleMany: 'Who can see these photos?',
+  titleOne: 'Who can see this photo?',
+  privateTitle: 'Private',
+  privateDetail: 'Only you',
+  publicTitle: 'Public',
+  publicDetail: 'Can appear on a trip you choose to share',
+  publicExtra: 'Nothing is shared until you publish a trip',
+  note: 'Sharing isn’t available yet, so for now only you can see a public photo. Closing this adds the photos as private.',
+  closeText: 'Close',
+} as const;
+
+/** The primary of the sheet: "Add 1 photo", "Add 12 photos". */
+export function addPhotosLabel(count: number): string {
+  return count === 1 ? 'Add 1 photo' : `Add ${count} photos`;
+}
+
 /** The visibility posture, told to the traveller in words. */
 export const PRIVATE_COPY = 'Private — only you can see your photos.';
+
+/**
+ * A photo the traveller chose public (spec 006): honest about what that means today. The
+ * public trip view and automated screening are not built, so nobody else can see it yet.
+ */
+export const PUBLIC_PENDING_COPY = 'Public — for now only you can see this photo.';
 
 /**
  * The gallery's own words: its states, its controls, and the photo view.
@@ -63,11 +98,21 @@ export const GALLERY_COPY = {
   addLabel: 'Add photos from your library',
   takeText: 'Take a photo',
   takeLabel: 'Take a photo with the camera',
+  /** The title of the camera refusal the system will not ask about again. */
+  cameraOffTitle: 'Camera access is off',
+  /** The title of the photo-library refusal (spec 006): one action, "Allow photo access" or "Open Settings". */
+  libraryOffTitle: 'Photo access is off',
+  allowText: 'Allow photo access',
+  allowLabel: 'Allow photo access',
   openSettingsLabel: 'Open Settings',
   dismissText: 'Dismiss',
   dismissLabel: 'Dismiss this message',
   retryText: 'Try again',
   retryLabel: 'Try uploading this photo again',
+  /** The word on a failed tile's pill and in the summary line (photos.png). */
+  tileRetryText: 'Retry',
+  retryAllLabel: 'Retry failed uploads',
+  retryAllOneLabel: 'Retry failed upload',
   noPreview: 'No preview',
   openHint: 'Opens the photo',
   closeText: 'Close',

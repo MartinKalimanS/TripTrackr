@@ -39,6 +39,21 @@ export const SECURE_KEYS = {
   offlineMapsWipe: 'triptrackr.offline_maps_wipe',
 } as const;
 
+/**
+ * One flag per traveller on this device: the first-run tour (feature 007) has been shown, or
+ * skipped. Not a secret, but it lives here with the other per-device flags that must outlive a
+ * session; the traveller's id is a UUID, so the key stays within what the keychain accepts.
+ */
+const tourSeenKey = (userId: string) => `triptrackr.tour_seen.${userId}`;
+
+export async function hasSeenTour(userId: string): Promise<boolean> {
+  return (await SecureStore.getItemAsync(tourSeenKey(userId), options)) !== null;
+}
+
+export async function markTourSeen(userId: string): Promise<void> {
+  await SecureStore.setItemAsync(tourSeenKey(userId), 'seen', options);
+}
+
 export interface StoredTokens {
   accessToken: string;
   refreshToken: string;

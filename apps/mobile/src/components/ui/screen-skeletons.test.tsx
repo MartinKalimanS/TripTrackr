@@ -19,6 +19,7 @@ import { anyGlyph, glyphNamesIn } from '../../../test/helpers/icons';
 import {
   AreaSkeleton,
   HomeSkeleton,
+  StopsSkeleton,
   TripDetailSkeleton,
   TripListSkeleton,
 } from './screen-skeletons';
@@ -163,12 +164,29 @@ describe('<TripListSkeleton> - a hero, a ticket and rows (screens.md Trips)', ()
     expect(withClasses('h-24', 'rounded-3xl')).toHaveLength(1);
   });
 
-  test('then a year header and three rows, a 64 dp thumb and two lines each', async () => {
+  // trips-loading.png and the prototype: a 90 dp year line, rows that are 72 dp tall (a 64 dp
+  // thumb, a 20 dp line at 60 percent and a 14 dp line at 80 percent), every item 16 dp apart.
+  // They were 96 dp, 75 / 50 percent, a 16 dp line and rows 12 dp apart in their own group.
+  test('then a year line and three rows, a 64 dp thumb and two lines each', async () => {
     await render(<TripListSkeleton />);
-    expect(withClasses('h-5', 'w-24')).toHaveLength(1);
+    expect(withClasses('h-5', 'w-[90px]')).toHaveLength(1);
     expect(withClasses('size-16', 'rounded-2xl')).toHaveLength(3);
-    expect(withClasses('h-5', 'w-3/4')).toHaveLength(3);
-    expect(withClasses('h-4', 'w-1/2')).toHaveLength(3);
+    expect(withClasses('h-5', 'w-[60%]')).toHaveLength(3);
+    expect(withClasses('h-3.5', 'w-[80%]')).toHaveLength(3);
+  });
+
+  test('each row is 72 dp tall and the rows are items of the list, 16 dp apart', async () => {
+    await render(<TripListSkeleton />);
+    const all = flatten(root());
+    const rows = all.filter((node) =>
+      ['min-h-[72px]', 'flex-row'].every((c) => classesIn(node).includes(c)),
+    );
+    expect(rows).toHaveLength(3);
+    expect(all.filter((node) => classesIn(node).includes('gap-3'))).toHaveLength(0);
+    const parent = all.find((node) => node.children?.includes(rows[0]));
+    expect(parent).toBeDefined();
+    expect(classesIn(parent as JsonElement)).toContain('gap-4');
+    expect(elementsOf(parent?.children).filter((c) => rows.includes(c))).toHaveLength(3);
   });
 
   test.each([
@@ -185,19 +203,33 @@ describe('<TripListSkeleton> - a hero, a ticket and rows (screens.md Trips)', ()
 });
 
 describe('<TripDetailSkeleton> - hero, status, four tiles, day chips, stops', () => {
-  test('mirrors the page: hero, a status row, four 72 dp tiles, five day chips', async () => {
+  test('mirrors the page: hero, a status row (150 x 28 and 48 x 36), four 72 dp tiles, five day chips', async () => {
     await render(<TripDetailSkeleton />);
     expect(withClasses('min-h-[236px]', 'w-full')).toHaveLength(1);
-    expect(withClasses('h-9', 'rounded-full')).toHaveLength(3);
+    expect(withClasses('h-7', 'w-[150px]', 'rounded-full')).toHaveLength(1);
+    expect(withClasses('h-9', 'w-12', 'rounded-full')).toHaveLength(1);
     expect(withClasses('min-h-[72px]', 'rounded-2xl')).toHaveLength(4);
     expect(withClasses('size-14', 'rounded-2xl')).toHaveLength(5 + 3);
   });
 
-  test('then the stops: a node, two lines and a 56 dp thumb, three times', async () => {
+  test('the Stops line is a 90 dp line and a 136 x 32 pill (trip-loading.png)', async () => {
+    await render(<TripDetailSkeleton />);
+    expect(withClasses('h-6', 'w-[90px]')).toHaveLength(1);
+    expect(withClasses('h-8', 'w-[136px]', 'rounded-full')).toHaveLength(1);
+  });
+
+  test('then the stops: a node, a 55 % and a 70 % line and a 56 dp thumb, three times', async () => {
     await render(<TripDetailSkeleton />);
     expect(withClasses('size-7', 'rounded-full')).toHaveLength(3);
-    expect(withClasses('h-5', 'w-1/2')).toHaveLength(3);
-    expect(withClasses('h-4', 'w-3/4')).toHaveLength(3);
+    expect(withClasses('h-5', 'w-[55%]')).toHaveLength(3);
+    expect(withClasses('h-3.5', 'w-[70%]')).toHaveLength(3);
+  });
+
+  test('a stop is 76 dp apart from the next: 8 above, 12 below the 56 dp thumb, rail 32', async () => {
+    await render(<TripDetailSkeleton />);
+    expect(withClasses('flex-1', 'pb-3', 'pt-2')).toHaveLength(3);
+    expect(withClasses('w-8', 'items-center')).toHaveLength(3);
+    expect(withClasses('mt-2', 'size-7')).toHaveLength(3);
   });
 
   test('the hero can be left out when the screen keeps its own picture', async () => {
@@ -220,6 +252,17 @@ describe('<TripDetailSkeleton> - hero, status, four tiles, day chips, stops', ()
       );
     });
     expect(rows.map((row) => elementsOf(row.children).length)).toEqual([2, 2]);
+  });
+});
+
+describe('<StopsSkeleton> - the stops alone, while only they load', () => {
+  test('is one region named "Loading stops" with three pictured rows', async () => {
+    await render(<StopsSkeleton />);
+    const region = screen.getByLabelText('Loading stops');
+    expect(region.props.accessibilityRole).toBe('progressbar');
+    expect(screen.getByTestId('trip-stops-skeleton')).toBe(region);
+    expect(withClasses('size-7', 'rounded-full')).toHaveLength(3);
+    expect(withClasses('size-14', 'rounded-2xl')).toHaveLength(3);
   });
 });
 

@@ -79,6 +79,8 @@ export interface ChipProps {
   accessibilityLabel: string;
   /** Default `button`, or `text` without `onPress`. */
   accessibilityRole?: AccessibilityRole;
+  /** Optional: what a press does, when the name does not say (a coming-soon chip). */
+  accessibilityHint?: string;
   disabled?: boolean;
   /** The "add" chip: no fill, a dashed border. */
   dashed?: boolean;
@@ -92,6 +94,10 @@ export interface ChipOption {
   label: string;
   testID: string;
   accessibilityLabel: string;
+  /** An icon name or any node before the label (a category's glyph, the "Other" plus). */
+  leading?: IconName | ReactNode;
+  /** The "add" look: no fill, a dashed edge ("Other"). */
+  dashed?: boolean;
 }
 
 export interface ChipGroupProps {
@@ -273,7 +279,12 @@ function useChipSurface({
 
 type HostInput = Pick<
   ChipProps,
-  'selected' | 'disabled' | 'accessibilityLabel' | 'testID' | 'className'
+  | 'selected'
+  | 'disabled'
+  | 'accessibilityLabel'
+  | 'accessibilityHint'
+  | 'testID'
+  | 'className'
 > & { role: AccessibilityRole };
 
 /** The props both forms of a chip put on their host node. */
@@ -282,6 +293,7 @@ function hostProps({
   selected = false,
   disabled = false,
   accessibilityLabel,
+  accessibilityHint,
   testID,
   className,
 }: HostInput) {
@@ -292,6 +304,7 @@ function hostProps({
     testID,
     accessibilityRole: role,
     accessibilityLabel,
+    accessibilityHint,
     accessibilityState: chipState(role, selected, disabled),
     className: classes || undefined,
   };
@@ -382,6 +395,8 @@ export function ChipGroup({
       testID={option.testID}
       accessibilityLabel={option.accessibilityLabel}
       accessibilityRole="radio"
+      leading={option.leading}
+      dashed={option.dashed}
       selected={option.key === selectedKey}
       onPress={() => select(option.key)}
     />

@@ -2,11 +2,11 @@
  * `ProgressRow` - the one row beneath the hero (tasks.md T543; contract C5-20; spec FR-038,
  * FR-026, FR-070; screens.md "Trip").
  *
- *   <ProgressRow status={status} dayOf={dayOf} currency={trip.home_currency}
- *                pending={trip.is_dirty} syncState={sync} onRetry={retry} />
+ *   <ProgressRow status={status} dayOf={dayOf} pending={trip.is_dirty}
+ *                syncState={sync} onRetry={retry} />
  *
  * Left to right, wrapping at large text instead of clipping (a 36 dp minimum, no height):
- * the derived status chip, "Day 3 of 8" with its dots for an active trip, the home currency,
+ * the derived status chip, "Day 3 of 8" with its dots for an active trip,
  * the per-record marker while the trip only exists on this device and, at the end, the one
  * global sync chip (nothing is drawn when everything is synchronised).
  *
@@ -35,7 +35,6 @@ export interface ProgressRowProps {
   status: TripStatus;
   /** "Day 3 of 8", for an active trip; `null` when it cannot be computed. */
   dayOf?: DayProgress | null;
-  currency: string;
   /** The trip itself is not on the server yet (`is_dirty`). */
   pending?: boolean;
   syncState: SyncChipState;
@@ -51,15 +50,12 @@ const HIDDEN = {
 const DOT_CLASS: Record<ProgressDot, string> = {
   done: 'bg-accent-line',
   now: 'border-[1.5px] border-accent-line bg-surface',
-  rest: 'bg-sand',
+  rest: 'border border-border bg-sand',
 };
 
 function Dots({ progress }: { progress: DayProgress }) {
   return (
-    <View
-      testID="trip-progress-dots"
-      className="flex-row items-center gap-1.5"
-      {...HIDDEN}>
+    <View testID="trip-progress-dots" className="flex-row items-center gap-1" {...HIDDEN}>
       {progressDots(progress).map((kind, index) => (
         <View
           key={index}
@@ -85,7 +81,6 @@ function DayOf({ progress }: { progress: DayProgress }) {
 export function ProgressRow({
   status,
   dayOf,
-  currency,
   pending = false,
   syncState,
   onRetry,
@@ -96,9 +91,6 @@ export function ProgressRow({
       className="min-h-[36px] flex-row flex-wrap items-center gap-x-3 gap-y-2">
       <StatusChip status={status} />
       {status === 'active' && dayOf ? <DayOf progress={dayOf} /> : null}
-      <Text variant="label" tone="muted">
-        {currency}
-      </Text>
       {pending ? <SyncBadge state="pending" /> : null}
       {syncState.kind === 'synced' ? null : (
         <View className="ml-auto">

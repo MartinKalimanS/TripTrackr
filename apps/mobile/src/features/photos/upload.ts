@@ -14,7 +14,9 @@
  *      its filing and EXIF fields (`RegisterPhotoRequest`); a retried
  *      registration answers with the stored photo, so this is idempotent;
  *   4. mark the row `uploaded` and clean — compare-and-set, so a refile made
- *      meanwhile stays dirty (photos repository).
+ *      meanwhile stays dirty (photos repository). A PUBLIC photo is not clean:
+ *      the registration carries no visibility, so the choice stays a local change
+ *      for the next sync push (spec 006 FR-012; `photosRepository.markUploaded`).
  *
  * What stops it, and what the traveller sees:
  *   - no connection, a timeout, a busy server, a signed-out device, or a trip
@@ -198,6 +200,7 @@ async function attemptUpload(
       photosRepository.markUploaded(db, row.id, {
         sentUpdatedAt: row.updated_at,
         syncedAt: nowIso(),
+        serverUpdatedAt: photo.updated_at,
         server: {
           moderation_state: photo.moderation_state,
           has_thumbnail: photo.has_thumbnail,

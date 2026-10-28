@@ -27,16 +27,14 @@
  * layout, which would make the measured edge move when it appears.
  *
  * As the pictures place things: `banner={false}` leaves the banner out (the half sheet carries
- * it at the top, `home-offline.png`; at peek and in the states with no sheet it stays here), and
- * `welcome` is the empty Home's greeting ("Welcome", "0 of 195 countries", the sync chip alone:
- * `home-empty.png` draws no search disc).
+ * it at the top, `home-offline.png`; at peek and in the states with no sheet it stays here).
  */
 import { useContext } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/ui/icon-button';
-import { SyncStatusBanner, SyncStatusChip } from '@/components/sync/sync-status';
+import { SyncStatusBanner } from '@/components/sync/sync-status';
 import { ScreenMargin, Space } from '@/theme';
 
 import { GreetingHeader } from './greeting-header';
@@ -54,8 +52,6 @@ export interface HomeHeaderProps {
   onMeasured: (bottom: number) => void;
   /** Draw the offline or sync-failed banner here. Default true. */
   banner?: boolean;
-  /** The empty Home: a welcome and the countries visited (0), and no search. */
-  welcome?: { countries: number };
 }
 
 const NO_INSETS = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -67,7 +63,6 @@ export function HomeHeader({
   onRecentre,
   onMeasured,
   banner = true,
-  welcome,
 }: HomeHeaderProps) {
   // The provider is expo-router's; outside one (a component test) there is no inset.
   const insets = useContext(SafeAreaInsetsContext) ?? NO_INSETS;
@@ -80,12 +75,7 @@ export function HomeHeader({
       pointerEvents="box-none"
       onLayout={onLayout}
       style={[styles.zone, { paddingTop: insets.top }]}>
-      <GreetingHeader
-        name={name}
-        today={today}
-        welcome={welcome && `${welcome.countries} of 195 countries`}
-        trailing={welcome ? <SyncStatusChip /> : <HomeTools />}
-      />
+      <GreetingHeader name={name} today={today} trailing={<HomeTools />} />
       {banner ? <SyncStatusBanner /> : null}
       {moved ? (
         <View testID="home-recentre-slot" style={styles.recentre}>

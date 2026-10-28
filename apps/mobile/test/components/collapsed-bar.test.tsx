@@ -41,6 +41,14 @@ describe('<CollapsedBar>', () => {
     expect(String(title.props.className)).toContain('text-center');
   });
 
+  test('centres the title between Back (16 + 44 + 8) and Share and More (8 + 44 + 8 + 44 + 16), as pictured', async () => {
+    await render(bar());
+    expect(flat('trip-collapsed-bar')).toMatchObject({
+      paddingStart: 68,
+      paddingEnd: 120,
+    });
+  });
+
   test('is at least 56 dp tall below the status bar, a minimum that grows with the inset', async () => {
     await render(bar(54));
     expect(flat('trip-collapsed-bar').minHeight).toBe(56 + 54);

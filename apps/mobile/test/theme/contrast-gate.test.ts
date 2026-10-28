@@ -572,7 +572,7 @@ describe('the gate detects a regression (it is not vacuous)', () => {
   });
 
   test('a 4.5:1 pair is not enough in a contrast theme', () => {
-    const broken: Palette = { ...Palettes['light-contrast'], muted: '#6B7482' };
+    const broken: Palette = { ...Palettes['light-contrast'], muted: '#6A7380' };
     expect(run(broken, 'light-contrast', 'P1').map((f) => f.pair)).toContain(
       'muted on surface',
     );

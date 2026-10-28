@@ -10,7 +10,13 @@
  * calendar space.
  */
 import { tripStopDatesInOrder } from '@triptrackr/contracts';
-import { addDays as addDaysTo, formatISO, isValid, parseISO } from 'date-fns';
+import {
+  addDays as addDaysTo,
+  differenceInCalendarDays,
+  formatISO,
+  isValid,
+  parseISO,
+} from 'date-fns';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -30,6 +36,21 @@ export function isIsoDate(value: string): boolean {
 
 export function addDays(iso: string, days: number): string {
   return toIsoDate(addDaysTo(fromIsoDate(iso), days));
+}
+
+/**
+ * Whole nights between two wire dates (local calendar days, so a daylight saving change
+ * inside the stay cannot add or drop one). Negative when the departure is before the
+ * arrival, which `validateStopDates` refuses. The Nights stepper shows this; nothing
+ * stores it.
+ */
+export function nightsBetween(arrive: string, depart: string): number {
+  return differenceInCalendarDays(fromIsoDate(depart), fromIsoDate(arrive));
+}
+
+/** The departure that is `nights` nights after `arrive`: the inverse of `nightsBetween`. */
+export function departureAfterNights(arrive: string, nights: number): string {
+  return addDays(arrive, nights);
 }
 
 export function todayIso(): string {
@@ -81,4 +102,25 @@ const dayFormatter = new Intl.DateTimeFormat(undefined, {
 /** "12 May 2026" (locale-dependent order) for lists and headers. */
 export function formatIsoDate(iso: string): string {
   return dayFormatter.format(fromIsoDate(iso));
+}
+
+const stopDayFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+});
+
+const monthDayFormatter = new Intl.DateTimeFormat(undefined, {
+  day: 'numeric',
+  month: 'short',
+});
+
+/** "Thu 15 Oct" (locale-dependent order): the stop editor's date fields. */
+export function formatStopDay(iso: string): string {
+  return stopDayFormatter.format(fromIsoDate(iso));
+}
+
+/** "19 Oct": the day and month alone. */
+export function formatStopMonthDay(iso: string): string {
+  return monthDayFormatter.format(fromIsoDate(iso));
 }

@@ -494,71 +494,105 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 ## Phase 7: Everyday areas and forms (after T547; five parallel branches) — User Stories 4 and 5
 
-- [ ] T548 [US4] Branch `feat/005-areas-shared` (merged first). Failing tests then `AreaHeader` (Back, title,
+- [x] T548 [US4] Branch `feat/005-areas-shared` (merged first). Failing tests then `AreaHeader` (Back, title,
       subtitle, `PrivacyChip`), `AreaFab` (hides with the keyboard), the area skeletons and empty states with the
       existing strings (FR-044, FR-064; D5-14)
-- [ ] T549 [P] [US4] Branch `feat/005-areas-photos`. Failing tests (grouping by day, mosaic geometry and `+N`,
+      _As built (F7, 2026-10-21):_ `components/ui/area-header.tsx` and `area-fab.tsx` (API in
+      `reference/as-built/f7-photos-screen.md`); evidence: branch `feat/f7-photos-screen` tip `71d48f1`, merged gate
+      on `feat/f7-photos` 348 suites / 8,649 tests, `tsc`, ESLint, Prettier, parity and theme check green.
+- [x] T549 [P] [US4] Branch `feat/005-areas-photos`. Failing tests (grouping by day, mosaic geometry and `+N`,
       each upload state, the summary line, no overlay on a thumbnail, viewer controls kept) then `DayHeader`,
       `PhotoMosaic`, `UploadState`, `UploadSummary`, the `PhotoViewer` adapter over the zoom toolkit with
       progressive loading; ids kept; `05-photos-and-documents` and `offline/06-*` (FR-045, FR-046, FR-081; D5-09,
       D5-13)
-- [ ] T550 [P] [US4] Branch `feat/005-areas-expenses`. Failing `features/expenses/spending-summary.test.ts` (exact
+      _As built (F7, 2026-10-21):_ `features/photos/photo-days.ts`, `photo-mosaic.ts`, `upload-summary.ts`, `DayHeader`,
+      `PhotoMosaic`, `UploadSummaryPill`, the `PhotoViewer` adapter over the zoom toolkit with progressive load and swipe;
+      notes `reference/as-built/f7-photos-screen.md` and `f7-photos-viewer.md`; tips `71d48f1` (screen), `2f37eaa` (viewer),
+      integration wiring in `feat/f7-photos` (the viewer pages the gallery, test "1 of 2"). The Maestro flows were read, not run.
+- [x] T550 [P] [US4] Branch `feat/005-areas-expenses`. Failing `features/expenses/spending-summary.test.ts` (exact
       `decimal.js` sums, per-day and per-category totals, pending conversions counted and excluded, average per
       day, no `Number` on an amount) then `spending-summary.ts`, `SpendingHero`, `DayBars`, `CategoryBar`,
       `ExpenseRow`, and the amount-first Add expense sheet with the keyboard test; `02-notes-and-expenses`
       (FR-047, FR-054; D5-15)
-- [ ] T551 [P] [US4] Branch `feat/005-areas-notes`. Failing tests then `NoteCard` and the note editor sheet with
+      _As built (F8, 2026-10-21):_ `features/expenses/spending-summary.ts` (decimal.js, pending counted and excluded, no `Number`),
+      `SpendingHero`, `DayBars`, `CategoryBar`, the pictured Budget as a coming-soon control without an amount; note
+      `reference/as-built/f8-spending.md`; branch `feat/f8-spending` tip `7b1e0c2`; 351 suites / 8,699 tests green on the branch.
+- [x] T551 [P] [US4] Branch `feat/005-areas-notes`. Failing tests then `NoteCard` and the note editor sheet with
       Cancel and Save (no autosave), keyboard test; `02-notes-and-expenses` (FR-048; D5-14)
-- [ ] T552 [P] [US4] Branch `feat/005-areas-documents`. Failing tests then `DocumentTicket` (three kinds: boarding
+      _As built (F9, 2026-10-21):_ notes by day, `NoteCard` foot row with the honest sync state, the editor sheet with Cancel and
+      Save (no autosave) and the formatting strip as coming-soon controls; note `reference/as-built/f9-notes.md`; branch
+      `feat/f9-notes` tip `95a3f90`; 352 suites / 8,717 tests green on the branch.
+- [x] T552 [P] [US4] Branch `feat/005-areas-documents`. Failing tests then `DocumentTicket` (three kinds: boarding
       pass, booking, other), the viewer with the barcode on a white plate, `PrivacyChip` and the existing privacy
       line, `OfflineCityCard` and `StorageBar`; screen-capture protection unchanged;
       `05-photos-and-documents` (FR-049, FR-050; D5-17)
-- [ ] T553 [P] [US5] Branch `feat/005-areas-forms`. Failing keyboard-visibility tests then the `FormSheet` look (28 dp
+      _As built (F10 and F11, 2026-10-22):_ `DocumentTicket` with the notches and perforation, the viewer on a white plate (no share
+      control: documents are never shareable), `OfflineCityCard`, `StorageBar`, the Downloaded list with the real Remove; the pictured
+      extras are coming-soon controls (Q-11); notes `reference/as-built/f10-documents.md` and `f11-offline-maps.md`; branches
+      `feat/f10-documents` (`c52acbc`) and `feat/f11-offline-maps` (`99f3e3c`); merged gate on `feat/ui-stack` 360 suites / 8,868 tests,
+      `tsc`, ESLint, Prettier, parity and theme check green. `05-photos-and-documents` and `04-zoom` were read, not run.
+- [x] T553 [P] [US5] Branch `feat/005-areas-forms`. Failing keyboard-visibility tests then the `FormSheet` look (28 dp
       radius, handle, Cancel in ink), New trip with name and currency only, the stop editor with `RoutePreview`
       and `NightsStepper` over the unchanged date fields, the city picker with flag chips; `01-account-and-trip`
       date-picker taps and `03-globe` (FR-051, FR-052, FR-053, FR-055; D5-16)
+      _As built (F6, 2026-10-21):_ `FormSheet` look, New trip (name and currency real; destination, cover and dates as coming-soon rows),
+      Add expense amount-first, the stop editor with `RoutePreview` (distance from real coordinates), `NightsStepper` and the pictured
+      chips as coming-soon controls; notes `reference/as-built/f6-forms-trip.md` and `f6-forms-stop.md`; tips `ebb7ee3`, `2f8c9e5`;
+      merged gate on `feat/f6-forms` 339 suites / 8,471 tests, all gates green.
 
 ---
 
 ## Phase 8: Welcome, sign-in, You, delight (branch `feat/005-auth-you`) — User Stories 7 and 8
 
-- [ ] T554 [P] [US7] Failing tests then Welcome: sky `Scrim`, the turning globe (static under reduced motion,
+- [x] T554 [P] [US7] Failing tests then Welcome: sky `Scrim`, the turning globe (static under reduced motion,
       `useIdleSpin` at world scale), the 28 dp sheet with the existing tagline (one nested accent word) and the
       two buttons; `01-appearance` (FR-056, FR-019; D5-04; Q-5)
-- [ ] T555 [P] [US7] Sign in and Create account restyle: failing tests for the thumb-zone primary, words-and-icon
+      _As built (F12, 2026-10-22):_ Welcome with the three pictured buttons (Apple on iOS only, Google, email = `welcome-create-account`), the sky,
+      FIRST STAMP and a static composed globe (the approved fallback); `reference/as-built/f12-auth.md`; branch `feat/f12-auth` (`41434ae`).
+- [x] T555 [P] [US7] Sign in and Create account restyle: failing tests for the thumb-zone primary, words-and-icon
       errors and the unchanged `secureTextEntry`, `textContentType`, `autoComplete`; a light security review
       (error mapping and logging unchanged); `00-smoke`, `offline/00-a-setup-account` (FR-057)
-- [ ] T556 [P] [US7] Failing `features/passport/stamp-spec.test.ts` (200 or more country and date pairs give the same
+      _As built (F12, 2026-10-22):_ sign in and create account restyled, error summary that focuses fields, credential props and error mapping untouched,
+      security review in the as-built note; Maestro ids resolve (flows not run).
+- [x] T556 [P] [US7] Failing `features/passport/stamp-spec.test.ts` (200 or more country and date pairs give the same
       stamp twice, fixed shape, ink, rotation between −8 and 8, wear and perforation by the hash rules), then
       `passport-totals.test.ts` (period membership by first arrival, continents excluding Unknown, lap fraction)
       then `stamp-spec.ts`, `passport-totals.ts` (FR-058, FR-059, FR-084; D5-08, D5-17; SC-016)
-- [ ] T557 [US7] You screen: failing tests then identity ("Traveller since" from the account's creation year),
+      _As built (F13, 2026-10-22):_ `features/passport/stamp-spec.ts` and `passport-totals.ts`, test-first; `reference/as-built/f13-you.md`; branch `feat/f13-you` (`883f944`).
+- [x] T557 [US7] You screen: failing tests then identity ("Traveller since" from the account's creation year),
       `PeriodSwitch`, `PassportCard`, `StampsPage` (rasterised past about 100 stamps), the Account and App groups,
       Sign out and Delete account set apart with the guard unchanged; `offline/11-*`; a 120-stamp scroll test
       (FR-058, FR-059, FR-081; D5-08; Q-2)
-- [ ] T558 [US8] Delight: failing tests then count-up trigger policy once per appearance, the stamp landing for
+      _As built (F13, 2026-10-22):_ You screen, passport card, stamps page (baked to bitmaps from 100 stamps, 120-stamp scroll test), coming-soon Share, Settings and recap;
+      merged gate on `feat/ui-stack` 376 suites / 9,066 tests (one 20 s timeout in `list-group.test.tsx` while the machine stalled; 40/40 alone), `tsc`, ESLint, Prettier, parity and theme check green. `offline/11-a` was updated, not run.
+- [x] T558 [US8] Delight: failing tests then count-up trigger policy once per appearance, the stamp landing for
       stamps earned in the last 7 days once per session with the heavy haptic, the live pin pulse, selection
       haptics on detent, tab and chip; nothing under reduced motion (FR-060, FR-061, FR-062; D5-11, D5-14)
+      _As built (f14-delight, 2026-10-22):_ count-up once per appearance, stamp landing queue newest first, sheet haptic only on a detent change, nothing under reduced motion; `reference/as-built/f14-delight.md`; branch `feat/f14-delight` (`1b6c662`).
 
 ---
 
 ## Phase 9: States, accessibility, text scale, themes, baselines (branch `feat/005-sweeps`) — User Story 6
 
-- [ ] T559 [US6] State sweep: every route has loading, empty and error to one standard; camera and photographs
+- [x] T559 [US6] State sweep: every route has loading, empty and error to one standard; camera and photographs
       denial screens; filtered-empty and no-results; a test that fails on a screen state with no handler for any
       control and on any Tier 3 control (FR-064, FR-066, FR-080; D5-14)
-- [ ] T560 [US6] Accessibility sweep: names, roles, states and order unchanged for every pre-existing control
+      _As built (f14-states, 2026-10-22):_ route inventory (`test/state-sweep/route-inventory.ts`), dead-control and Tier 3 guards, camera denial screens with Open Settings, ways back from the not-here states; `reference/as-built/f14-states.md`. Open owner question: no photo-library denial screen was built because the system picker asks for no permission.
+- [x] T560 [US6] Accessibility sweep: names, roles, states and order unchanged for every pre-existing control
       (the parity test and an order test per screen), decorative art hidden, animated figures announce the final
       value, locale formats for figures, dates, plurals and units, the globe's actions and the Countries list reach
       every country and trip (a test over a 30-country fixture). **[DEVICE]** VoiceOver and TalkBack walks of Home,
       Trips, a trip and You (FR-070, FR-075, FR-076, FR-077, FR-080; SC-015)
-- [ ] T561 [US6] Text-scale sweep: reflow tests at scale 1, 1.15, 1.5 and 2 for Home figures, areas, ticket, passport
+      _As built (f14-a11y, 2026-10-22):_ reading-order tests for 13 screens, decorative art hidden, final values announced, `useReachAll` (all 30 countries and 200 trips reachable with a screen reader), distance units by locale; `reference/as-built/f14-a11y.md`. The **[DEVICE]** VoiceOver and TalkBack walks are NOT done (script in the note).
+- [x] T561 [US6] Text-scale sweep: reflow tests at scale 1, 1.15, 1.5 and 2 for Home figures, areas, ticket, passport
       grid, tabs, hero title; no fixed heights remain. **[DEVICE]** iOS largest accessibility size and Android
       200 percent on every screen in four themes (FR-074; SC-007)
-- [ ] T562 [US6] Theme, motion and transparency sweep: four themes on every screen, the contrast themes opaque (no
+      _As built (f14-scale, 2026-10-22):_ reflow suites at 1, 1.15, 1.5 and 2 for components and screens, the fixed-height ratchet with a reasoned allow-list, four fixes (day chart, photo count, route column, two-line titles); `reference/as-built/f14-scale.md`. The **[DEVICE]** passes are NOT done; open owner question: should the Home half detent grow with text.
+- [x] T562 [US6] Theme, motion and transparency sweep: four themes on every screen, the contrast themes opaque (no
       glass or blur), reduced motion removes rotation, pulse, count-up, stamp landing, shimmer and haptics, reduced
       transparency; a test that no translucent surface renders under either flag. **[DEVICE]** live switching
       with the app open (FR-073, FR-078, FR-079; SC-008)
+      _As built (f14-themes, 2026-10-22):_ 29 screens and states in four themes and under reduced transparency, reduced-motion and live-switching suites, translucent surfaces made opaque in the contrast themes and under the flag (dark tints, search disc, sync chip, tab capsule, Android indicator, map tile); `reference/as-built/f14-themes.md`. The **[DEVICE]** live-switching check is NOT done.
 - [ ] T563 [US6] Baselines compared: the frame rates of T500 and the sheet drag (SC-006), release bundle and font
       size against `pre-005-baseline` (over 1 MB reviewed, SC-011), press feedback within 100 ms and settle within
       300 ms (FR-027, FR-081; SC-005, SC-006, SC-011). **[DEVICE]**
@@ -567,11 +601,15 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
 
 ## Phase 10: Retire Atlas
 
-- [ ] T564 Remove every Atlas palette value, the flat tab strip code, the Atlas-only adapters and the 004 aliases that
+- [x] T564 Remove every Atlas palette value, the flat tab strip code, the Atlas-only adapters and the 004 aliases that
       nothing uses; `test/theme/atlas-values.test.ts` turns green; the neumorphism search stays empty (FR-083;
       SC-001)
+      _Partly built (f14-atlas, 2026-10-22), NOT ticked:_ every dead Atlas value, alias and the unused adapters are removed with proof; what a live screen or adapter still reads (`AtlasSpacing`, `AtlasRadius`, `cornerStyle`, the 004 text roles, `LegacyRoleMap`, palette aliases) is kept and listed with its readers in `reference/as-built/f14-atlas.md`; `ATLAS_RETIREMENT=1` still has 2 red tests until those move to the Sunrise names.
+      _Done 2026-10-24: the 004 text roles are gone too._ `Text` takes `variant` only (default `body`); the 44 `type=` call sites moved BY SIZE (old callout 14 to `label`, headline 17 to `callout`, title 22 to `headline`, caption 12 to `caption`, `numeric` to `body` or `label`), so no layout moved but those texts now draw in the Sunrise faces; `TextRoles`, `LegacyRoleMap`, `textStyle`, `numericStyle` and `context` are deleted and the ratchet is a plain zero (`ATLAS_RETIREMENT` is gone). Figures in a date field or the photo pill no longer use tabular figures (DM Sans has none). `reference/as-built/f14-atlas.md`.
+      _Shape tables done (2026-10-23):_ `AtlasSpacing`, `AtlasRadius` and `cornerStyle` are deleted, their seven readers moved to `Space` and `cornerOf` (same values, no visual change), the ratchet is at zero and `ATLAS_RETIREMENT=1` has 1 red test left: the text roles `largeTitle` and `numeric` (`date-field`, `photo-viewer`, `Text` and its tests). Moving `numeric` to `variant="numeral"` changes a size, so it waits for the owner.
 - [ ] T565 Docs as built: `AGENTS.md` (the look, the chrome, the libraries), `research.md` spike results, the
       amendments of 003 and 004 pointing at their final state, the as-built notes of the contracts (FR-083; D5-20)
+      _Partly built (2026-10-22), NOT ticked:_ `AGENTS.md` (the look, the chrome, the libraries, the test kits), the spike status table in `research.md` and the final-state lines in the 003 and 004 amendments are done; the as-built notes of `contracts/components.md` and the spike RESULTS wait for the device runs.
 
 ---
 
@@ -582,10 +620,13 @@ phase every screen still renders (it is on the new palette through `Colors`), bu
       sheet); every flow edit listed below (FR-081; SC-003; D5-18)
 - [ ] T567 [DEVICE] Re-run the 15-row offline-synchronisation gate on two real devices and record it in
       `apps/mobile/e2e/offline/gate-evidence.md` (FR-065, FR-081; SC-010)
-- [ ] T568 Clean `npm ci` and the full checks on Windows and the first CI run of the branch; coverage at least 80% in
+- [x] T568 Clean `npm ci` and the full checks on Windows and the first CI run of the branch; coverage at least 80% in
       every workspace; the privacy and API suites unaffected (D5-19; SC-004, SC-012)
-- [ ] T569 Code review and a security review of the derived views (no path by which expenses or documents reach a
+      _Met 2026-10-28:_ the first CI run of the branch (PR #30, run 40104800682 on `da36c86`) is green in all 10 jobs, including the mobile job whose 80% floor Jest enforces, the API, privacy and contracts jobs; the full local run on Windows (432 suites, tsc, ESLint, Prettier, parity, theme) passes. A clean `npm ci` on Windows was not repeated.
+- [x] T569 Code review and a security review of the derived views (no path by which expenses or documents reach a
       shareable surface; nothing transmitted; nothing stored) and of the sign-in restyle (FR-084, FR-080)
+      _Reviewed 2026-10-23 (by reading and grep, one reviewer; a second pair of eyes is still welcome):_ the passport, globe and home derive from `useGlobe` (trips, stops, photos) and import no expense or document reader (the only readers are `category-picker`, `features/documents/*` and `features/expenses/*`); nothing in the derived views calls `apiFetch`, `fetch`, `Share`, the clipboard or the media library; the rasterised stamp page is a local temp PNG shown in-app and never shared; the sign-in screens log nothing, store no credential, send Google and Apple tokens only through zod-validated requests to the app's own API, and report errors through `describeAuthError`. No finding.
+
 - [ ] T570 [DEVICE] Final owner review on a phone in both themes, at the largest text size and with increased
       contrast; first-time-viewer test of Home, Trips and a trip (95 percent identify what is tappable; 9 of 10
       find the primary action in sunlight) (D5-01; SC-009, SC-013)

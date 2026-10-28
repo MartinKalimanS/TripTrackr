@@ -12,13 +12,15 @@
  * whatever the trip still owes the API (`syncTrip` never rejects and never
  * shows a dialog; the badge on the row is where a pending upload is told).
  *
- * Under a native header (`_layout.tsx`: "Documents" and Back), so the screen is
- * `underHeader` and has no bar of its own. Its states are designed: skeleton rows
- * while the store answers (never the empty state), an empty state that names the
- * next action, and an error that offers "Try again". A live query has nothing to
- * re-run in place, so the retry reads it afresh by mounting the reader again
- * (`key`); the capture guard lives one level above, so a retry never leaves the
- * screen unprotected.
+ * The screen draws its own header, as the pictures do (the navigator's is hidden for this route:
+ * `trip/[id]/_layout.tsx`; `DocumentsHeader`, the shared `AreaHeader`), with the privacy line fixed above
+ * the list of tickets (005 T552; FR-049, FR-050; picture `more/documents`). "Scan document" is the
+ * floating `AreaFab` (`documents-add`, named "Add document"); with no documents it is the empty
+ * state's own primary instead (one primary per state). Its states are designed: ticket-shaped
+ * skeletons while the store answers (never the empty state), an empty state that names the next
+ * action, and an error that offers "Try again". A live query has nothing to re-run in place, so
+ * the retry reads it afresh by mounting the reader again (`key`); the capture guard lives one
+ * level above, so a retry never leaves the screen unprotected.
  *
  * The list blocks screen capture (FR-034) and, like every document screen,
  * has no control that could share, export, copy or publish a document
@@ -26,16 +28,21 @@
  */
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { Platform, View } from 'react-native';
 
 import { DocumentListItem } from '@/components/trip/document-list-item';
 import { DocumentsHeader } from '@/components/trip/documents-header';
+import { DocumentsSkeleton } from '@/components/trip/documents-skeleton';
+import { AreaFab, areaFabClearance } from '@/components/ui/area-fab';
+import { areaMargin } from '@/components/ui/area-header';
 import { ListScreen } from '@/components/ui/list-screen';
-import { EmptyState, ErrorState, ListSkeleton } from '@/components/ui/state-view';
+import { EmptyState, ErrorState } from '@/components/ui/state-view';
 import type { DocumentRow } from '@/db/schema';
 import { useDocumentActions, useDocuments } from '@/features/documents/use-documents';
 import { useScreenCaptureGuard } from '@/features/documents/use-screen-capture-guard';
 import { useTrip, type LiveResult } from '@/features/trips/use-trips';
 import { useAppActive } from '@/hooks/use-app-active';
+import { useFontScale } from '@/hooks/use-font-scale';
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -54,6 +61,7 @@ function useRetryUploads(tripId: string): void {
 
 type DocumentsEmptyProps = {
   documents: LiveResult<DocumentRow[]>;
+  onAdd: () => void;
   onRetry: () => void;
 };
 
@@ -61,7 +69,7 @@ type DocumentsEmptyProps = {
  * What stands in for the rows. The error comes first, then the skeleton: a screen never
  * shows its empty state while its first read is still resolving (C4-10 rule 2).
  */
-function DocumentsEmpty({ documents, onRetry }: DocumentsEmptyProps) {
+function DocumentsEmpty({ documents, onAdd, onRetry }: DocumentsEmptyProps) {
   if (documents.error) {
     return (
       <ErrorState
@@ -71,13 +79,19 @@ function DocumentsEmpty({ documents, onRetry }: DocumentsEmptyProps) {
       />
     );
   }
-  if (documents.loading) {
-    return <ListSkeleton variant="row" rows={3} label="Loading documents" />;
-  }
+  if (documents.loading) return <DocumentsSkeleton label="Loading documents" />;
   return (
     <EmptyState
+      icon="file-text"
       title="No documents yet"
-      detail="Use “Add document” to scan a boarding pass or photograph a booking. It’s kept on this device, encrypted, until it uploads."
+      detail="Scan a boarding pass or photograph a booking. It’s kept on this device, encrypted, until it uploads."
+      action={{
+        label: 'Scan document',
+        accessibilityLabel: 'Add document',
+        testID: 'documents-add',
+        primary: true,
+        onPress: onAdd,
+      }}
     />
   );
 }
@@ -86,36 +100,50 @@ function DocumentsList({ onRetry }: { onRetry: () => void }) {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string | string[] }>();
   const tripId = firstParam(id) ?? '';
+  const fontScale = useFontScale();
 
   const trip = useTrip(tripId);
   const documents = useDocuments(tripId);
   useRetryUploads(tripId);
 
-  const header = (
-    <DocumentsHeader
-      tripTitle={trip.data?.title ?? null}
-      onAdd={() => router.push(`/trip/${tripId}/document-capture`)}
-    />
-  );
+  const add = () => router.push(`/trip/${tripId}/document-capture`);
+  const unread = documents.error || documents.loading;
+  const empty = !unread && documents.data.length === 0;
 
   return (
-    <ListScreen
-      testID="documents-screen"
-      underHeader
-      // A failed read leaves no rows: stale ones would pass for the traveller's documents.
-      data={documents.error ? [] : documents.data}
-      keyExtractor={(document) => document.id}
-      renderItem={({ item }) => (
-        <DocumentListItem
-          document={item}
-          onOpen={() =>
-            router.push(`/trip/${tripId}/document-view?documentId=${item.id}`)
-          }
-        />
-      )}
-      header={header}
-      empty={<DocumentsEmpty documents={documents} onRetry={onRetry} />}
-    />
+    <View testID="documents-screen" className="flex-1 bg-background">
+      <DocumentsHeader
+        tripTitle={trip.data?.title ?? null}
+        count={unread ? null : documents.data.length}
+      />
+      <ListScreen
+        listTestID="documents-list"
+        edges={['bottom']}
+        itemGap={12}
+        horizontalInset={areaMargin()}
+        bottomInset={areaFabClearance(Platform.OS, fontScale)}
+        // A failed read leaves no rows: stale ones would pass for the traveller's documents.
+        data={documents.error ? [] : documents.data}
+        keyExtractor={(document) => document.id}
+        renderItem={({ item }) => (
+          <DocumentListItem
+            document={item}
+            onOpen={() =>
+              router.push(`/trip/${tripId}/document-view?documentId=${item.id}`)
+            }
+          />
+        )}
+        empty={<DocumentsEmpty documents={documents} onAdd={add} onRetry={onRetry} />}
+      />
+      <AreaFab
+        label="Scan document"
+        accessibilityLabel="Add document"
+        icon="scan"
+        testID="documents-add"
+        hidden={empty}
+        onPress={add}
+      />
+    </View>
   );
 }
 

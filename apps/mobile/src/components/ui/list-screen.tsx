@@ -27,8 +27,9 @@
  * (a recycler reuses a cell only for the same shape), `stickyHeaderIndices`, `listRef` and
  * `onViewableItemsChanged` (jump to a year, follow the scroll), `bottomInset` (room at the
  * foot past a floating pill and button), `horizontalInset` (a screen margin of its own),
- * `endInset` (more at the end, for a strip along the edge) and `itemGap` (0 where the items
- * space themselves). With none of them the list is what it was.
+ * `endInset` (more at the end, for a strip along the edge), `itemGap` (0 where the items
+ * space themselves) and `reachAll` (every item stays mounted while a screen reader is on, SC-015).
+ * With none of them the list is what it was.
  */
 import {
   FlashList,
@@ -42,6 +43,7 @@ import { SafeAreaInsetsContext, type Edge } from 'react-native-safe-area-context
 
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAppearance } from '@/hooks/use-appearance';
+import { useReachAllDistance } from '@/hooks/use-reach-all';
 import { useTabInset } from '@/hooks/use-tab-inset';
 
 export type ListScreenProps<Item> = {
@@ -90,6 +92,11 @@ export type ListScreenProps<Item> = {
   endInset?: number;
   /** The gap between items. Default `Spacing.three`; 0 draws none (the items space themselves). */
   itemGap?: number;
+  /**
+   * Keep every item mounted while a screen reader is on, so each one can be reached (SC-015:
+   * the Trips tab). Off by default: a list of a thousand rows recycles as usual.
+   */
+  reachAll?: boolean;
 };
 
 const DEFAULT_EDGES: Edge[] = ['top', 'bottom'];
@@ -128,10 +135,12 @@ export function ListScreen<Item>({
   horizontalInset = Spacing.four,
   endInset,
   itemGap,
+  reachAll = false,
   // Read after `underHeader`: a default may use only what is destructured before it.
   edges = underHeader ? UNDER_HEADER_EDGES : DEFAULT_EDGES,
 }: ListScreenProps<Item>) {
   const { tokens } = useAppearance();
+  const drawDistance = useReachAllDistance(data.length, reachAll);
   // One component per gap, so the list does not remount its separators on every render.
   const Separator = useMemo(() => separatorOf(itemGap), [itemGap]);
   // The provider is expo-router's, at the root of every screen; outside one
@@ -181,6 +190,7 @@ export function ListScreen<Item>({
           }}
           contentInsetAdjustmentBehavior={underHeader ? 'automatic' : undefined}
           keyboardShouldPersistTaps="handled"
+          {...(drawDistance === undefined ? null : { drawDistance })}
         />
       </View>
     </View>

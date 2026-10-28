@@ -60,6 +60,7 @@ env:
     visible:
       id: 'tab-bar'
     timeout: 20000
+- runFlow: _helpers/dismiss-tour.yaml
 - tapOn:
     id: 'tab-trips'
 - tapOn:

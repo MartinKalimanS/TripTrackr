@@ -12,16 +12,20 @@
  *   </FormSheet>
  *
  * It gives a form four things, so no form re-derives them:
- * - a TITLE (`title`, a heading in the display face) at the head of the body, since a
- *   sheet has no native header to carry one: Android's form sheet shows neither a header
- *   nor a nested navigator (the v57 modals guide, "Android limitations"), so the title is
- *   content on both platforms;
+ * - a HEADER (feature 005, F6; UI-SPEC 3.6): Cancel (a text button, `<prefix>-cancel`) at the
+ *   left, the TITLE (`title`, the `callout` role, a heading) centred, and `headerTrailing` at
+ *   the right ("Only you"; dropped from text scale 1.5). A sheet has no native header to carry
+ *   these: Android's form sheet shows neither a header nor a nested navigator (the v57 modals
+ *   guide, "Android limitations"), so the header is content on both platforms. It stands
+ *   outside the scrolling body, so Cancel never scrolls away;
  * - a scrolling BODY, a `KeyboardAwareScrollView` (D-24) with `keyboardShouldPersistTaps=
  *   "handled"`, as tall as its fields until the room runs out and then a scroller, so the
  *   largest text size never clips a field (FR-029);
- * - a sticky FOOTER: Cancel and Save (`FormActions`, so ids, names, emphasis and wrapping
- *   are its), outside the body. Save is never scrolled away and never under the keyboard
- *   (rule 8); the footer is opaque and padded for the home indicator;
+ * - a sticky FOOTER: Save alone (`FormActions`: the one primary, full width, 56 dp), outside
+ *   the body. Save is never scrolled away and never under the keyboard (rule 8); the footer
+ *   is opaque and padded for the home indicator, with an optional hairline above it
+ *   (`footerRule`). The body and the footer are padded 20 dp at the sides; `gap` is the space
+ *   between fields;
  * - a HANDLE on Android (FR-009). iOS draws its own when `formSheetOptions` asks for it;
  *   react-native-screens 4.26 draws none on Android, so the sheet draws one.
  *
@@ -69,9 +73,10 @@ import {
 } from 'react-native-keyboard-controller';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
-import { AtlasSpacing } from '@/theme';
+import { useFontScale } from '@/hooks/use-font-scale';
+import { Space } from '@/theme';
 
-import { FormActions, type FormActionsProps } from './form-actions';
+import { FormActions, FormCancel, type FormActionsProps } from './form-actions';
 import { Text } from './text';
 
 export type FormSheetHost = 'form-sheet' | 'modal';
@@ -90,6 +95,19 @@ export type FormSheetProps = {
   actions: FormActionsProps;
   /** Who moves the form for the keyboard (see the header). Default `'form-sheet'`. */
   host?: FormSheetHost;
+  /** What stands at the header's right ("Only you" on a private form); dropped at large text. */
+  headerTrailing?: ReactNode;
+  /** A line under the title (the note editor's sync state), centred with it. */
+  headerSubtitle?: ReactNode;
+  /**
+   * A strip above the footer's buttons, inside the part that rides up with the keyboard (the
+   * note editor's formatting bar). Opaque, like the footer.
+   */
+  footerAccessory?: ReactNode;
+  /** The space between the fields, in dp. Default 16; New trip's roomier form passes 24. */
+  gap?: number;
+  /** A hairline above the footer (New trip draws one, Add expense none). */
+  footerRule?: boolean;
   /** The fields, in reading order. */
   children: ReactNode;
 };
@@ -107,11 +125,15 @@ export const formSheetOptions = {
 } as const satisfies NativeStackNavigationOptions;
 
 /** The strip of the window a router sheet leaves above itself, below the status bar. */
-export const SHEET_TOP_GAP = AtlasSpacing.three;
+export const SHEET_TOP_GAP = Space[4];
 /** Room above and below the footer's buttons, and between a field and the footer. */
-export const FOOTER_GAP = AtlasSpacing.three;
-/** The side gutter of the body and the footer (the `Screen` gutter). */
-const GUTTER = AtlasSpacing.four;
+export const FOOTER_GAP = Space[4];
+/** The side gutter of the body and the footer: the 20 dp screen margin (UI-SPEC 2.3, 3.6). */
+const GUTTER = Space[5];
+/** The header row's least height (the prototype's `.sheet-head`, 56). */
+export const HEADER_MIN_HEIGHT = 56;
+/** From this text scale the header drops its trailing chip so the title keeps its room. */
+export const HEADER_BIG_TEXT = 1.5;
 /** Enough for a title and one row of actions: a tiny window never caps a form to nothing. */
 const MIN_SHEET_HEIGHT = 160;
 
@@ -140,9 +162,62 @@ function SheetHandle({ parent }: { parent?: string }) {
       testID={parent ? `${parent}-handle` : undefined}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      className="self-center rounded-full bg-border"
+      className="self-center rounded-full bg-grab"
       style={styles.handle}
     />
+  );
+}
+
+type HeaderProps = {
+  parent?: string;
+  title: string;
+  actions: FormActionsProps;
+  trailing?: ReactNode;
+  subtitle?: ReactNode;
+};
+
+/**
+ * Cancel at the left, the title centred, an optional chip at the right (`.sheet-head`: a
+ * 1fr / auto / 1fr grid, 56 dp tall). From 1.5 times the text size the chip is dropped and
+ * the title takes the room between Cancel and the edge (the prototype's `data-bigtext`).
+ */
+function Header({ parent, title, actions, trailing, subtitle }: HeaderProps) {
+  const big = useFontScale() >= HEADER_BIG_TEXT;
+  const heading = (
+    <Text
+      variant="callout"
+      accessibilityRole="header"
+      className={big ? 'shrink' : 'shrink text-center'}>
+      {title}
+    </Text>
+  );
+  const block = subtitle ? (
+    <View className="shrink items-center">
+      {heading}
+      {subtitle}
+    </View>
+  ) : (
+    heading
+  );
+  const cancel = <FormCancel {...actions} />;
+  return (
+    <View
+      testID={parent ? `${parent}-header` : undefined}
+      className="flex-row items-center"
+      style={styles.header}>
+      {big ? (
+        <>
+          {cancel}
+          <View className="flex-1 items-center">{block}</View>
+        </>
+      ) : (
+        <>
+          <View className="flex-1 items-start">{cancel}</View>
+          {block}
+          <View className="flex-1 items-end">{trailing}</View>
+        </>
+      )}
+    </View>
   );
 }
 
@@ -150,17 +225,32 @@ type FooterProps = {
   parent?: string;
   host: FormSheetHost;
   bottomInset: number;
+  rule: boolean;
   onLayout: (event: LayoutChangeEvent) => void;
   actions: FormActionsProps;
+  accessory?: ReactNode;
 };
 
-/** Cancel and Save on an opaque strip; a modal's rides the keyboard up (see the header). */
-function Footer({ parent, host, bottomInset, onLayout, actions }: FooterProps) {
+/** Save on an opaque strip; a modal's rides the keyboard up (see the header). */
+function Footer({
+  parent,
+  host,
+  bottomInset,
+  rule,
+  onLayout,
+  actions,
+  accessory,
+}: FooterProps) {
   const sticks = host === 'modal';
   const content = (
     <View
-      className="bg-background px-6 pt-3"
-      style={{ paddingBottom: FOOTER_GAP + (sticks ? bottomInset : 0) }}>
+      className={rule ? 'border-t border-separator bg-background' : 'bg-background'}
+      style={[
+        styles.footer,
+        accessory ? styles.footerWithAccessory : null,
+        { paddingBottom: FOOTER_GAP + (sticks ? bottomInset : 0) },
+      ]}>
+      {accessory}
       <FormActions {...actions} />
     </View>
   );
@@ -187,6 +277,11 @@ export function FormSheet({
   bodyTestID,
   actions,
   host = 'form-sheet',
+  headerTrailing,
+  headerSubtitle,
+  footerAccessory,
+  gap = FOOTER_GAP,
+  footerRule = false,
   children,
 }: FormSheetProps) {
   const insets = useContext(SafeAreaInsetsContext);
@@ -210,21 +305,29 @@ export function FormSheet({
   return (
     <View testID={testID} className="bg-background" style={root}>
       {!inModal && Platform.OS === 'android' ? <SheetHandle parent={testID} /> : null}
+      <Header
+        parent={testID}
+        title={title}
+        actions={actions}
+        trailing={headerTrailing}
+        subtitle={headerSubtitle}
+      />
       <KeyboardAwareScrollView
         testID={bodyTestID ?? (testID ? `${testID}-body` : undefined)}
         keyboardShouldPersistTaps="handled"
         bottomOffset={footerHeight + FOOTER_GAP}
         style={inModal ? styles.bodyFill : styles.body}
-        contentContainerStyle={styles.bodyContent}>
-        <Text type="title">{title}</Text>
+        contentContainerStyle={[styles.bodyContent, { gap }]}>
         {children}
       </KeyboardAwareScrollView>
       <Footer
         parent={testID}
         host={host}
         bottomInset={insets?.bottom ?? 0}
+        rule={footerRule}
         onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}
         actions={actions}
+        accessory={footerAccessory}
       />
     </View>
   );
@@ -237,9 +340,17 @@ const styles = StyleSheet.create({
   bodyFill: { flexGrow: 1, flexShrink: 1 },
   bodyContent: {
     paddingHorizontal: GUTTER,
-    paddingTop: GUTTER,
+    paddingTop: Space[2],
     paddingBottom: FOOTER_GAP,
-    gap: FOOTER_GAP,
   },
-  handle: { width: 32, height: 4, marginTop: AtlasSpacing.twelve },
+  header: {
+    minHeight: HEADER_MIN_HEIGHT,
+    paddingHorizontal: Space[3],
+    paddingTop: Space[2],
+    gap: Space[2],
+  },
+  footer: { paddingHorizontal: GUTTER, paddingTop: Space[3] },
+  footerWithAccessory: { gap: Space[2] },
+  /** The Android sheet's own handle: 32 x 4 (the prototype's Android `.grab`). */
+  handle: { width: 32, height: 4, marginTop: Space[3] },
 });

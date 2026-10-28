@@ -42,6 +42,7 @@ const HALO = 4;
 const RING = 2;
 const SPINE = 3;
 const LEAD_HEIGHT = 8;
+const TABULAR = { fontVariant: ['tabular-nums' as const] };
 const CHECK: IconName = 'check';
 const COLOR_KEYS = [
   'ink',
@@ -96,9 +97,10 @@ export function StopNode({ id, state, position, dragging = false }: NodeProps) {
   return (
     <View testID={`stop-dot-${id}`} style={[base, look]}>
       <Text
-        type="numeric"
-        context="callout"
+        variant="caption"
+        capped
         tone={now ? 'onAccent' : 'default'}
+        style={TABULAR}
         testID={`stop-number-${id}`}>
         {position}
       </Text>

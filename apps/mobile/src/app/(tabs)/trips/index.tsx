@@ -42,9 +42,11 @@ import {
 } from '@/components/trip/trips-list-parts';
 import { useTabZone } from '@/components/trip/use-tab-zone';
 import { YearScrubber } from '@/components/trip/year-scrubber';
+import { ComingSoonButton } from '@/components/ui/coming-soon-button';
 import { ListScreen, type ListScreenProps } from '@/components/ui/list-screen';
 import { PlanTripFab } from '@/components/ui/plan-trip-fab';
 import { SyncChip } from '@/components/ui/sync-chip';
+import { useToastVisible } from '@/components/ui/toast-zone';
 import { Spacing } from '@/constants/theme';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
 import {
@@ -71,6 +73,8 @@ import { ScreenMargin } from '@/theme';
 const NO_CARDS: TripCardModel[] = [];
 /** The room the list leaves at its end for the year strip: 28 dp of strip and the margins. */
 const STRIP_ROOM = 44;
+/** The year strip's top, from the prototype's `.year-scrub` (right 4, top 250). */
+const STRIP_TOP = 250;
 /** A row is in view as soon as a sliver of it is. */
 const VIEWABILITY = { itemVisiblePercentThreshold: 1 } as const;
 
@@ -121,23 +125,48 @@ function useTripsList(filter: TripFilter) {
   return { data, cards, items, sticky, loading, error, settled };
 }
 
-/** The header's options: the sync chip while changes wait, nothing when all is synchronised. */
-function useSyncHeaderOptions(sync: TripsSync) {
+interface HeaderToolsProps {
+  kind: TripsSync['chip']['kind'];
+  count: number;
+  onRetry: () => void;
+}
+
+/**
+ * The header's trailing controls (trips.png): the sync chip while changes wait, then the pictured
+ * Search, a coming-soon control (Q-11: one toast, nothing else), 8 dp apart. Search is there in
+ * every state; the chip only when there is something to say.
+ */
+function HeaderTools({ kind, count, onRetry }: HeaderToolsProps) {
+  return (
+    <View
+      testID="trips-header-tools"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+      {kind === 'synced' ? null : (
+        <SyncChip
+          state={{ kind, count }}
+          onRetry={kind === 'failed' ? onRetry : undefined}
+        />
+      )}
+      <ComingSoonButton
+        name="trips-search"
+        label="Search"
+        icon="search"
+        variant="tonal"
+      />
+    </View>
+  );
+}
+
+/** The header's options: the trailing controls, rebuilt only when the chip changes. */
+function useHeaderOptions(sync: TripsSync) {
   const kind = sync.chip.kind;
   const count = 'count' in sync.chip ? sync.chip.count : 0;
+  const onRetry = sync.retry;
   return useMemo(
     () => ({
-      headerRight:
-        kind === 'synced'
-          ? undefined
-          : () => (
-              <SyncChip
-                state={{ kind, count }}
-                onRetry={kind === 'failed' ? sync.retry : undefined}
-              />
-            ),
+      headerRight: () => <HeaderTools kind={kind} count={count} onRetry={onRetry} />,
     }),
-    [kind, count, sync.retry],
+    [kind, count, onRetry],
   );
 }
 
@@ -164,6 +193,7 @@ const LIST_SHAPE: Pick<
   | 'keyExtractor'
   | 'getItemType'
   | 'viewabilityConfig'
+  | 'reachAll'
 > = {
   underHeader: true,
   // The floating pill runs over the bottom of the screen: `ListScreen` ends the list above it.
@@ -173,6 +203,8 @@ const LIST_SHAPE: Pick<
   keyExtractor: tripItemKey,
   getItemType: tripItemType,
   viewabilityConfig: VIEWABILITY,
+  // Every trip is a node a screen reader can reach (SC-015), whatever the length of the list.
+  reachAll: true,
 };
 
 interface TripsHeaderProps {
@@ -254,7 +286,8 @@ export default function TripsScreen() {
   const sync = useTripsSync();
   const strip = useYearStrip(list.items);
   const tabZone = useTabZone();
-  const headerOptions = useSyncHeaderOptions(sync);
+  const toastUp = useToastVisible();
+  const headerOptions = useHeaderOptions(sync);
 
   const onPlan = useCallback(() => router.push('/modal/add-trip'), [router]);
   const onOpen = useCallback((id: string) => router.push(`/trip/${id}`), [router]);
@@ -278,8 +311,8 @@ export default function TripsScreen() {
       {showStrip ? (
         <View
           pointerEvents="box-none"
-          className="absolute justify-center"
-          style={{ top: 0, bottom: tabZone + Spacing.three, end: Spacing.one }}>
+          testID="trips-year-strip"
+          style={{ position: 'absolute', top: STRIP_TOP, end: Spacing.one }}>
           <YearScrubber
             years={strip.years}
             activeYear={strip.activeYear}
@@ -287,7 +320,7 @@ export default function TripsScreen() {
           />
         </View>
       ) : null}
-      <PlanTripFab onPress={onPlan} bottomInset={tabZone} />
+      <PlanTripFab onPress={onPlan} bottomInset={tabZone} lifted={toastUp} />
       <Stack.Screen options={headerOptions} />
     </View>
   );

@@ -23,6 +23,8 @@ import { resetFirstLaunch } from '@/sync/triggers';
 // 11 to 20 s on a cold cache, which hit the 20 s default under parallel load (004 spike).
 jest.setTimeout(60_000);
 
+// The first-run tour has suites of its own (it reads the local store).
+jest.mock('@/components/tour/first-run-tour', () => ({ FirstRunTour: () => null }));
 jest.mock('@/lib/sentry', () => ({
   Sentry: { captureException: jest.fn(), wrap: (component: unknown) => component },
   initSentry: jest.fn(),

@@ -6,23 +6,27 @@
  * photo view, so the posture is never an assumption. A lock icon (decorative) leads the
  * words; the words wrap at the largest text size beside it.
  *
- * Visibility posture: private. The note offers nothing to share or publish — per-photo
- * visibility is User Story 7.
+ * A photo the traveller chose public (spec 006) reads "Public — for now only you can see this
+ * photo." instead: the public trip view and screening are not built, so the note must not
+ * call it private and must not promise anyone else sees it.
+ *
+ * Visibility posture: the note offers nothing to share or publish — changing a photo's
+ * visibility afterwards is User Story 7.
  */
 import { View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { PRIVATE_COPY } from '@/features/photos/photo-copy';
+import { PRIVATE_COPY, PUBLIC_PENDING_COPY } from '@/features/photos/photo-copy';
 
 const LOCK: IconName = 'lock';
 
-export function PrivateNote() {
+export function PrivateNote({ isPublic = false }: { isPublic?: boolean }) {
   return (
     <View className="flex-row items-start gap-2">
       <Icon name={LOCK} size={16} tone="muted" />
-      <Text type="callout" tone="muted" className="shrink">
-        {PRIVATE_COPY}
+      <Text variant="label" tone="muted" className="shrink">
+        {isPublic ? PUBLIC_PENDING_COPY : PRIVATE_COPY}
       </Text>
     </View>
   );

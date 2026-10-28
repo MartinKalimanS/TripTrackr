@@ -7,6 +7,11 @@
  * it is scoped to the traveller. Selection is the chip's own (a fill, a heavier label and
  * a check glyph, announced selected and checked), never hue alone (FR-010, FR-025).
  *
+ * Each chip carries its category's glyph (`category-icon.ts`; the selected one shows the check
+ * instead), and, when the picker can create, the row ends with the dashed "New" chip
+ * (`category-new-toggle`, named "New category") that opens the "New category" field below it
+ * (the pattern of the currency row's "Other"; add-expense.png shows no field at rest).
+ *
  * The chips are one sideways row by default (contract C4-11: "category chips one row"),
  * so a growing list of the traveller's own categories never pushes the form down; pass
  * `scroll={false}` for a screen that would rather wrap them. The ids are unchanged:
@@ -24,6 +29,8 @@ import { InlineError } from '@/components/ui/inline-error';
 import { Text } from '@/components/ui/text';
 import type { CategoryOption } from '@/db/repositories/expenses';
 
+import { categoryIconName } from './category-icon';
+
 export type CategoryPickerProps = {
   options: readonly CategoryOption[];
   /** Category id, or '' for none. */
@@ -36,13 +43,30 @@ export type CategoryPickerProps = {
   scroll?: boolean;
 };
 
-function chipOptions(options: readonly CategoryOption[]): ChipOption[] {
-  return options.map((option) => ({
+/** The key of the "New" chip: not a category id (those are UUIDs or fixed slugs). */
+const NEW_KEY = '__new__';
+
+const NEW_OPTION: ChipOption = {
+  key: NEW_KEY,
+  label: 'New',
+  testID: 'category-new-toggle',
+  accessibilityLabel: 'New category',
+  leading: 'plus',
+  dashed: true,
+};
+
+function chipOptions(
+  options: readonly CategoryOption[],
+  canCreate: boolean,
+): ChipOption[] {
+  const chips = options.map((option) => ({
     key: option.id,
     label: option.name,
     testID: `category-${option.id}`,
     accessibilityLabel: option.name,
+    leading: categoryIconName(option.icon),
   }));
+  return canCreate ? [...chips, NEW_OPTION] : chips;
 }
 
 export function CategoryPicker({
@@ -54,25 +78,31 @@ export function CategoryPicker({
   scroll = true,
 }: CategoryPickerProps) {
   const [draft, setDraft] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const create = () => {
     const name = draft.trim();
     if (!onCreate || name.length === 0) return;
     onChange(onCreate(name));
     setDraft('');
+    setCreating(false);
   };
 
   return (
     <View className="gap-2">
-      <Text type="callout">Category</Text>
+      <Text variant="label" strong>
+        Category
+      </Text>
       <ChipGroup
         scroll={scroll}
         accessibilityLabel="Category"
-        options={chipOptions(options)}
+        options={chipOptions(options, Boolean(onCreate))}
         selectedKey={value}
-        onSelect={onChange}
+        onSelect={(key) =>
+          key === NEW_KEY ? setCreating((open) => !open) : onChange(key)
+        }
       />
-      {onCreate ? (
+      {onCreate && creating ? (
         <View className="flex-row items-end gap-2">
           <View className="flex-1">
             <Field
