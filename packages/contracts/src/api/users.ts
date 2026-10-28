@@ -38,3 +38,23 @@ export const PatchMeRequest = z
     message: 'A patch must change at least one field',
   });
 export type PatchMeRequest = z.infer<typeof PatchMeRequest>;
+
+/**
+ * `DELETE /me` (rest-api.md §2; FR-006). The account is deleted for good, so the caller proves
+ * it is the traveller and not a stolen access token: an account with a password must send it.
+ * An account that only ever signed in with Google or Apple has no password to send, and sends
+ * none (the provider re-check is tracked with the authentication audit, S-09).
+ */
+export const DeleteMeRequest = z.strictObject({
+  password: z.string().min(1).max(256).optional(),
+});
+export type DeleteMeRequest = z.infer<typeof DeleteMeRequest>;
+
+/**
+ * 202: the account is marked, every session has ended, and a sweep that removes the rows and
+ * every stored file has been queued. Deletion is complete only when that sweep confirms.
+ */
+export const DeleteMeResponse = z.strictObject({
+  status: z.literal('deletion_requested'),
+});
+export type DeleteMeResponse = z.infer<typeof DeleteMeResponse>;

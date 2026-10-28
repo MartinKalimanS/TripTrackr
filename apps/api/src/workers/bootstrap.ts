@@ -12,6 +12,10 @@ import {
 import { StorageService } from '@/common/storage/storage.service';
 
 import { refreshFxRates } from './fx-refresh.processor';
+import {
+  processAccountDeletion,
+  type DeletionStorage,
+} from './account-deletion.processor';
 import { processPhoto, type MediaStorage } from './media.processor';
 import { FailClosedPhotoScreening, type PhotoScreening } from './photo-screening';
 import { purgeTombstones, type PurgeStorage } from './tombstone-purge.processor';
@@ -99,6 +103,13 @@ export interface ProcessorDeps {
    * purge job, loudly, rather than deleting rows whose bytes it cannot remove.
    */
   readonly purgeStorage?: PurgeStorage;
+  /**
+   * The object store as the account-deletion sweep uses it (T188): the strict `removeObject`
+   * and `listObjects`, both of which throw rather than read an outage as "nothing there".
+   * `bootstrapWorker` passes the same `StorageService`; a registry built without it fails
+   * every deletion job, loudly, rather than deleting rows whose bytes it cannot remove.
+   */
+  readonly sweepStorage?: DeletionStorage;
   /** Photo screening (research D-34); the fail-closed port when absent. */
   readonly screening?: PhotoScreening;
   readonly streams?: WorkerStreams;
@@ -137,6 +148,20 @@ export function buildProcessors(
       // The only trace a finished media job leaves: the job itself is removed
       // on completion (modules/photos/media-job.producer.ts).
       logLine('info', { queue: QUEUE_NAMES.media, ...result }, deps.streams);
+      return result;
+    },
+    [QUEUE_NAMES.storageSweep]: async (job) => {
+      if (!deps.sweepStorage) {
+        throw new Error(
+          'The account-deletion sweep was built without object storage; bootstrapWorker supplies it.',
+        );
+      }
+      const result = await processAccountDeletion(
+        { sql: deps.sql, storage: deps.sweepStorage },
+        job.data,
+      );
+      // Counts only: the sweep never writes a key, an id or a traveller to a log.
+      logLine('info', { queue: QUEUE_NAMES.storageSweep, ...result }, deps.streams);
       return result;
     },
     [QUEUE_NAMES.tombstonePurge]: async () => {
@@ -383,6 +408,7 @@ export function bootstrapWorker(connection: Redis): void {
       fxRatesUrl: env.FX_RATES_URL,
       storage,
       purgeStorage: storage,
+      sweepStorage: storage,
       screening: new FailClosedPhotoScreening(),
     }),
     bullWorkerFactory(connection),
