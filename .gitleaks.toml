@@ -1,0 +1,17 @@
+# gitleaks configuration (.github/workflows/security.yml, step S-01).
+#
+# Extends the default rules. The allowlist is for FIXTURES ONLY: values that look like secrets
+# but are test data checked in on purpose. Every entry needs a comment saying why it is safe;
+# a real secret is never allowlisted: rotate it (docs/roadmap/CICD-AND-RELEASE.md, incident
+# process).
+title = "TripTrackr"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented test fixtures and generated lockfiles"
+paths = [
+  '''package-lock\.json$''',
+  '''\.env\.example$''',
+]

@@ -1,9 +1,24 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
-import { MeResponse, PatchMeRequest } from '@triptrackr/contracts';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+} from '@nestjs/common';
+import {
+  DeleteMeRequest,
+  DeleteMeResponse,
+  MeResponse,
+  PatchMeRequest,
+} from '@triptrackr/contracts';
 
+import { RateLimited } from '@/common/guards/rate-limit.guard';
 import { respond } from '@/common/validation/respond';
 import { ZodValidationPipe } from '@/common/validation/zod-validation.pipe';
 
+import { DELETE_ME_RATE_LIMIT, DeletionService } from './deletion.service';
 import { TravelStatsService } from './travel-stats.service';
 import { UsersRepository } from './users.repository';
 
@@ -12,14 +27,16 @@ import { UsersRepository } from './users.repository';
  *
  * No `@Public()` anywhere in this file: the global JwtAuthGuard applies, and
  * the RLS context therefore carries the identity every query below keys on.
- * `DELETE /me` and `POST /me/export` (FR-006, FR-007) arrive with their own
- * stories — both enqueue work the queue module owns.
+ * `DELETE /me` (FR-006) marks the account and queues the sweep that removes its rows and
+ * files (`DeletionService`); `POST /me/export` (FR-007) arrives with its own story. Both
+ * enqueue work the queue module owns.
  */
 @Controller('me')
 export class UsersController {
   constructor(
     private readonly users: UsersRepository,
     private readonly stats: TravelStatsService,
+    private readonly deletion: DeletionService,
   ) {}
 
   /** Profile plus stats: countries visited, distance travelled (FR-050). */
@@ -42,5 +59,19 @@ export class UsersController {
     const stats = await this.stats.forCurrentUser();
 
     return respond(MeResponse, { user, stats });
+  }
+
+  /**
+   * Delete the account (FR-006): 202, the account is marked and every session ends; the
+   * sweep that removes the rows and every stored file is queued and finishes it. The
+   * password is required when the account has one.
+   */
+  @Delete()
+  @RateLimited(DELETE_ME_RATE_LIMIT)
+  @HttpCode(HttpStatus.ACCEPTED)
+  async remove(
+    @Body(new ZodValidationPipe(DeleteMeRequest)) body: DeleteMeRequest,
+  ): Promise<DeleteMeResponse> {
+    return respond(DeleteMeResponse, await this.deletion.request(body.password));
   }
 }

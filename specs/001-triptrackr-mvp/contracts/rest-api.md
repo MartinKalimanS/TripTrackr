@@ -38,13 +38,13 @@ account" from "wrong password" — that distinction is an account-enumeration or
 
 ## 2. Profile
 
-| Method | Path         | Access          | Notes                                                                                                                                                   |
-| ------ | ------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/me`        | owner           | Profile plus stats: countries visited, total distance. FR-050                                                                                           |
-| PATCH  | `/me`        | owner           | Display name, bio, avatar, home currency, `is_profile_public`. FR-008                                                                                   |
-| GET    | `/users/:id` | owner-or-public | Returns not-found when the profile is private and the requester does not follow, and when the requester is blocked. FR-061                              |
-| DELETE | `/me`        | owner           | Cascade **plus** an enqueued object-storage sweep. FR-006                                                                                               |
-| POST   | `/me/export` | owner           | **Changed** from `GET` — this starts an async job and is not safely repeatable as a read. Returns a job id; the archive arrives as a signed URL. FR-007 |
+| Method | Path         | Access          | Notes                                                                                                                                                                                                                                                                                       |
+| ------ | ------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/me`        | owner           | Profile plus stats: countries visited, total distance. FR-050                                                                                                                                                                                                                               |
+| PATCH  | `/me`        | owner           | Display name, bio, avatar, home currency, `is_profile_public`. FR-008                                                                                                                                                                                                                       |
+| GET    | `/users/:id` | owner-or-public | Returns not-found when the profile is private and the requester does not follow, and when the requester is blocked. FR-061                                                                                                                                                                  |
+| DELETE | `/me`        | owner           | Body `{password?}` (required when the account has one; else `403 REAUTHENTICATION_REQUIRED`). **202** `{status:'deletion_requested'}`: the account is marked, every session ends, a sweep removes the objects and then the rows; complete only when it confirms. Idempotent. FR-006, SC-015 |
+| POST   | `/me/export` | owner           | **Changed** from `GET` — this starts an async job and is not safely repeatable as a read. Returns a job id; the archive arrives as a signed URL. FR-007                                                                                                                                     |
 
 ---
 
