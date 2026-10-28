@@ -40,6 +40,19 @@ export interface YearScrubberProps {
   style?: StyleProp<ViewStyle>;
 }
 
+/**
+ * Where the strip sits on the screen (prototype `.year-scrub`: `right: 4px; top: 250px`, in the
+ * 390 x 844 frame): pass it as `style`. The screen owns the position; the strip owns its look.
+ */
+export const YEAR_SCRUBBER_PLACEMENT = {
+  position: 'absolute',
+  right: 4,
+  top: 250,
+} as const;
+
+/** `.year-scrub` draws its years at 12 / 16 bold with no tracking (an eyebrow, untracked). */
+const YEAR_STYLE = { letterSpacing: 0 } as const;
+
 /** The id of the strip; each year in it is `trips-year-scrubber-year-<year>`. */
 const SCRUBBER_ID = 'trips-year-scrubber';
 
@@ -96,7 +109,7 @@ function YearLabel({ year, active }: { year: number; active: boolean }) {
     <View
       testID={`${SCRUBBER_ID}-year-${year}`}
       className={active ? 'rounded-full bg-foreground px-1' : 'px-1'}>
-      <Text variant="eyebrow" tone={active ? 'onInk' : 'muted'}>
+      <Text variant="eyebrow" tone={active ? 'onInk' : 'muted'} style={YEAR_STYLE}>
         {String(year).slice(-2)}
       </Text>
     </View>
@@ -167,7 +180,7 @@ export function YearScrubber({ years, activeYear, onJump, style }: YearScrubberP
       <View pointerEvents="none" className="items-center gap-0.5">
         {entriesOf(years).map((entry, index) =>
           entry.kind === 'gap' ? (
-            <Text key={`gap-${index}`} variant="eyebrow" tone="muted">
+            <Text key={`gap-${index}`} variant="eyebrow" tone="muted" style={YEAR_STYLE}>
               {'·'}
             </Text>
           ) : (

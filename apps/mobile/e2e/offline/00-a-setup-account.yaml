@@ -50,6 +50,7 @@ env:
     visible:
       id: 'tab-bar'
     timeout: 30000
+- runFlow: ../_helpers/dismiss-tour.yaml
 
 # --- The baseline trip and its two stops (the city catalogue needs the API) ----
 - runFlow:

@@ -10,6 +10,14 @@
  * existing stop changes only its dates — moving a stop to another city is a
  * remove-and-add, which keeps the row's history honest.
  *
+ * As pictured (feature 005 F6; UI-SPEC 9.1; `add-stop*.png`): a "Place" field (the flag, the
+ * city in bold, ", Country", a clear button named "Change city"), under it the route preview
+ * ("Stop 3 · 322 km from Sintra", real coordinates only), "Dates" as one cream block with a
+ * Nights stepper derived from them, and, when adding, the "Getting there" chips and the
+ * "Note" box, which are coming-soon controls (Q-11: a stop has neither). Save is the sticky
+ * footer's. `stop-editor-place`, `-change-city`, `-arrive`, `-depart`, `-save` and the
+ * picker's ids are unchanged; the date halves are named "Arrival" and "Departure" still.
+ *
  * Dates: arrival is pre-suggested from the previous stop's departure
  * (FR-015); departure defaults to the next day; moving the arrival past the
  * departure drags the departure along so the pair stays valid. A departure
@@ -41,17 +49,25 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { CityPicker } from '@/components/trip/city-picker';
-import { DateField } from '@/components/trip/date-field';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { FormModal } from '@/components/ui/form-modal';
 import { FormSheet } from '@/components/ui/form-sheet';
-import { Text } from '@/components/ui/text';
 import {
+  departureAfterNights,
+  formatStopMonthDay,
+  nightsBetween,
   suggestArrival,
   suggestDeparture,
   validateStopDates,
 } from '@/features/trips/stop-dates';
+import { planRoute, type RouteStop } from '@/features/trips/stop-route';
+import { Space } from '@/theme';
+
+import { NightsStepper } from './nights-stepper';
+import { PlaceField } from './place-field';
+import { RoutePreview } from './route-preview';
+import { StopDatesBlock } from './stop-dates-block';
+import { StopFieldLabel } from './stop-field-label';
+import { GettingThere, StopNote } from './stop-coming-soon';
 
 export type StopEditorValues = {
   city_id: number;
@@ -60,7 +76,12 @@ export type StopEditorValues = {
 };
 
 export type StopEditorMode =
-  | { kind: 'add'; previousStop: { depart_date: string } | null }
+  | {
+      kind: 'add';
+      previousStop: { depart_date: string } | null;
+      /** The trip's stops in order, for the route preview; absent draws no route. */
+      previousStops?: readonly RouteStop[];
+    }
   | {
       kind: 'edit';
       stop: { city_id: number; arrive_date: string; depart_date: string };
@@ -102,6 +123,13 @@ function useStopEditorForm(mode: StopEditorMode, onSubmit: StopEditorProps['onSu
   const changeDeparture = (next: string) =>
     setDates((current) => ({ ...current, depart: next }));
 
+  /** The stepper asks for a count; the departure is what moves, the arrival never does. */
+  const changeNights = (nights: number) =>
+    setDates((current) => ({
+      ...current,
+      depart: departureAfterNights(current.arrive, nights),
+    }));
+
   const submit = () => {
     if (cityId === null || dateError !== null) return;
     onSubmit({ city_id: cityId, arrive_date: arrive, depart_date: depart });
@@ -116,45 +144,9 @@ function useStopEditorForm(mode: StopEditorMode, onSubmit: StopEditorProps['onSu
     canSave,
     changeArrival,
     changeDeparture,
+    changeNights,
     submit,
   };
-}
-
-type PlaceCardProps = {
-  name: string;
-  country?: string;
-  /** Present while the city can still be changed (adding a stop). */
-  onChangeCity?: () => void;
-};
-
-/** The city of the stop: its name, its country beneath, and a way to pick another. */
-function PlaceCard({ name, country, onChangeCity }: PlaceCardProps) {
-  return (
-    <Card variant="flat">
-      <View className="flex-row flex-wrap items-center justify-between gap-3">
-        <View className="shrink grow gap-1">
-          <Text type="headline" testID="stop-editor-place">
-            {name}
-          </Text>
-          {country ? (
-            <Text type="callout" tone="muted">
-              {country}
-            </Text>
-          ) : null}
-        </View>
-        {onChangeCity ? (
-          <Button
-            testID="stop-editor-change-city"
-            variant="secondary"
-            size="sm"
-            accessibilityLabel="Change city"
-            onPress={onChangeCity}>
-            Change
-          </Button>
-        ) : null}
-      </View>
-    </Card>
-  );
 }
 
 type PlaceSectionProps = {
@@ -163,52 +155,67 @@ type PlaceSectionProps = {
   onChange: (place: Place | null) => void;
 };
 
+/** The place: the picker until a city is chosen, then the field with the route under it. */
 function PlaceSection({ mode, place, onChange }: PlaceSectionProps) {
-  if (mode.kind === 'edit') return <PlaceCard name={mode.placeName} />;
+  if (mode.kind === 'edit') {
+    return (
+      <View className="gap-2">
+        <StopFieldLabel>Place</StopFieldLabel>
+        <PlaceField name={mode.placeName} />
+      </View>
+    );
+  }
   if (!place) {
     return <CityPicker onSelect={(city, country) => onChange({ city, country })} />;
   }
+  const route = planRoute(mode.previousStops ?? [], {
+    name: place.city.name,
+    lat: place.city.lat,
+    lng: place.city.lng,
+  });
   return (
-    <PlaceCard
-      name={place.city.name}
-      country={place.country.name}
-      onChangeCity={() => onChange(null)}
-    />
+    <View className="gap-2">
+      <StopFieldLabel>Place</StopFieldLabel>
+      <PlaceField
+        name={place.city.name}
+        country={place.country.name}
+        iso={place.country.iso_code}
+        onClear={() => onChange(null)}
+      />
+      {route ? <RoutePreview route={route} /> : null}
+    </View>
   );
 }
 
 type StopDatesProps = {
-  arrive: string;
-  depart: string;
-  error: string | null;
-  onArrive: (next: string) => void;
-  onDepart: (next: string) => void;
+  form: ReturnType<typeof useStopEditorForm>;
 };
 
-function StopDates({ arrive, depart, error, onArrive, onDepart }: StopDatesProps) {
+/** "Dates": the two days in one block, then the nights they make. */
+function StopDates({ form }: StopDatesProps) {
   return (
-    <>
-      <DateField
-        testID="stop-editor-arrive"
-        label="Arrival"
-        value={arrive}
-        onChange={onArrive}
+    <View className="gap-2">
+      <StopFieldLabel>Dates</StopFieldLabel>
+      <StopDatesBlock
+        arrive={form.arrive}
+        depart={form.depart}
+        onArrive={form.changeArrival}
+        onDepart={form.changeDeparture}
+        error={form.dateError ?? undefined}
       />
-      <DateField
-        testID="stop-editor-depart"
-        label="Departure"
-        value={depart}
-        minimumDate={arrive}
-        onChange={onDepart}
-        error={error ?? undefined}
+      <NightsStepper
+        nights={nightsBetween(form.arrive, form.depart)}
+        endsOn={formatStopMonthDay(form.depart)}
+        onChange={form.changeNights}
       />
-    </>
+    </View>
   );
 }
 
 function StopEditorForm({ mode, onCancel, onSubmit }: Omit<StopEditorProps, 'visible'>) {
   const form = useStopEditorForm(mode, onSubmit);
   const adding = mode.kind === 'add';
+  const chosen = mode.kind === 'edit' || form.place !== null;
 
   return (
     <FormSheet
@@ -222,17 +229,12 @@ function StopEditorForm({ mode, onCancel, onSubmit }: Omit<StopEditorProps, 'vis
         onSave: form.submit,
         saveDisabled: !form.canSave,
       }}>
-      <PlaceSection mode={mode} place={form.place} onChange={form.setPlace} />
-
-      {mode.kind === 'edit' || form.place ? (
-        <StopDates
-          arrive={form.arrive}
-          depart={form.depart}
-          error={form.dateError}
-          onArrive={form.changeArrival}
-          onDepart={form.changeDeparture}
-        />
-      ) : null}
+      <View style={{ gap: Space[5] }}>
+        <PlaceSection mode={mode} place={form.place} onChange={form.setPlace} />
+        {chosen ? <StopDates form={form} /> : null}
+        {chosen && adding ? <GettingThere /> : null}
+        {chosen && adding ? <StopNote /> : null}
+      </View>
     </FormSheet>
   );
 }

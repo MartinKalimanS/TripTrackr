@@ -25,7 +25,7 @@
  * A trip with no days to go has no stub: a ticket is only for a planning trip with dates, but the
  * card does not assume it.
  */
-import { View, type ViewStyle } from 'react-native';
+import { View, type TextStyle, type ViewStyle } from 'react-native';
 
 import { FlagChip } from '@/components/ui/flag-chip';
 import { StatusChip } from '@/components/ui/chip';
@@ -60,6 +60,15 @@ const NOTCH = 16;
 const PAD = 12;
 
 const COLOR_KEYS = ['sand'] as const;
+
+/** `.stub .v` is `t-title tnum`: 28 / 32, tabular figures (not the 36 / 40 numeral). */
+const FIGURE: TextStyle = { fontVariant: ['tabular-nums'] };
+
+/** `.t-callout` under the chip carries `margin-top: 2px` on top of the 4 dp gap. */
+const TITLE_STYLE = { marginTop: 2 } as const;
+
+/** `.meta-line { gap: 6px }`: the flag and the words. */
+const META_GAP = { gap: 6 } as const;
 
 /** A notch: half the circle is the card's, the rest cut away by its clip. */
 function Notch({ id, side }: { id: string; side: 'top' | 'bottom' }) {
@@ -99,7 +108,7 @@ function Stub({
   const edge: ViewStyle = stacked
     ? {
         flexDirection: 'row',
-        alignItems: 'baseline',
+        alignItems: 'center',
         gap: 8,
         marginHorizontal: PAD,
         paddingVertical: 8,
@@ -118,7 +127,9 @@ function Stub({
       testID={`trip-card-${id}-stub`}
       style={{ ...edge, borderStyle: 'dashed', borderColor: sand }}>
       {stacked ? null : <Notch id={id} side="top" />}
-      <Text variant="numeral">{countdown.value}</Text>
+      <Text variant="title" accessibilityRole="text" style={FIGURE}>
+        {countdown.value}
+      </Text>
       <Text variant="caption" tone="muted">
         {countdown.unit}
       </Text>
@@ -134,12 +145,17 @@ function Body({ trip, large }: { trip: TripCardModel; large: boolean }) {
         <StatusChip status={trip.status} />
         {trip.pending ? <SyncBadge state="pending" /> : null}
       </View>
-      <Text variant="callout" numberOfLines={2} accessibilityRole="text">
+      <Text
+        variant="callout"
+        numberOfLines={2}
+        accessibilityRole="text"
+        style={TITLE_STYLE}>
         {trip.title}
       </Text>
       <View
         testID={`trip-card-${trip.id}-meta-row`}
-        className="flex-row items-center gap-2">
+        className="flex-row items-center"
+        style={META_GAP}>
         {trip.country ? (
           <FlagChip iso2={trip.country.iso2} testID={`trip-card-${trip.id}-flag`} />
         ) : null}

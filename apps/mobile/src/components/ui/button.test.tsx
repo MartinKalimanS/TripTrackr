@@ -29,6 +29,7 @@ import { glyphsIn } from '../../../test/helpers/icons';
 import { asCss, mockThemeColors } from '../../../test/helpers/theme-colors';
 import { touchDown } from '../../../test/helpers/touch';
 import { Button, buttonFrame, buttonStyle } from './button';
+import { solidOver } from './solid-ground';
 import {
   BUTTON_VARIANTS,
   buttonEdgeWidth,
@@ -209,9 +210,14 @@ describe.each(PaletteNames)('<Button> look in %s - C5-15, P15', (theme: PaletteN
       await renderButton({ variant });
       const look = buttonLook(variant, REST);
       const style = styleOf();
-      expect(style.backgroundColor).toBe(
-        look.fill ? asCss(palette[look.fill]) : undefined,
-      );
+      // FR-072: a tint is laid over the paper under increased contrast (T562), so a fill that
+      // is translucent in the dark themes is the opaque colour it comes to; the rest are as ever.
+      const fill = look.fill
+        ? contrast
+          ? solidOver(palette[look.fill], palette.surface)
+          : palette[look.fill]
+        : undefined;
+      expect(style.backgroundColor).toBe(fill ? asCss(fill) : undefined);
       expect(style.borderColor).toBe(
         look.edge ? asCss(palette[look.edge]) : 'transparent',
       );

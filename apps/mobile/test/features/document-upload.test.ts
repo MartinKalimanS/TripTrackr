@@ -399,12 +399,17 @@ describe('uploadDocument — one at a time', () => {
 
     await uploadPendingDocuments(sqlite.db, trip.id);
 
+    // Two documents made in the same millisecond tie on created_at, so which comes first is
+    // decided by their random ids: the test pins the sequence, not the order.
+    const [firstId, secondId] =
+      order[0] === `start ${first.id}` ? [first.id, second.id] : [second.id, first.id];
     expect(order).toEqual([
-      `start ${first.id}`,
-      `end ${first.id}`,
-      `start ${second.id}`,
-      `end ${second.id}`,
+      `start ${firstId}`,
+      `end ${firstId}`,
+      `start ${secondId}`,
+      `end ${secondId}`,
     ]);
+
     expect(documentsRepository.needingUploadIds(sqlite.db, trip.id)).toEqual([]);
   });
 

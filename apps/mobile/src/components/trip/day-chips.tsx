@@ -39,6 +39,11 @@ export interface DayChipsProps {
 /** The chip's minimum, each way (the prototype's 56 by 56). */
 const CHIP_MIN = 56;
 const ALL_MIN_WIDTH = 48;
+/** The chip's padding (the prototype's 6 by 10). */
+const CHIP_PAD_X = 10;
+const CHIP_PAD_Y = 6;
+/** The strip's own air above and below, for a focus ring and a press, taken back by a negative margin. */
+const RING_AIR = Space[1];
 /** The screen's side padding, which the strip bleeds through and gives back. */
 const BLEED = Space[5];
 
@@ -78,8 +83,8 @@ function Face({ slug, selected, pressed, minWidth, code, caption }: FaceProps) {
         {
           minWidth,
           minHeight: CHIP_MIN,
-          paddingHorizontal: Space[3],
-          paddingVertical: Space[1],
+          paddingHorizontal: CHIP_PAD_X,
+          paddingVertical: CHIP_PAD_Y,
           alignItems: 'center',
           justifyContent: 'center',
           borderWidth: look.edgeWidth,
@@ -132,11 +137,11 @@ export function DayChips({ days, selected, onSelect }: DayChipsProps) {
         testID="trip-days-scroll"
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={{ marginHorizontal: -BLEED }}
+        style={{ marginHorizontal: -BLEED, marginVertical: -RING_AIR }}
         contentContainerStyle={{
           gap: Space[2],
           paddingHorizontal: BLEED,
-          paddingVertical: Space[1],
+          paddingVertical: RING_AIR,
         }}>
         <DayChip
           slug="all"

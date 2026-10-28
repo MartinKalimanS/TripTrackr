@@ -87,7 +87,7 @@ export function DocumentCamera({
         Take photo
       </Button>
       {ready ? null : (
-        <Text type="callout" tone="muted">
+        <Text variant="label" tone="muted">
           Starting the camera…
         </Text>
       )}

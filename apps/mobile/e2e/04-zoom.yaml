@@ -76,10 +76,11 @@ env:
     visible:
       id: 'tab-bar'
     timeout: 20000
+- runFlow: _helpers/dismiss-tour.yaml
 
 # --- An active trip with one stop in Rome, starting today --------------------
 - tapOn:
-    id: 'home-plan-trip'
+    id: 'home-plan-trip-fab'
 - tapOn:
     id: 'add-trip-title'
 - inputText: 'Rome weekend'

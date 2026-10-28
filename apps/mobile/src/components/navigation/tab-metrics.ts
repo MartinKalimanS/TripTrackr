@@ -1,11 +1,11 @@
 /**
- * The numbers the floating tab pill and the Android navigation bar are laid out with, in dp,
+ * The numbers the floating tab pill is laid out with, in dp,
  * and the pure arithmetic over them (feature 005, contract C5-21, research D5-05 and D5-21;
  * FR-022, FR-024). Exported so a test sums the same constants the components render with, and
  * so a screen that floats a control above the bar reads the same clearance.
  */
 
-/** The floating pill (iOS). */
+/** The floating pill (both platforms). */
 export const PillMetrics = {
   /** A MINIMUM: the pill grows with the text size, it is never given a height. */
   height: 64,
@@ -27,22 +27,13 @@ export const PillMetrics = {
   iconSize: 24,
   /** Between the icon and the label. */
   iconLabelGap: 2,
+  /** The label: DM Sans 600 at 12 over 14 (the prototype's `.tab`), capped at 1.3 times. */
+  labelSize: 12,
+  labelLine: 14,
+  /** The selected capsule in the dark themes: white at this opacity (`.tab.is-on`). */
+  darkCapsuleAlpha: 0.14,
   /** 64 - 2 x 6: a tab is at least this tall, above 44 pt and 48 dp (FR-071). */
   tabMinHeight: 64 - 2 * 6,
-} as const;
-
-/** The Android navigation bar (D5-21): full width, with the system inset BELOW the content. */
-export const AndroidBarMetrics = {
-  /** A MINIMUM above the system inset: it grows with the text size. */
-  height: 64,
-  /** The indicator behind the selected icon. */
-  indicatorWidth: 56,
-  indicatorHeight: 32,
-  /** Between the indicator and the label. */
-  indicatorLabelGap: 4,
-  /** Above the indicator and below the label: 4 + 32 + 4 + 20 + 4 = 64. */
-  paddingY: 4,
-  iconSize: 24,
 } as const;
 
 /**

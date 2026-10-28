@@ -46,6 +46,11 @@ export const PARALLAX_FACTOR = 0.5;
 /** The bar fades in over this many dp of scrolling before it is complete. */
 export const COLLAPSE_FADE_DISTANCE = 48;
 
+/** Air between the bar and the chips pinned under it (trip-collapsed.png: 12 dp). */
+export const PIN_AIR_ABOVE = 12;
+/** Air between the pinned chips and the hairline that closes the strip (8 dp). */
+export const PIN_AIR_BELOW = 8;
+
 export interface HeroTransform {
   translateY: number;
   scale: number;
@@ -94,6 +99,24 @@ export function pinnedTranslate(
 ): number {
   'worklet';
   return Math.max(anchorY - scrollY, pinLine);
+}
+
+/** Where the day chips stop: under the bar and the inset, and the air the picture leaves. */
+export function pinLineOf(topInset: number): number {
+  'worklet';
+  return COLLAPSED_BAR_HEIGHT + topInset + PIN_AIR_ABOVE;
+}
+
+/** The lowest edge of the pinned strip (its air and hairline included): what scrolls clear of. */
+export function pinnedBottom(topInset: number, chipsHeight: number): number {
+  'worklet';
+  return pinLineOf(topInset) + chipsHeight + PIN_AIR_BELOW;
+}
+
+/** Whether the strip has reached the pin line and is held there. */
+export function isPinned(anchorY: number, scrollY: number, pinLine: number): boolean {
+  'worklet';
+  return anchorY - scrollY <= pinLine;
 }
 
 export interface HeroCollapse {

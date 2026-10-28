@@ -68,10 +68,7 @@
       "indexes": {
         "cities_country_ascii_idx": {
           "name": "cities_country_ascii_idx",
-          "columns": [
-            "country_id",
-            "ascii_name"
-          ],
+          "columns": ["country_id", "ascii_name"],
           "isUnique": false
         }
       },
@@ -211,16 +208,12 @@
       "indexes": {
         "documents_trip_idx": {
           "name": "documents_trip_idx",
-          "columns": [
-            "trip_id"
-          ],
+          "columns": ["trip_id"],
           "isUnique": false
         },
         "documents_updated_at_idx": {
           "name": "documents_updated_at_idx",
-          "columns": [
-            "updated_at"
-          ],
+          "columns": ["updated_at"],
           "isUnique": false
         }
       },
@@ -229,12 +222,8 @@
           "name": "documents_trip_id_trips_id_fk",
           "tableFrom": "documents",
           "tableTo": "trips",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -307,9 +296,7 @@
       "indexes": {
         "expense_categories_updated_at_idx": {
           "name": "expense_categories_updated_at_idx",
-          "columns": [
-            "updated_at"
-          ],
+          "columns": ["updated_at"],
           "isUnique": false
         }
       },
@@ -439,16 +426,12 @@
       "indexes": {
         "expenses_trip_idx": {
           "name": "expenses_trip_idx",
-          "columns": [
-            "trip_id"
-          ],
+          "columns": ["trip_id"],
           "isUnique": false
         },
         "expenses_updated_at_idx": {
           "name": "expenses_updated_at_idx",
-          "columns": [
-            "updated_at"
-          ],
+          "columns": ["updated_at"],
           "isUnique": false
         }
       },
@@ -457,12 +440,8 @@
           "name": "expenses_trip_id_trips_id_fk",
           "tableFrom": "expenses",
           "tableTo": "trips",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -602,16 +581,12 @@
       "indexes": {
         "notes_trip_idx": {
           "name": "notes_trip_idx",
-          "columns": [
-            "trip_id"
-          ],
+          "columns": ["trip_id"],
           "isUnique": false
         },
         "notes_updated_at_idx": {
           "name": "notes_updated_at_idx",
-          "columns": [
-            "updated_at"
-          ],
+          "columns": ["updated_at"],
           "isUnique": false
         }
       },
@@ -620,12 +595,8 @@
           "name": "notes_trip_id_trips_id_fk",
           "tableFrom": "notes",
           "tableTo": "trips",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -758,16 +729,12 @@
       "indexes": {
         "photos_trip_idx": {
           "name": "photos_trip_idx",
-          "columns": [
-            "trip_id"
-          ],
+          "columns": ["trip_id"],
           "isUnique": false
         },
         "photos_updated_at_idx": {
           "name": "photos_updated_at_idx",
-          "columns": [
-            "updated_at"
-          ],
+          "columns": ["updated_at"],
           "isUnique": false
         }
       },
@@ -776,12 +743,8 @@
           "name": "photos_trip_id_trips_id_fk",
           "tableFrom": "photos",
           "tableTo": "trips",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -899,17 +862,12 @@
       "indexes": {
         "trip_stops_trip_sort_idx": {
           "name": "trip_stops_trip_sort_idx",
-          "columns": [
-            "trip_id",
-            "sort_order"
-          ],
+          "columns": ["trip_id", "sort_order"],
           "isUnique": false
         },
         "trip_stops_updated_at_idx": {
           "name": "trip_stops_updated_at_idx",
-          "columns": [
-            "updated_at"
-          ],
+          "columns": ["updated_at"],
           "isUnique": false
         }
       },
@@ -918,12 +876,8 @@
           "name": "trip_stops_trip_id_trips_id_fk",
           "tableFrom": "trip_stops",
           "tableTo": "trips",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1019,9 +973,7 @@
       "indexes": {
         "trips_updated_at_idx": {
           "name": "trips_updated_at_idx",
-          "columns": [
-            "updated_at"
-          ],
+          "columns": ["updated_at"],
           "isUnique": false
         }
       },

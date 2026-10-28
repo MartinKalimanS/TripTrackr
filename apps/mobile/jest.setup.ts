@@ -7,6 +7,9 @@
  * also fail against the device.
  */
 import '@testing-library/react-native';
+// A Gesture Handler root renders under Jest only with the library's own native-module double
+// (the photo viewer mounts one inside its Modal; suites that need the gestures import it too).
+import 'react-native-gesture-handler/jestSetup';
 
 // expo-secure-store is backed by the iOS Keychain / Android Keystore. In tests it
 // becomes an in-memory map so that token-refresh logic (T039/T040) is exercisable.
@@ -169,6 +172,11 @@ jest.mock('react-native-sortables', () => {
 // bare package, the 1,500-icon barrel, is refused in jest.config.js (D5-07).
 jest.mock('expo-glass-effect', () => require('./test/mocks/expo-glass-effect'));
 jest.mock('react-native-view-shot', () => require('./test/mocks/react-native-view-shot'));
+// Sign in with Apple's own button (F12): a native view and a native module, held to the real
+// package's contract by test/mocks/expo-apple-authentication.test.tsx.
+jest.mock('expo-apple-authentication', () =>
+  require('./test/mocks/expo-apple-authentication'),
+);
 jest.mock('react-native-zoom-toolkit', () =>
   require('./test/mocks/react-native-zoom-toolkit'),
 );

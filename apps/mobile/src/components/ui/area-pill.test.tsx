@@ -84,7 +84,7 @@ describe('<AreaPill> is ONE control - C5-18', () => {
     expect(screen.getByText('128')).toBeTruthy();
     expect(screen.getByText('Photos')).toBeTruthy();
     expect(glyphsIn()).toEqual([
-      expect.objectContaining({ name: PHOTOS, size: 24, weight: 'regular' }),
+      expect.objectContaining({ name: PHOTOS, size: 20, weight: 'regular' }),
     ]);
     expect(screen.queryByTestId(anyGlyph)).toBeNull();
   });

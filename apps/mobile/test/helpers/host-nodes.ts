@@ -42,4 +42,6 @@ export const classesOf = (node: { props: { className?: unknown } }): string[] =>
  * characters (a dot, a plus) a pattern would read as syntax.
  */
 export const containing = (text: string): RegExp =>
-  new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  new RegExp(
+    text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/[\u00a0\u202f]/g, '\\s'),
+  );

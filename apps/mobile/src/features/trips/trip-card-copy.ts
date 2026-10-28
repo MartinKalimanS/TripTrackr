@@ -2,7 +2,7 @@
  * The words of a trip card - feature 005, T540 (FR-030, FR-031, FR-032, FR-033, FR-035,
  * FR-075, FR-077). Pure over a card model: what the hero, the ticket, the row and the year
  * header SAY, and what a screen reader says for each. Numbers, dates and distances follow the
- * device's language and measurement system (`Intl`, `formatDistance`); only the plural of an
+ * device's language (`Intl`, `formatDistance`; distances are always kilometres); only the plural of an
  * English noun is written here, as everywhere else in the app.
  *
  * The accessible name of a card is the one feature 004 gave it, word for word: "title, status,

@@ -1,28 +1,38 @@
 /**
- * One note in the trip's list — tasks.md T084 (FR-017), 004 T440 (FR-002, FR-005, FR-006,
- * FR-013, FR-025, FR-029, FR-030, FR-034).
+ * One note in the trip's list - tasks.md T084 (FR-017), 004 T440, 005 T551 (FR-048; UI-SPEC
+ * 9.2; prototype `.note`, `.nb`, `.nm`, `.sync` in `extra/screens.css`; picture `more/notes`).
  *
- * A raised `Card`: where the note is filed, in words (a muted caption), the title when
- * there is one, a preview of the body, and the two controls. While the note only exists on
- * this device the card has the dashed edge AND the `SyncBadge` (words and icon), so the
- * state is never a line alone. Edit is a quiet `text` button and Delete the `destructive`
- * one, each an icon and a word, so the danger is a label and a glyph as well as a colour;
- * the row wraps them onto a second line at large text instead of clipping.
+ * A cream tile (`Card variant="tile"`: hairline, radius 16, no shadow) padded 16: the title
+ * (`callout`, one line, two from text scale 1.15), a three-line excerpt (`body`, muted), then
+ * the foot row: the time, a dot, the country's flag and the place at the start, the record's
+ * sync state at the end. The card has no dashed edge: the state is a glyph AND words, never a
+ * line or a colour alone (FR-025): "On this device" in amber ink with an upload cloud while the
+ * note's changes are not on the server yet (words and glyph, as pictured), and a synced tick
+ * (named "Synced") once they are. The row wraps at large text, as in `notes-scale1.5`.
+ *
+ * Not pictured and not invented: the pictured 72 dp thumbnail needs a photograph attached to
+ * the note, and the data model has no such link, so no thumbnail is ever drawn. Delete is the
+ * app's and stays on the card (a quiet trash at the end of the foot row, 44 dp target through
+ * `hitSlop`); the picture draws it in the editor's header, where Cancel stands in this app.
  *
  * What did not change for assistive technology (FR-030): the card is ONE element named
  * `<title or "Note">, filed under <place>. <preview>` with the same two actions (Edit note,
- * Delete note), and the two controls keep their ids and names. The element is an outer
- * `View` because a plain `Card` announces nothing of its own and has no `accessible` or
- * action props (the stop row does the same).
+ * Delete note); the body of the card is the Edit control (`note-edit-<id>`, "Edit <title>") and
+ * the trash is Delete (`note-remove-<id>`, "Delete <title>"). The element is an outer `View`
+ * because a plain `Card` announces nothing of its own (the stop row does the same).
  */
 import { View, type AccessibilityActionEvent } from 'react-native';
 
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import type { IconName } from '@/components/ui/icon';
-import { SyncBadge } from '@/components/ui/sync-badge';
+import { FlagChip } from '@/components/ui/flag-chip';
+import { Icon } from '@/components/ui/icon';
+import { metaLines } from '@/components/ui/reflow';
+import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
 import type { NoteWithPlace } from '@/db/repositories/notes';
+import { excerptOf, noteSync, placeOf, timeOf } from '@/features/notes/note-days';
+import { useFontScale } from '@/hooks/use-font-scale';
+import { Space } from '@/theme';
 
 export type NoteCardProps = {
   note: NoteWithPlace;
@@ -42,22 +52,76 @@ export function describeAnchor(note: NoteWithPlace): string {
   );
 }
 
+/** The characters the announced name carries of the body. */
 const PREVIEW_LENGTH = 160;
-
-const EDIT: IconName = 'pencil';
-const REMOVE: IconName = 'trash';
+const EXCERPT_LINES = 3;
 
 const ROW_ACTIONS = [
   { name: 'edit', label: 'Edit note' },
   { name: 'delete', label: 'Delete note' },
 ];
 
+const TRASH_HIT = { top: 10, bottom: 10, left: 6, right: 6 } as const;
+
+function spokenPreview(body: string): string {
+  return body.length > PREVIEW_LENGTH
+    ? `${body.slice(0, PREVIEW_LENGTH).trimEnd()}…`
+    : body;
+}
+
+function SyncMark({ note }: { note: NoteWithPlace }) {
+  const sync = noteSync(note);
+  return (
+    <View
+      testID={`note-sync-${note.id}`}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={sync.name}
+      className="flex-row items-center"
+      style={{ gap: Space[1] }}>
+      <Icon
+        name={sync.icon}
+        size={16}
+        tone={sync.state === 'device' ? 'amberInk' : 'success'}
+      />
+      {sync.words ? (
+        <Text variant="caption" tone="amber" className="shrink">
+          {sync.words}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function FootPlace({ note }: { note: NoteWithPlace }) {
+  const time = timeOf(note.created_at);
+  return (
+    <View className="shrink flex-row items-center" style={{ gap: Space[2] }}>
+      {time ? (
+        <Text variant="caption" tone="muted">
+          {time}
+        </Text>
+      ) : null}
+      {time ? <View className="size-1 rounded-full bg-subtle" /> : null}
+      {note.country_iso ? (
+        <FlagChip iso2={note.country_iso} testID={`note-flag-${note.id}`} />
+      ) : null}
+      <Text
+        variant="caption"
+        tone="muted"
+        numberOfLines={1}
+        testID={`note-anchor-${note.id}`}
+        className="shrink">
+        {placeOf(note)}
+      </Text>
+    </View>
+  );
+}
+
 export function NoteCard({ note, onEdit, onRemove }: NoteCardProps) {
-  const anchor = describeAnchor(note);
-  const preview =
-    note.body.length > PREVIEW_LENGTH
-      ? `${note.body.slice(0, PREVIEW_LENGTH).trimEnd()}…`
-      : note.body;
+  const fontScale = useFontScale();
+  const preview = spokenPreview(note.body);
+  const name = note.title ?? 'note';
 
   const onAccessibilityAction = (event: AccessibilityActionEvent) => {
     if (event.nativeEvent.actionName === 'edit') onEdit();
@@ -68,42 +132,58 @@ export function NoteCard({ note, onEdit, onRemove }: NoteCardProps) {
     <View
       testID={`note-card-${note.id}`}
       accessible
-      accessibilityLabel={`${note.title ?? 'Note'}, filed under ${anchor}. ${preview}`}
+      accessibilityLabel={`${note.title ?? 'Note'}, filed under ${describeAnchor(note)}. ${preview}`}
       accessibilityActions={ROW_ACTIONS}
       onAccessibilityAction={onAccessibilityAction}>
-      <Card pending={note.is_dirty} testID={`note-surface-${note.id}`}>
-        <View className="gap-2">
-          <View className="flex-row flex-wrap items-center justify-between gap-2">
+      <Card variant="tile" testID={`note-surface-${note.id}`}>
+        <Tappable
+          testID={`note-edit-${note.id}`}
+          accessibilityLabel={`Edit ${name}`}
+          onPress={onEdit}
+          style={{ minHeight: 0, alignSelf: 'stretch' }}>
+          <View style={{ gap: Space[1] }}>
+            {note.title ? (
+              <Text
+                variant="callout"
+                numberOfLines={metaLines(fontScale)}
+                testID={`note-title-${note.id}`}>
+                {note.title}
+              </Text>
+            ) : null}
             <Text
-              type="caption"
+              variant="body"
               tone="muted"
-              testID={`note-anchor-${note.id}`}
-              className="shrink">
-              {anchor}
+              numberOfLines={EXCERPT_LINES}
+              testID={`note-body-${note.id}`}>
+              {excerptOf(note.body)}
             </Text>
-            {note.is_dirty ? <SyncBadge state="pending" /> : null}
           </View>
-          {note.title ? <Text type="headline">{note.title}</Text> : null}
-          <Text testID={`note-body-${note.id}`}>{preview}</Text>
-          <View className="flex-row flex-wrap items-center gap-2">
-            <Button
-              testID={`note-edit-${note.id}`}
-              variant="text"
-              size="sm"
-              icon={EDIT}
-              accessibilityLabel={`Edit ${note.title ?? 'note'}`}
-              onPress={onEdit}>
-              Edit
-            </Button>
-            <Button
+        </Tappable>
+        <View
+          testID={`note-foot-${note.id}`}
+          className="flex-row flex-wrap items-center justify-between"
+          style={{
+            marginTop: Space[3],
+            minHeight: 24,
+            columnGap: Space[2],
+            rowGap: Space[1],
+          }}>
+          <FootPlace note={note} />
+          <View className="flex-row items-center" style={{ gap: Space[2] }}>
+            <SyncMark note={note} />
+            <Tappable
               testID={`note-remove-${note.id}`}
-              variant="destructive"
-              size="sm"
-              icon={REMOVE}
-              accessibilityLabel={`Delete ${note.title ?? 'note'}`}
-              onPress={onRemove}>
-              Delete
-            </Button>
+              accessibilityLabel={`Delete ${name}`}
+              hitSlop={TRASH_HIT}
+              onPress={onRemove}
+              style={{
+                minHeight: 24,
+                minWidth: 28,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              <Icon name="trash" size={20} tone="muted" />
+            </Tappable>
           </View>
         </View>
       </Card>

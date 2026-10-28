@@ -20,6 +20,7 @@ import type { PhotoWithPlace } from '@/db/repositories/photos';
 import type { StopWithPlace } from '@/db/repositories/stops';
 import type { TripRow } from '@/db/schema';
 import type { CaptureMessage } from '@/features/photos/capture';
+import type { VisibilityPrompt } from '@/features/photos/use-capture';
 
 export const TRIP = '5e0c1d2a-3b4c-4d5e-8f90-a1b2c3d4e5f6';
 
@@ -90,7 +91,11 @@ export const mockCapture = {
   busy: false,
   message: null as CaptureMessage | null,
   clearMessage: jest.fn(),
+  prompt: null as VisibilityPrompt | null,
+  answerPrompt: jest.fn(),
+  dismissPrompt: jest.fn(),
   addFromLibrary: jest.fn(async () => undefined),
+  allowLibraryAccess: jest.fn(async () => undefined),
   takePhoto: jest.fn(async () => undefined),
 };
 
@@ -157,6 +162,7 @@ export function resetPhotoScreen() {
   mockPhotos.error = null;
   mockCapture.busy = false;
   mockCapture.message = null;
+  mockCapture.prompt = null;
   mockActions.refile.mockReset();
   mockActions.remove.mockReset();
   mockActions.retryUpload.mockReset();

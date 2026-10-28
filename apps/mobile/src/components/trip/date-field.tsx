@@ -42,7 +42,7 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
 import { formatIsoDate, fromIsoDate, toIsoDate } from '@/features/trips/stop-dates';
-import { AtlasSpacing } from '@/theme';
+import { Space } from '@/theme';
 
 export type DateFieldProps = {
   label: string;
@@ -62,6 +62,24 @@ const CALENDAR: IconName = 'calendar';
 const BOX = 'bg-field border';
 const BOUNDARY = { ok: 'border-field-border', refused: 'border-danger' } as const;
 
+/**
+ * The Android dialog: imperative, so no picker view is left mounted. Shared with the stop
+ * editor's date block, so both open the SAME dialog (its "Previous month", "Next month" and
+ * day cells are what the Maestro flows tap).
+ */
+export function openDayDialog(
+  value: string,
+  minimum: Date | undefined,
+  onPick: (date: Date) => void,
+) {
+  DateTimePickerAndroid.open({
+    value: fromIsoDate(value),
+    mode: 'date',
+    minimumDate: minimum,
+    onValueChange: (_event, date) => onPick(date),
+  });
+}
+
 /** The day, or the calendar, or neither: what a press does on this platform. */
 function useCalendar(
   value: string,
@@ -77,12 +95,7 @@ function useCalendar(
 
   const toggle = () => {
     if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({
-        value: fromIsoDate(value),
-        mode: 'date',
-        minimumDate: minimum,
-        onValueChange: (_event, date) => pick(date),
-      });
+      openDayDialog(value, minimum, pick);
       return;
     }
     setOpen((current) => !current);
@@ -118,7 +131,7 @@ export function DateField({
         onPress={calendar.toggle}
         className={`${BOX} ${refused ? BOUNDARY.refused : BOUNDARY.ok}`}
         style={[styles.field, { minHeight: fieldMinHeight(fontScale) }]}>
-        <Text type="numeric" className="shrink font-normal">
+        <Text variant="body" className="shrink">
           {day}
         </Text>
         <Icon name={CALENDAR} size={20} tone="muted" />
@@ -138,7 +151,7 @@ export function DateField({
         <Text
           testID={testID ? `${testID}-error` : undefined}
           accessibilityRole="alert"
-          type="callout"
+          variant="label"
           tone="danger">
           {error}
         </Text>
@@ -153,7 +166,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: AtlasSpacing.two,
-    paddingHorizontal: AtlasSpacing.twelve,
+    gap: Space[2],
+    paddingHorizontal: Space[3],
   },
 });

@@ -15,15 +15,30 @@
  * and a sticky footer (Cancel, Save) that stays above the keyboard. The ids and names are
  * unchanged: `add-trip-screen`, `add-trip-title`, `currency-<CODE>`, `currency-other`,
  * `add-trip-error`, `add-trip-cancel`, `add-trip-save`.
+ *
+ * As pictured (feature 005, F6; `core/form.png`; owner decision Q-11): Cancel at the left of the
+ * header and Save alone in the footer (a hairline above it), 24 dp between the groups, and the
+ * pictured "Where to?", "Cover" and "Dates" rows drawn as COMING-SOON controls
+ * (`pictured-rows.tsx`: one toast, nothing stored, no invented data: the app keeps the name and
+ * the home currency, and a trip's dates come from its stops). "Expenses are only visible to you."
+ * sits under the currency row with a lock. The app's words stay ("Home currency", "Save trip").
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
+import { View } from 'react-native';
 
 import { CurrencyPicker } from '@/components/trip/currency-picker';
+import {
+  PicturedCover,
+  PicturedDates,
+  PicturedDestination,
+} from '@/components/trip/pictured-rows';
 import { Field } from '@/components/ui/field';
 import { FormSheet } from '@/components/ui/form-sheet';
+import { Icon } from '@/components/ui/icon';
 import { InlineError } from '@/components/ui/inline-error';
+import { Text } from '@/components/ui/text';
 import { useSessionStore } from '@/features/auth/session-store';
 import {
   TRIP_FIELD_COPY,
@@ -35,8 +50,11 @@ import { useTripActions } from '@/features/trips/use-trips';
 import { useHaptics } from '@/hooks/use-haptics';
 import { fieldMessage } from '@/lib/form-copy';
 import { Sentry } from '@/lib/sentry';
+import { Space } from '@/theme';
 
 type TripControl = Control<TripFormValues>;
+
+const PRIVACY_LINE = 'Expenses are only visible to you.';
 
 function useAddTripForm() {
   const router = useRouter();
@@ -94,19 +112,34 @@ function TitleField({ control, onSubmitEditing }: TitleFieldProps) {
   );
 }
 
+/** The privacy line under the currency row: a lock and the sentence, as pictured. */
+function PrivacyHelper() {
+  return (
+    <View testID="add-trip-privacy" className="flex-row items-center gap-2">
+      <Icon name="lock" size={16} tone="aquaInk" />
+      <Text variant="caption" tone="muted" className="flex-1">
+        {PRIVACY_LINE}
+      </Text>
+    </View>
+  );
+}
+
 function HomeCurrencyField({ control }: { control: TripControl }) {
   return (
-    <Controller
-      control={control}
-      name="home_currency"
-      render={({ field, fieldState }) => (
-        <CurrencyPicker
-          value={field.value}
-          onChange={field.onChange}
-          error={fieldMessage(fieldState.error, TRIP_FIELD_COPY.home_currency)}
-        />
-      )}
-    />
+    <View className="gap-2">
+      <Controller
+        control={control}
+        name="home_currency"
+        render={({ field, fieldState }) => (
+          <CurrencyPicker
+            value={field.value}
+            onChange={field.onChange}
+            error={fieldMessage(fieldState.error, TRIP_FIELD_COPY.home_currency)}
+          />
+        )}
+      />
+      <PrivacyHelper />
+    </View>
   );
 }
 
@@ -117,6 +150,8 @@ export default function AddTripScreen() {
     <FormSheet
       testID="add-trip-screen"
       title="New trip"
+      gap={Space[6]}
+      footerRule
       actions={{
         testIDPrefix: 'add-trip',
         saveLabel: 'Save trip',
@@ -124,6 +159,12 @@ export default function AddTripScreen() {
         onSave: () => void save(),
       }}>
       <TitleField control={control} onSubmitEditing={() => void save()} />
+
+      <PicturedDestination />
+
+      <PicturedCover />
+
+      <PicturedDates />
 
       <HomeCurrencyField control={control} />
 

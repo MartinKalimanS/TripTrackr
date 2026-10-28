@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 
 import type { StopWithPlace } from '@/db/repositories/stops';
+import type { RouteStop } from '@/features/trips/stop-route';
 import { useTripActions } from '@/features/trips/use-trips';
 import { useWriteAttempt } from '@/hooks/use-write-attempt';
 
@@ -59,6 +60,11 @@ export function useStopWrites(tripId: string) {
   };
 }
 
+/** What the route preview draws of a stop: its name and, when cached, its position. */
+function routeStopOf(stop: StopWithPlace): RouteStop {
+  return { name: describePlace(stop), lat: stop.lat, lng: stop.lng };
+}
+
 type Editor = { mode: StopEditorMode; stopId: string | null } | null;
 
 /** Which stop editor is open, if any: a new stop after the last, or one stop's dates. */
@@ -72,7 +78,11 @@ export function useStopEditor(
     editor,
     openAdd: () =>
       setEditor({
-        mode: { kind: 'add', previousStop: stops[stops.length - 1] ?? null },
+        mode: {
+          kind: 'add',
+          previousStop: stops[stops.length - 1] ?? null,
+          previousStops: stops.map(routeStopOf),
+        },
         stopId: null,
       }),
     openEdit: (stop: StopWithPlace) =>

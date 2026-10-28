@@ -769,7 +769,7 @@ app does not call them. In detail:
 2. **Distance** is haversine on the mean-radius sphere (6,371.0088 km, the radius turf also uses):
    within about 0.5% of PostGIS `ST_Distance` over geography (measured: London–Paris −0.11%,
    Tokyo–San Francisco −0.23%, north–south legs up to +0.55%). The overlay rounds to whole kilometres
-   — or miles where the device's measurement system says so — so it reads as the summary it is.
+   — always kilometres (owner decision 2026-10-24; it was miles where the device's measurement system said so) — so it reads as the summary it is.
 3. **Countries visited** counts the stops of every live trip, planned ones included, exactly as the
    server's `TravelStatsService` does (T090), so the two never disagree about what the number means.
    A stop whose city this device has not cached yet counts for nothing and has no connections until

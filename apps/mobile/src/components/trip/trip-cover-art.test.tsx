@@ -48,6 +48,18 @@ describe('<TripCoverArt> with a photograph', () => {
     expect(photo.props.transition).toBe(220);
   });
 
+  test('puts the photograph where the caller says (the hero: 50% 58%), centred otherwise', async () => {
+    await render(
+      <TripCoverArt trip={withPhoto()} contentPosition={{ left: '50%', top: '58%' }} />,
+    );
+    expect(
+      screen.getByTestId('trip-card-t1-photo', hidden).props.contentPosition,
+    ).toEqual({
+      left: '50%',
+      top: '58%',
+    });
+  });
+
   test('a card recycled for another trip names the other photo: the recycling key follows the id', async () => {
     const view = await render(<TripCoverArt trip={withPhoto()} />);
     await view.rerender(

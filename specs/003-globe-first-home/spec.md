@@ -31,6 +31,9 @@ Three deliberate amendments to earlier specifications are recorded here and note
   (User Story 1).
 - Feature 002 FR-003 and FR-009 give every tab a raised or recessed bordered surface. For the tab
   bar only, that is replaced by a flat bar with a single divider (User Story 3).
+  **Final state (feature 005, 2026-10-22):** the flat bar was in turn replaced by the floating Sunrise
+  Passport pill (iOS) and navigation bar (Android), with the same testIDs (`005` F3 notes `f3-tabbar-ios.md`,
+  `f3-tabbar-android.md`).
 - Feature 001 FR-045 and FR-047 are extended, not changed: connections between trips are added;
   every trip's own connections still open that trip.
 

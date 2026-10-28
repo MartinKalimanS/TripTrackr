@@ -15,6 +15,12 @@
 # - ANDROID, English device language. The system photo picker is owned by the
 #   OS and its markup varies by version: the steps that drive it (`Photo taken
 #   on.*`, `Add`) are the ones most likely to need adjusting on a new image.
+# - Spec 006 (owner decision 2026-10-22): "Add photos" asks for the photo library
+#   before the picker opens, and asks "Who can see these photos?" after it.
+#   `launchApp` allows every permission by default and says so below, so the system
+#   dialog does not appear; the step after the tap still allows it if it does. The
+#   sheet is answered by its ids (`photo-visibility-*`): Private, the default, for the
+#   three photos; Public for one more. Documents are never asked.
 #
 # FIXTURES (fixtures/)
 # --------------------
@@ -45,6 +51,8 @@ env:
 - launchApp:
     clearState: true
     clearKeychain: true
+    permissions:
+      all: allow
 - assertVisible:
     id: 'welcome-screen'
 
@@ -71,10 +79,11 @@ env:
     visible:
       id: 'tab-bar'
     timeout: 20000
+- runFlow: _helpers/dismiss-tour.yaml
 
 # --- A trip with one stop in Rome, so the photos have a city to be filed under
 - tapOn:
-    id: 'home-plan-trip'
+    id: 'home-plan-trip-fab'
 - tapOn:
     id: 'add-trip-title'
 - inputText: 'Rome archive'
@@ -112,6 +121,12 @@ env:
 - assertVisible: 'No photos yet'
 - assertVisible: 'Private — only you can see your photos.'
 - tapOn: 'Add photos from your library'
+# The photo-library permission: allowed at launch, tapped through if the system asks anyway.
+- runFlow:
+    when:
+      visible: '(Allow|Allow all|Allow Full Access|Allow Access to All Photos)'
+    commands:
+      - tapOn: '(Allow|Allow all|Allow Full Access|Allow Access to All Photos)'
 - tapOn:
     text: 'Photo taken on.*'
     index: 0
@@ -122,6 +137,17 @@ env:
     text: 'Photo taken on.*'
     index: 2
 - tapOn: 'Add'
+# Then the sheet: Private is selected by default and "Add 3 photos" keeps it (spec 006 FR-006 to FR-008).
+- extendedWaitUntil:
+    visible:
+      id: 'photo-visibility-sheet'
+    timeout: 10000
+- assertVisible: 'Who can see these photos\?'
+- assertVisible:
+    id: 'photo-visibility-private'
+    checked: true
+- tapOn:
+    id: 'photo-visibility-confirm'
 - extendedWaitUntil:
     visible:
       id: 'photos-capture-message'
@@ -150,6 +176,34 @@ env:
 - tapOn: 'Close photo'
 - assertNotVisible:
     id: 'photo-viewer'
+
+# One more photo, this time public (spec 006 FR-007, FR-009): the choice is stored and, for now,
+# shows nobody else anything. The photo is added like any other.
+- tapOn: 'Add photos from your library'
+- tapOn:
+    text: 'Photo taken on.*'
+    index: 0
+- tapOn: 'Add'
+- extendedWaitUntil:
+    visible:
+      id: 'photo-visibility-sheet'
+    timeout: 10000
+- assertVisible: 'Who can see this photo\?'
+- tapOn:
+    id: 'photo-visibility-public'
+- assertVisible:
+    id: 'photo-visibility-public'
+    checked: true
+- tapOn:
+    id: 'photo-visibility-confirm'
+- extendedWaitUntil:
+    visible:
+      id: 'photos-capture-message'
+      text: '1 photo added\.'
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible: 'Waiting to upload'
+    timeout: 90000
 
 # --- One boarding pass (Acceptance 5.3) --------------------------------------
 - tapOn: 'Back'

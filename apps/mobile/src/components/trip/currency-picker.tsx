@@ -9,7 +9,8 @@
  * (three upper-case letters); the picker upper-cases as the traveller types so "eur" is
  * not an error, it is EUR.
  *
- * Exactly one option is selected at a time: while "Other" is open it is the selected
+ * "Other" is the dashed "add" chip with a plus (UI-SPEC 3.3; form.png). Exactly one option
+ * is selected at a time: while "Other" is open it is the selected
  * chip and no common code is. The ids and names are the ones the Maestro flows select by:
  * `currency-pills` (now the radiogroup that holds the chips), `currency-<CODE>` named by
  * the code, `currency-other-toggle` named "Other currency", and `currency-other` (the
@@ -42,6 +43,8 @@ export type CurrencyPickerProps = {
   onChange: (code: string) => void;
   /** Conveyed by message text as well as colour (FR-010). */
   error?: string;
+  /** The row's label and the group's name: "Home currency" on a trip, "Currency" on an expense. */
+  label?: string;
 };
 
 export function isValidCurrency(code: string): boolean {
@@ -63,10 +66,17 @@ const OPTIONS: readonly ChipOption[] = [
     label: 'Other',
     testID: 'currency-other-toggle',
     accessibilityLabel: 'Other currency',
+    leading: 'plus',
+    dashed: true,
   },
 ];
 
-export function CurrencyPicker({ value, onChange, error }: CurrencyPickerProps) {
+export function CurrencyPicker({
+  value,
+  onChange,
+  error,
+  label = 'Home currency',
+}: CurrencyPickerProps) {
   const [otherOpen, setOtherOpen] = useState(false);
   const isCommon = (COMMON_CURRENCIES as readonly string[]).includes(value);
   const showOther = otherOpen || (!isCommon && value !== '') || Boolean(error);
@@ -89,11 +99,13 @@ export function CurrencyPicker({ value, onChange, error }: CurrencyPickerProps) 
 
   return (
     <View className="gap-2">
-      <Text type="callout">Home currency</Text>
+      <Text variant="label" strong>
+        {label}
+      </Text>
       <ChipGroup
         scroll
         testID="currency-pills"
-        accessibilityLabel="Home currency"
+        accessibilityLabel={label}
         options={OPTIONS}
         selectedKey={showOther ? OTHER_KEY : value}
         onSelect={select}

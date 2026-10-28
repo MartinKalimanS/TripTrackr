@@ -9,8 +9,8 @@
  *
  * - `name` is a registry key, an app word that one glyph answers to on BOTH platforms
  *   (`'chevron-left'`, `'cloud-upload'`). An unknown key, and the feature 004 form with one
- *   symbol per platform, are compile errors. Ionicons stay only for the Google and Apple
- *   brand glyphs (`brand-glyph.tsx`).
+ *   symbol per platform, are compile errors. Google's logo is the one brand glyph
+ *   (`brand-glyph.tsx`, drawn in SVG); Apple's is drawn by Apple's own button.
  * - `size` is 16, 20 or 24 dp (`IconSize`). Icons do not scale with the font scale: the
  *   control around one does (`Tappable`, `Button`).
  * - `weight` is `regular` (rest), `fill` (selected, status) or `duotone` (stat tiles).
@@ -50,6 +50,7 @@ export type IconTone =
   | 'aquaLine'
   | 'amberInk'
   | 'amberLine'
+  | 'amber'
   | 'danger'
   | 'dangerInk'
   | 'success'
@@ -57,9 +58,6 @@ export type IconTone =
   | 'default'
   | 'accent'
   | 'onAccent'
-  | 'statusPlanning'
-  | 'statusActive'
-  | 'statusPast'
   | 'pending';
 
 export interface IconProps {
@@ -90,7 +88,8 @@ type AppColor =
   | 'aqua-ink'
   | 'aqua-line'
   | 'amber-ink'
-  | 'amber-line';
+  | 'amber-line'
+  | 'amber';
 
 const TONE_TOKENS: Record<IconTone, ThemeColor | AppColor> = {
   ink: 'foreground',
@@ -105,15 +104,13 @@ const TONE_TOKENS: Record<IconTone, ThemeColor | AppColor> = {
   aquaLine: 'aqua-line',
   amberInk: 'amber-ink',
   amberLine: 'amber-line',
+  amber: 'amber',
   danger: 'danger',
   dangerInk: 'danger-foreground',
   success: 'success',
   default: 'foreground',
   accent: 'accent-text',
   onAccent: 'accent-foreground',
-  statusPlanning: 'amber-ink',
-  statusActive: 'accent-line',
-  statusPast: 'muted',
   pending: 'amber-ink',
 };
 
