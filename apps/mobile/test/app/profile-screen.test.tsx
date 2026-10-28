@@ -346,10 +346,11 @@ describe('<ProfileScreen> - Sign out and Delete account are unchanged', () => {
     expect(mockSignOut.mutate).toHaveBeenCalledWith();
     const actions = screen.getByTestId('profile-actions');
     expect(within(actions).getByTestId('profile-delete-account')).toBeTruthy();
-    expect(
-      screen.getByTestId('profile-delete-account').props.accessibilityState,
-    ).toMatchObject({ disabled: true });
-    expect(screen.getByText('Coming soon')).toBeOnTheScreen();
+    const remove = screen.getByTestId('profile-delete-account');
+    expect(remove.props.accessibilityState).not.toMatchObject({ disabled: true });
+    expect(screen.queryByText('Coming soon')).toBeNull();
+    await fireEvent.press(remove);
+    expect(mockRouter.push).toHaveBeenCalledWith('/modal/delete-account');
   });
 });
 

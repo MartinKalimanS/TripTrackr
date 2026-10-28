@@ -42,6 +42,10 @@ export type FormActionsProps = {
   onCancel: () => void;
   onSave: () => void;
   saveDisabled?: boolean;
+  /** `destructive` for an action that cannot be undone (Delete account); default `primary`. */
+  saveVariant?: 'primary' | 'destructive';
+  /** The request is in flight: announced busy and ignored if pressed again. */
+  saveBusy?: boolean;
 };
 
 const CANCEL = 'max-w-full';
@@ -72,22 +76,25 @@ export function FormCancel({
   );
 }
 
-/** The footer: the one primary, Save, full width. */
+/** The footer: the one primary, Save, full width (or one destructive action, never both). */
 export function FormActions({
   testIDPrefix,
   saveLabel,
   saveTestID,
   onSave,
   saveDisabled = false,
+  saveVariant = 'primary',
+  saveBusy = false,
 }: FormActionsProps) {
   return (
     <View>
       <Button
         testID={saveTestID ?? `${testIDPrefix}-save`}
-        variant="primary"
+        variant={saveVariant}
         size="lg"
         accessibilityLabel={saveLabel}
         disabled={saveDisabled}
+        busy={saveBusy}
         onPress={() => onSave()}
         className={SAVE}>
         {saveLabel}

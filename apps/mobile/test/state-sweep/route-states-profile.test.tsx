@@ -111,10 +111,10 @@ describe('You states: no control is a dead end', () => {
     expectHealthy();
   });
 
-  it('Delete account is disabled and named, not a control that does nothing', async () => {
+  it('Delete account is named and available: it opens the confirmation, it does not do nothing', async () => {
     await render(<ProfileScreen />);
     const remove = screen.getByTestId('profile-delete-account');
-    expect(remove.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(remove.props.accessibilityState).not.toMatchObject({ disabled: true });
     expect(remove.props.accessibilityLabel).toBe('Delete account');
   });
 });

@@ -13,6 +13,9 @@ import { useTourStore } from '@/features/tour/tour-store';
 
 import { sweepScreen } from './sweep';
 
+// A whole theme matrix per file: the first render pays for transforming every module it touches.
+jest.setTimeout(60_000);
+
 jest.mock('react-native-worklets', () => require('../mocks/worklets'));
 jest.mock('react-native-reanimated', () => require('../mocks/reanimated-live'));
 

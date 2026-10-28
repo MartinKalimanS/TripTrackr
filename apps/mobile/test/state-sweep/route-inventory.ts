@@ -361,6 +361,18 @@ export const ROUTE_INVENTORY: readonly RouteRow[] = [
     sweep: SWEEP('areas'),
   },
   {
+    route: 'src/app/modal/delete-account.tsx',
+    loading: { na: 'a form on local state; nothing is read first' },
+    empty: { na: 'a form, not a list' },
+    error: {
+      shows:
+        'the refusal in words (InlineError): wrong password, no connection, anything else',
+      pins: [[SWEEP('delete-account'), 'delete-account-error']],
+    },
+    primary: 'none: "Delete my account" is destructive, Cancel is text',
+    sweep: SWEEP('delete-account'),
+  },
+  {
     route: 'src/app/modal/add-expense.tsx',
     loading: {
       shows: 'LoadingState "Loading trip" with "Close"',
