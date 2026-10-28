@@ -10,6 +10,13 @@ import { requireCurrentUserId, requireRlsTransaction } from '@/common/rls/rls-co
 import { users } from '@/db/schema';
 import { PasswordService } from '@/modules/auth/password.service';
 
+/**
+ * `DELETE /me` checks a password with a valid access token in hand, so it is a place to guess
+ * one: a few tries an hour per address, far below the global ceiling (FR-071). A traveller
+ * deleting their account makes one request.
+ */
+export const DELETE_ME_RATE_LIMIT = { limit: 5, windowSeconds: 3_600 } as const;
+
 /** The name of the job on the `storage-sweep` queue that deletes one account. */
 export const ACCOUNT_DELETION_JOB = 'account-deletion';
 

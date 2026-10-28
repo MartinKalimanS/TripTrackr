@@ -14,10 +14,11 @@ import {
   PatchMeRequest,
 } from '@triptrackr/contracts';
 
+import { RateLimited } from '@/common/guards/rate-limit.guard';
 import { respond } from '@/common/validation/respond';
 import { ZodValidationPipe } from '@/common/validation/zod-validation.pipe';
 
-import { DeletionService } from './deletion.service';
+import { DELETE_ME_RATE_LIMIT, DeletionService } from './deletion.service';
 import { TravelStatsService } from './travel-stats.service';
 import { UsersRepository } from './users.repository';
 
@@ -66,6 +67,7 @@ export class UsersController {
    * password is required when the account has one.
    */
   @Delete()
+  @RateLimited(DELETE_ME_RATE_LIMIT)
   @HttpCode(HttpStatus.ACCEPTED)
   async remove(
     @Body(new ZodValidationPipe(DeleteMeRequest)) body: DeleteMeRequest,
