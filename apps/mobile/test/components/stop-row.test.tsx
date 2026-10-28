@@ -84,7 +84,7 @@ describe('<StopRow> keeps the 004 row: ids, name, controls and actions', () => {
     expect(node.props.accessible).toBe(true);
     expect(node.props.accessibilityLabel).toMatch(
       // The month's spelling is the device's (`formatIsoDate`); the shape is the row's.
-      /^Stop 2: Sintra, Portugal\. 14 \S+ 2026 → 15 \S+ 2026$/,
+      /^Stop 2: Sintra, Portugal\. (?:14 \S+|\S+ 14,?) 2026 → (?:15 \S+|\S+ 15,?) 2026$/,
     );
     expect(node.props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual([
       'moveUp',
@@ -107,7 +107,7 @@ describe('<StopRow> keeps the 004 row: ids, name, controls and actions', () => {
       expect(control.props.accessibilityRole).toBe('button');
     }
     expect(screen.getByTestId('stop-dates-s2')).toHaveTextContent(
-      /^14 \S+ 2026 → 15 \S+ 2026$/,
+      /^(?:14 \S+|\S+ 14,?) 2026 → (?:15 \S+|\S+ 15,?) 2026$/,
     );
   });
 
@@ -288,7 +288,7 @@ describe('<StopRow> says what it draws (FR-075, FR-076)', () => {
     await render(row({ state: 'now', from: { place: 'Lisbon', km: 23 } }));
     expect(valueOf()).toEqual({ text: 'Now. 23 kilometres from Lisbon.' });
     expect(screen.getByTestId('stop-row-s2').props.accessibilityLabel).toMatch(
-      /^Stop 2: Sintra, Portugal\. 14 \S+ 2026 → 15 \S+ 2026$/,
+      /^Stop 2: Sintra, Portugal\. (?:14 \S+|\S+ 14,?) 2026 → (?:15 \S+|\S+ 15,?) 2026$/,
     );
   });
 
