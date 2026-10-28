@@ -30,7 +30,12 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/contracts/package.json packages/contracts/
 RUN npm ci --omit=dev --workspace apps/api --workspace packages/contracts --include-workspace-root=false \
- && npm cache clean --force
+ && npm cache clean --force \
+ # The runtime starts `node` directly (the API, the worker and the migration runner all do), so the
+ # package managers the base image ships have no job here, and their own dependencies were the
+ # source of most of the image scan's findings (npm's brace-expansion, pacote, sigstore, ...).
+ && rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
+           /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 COPY --from=build /repo/packages/contracts/dist packages/contracts/dist
 COPY --from=build /repo/apps/api/dist apps/api/dist
 # The migration runner reads *.sql next to its compiled self.

@@ -4,4 +4,11 @@
 # entry here is for a vulnerability that HAS a fix we cannot take yet. Each needs a `statement`
 # saying why it is not exploitable in the image and an `expired_at` (at most 90 days out), after
 # which the scan fails again. Format: https://trivy.dev/latest/docs/configuration/filtering/
-vulnerabilities: []
+vulnerabilities:
+  - id: CVE-2026-113872
+    statement: >-
+      multer 2.4.0 (a dependency of @nestjs/platform-express): denial of service through an aborted request
+      during a multipart upload. The API declares no route that uses multer (no FileInterceptor: photos
+      go to the store by signed URL and documents arrive as base64 JSON), so the code path is not
+      reachable. Fixed by multer 2.5.0 with NestJS 12 (Dependabot PR open); re-review then.
+    expired_at: 2026-11-27
