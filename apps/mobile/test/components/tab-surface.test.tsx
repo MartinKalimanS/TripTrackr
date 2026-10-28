@@ -143,19 +143,26 @@ describe('<TabSurface> - glass (iOS 26)', () => {
     expect(screen.getByTestId('tab-surface-blur')).toBeTruthy();
   });
 
-  test('is a capsule and carries no opacity: opacity 0 would make the glass vanish', async () => {
+  test('is a capsule with the ring and lift, and no opacity: opacity 0 would make the glass vanish', async () => {
     setup('light', { glass: true });
     await render(<TabSurface />);
     const style = flat('tab-surface-glass');
     expect(style.borderRadius).toBe(Radii.full);
+    expect(style.borderWidth).toBe(StyleSheet.hairlineWidth);
+    expect(style.boxShadow).toBeDefined();
     expect(style.opacity).toBeUndefined();
   });
 });
 
 describe('<TabSurface> - blur (an earlier iPhone)', () => {
-  test.each(['light', 'dark'] as const)(
-    'is a BlurView under an 84 percent `surface` tint in %s',
-    async (theme) => {
+  // The prototype's dark pill is rgba(24, 46, 74, .84): the cream (`surfaceSecondary`), not the
+  // paper, so it reads lighter than the ground in `home-dark.png`.
+  test.each([
+    ['light', 'surface'],
+    ['dark', 'surfaceSecondary'],
+  ] as const)(
+    'is a BlurView under an 84 percent tint in %s (the %s)',
+    async (theme, key) => {
       setup(theme);
       await render(
         <TabSurface>
@@ -167,7 +174,7 @@ describe('<TabSurface> - blur (an earlier iPhone)', () => {
       expect(blur.props.testID).toBe('tab-surface-blur');
       expect(JSON.stringify(screen.toJSON())).toContain('ExpoBlur');
       const tint = flat('tab-surface-tint');
-      expect(tint.backgroundColor).toBe(withAlpha(Palettes[theme].surface, 0.84));
+      expect(tint.backgroundColor).toBe(withAlpha(Palettes[theme][key], 0.84));
       expect(screen.getByText('inside')).toBeTruthy();
     },
   );

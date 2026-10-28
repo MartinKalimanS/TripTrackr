@@ -187,7 +187,7 @@ describe('useCountUp - the number to draw', () => {
     expect(result.current).toBe(200);
   });
 
-  test('a new target after it has finished counts from the old one, not from nothing', async () => {
+  test('a new target after it has finished is drawn at once: a refresh is not a new appearance', async () => {
     let target = 14;
     const { result, rerender } = await renderHook(() => useCountUp(target, options));
     await frame(700);
@@ -195,12 +195,9 @@ describe('useCountUp - the number to draw', () => {
     target = 20;
     now.mockReturnValue(20_000);
     await rerender({});
-    const start = 20_000 - 10_000;
-    await frame(start + 350);
-    expect(result.current).toBeGreaterThan(14);
-    expect(result.current).toBeLessThan(20);
-    await frame(start + 700);
     expect(result.current).toBe(20);
+    expect(intervals.all).toHaveLength(1);
+    expect(intervals.live()).toHaveLength(0);
   });
 
   test('turning motion off mid-count shows the target at once and clears the interval', async () => {

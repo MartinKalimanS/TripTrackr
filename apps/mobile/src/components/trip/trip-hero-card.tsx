@@ -6,7 +6,8 @@
  *   <TripHeroCard trip={card} onPress={() => router.push(`/trip/${card.id}`)} />
  *
  * From the back: the cover (`TripCoverArt`: the trip's photograph, or the generated cover),
- * the bottom scrim, a row on top with the status chip ("Active · Day 3 of 8") and, while the
+ * a row on top with the status pill ("Active · Day 3 of 8", white on the photograph in every
+ * theme: `PhotoStatusPill`) and, while the
  * trip has changes the server has not confirmed, the sync marker (an icon and the words "Not
  * yet synced", on an opaque tint of its own, so it reads over any picture: US2 scenario 6 asks
  * for a marker with text, and the Maestro flows wait on those words; the row wraps at large
@@ -32,17 +33,19 @@
 import { View } from 'react-native';
 
 import { FlagChip } from '@/components/ui/flag-chip';
-import { StatusChip } from '@/components/ui/chip';
 import { Icon } from '@/components/ui/icon';
 import { useLiftStyle } from '@/components/ui/lift';
+import { metaLines } from '@/components/ui/reflow';
 import { Scrim } from '@/components/ui/scrim';
 import { SyncBadge } from '@/components/ui/sync-badge';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
 import { describeStopCount, eyebrowOf, heroDates } from '@/features/trips/trip-card-copy';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
+import { useFontScale } from '@/hooks/use-font-scale';
 import { cornerOf } from '@/theme';
 
+import { PhotoStatusPill } from './photo-status-pill';
 import { StopStrip } from './stop-strip';
 import { TripCoverArt } from './trip-cover-art';
 
@@ -54,16 +57,30 @@ export interface TripHeroCardProps {
 /** The prototype's `min-height: 219px`: a picture of about 16 to 10 on a phone. */
 const MIN_HEIGHT = 219;
 
+/** `background-position: 50% 58%`: a little below the middle, where a street or a skyline is. */
+const COVER_FOCUS = { left: '50%', top: '58%' } as const;
+
 /** The caption block's own padding: 16 dp at the sides and the foot, 4 dp between lines. */
 const CAPTION_BLOCK = { paddingHorizontal: 16, paddingBottom: 16, gap: 4 } as const;
 
+/**
+ * `.strip { margin-top: 8px }` under the 4 dp gap of the caption block; the strip's halo box starts
+ * 2 dp above the 12 dp dot, so 6 dp puts the dot where the picture has it.
+ */
+const STRIP_MARGIN = { marginTop: 6 } as const;
+
 function Eyebrow({ trip }: { trip: TripCardModel }) {
+  const fontScale = useFontScale();
   return (
     <View className="flex-row items-center gap-2">
       {trip.country ? (
         <FlagChip iso2={trip.country.iso2} testID={`trip-card-${trip.id}-flag`} />
       ) : null}
-      <Text variant="eyebrow" tone="onPhoto" numberOfLines={1} className="shrink">
+      <Text
+        variant="eyebrow"
+        tone="onPhoto"
+        numberOfLines={metaLines(fontScale)}
+        className="shrink">
         {eyebrowOf(trip)}
       </Text>
     </View>
@@ -76,7 +93,8 @@ function Dates({ trip }: { trip: TripCardModel }) {
   return (
     <View
       testID={`trip-card-${trip.id}-meta-row`}
-      className="flex-row items-center gap-2">
+      className="flex-row items-center"
+      style={{ gap: 6 }}>
       <Icon name="calendar" size={16} tone="onPhoto" />
       <Text variant="label" tone="onPhoto" className="shrink">
         {dates}
@@ -105,12 +123,11 @@ export function TripHeroCard({ trip, onPress }: TripHeroCardProps) {
           cornerOf('xl'),
           { minHeight: MIN_HEIGHT, overflow: 'hidden', justifyContent: 'space-between' },
         ]}>
-        <TripCoverArt trip={trip} />
-        <Scrim kind="bottom" />
+        <TripCoverArt trip={trip} contentPosition={COVER_FOCUS} />
         <View
           testID={`trip-card-${id}-status-row`}
           className="flex-row flex-wrap items-start justify-between gap-2 p-3">
-          <StatusChip status={trip.status} dayOf={dayOf ?? undefined} />
+          <PhotoStatusPill status={trip.status} dayOf={dayOf ?? undefined} />
           {trip.pending ? <SyncBadge state="pending" /> : null}
         </View>
         <Scrim kind="caption" contentStyle={CAPTION_BLOCK}>
@@ -119,7 +136,7 @@ export function TripHeroCard({ trip, onPress }: TripHeroCardProps) {
             {trip.title}
           </Text>
           <Dates trip={trip} />
-          <StopStrip dots={trip.strip} labels={trip.stripLabels} />
+          <StopStrip dots={trip.strip} labels={trip.stripLabels} style={STRIP_MARGIN} />
         </Scrim>
       </View>
     </Tappable>

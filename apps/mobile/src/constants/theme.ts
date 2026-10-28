@@ -80,7 +80,7 @@ export const Spacing = {
 
 export const MaxContentWidth = 800;
 
-/** Corner radii in points (`MediaFrame`). The Atlas scale for the kit's classes is `AtlasRadius`. */
+/** Corner radii in points (`MediaFrame`). The Sunrise scale is `Radii`. */
 export const Radius = {
   sm: 8,
   md: 16,

@@ -88,7 +88,7 @@ export function ToneChip({
         tone={look.icon}
         testID={testID ? `${testID}-icon` : undefined}
       />
-      <Text type="caption" className={`shrink ${look.ink}`}>
+      <Text variant="caption" className={`shrink ${look.ink}`}>
         {label}
       </Text>
     </View>

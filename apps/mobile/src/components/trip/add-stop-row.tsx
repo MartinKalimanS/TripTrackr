@@ -43,6 +43,7 @@ export function AddStopRow({ onPress }: AddStopRowProps) {
 
 const styles = StyleSheet.create({
   row: {
+    marginTop: Space[1],
     minHeight: MIN_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',

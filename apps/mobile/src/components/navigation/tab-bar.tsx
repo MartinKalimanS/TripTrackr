@@ -5,21 +5,17 @@
  * (https://docs.expo.dev/router/advanced/tabs.md, "Tab bar options"); the native tab bar stays
  * unused, the module is still `unstable-` in SDK 57 (research D4-06).
  *
- * Each platform gets the bar it has a shape for, chosen by `Platform.OS` when it renders:
- * the floating `TabPill` on iOS (`tab-pill.tsx`), the Material 3 `AndroidNavBar` on Android
- * (`android-nav-bar.tsx`). The ids they keep: `tab-bar`, `tab-<route>` and `tab-mark-<route>`
- * (on the capsule behind the selected tab, or on its indicator).
+ * One bar for both platforms: the floating `TabPill` (`tab-pill.tsx`), as pictured in
+ * `reference/screens/core/home-contrast.png`. The Material 3 navigation bar of D5-21 was
+ * retired on 2026-10-24 (owner decision: Android gets the pill too); its surface is the opaque
+ * one of `TabSurface`, since a blur on Android would be re-blurred every frame under the globe.
+ * The ids they keep: `tab-bar`, `tab-<route>` and `tab-mark-<route>` (on the capsule behind
+ * the selected tab).
  */
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
-import { Platform } from 'react-native';
 
-import { AndroidNavBar } from './android-nav-bar';
 import { TabPill } from './tab-pill';
 
 export function TabBar(props: BottomTabBarProps) {
-  return Platform.OS === 'android' ? (
-    <AndroidNavBar {...props} />
-  ) : (
-    <TabPill {...props} />
-  );
+  return <TabPill {...props} />;
 }

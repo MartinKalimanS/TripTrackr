@@ -2,8 +2,8 @@
  * `(tabs)` group — globe (home), trips, profile (R009, research D-17, amended by
  * D4-06).
  *
- * The stable JavaScript `Tabs` navigator with a custom `tabBar`, the `TabBar` of feature 005: a
- * floating pill on iOS, a Material 3 navigation bar on Android (`components/navigation`;
+ * The stable JavaScript `Tabs` navigator with a custom `tabBar`, the `TabBar` of feature 005: the
+ * floating pill on both platforms (`components/navigation`;
  * https://docs.expo.dev/router/advanced/tabs.md). `expo-router/unstable-native-tabs` is not
  * used: a native bar is platform-supplied styling by definition, which the Sunrise pill (glass
  * on iOS 26, a blur before it, solid where transparency is reduced) rules out, and an
@@ -33,13 +33,18 @@
  * (`FirstSyncGate`, T136, FR-042): until then the traveller sees an explicit
  * "syncing your trips" state, or "you're offline", and never a set of empty
  * tabs that look like lost data.
+ *
+ * `FirstRunTour` (feature 007) floats over the navigator, so it can light the tab pill: it
+ * starts once for a traveller with no trips, and You can replay it.
  */
 import { Tabs } from 'expo-router/js-tabs';
+import { View } from 'react-native';
 
 import { TabBar } from '@/components/navigation/tab-bar';
 import { TabInsetScope } from '@/components/navigation/tab-inset-scope';
 import { RequireLocalStore } from '@/components/require-local-store';
 import { FirstSyncGate } from '@/components/sync/first-sync-gate';
+import { FirstRunTour } from '@/components/tour/first-run-tour';
 import { useAppearance } from '@/hooks/use-appearance';
 
 export default function TabsLayout() {
@@ -48,17 +53,20 @@ export default function TabsLayout() {
   return (
     <RequireLocalStore>
       <FirstSyncGate>
-        <Tabs
-          tabBar={(props) => <TabBar {...props} />}
-          screenLayout={({ children }) => <TabInsetScope>{children}</TabInsetScope>}
-          screenOptions={{
-            headerShown: false,
-            sceneStyle: { backgroundColor: tokens.canvas },
-          }}>
-          <Tabs.Screen name="index" options={{ title: 'Globe' }} />
-          <Tabs.Screen name="trips" options={{ title: 'Trips' }} />
-          <Tabs.Screen name="profile" options={{ title: 'You' }} />
-        </Tabs>
+        <View style={{ flex: 1 }}>
+          <Tabs
+            tabBar={(props) => <TabBar {...props} />}
+            screenLayout={({ children }) => <TabInsetScope>{children}</TabInsetScope>}
+            screenOptions={{
+              headerShown: false,
+              sceneStyle: { backgroundColor: tokens.canvas },
+            }}>
+            <Tabs.Screen name="index" options={{ title: 'Globe' }} />
+            <Tabs.Screen name="trips" options={{ title: 'Trips' }} />
+            <Tabs.Screen name="profile" options={{ title: 'You' }} />
+          </Tabs>
+          <FirstRunTour />
+        </View>
       </FirstSyncGate>
     </RequireLocalStore>
   );

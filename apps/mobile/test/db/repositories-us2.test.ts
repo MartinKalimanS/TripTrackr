@@ -137,6 +137,8 @@ describe('notesRepository', () => {
     expect(all.find((row) => row.id === city.id)).toMatchObject({
       city_name: 'Roma',
       country_name: 'Italy',
+      // The flag's code travels with the place (F9: the card's foot row).
+      country_iso: 'IT',
     });
 
     const byCity = notesRepository

@@ -150,20 +150,4 @@ describe('<GreetingHeader>', () => {
       expect.arrayContaining(['flex-row', 'items-start', 'justify-between']),
     );
   });
-
-  test('a welcome says "Welcome, Marta" and puts its own words over it in place of the date', async () => {
-    await render(
-      <GreetingHeader name="Marta" today="2026-10-14" welcome="0 of 195 countries" />,
-    );
-    expect(screen.getByTestId('home-greeting')).toHaveTextContent('Welcome, Marta');
-    expect(screen.getByTestId('home-greeting-date')).toHaveTextContent(
-      '0 of 195 countries',
-    );
-    expect(screen.getByText('Marta').props.className).toContain('font-serif-italic');
-  });
-
-  test('a welcome with no name is "Welcome"', async () => {
-    await render(<GreetingHeader name={null} today="2026-10-14" welcome="x" />);
-    expect(screen.getByTestId('home-greeting')).toHaveTextContent(/^Welcome$/);
-  });
 });

@@ -2,10 +2,10 @@
  * `TransitRow` - the dotted segment and the distance between two stops where the traveller
  * moves on (tasks.md T545; contract C5-20; spec FR-041, FR-074, FR-077, FR-076).
  *
- *   <TransitRow stopId={stop.id} km={313.2} />      "313 km", or "195 mi" where the device measures so
+ *   <TransitRow stopId={stop.id} km={313.2} />      "313 km"
  *
  * A 36 dp minimum (it grows with the text) with a 32 dp rail holding the dotted spine and, beside
- * it, a route glyph and the distance in the device's unit and grouping (`formatDistance`). The
+ * it, a route glyph and the distance in kilometres, grouped for the device (`formatDistance`). The
  * app does not know how the traveller moves, so the glyph is a route, never a car or a plane.
  *
  * It is omitted when `km` is `null`: a stop this device has not placed is never guessed
@@ -44,7 +44,11 @@ export function TransitRow({ stopId, km }: TransitRowProps) {
       </View>
       <View className="flex-1 flex-row items-center gap-1.5 py-1">
         <Icon name={ROUTE} size={16} tone="muted" />
-        <Text variant="label" strong tone="muted" className="shrink">
+        <Text
+          variant="caption"
+          tone="muted"
+          className="shrink"
+          testID={`stop-transit-distance-${stopId}`}>
           {formatDistance(km).text}
         </Text>
       </View>

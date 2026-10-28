@@ -83,7 +83,11 @@ appId: com.triptrackr.app
 - assertVisible:
     id: 'photos-title'
 - tapOn: 'Add photos from your library'
+# Spec 006: the app asks for the photo library first (launchApp allowed it, so normally
+# no dialog), and after the pick it asks who can see the photo: keep Private.
+- runFlow: _helpers/allow-photo-access.yaml
 - runFlow: _helpers/pick-library-media.yaml
+- runFlow: _helpers/choose-photo-visibility.yaml
 - extendedWaitUntil:
     visible:
       id: 'photos-capture-message'

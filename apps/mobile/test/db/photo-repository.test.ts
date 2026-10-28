@@ -113,6 +113,28 @@ describe('photosRepository.create', () => {
     expect(PhotoPullRecord.safeParse(wire).success).toBe(true);
   });
 
+  test('is private unless the capture says otherwise (FR-052)', () => {
+    const trip = newTrip();
+
+    expect(addPhoto(trip.id).is_public).toBe(false);
+    expect(addPhoto(trip.id, { is_public: false }).is_public).toBe(false);
+    expect(addPhoto(trip.id, { is_public: undefined }).is_public).toBe(false);
+  });
+
+  test('stores the visibility the traveller chose, per photo (FR-053), moderation still pending', () => {
+    const trip = newTrip();
+    const shared = addPhoto(trip.id, { is_public: true });
+    const kept = addPhoto(trip.id, { is_public: false });
+
+    expect(rawRow(shared.id)).toMatchObject({
+      is_public: true,
+      moderation_state: 'pending',
+      upload_state: 'pending',
+      is_dirty: true,
+    });
+    expect(rawRow(kept.id)).toMatchObject({ is_public: false });
+  });
+
   test('a photo with no metadata is still a photo', () => {
     const trip = newTrip();
     const photo = addPhoto(trip.id);
@@ -299,6 +321,152 @@ describe('the upload channel’s marks (FR-041)', () => {
       city_id: 100,
       is_dirty: true,
       synced_at: null,
+    });
+  });
+
+  describe('a public photo (spec 006): registration cannot carry the visibility', () => {
+    test('stays dirty once registered, stamped after the device clock and the registration', () => {
+      jest.useFakeTimers();
+      const trip = newTrip();
+      const photo = at('2026-06-01T10:00:00.000Z', () =>
+        addPhoto(trip.id, { is_public: true }),
+      );
+
+      photosRepository.markUploaded(sqlite.db, photo.id, {
+        sentUpdatedAt: photo.updated_at,
+        syncedAt: '2026-06-01T10:00:10.000Z',
+        serverUpdatedAt: '2026-06-01T10:00:09.000Z',
+        server,
+      });
+
+      expect(photosRepository.byId(sqlite.db, photo.id)).toMatchObject({
+        upload_state: 'uploaded',
+        is_public: true,
+        is_dirty: true,
+        synced_at: null,
+        updated_at: '2026-06-01T10:00:10.000Z',
+      });
+    });
+
+    test('is newer than the registration even when the server clock is ahead of the device', () => {
+      jest.useFakeTimers();
+      const trip = newTrip();
+      const photo = at('2026-06-01T10:00:00.000Z', () =>
+        addPhoto(trip.id, { is_public: true }),
+      );
+
+      photosRepository.markUploaded(sqlite.db, photo.id, {
+        sentUpdatedAt: photo.updated_at,
+        syncedAt: '2026-06-01T10:00:10.000Z',
+        serverUpdatedAt: '2026-06-01T10:00:30.250Z',
+        server,
+      });
+
+      expect(photosRepository.byId(sqlite.db, photo.id)?.updated_at).toBe(
+        '2026-06-01T10:00:30.251Z',
+      );
+    });
+
+    test('reads a registration stamp with microseconds as the milliseconds it is', () => {
+      jest.useFakeTimers();
+      const trip = newTrip();
+      const photo = at('2026-06-01T10:00:00.000Z', () =>
+        addPhoto(trip.id, { is_public: true }),
+      );
+
+      photosRepository.markUploaded(sqlite.db, photo.id, {
+        sentUpdatedAt: photo.updated_at,
+        syncedAt: '2026-06-01T10:00:10.000Z',
+        serverUpdatedAt: '2026-06-01T10:00:20.123456Z',
+        server,
+      });
+
+      expect(photosRepository.byId(sqlite.db, photo.id)?.updated_at).toBe(
+        '2026-06-01T10:00:20.124Z',
+      );
+    });
+
+    test('without the registration’s stamp the device clock is used', () => {
+      jest.useFakeTimers();
+      const trip = newTrip();
+      const photo = at('2026-06-01T10:00:00.000Z', () =>
+        addPhoto(trip.id, { is_public: true }),
+      );
+
+      photosRepository.markUploaded(sqlite.db, photo.id, {
+        sentUpdatedAt: photo.updated_at,
+        syncedAt: '2026-06-01T10:00:10.000Z',
+        server,
+      });
+
+      expect(photosRepository.byId(sqlite.db, photo.id)).toMatchObject({
+        is_dirty: true,
+        updated_at: '2026-06-01T10:00:10.000Z',
+      });
+    });
+
+    test('is still stamped after the registration when it was refiled in flight', () => {
+      jest.useFakeTimers();
+      const trip = newTrip();
+      const photo = at('2026-06-01T10:00:00.000Z', () =>
+        addPhoto(trip.id, { is_public: true }),
+      );
+      at('2026-06-01T10:00:05.000Z', () =>
+        photosRepository.refile(sqlite.db, photo.id, 100),
+      );
+
+      photosRepository.markUploaded(sqlite.db, photo.id, {
+        sentUpdatedAt: photo.updated_at,
+        syncedAt: '2026-06-01T10:00:10.000Z',
+        serverUpdatedAt: '2026-06-01T10:00:09.000Z',
+        server,
+      });
+
+      expect(photosRepository.byId(sqlite.db, photo.id)).toMatchObject({
+        city_id: 100,
+        is_public: true,
+        is_dirty: true,
+        updated_at: '2026-06-01T10:00:10.000Z',
+      });
+    });
+
+    test('never resurrects a public photo deleted while it uploaded', () => {
+      const trip = newTrip();
+      const photo = addPhoto(trip.id, { is_public: true });
+      photosRepository.remove(sqlite.db, photo.id);
+      const tombstone = rawRow(photo.id);
+
+      photosRepository.markUploaded(sqlite.db, photo.id, {
+        sentUpdatedAt: photo.updated_at,
+        syncedAt: '2026-06-03T10:00:00.000Z',
+        serverUpdatedAt: '2026-06-03T09:00:00.000Z',
+        server,
+      });
+
+      expect(rawRow(photo.id)).toMatchObject({
+        upload_state: 'pending',
+        deleted_at: expect.any(String),
+        updated_at: tombstone?.updated_at,
+      });
+    });
+  });
+
+  test('a private photo is cleaned exactly as before, stamp untouched, whatever the server stamp', () => {
+    const trip = newTrip();
+    const photo = addPhoto(trip.id, { is_public: false });
+
+    photosRepository.markUploaded(sqlite.db, photo.id, {
+      sentUpdatedAt: photo.updated_at,
+      syncedAt: '2026-06-03T10:00:00.000Z',
+      serverUpdatedAt: '2030-01-01T00:00:00.000Z',
+      server,
+    });
+
+    expect(photosRepository.byId(sqlite.db, photo.id)).toMatchObject({
+      is_public: false,
+      is_dirty: false,
+      synced_at: '2026-06-03T10:00:00.000Z',
+      updated_at: photo.updated_at,
     });
   });
 

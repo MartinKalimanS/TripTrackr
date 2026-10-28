@@ -65,14 +65,14 @@ export function SignOutWarning({ error, onStay, onSignOutAnyway }: SignOutWarnin
             tone="pending"
             testID="sign-out-warning-icon"
           />
-          <Text type="headline" className="shrink">
+          <Text variant="callout" className="shrink">
             {SIGN_OUT_COPY.title}
           </Text>
         </View>
-        <Text type="callout">
+        <Text variant="label">
           {headline} {reason}
         </Text>
-        <Text type="callout" tone="muted">
+        <Text variant="label" tone="muted">
           {SIGN_OUT_COPY.consequence}
         </Text>
         <View className="mt-1 gap-2">

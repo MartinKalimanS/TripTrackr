@@ -10,13 +10,14 @@
  * thinner ring. The state is the shape (filled, thick ring, thin ring) and never a colour: all of
  * it is the opaque on-photo ink, because text and marks over a picture are never an alpha white
  * (D5-10) and the picture under them carries the caption scrim. The abbreviation of each city
- * (`labels`, from the card model) sits under its dot in the eyebrow role, only while there are
- * five stops or fewer (more would collide) and never for a city this device has not cached.
+ * (`labels`, from the card model) sits under its dot (caption role at 12 / 14, semibold, tracked, as
+ * the pictures draw it), only while there are five stops or fewer (more would collide) and
+ * never for a city this device has not cached.
  *
  * It is decoration: the card's one accessible name already says the stops, so the strip is
  * hidden from assistive technology with everything in it. No stops, nothing drawn.
  */
-import { View, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { useColors } from '@/components/ui/theme-tokens';
@@ -27,6 +28,8 @@ export interface StopStripProps {
   dots: readonly StopDot[];
   /** One abbreviation per dot; an empty one draws nothing. */
   labels?: readonly string[];
+  /** The box: the card puts the 8 dp it sits below the dates here. */
+  style?: StyleProp<ViewStyle>;
 }
 
 /** The id of the strip; its parts are `-dot-<i>`, `-halo-<i>`, `-link-<i>`, `-label-<i>`. */
@@ -46,6 +49,17 @@ const HALO_ALPHA = { now: 0.28, done: 0.32 } as const;
 
 /** The halo box around a dot: 16 dp, so the line meets the dot's centre at 7 dp. */
 const HALO_BOX = DOT + 2 * HALO.done;
+
+/**
+ * The abbreviation (prototype `.strip .st`: 600, 12 / 14, tracking .06em, 2 dp under the 12 dp dot,
+ * which is 14 dp from the top of the 16 dp halo box, so the label is pulled up by the 2 dp).
+ */
+const LABEL: TextStyle = {
+  fontSize: 12,
+  lineHeight: 14,
+  letterSpacing: 0.72,
+  marginTop: -HALO.done,
+};
 
 function dotStyle(state: StopDot, ink: string): ViewStyle {
   return {
@@ -117,9 +131,11 @@ function Stop({ state, index, label, ink }: StopProps) {
       </View>
       {label ? (
         <Text
-          variant="eyebrow"
+          variant="caption"
+          capped
           tone="onPhoto"
           numberOfLines={1}
+          style={LABEL}
           testID={`${STRIP_ID}-label-${index}`}>
           {label}
         </Text>
@@ -128,7 +144,7 @@ function Stop({ state, index, label, ink }: StopProps) {
   );
 }
 
-export function StopStrip({ dots, labels }: StopStripProps) {
+export function StopStrip({ dots, labels, style }: StopStripProps) {
   const { onPhoto } = useColors(COLOR_KEYS);
   if (dots.length === 0) return null;
   const named = dots.length <= MAX_LABELLED ? labels : undefined;
@@ -137,7 +153,8 @@ export function StopStrip({ dots, labels }: StopStripProps) {
       testID={STRIP_ID}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      className="flex-row items-start">
+      className="flex-row items-start"
+      style={style}>
       {dots.map((state, index) => (
         <Stop
           key={index}

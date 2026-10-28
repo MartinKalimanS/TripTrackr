@@ -13,7 +13,7 @@
  * saved beyond this device (Constitution II), in words rather than a colour.
  */
 import type { PhotoWithPlace } from '@/db/repositories/photos';
-import { deviceLocale } from '@/lib/locale';
+import { deviceLocale, formatDistance } from '@/lib/locale';
 
 import { filingMismatchKm, placeLabel } from './city-match';
 import { UPLOAD_STATE_COPY } from './photo-copy';
@@ -81,11 +81,10 @@ export function filingMismatchLine(
   if (photo.city_id === null) return null;
   const km = filingMismatchKm(photo, { lat: photo.city_lat, lng: photo.city_lng });
   if (km === null) return null;
-  const distance = new Intl.NumberFormat(languageTag, {
-    maximumFractionDigits: 0,
-  }).format(km);
+  // Always kilometres (owner decision 2026-10-24), grouped in `languageTag`.
+  const { text: distance } = formatDistance(km, { ...deviceLocale(), languageTag });
   const city = photo.city_name ?? `City #${photo.city_id}`;
-  return `This photo was taken about ${distance} km from ${city}, so it may be filed under the wrong city. You can change it below.`;
+  return `This photo was taken about ${distance} from ${city}, so it may be filed under the wrong city. You can change it below.`;
 }
 
 const STATE_SENTENCE: Record<PhotoWithPlace['upload_state'], string> = {

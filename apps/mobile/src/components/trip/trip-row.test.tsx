@@ -9,6 +9,7 @@
  * ONE control, named as every trip card is: "title, status, N stops" (FR-075).
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import * as HeroUI from 'heroui-native';
 import { Dimensions, StyleSheet } from 'react-native';
 
 import { Radii } from '@/theme';
@@ -159,7 +160,8 @@ describe('<TripRow> status and pending marker (FR-034, FR-070)', () => {
 });
 
 describe('<TripRow> thumbnail (FR-033, FR-034)', () => {
-  test('is 64 dp, 16 dp round, clipped, with a hairline round it', async () => {
+  // Picture `core/trips` and `.trip-row .th`: no edge round the thumbnail (the 004 hairline went).
+  test('is 64 dp, 16 dp round and clipped, with no edge round it', async () => {
     await renderRow();
     const thumb = screen.getByTestId('trip-card-t1-thumb');
 
@@ -169,9 +171,7 @@ describe('<TripRow> thumbnail (FR-033, FR-034)', () => {
       borderRadius: Radii.lg,
       overflow: 'hidden',
     });
-    expect(classesOf(thumb)).toEqual(
-      expect.arrayContaining(['border', 'border-separator']),
-    );
+    expect(classesOf(thumb)).not.toContain('border');
   });
 
   test('a trip with no photograph shows the thumb form of the generated cover', async () => {
@@ -207,6 +207,34 @@ describe('<TripRow> at large text (FR-074)', () => {
     const row = flat(screen.getByTestId('trip-card-t1'));
     expect(row.minHeight).toBeGreaterThanOrEqual(72);
     expect(row.height).toBeUndefined();
+  });
+});
+
+describe('<TripRow> as the picture draws it (core/trips, .trip-row)', () => {
+  test('is a row 16 dp apart: thumbnail, text, chevron, with the flag line 6 dp apart', async () => {
+    await renderRow();
+    expect(flat(screen.getByTestId('trip-card-t1-meta-row')).gap).toBe(6);
+    expect(classesOf(screen.getByTestId('trip-card-t1-thumb').parent!)).toEqual(
+      expect.arrayContaining(['flex-row', 'items-center', 'gap-4']),
+    );
+  });
+
+  test('the chevron is the 20 dp subtle ink (ink-3), not the muted one', async () => {
+    const spy = jest.spyOn(HeroUI, 'useThemeColor');
+    await renderRow();
+    expect(spy).toHaveBeenCalledWith('subtle');
+    expect(screen.getByTestId('trip-card-t1-cue', hidden)).toBeTruthy();
+  });
+
+  test('at text scale 1.5 and 2 the thumbnail is 56 and the lines take two', async () => {
+    for (const scale of [1.5, 2]) {
+      mockFontScale(scale);
+      await render(<TripRow trip={tokyo} onPress={jest.fn()} />);
+      expect(flat(screen.getAllByTestId('trip-card-t1-thumb').at(-1)!)).toMatchObject({
+        width: 56,
+        height: 56,
+      });
+    }
   });
 });
 

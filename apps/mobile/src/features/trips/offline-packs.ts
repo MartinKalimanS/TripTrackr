@@ -189,6 +189,23 @@ export function tripCities(stops: readonly StopPlace[]): TripCities {
   return { placed, unplaced };
 }
 
+/**
+ * The screen's two lists: the maps still to do (not saved, downloading, failed) and the
+ * finished ones, each in the trip's order. A view of states the caller owns; it saves,
+ * removes and asks Mapbox nothing.
+ */
+export function splitByPack(
+  cities: readonly OfflineCity[],
+  stateOf: (city: OfflineCity) => OfflinePackState,
+): { todo: OfflineCity[]; saved: OfflineCity[] } {
+  const todo: OfflineCity[] = [];
+  const saved: OfflineCity[] = [];
+  for (const city of cities) {
+    (stateOf(city).kind === 'ready' ? saved : todo).push(city);
+  }
+  return { todo, saved };
+}
+
 function finiteOr(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }

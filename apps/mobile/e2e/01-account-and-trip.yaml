@@ -63,6 +63,7 @@ env:
     visible:
       id: 'tab-bar'
     timeout: 20000
+- runFlow: _helpers/dismiss-tour.yaml
 
 # --- Create a trip (Acceptance Scenario 1.3) --------------------------------
 - tapOn:

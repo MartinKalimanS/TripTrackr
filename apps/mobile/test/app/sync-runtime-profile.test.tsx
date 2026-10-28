@@ -26,6 +26,26 @@ const mockSignOut = {
   error: null as unknown,
 };
 
+// The You screen's passport has its own suites (components/profile, test/app/profile-screen):
+// here the store has no countries and the screen's own rows are what is pinned.
+const mockPassport = {
+  data: { trips: [], summaries: [], periods: ['all'] },
+  loading: false,
+  error: null as Error | null,
+};
+jest.mock('@/features/passport/use-passport', () => ({
+  usePassport: () => mockPassport,
+}));
+
+// The stamps page draws baked stamps through expo-image, whose real module needs the
+// `experienceUrl` the expo-constants stand-in of this suite does not have.
+jest.mock('expo-image', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+  const Host = View as unknown as React.ComponentType<Record<string, unknown>>;
+  return { Image: (props: Record<string, unknown>) => React.createElement(Host, props) };
+});
+
 jest.mock('@/features/auth/use-sign-out', () => ({
   ...jest.requireActual('@/features/auth/use-sign-out'),
   useSignOut: () => mockSignOut,

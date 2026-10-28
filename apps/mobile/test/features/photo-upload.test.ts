@@ -190,6 +190,44 @@ describe('uploadPhoto — the happy path (FR-041)', () => {
     expect(Sentry.captureException).not.toHaveBeenCalled();
   });
 
+  test('a PUBLIC photo registers without any visibility and stays a change to push (spec 006 FR-012)', async () => {
+    const photo = captured({ is_public: true });
+    const target = uploadTarget();
+    const registeredAt = '2099-01-01T00:00:00.500Z';
+    apiFetch
+      .mockResolvedValueOnce(target)
+      .mockResolvedValueOnce(serverPhoto(photo, { updated_at: registeredAt }));
+
+    await expect(uploadPhoto(sqlite.db, photo.id)).resolves.toBe('uploaded');
+
+    const [, , registerOptions] = apiFetch.mock.calls[1]!;
+    expect(Object.keys(registerOptions.body)).not.toContain('is_public');
+    expect(RegisterPhotoRequest.safeParse(registerOptions.body).success).toBe(true);
+    expect(row(photo.id)).toMatchObject({
+      upload_state: 'uploaded',
+      is_public: true,
+      is_dirty: true,
+      updated_at: '2099-01-01T00:00:00.501Z',
+    });
+  });
+
+  test('a PRIVATE photo is clean once registered, and keeps the stamp it was captured with', async () => {
+    const photo = captured({ is_public: false });
+    apiFetch
+      .mockResolvedValueOnce(uploadTarget())
+      .mockResolvedValueOnce(
+        serverPhoto(photo, { updated_at: '2099-01-01T00:00:00.500Z' }),
+      );
+
+    await expect(uploadPhoto(sqlite.db, photo.id)).resolves.toBe('uploaded');
+
+    expect(row(photo.id)).toMatchObject({
+      is_public: false,
+      is_dirty: false,
+      updated_at: photo.updated_at,
+    });
+  });
+
   test('a photo with no metadata registers nulls, both coordinates or neither', async () => {
     const photo = captured({
       city_id: null,

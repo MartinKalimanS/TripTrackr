@@ -42,13 +42,21 @@ appId: com.triptrackr.app
     id: 'tab-profile'
 - assertVisible:
     id: 'profile-screen'
+# The You screen is longer now (the passport and the stamps come before the groups): scroll to it.
+- scrollUntilVisible:
+    element:
+      id: 'profile-sign-out'
+    direction: DOWN
+    centerElement: true
 - tapOn:
     id: 'profile-sign-out'
 # The guard tries to push for up to 20 s before it concludes.
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: 'sign-out-warning'
+    direction: DOWN
     timeout: 40000
+    centerElement: true
 - assertVisible: 'Not everything is backed up yet'
 - assertVisible: '1 change on this device hasn.t reached your account yet\. You.re offline right now, so they couldn.t be sent\.'
 - assertVisible: 'If you sign out now, they stay on this device.*'
@@ -61,18 +69,29 @@ appId: com.triptrackr.app
     id: 'sign-out-warning-stay'
 - assertNotVisible:
     id: 'sign-out-warning'
+- scrollUntilVisible:
+    element:
+      id: 'profile-email'
+    direction: UP
 - assertVisible:
     id: 'profile-email'
 - assertNotVisible:
     id: 'welcome-screen'
 
 # "Sign out anyway": signed out, the change kept on the device.
+- scrollUntilVisible:
+    element:
+      id: 'profile-sign-out'
+    direction: DOWN
+    centerElement: true
 - tapOn:
     id: 'profile-sign-out'
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: 'sign-out-warning'
+    direction: DOWN
     timeout: 40000
+    centerElement: true
 - tapOn:
     id: 'sign-out-warning-anyway'
 - extendedWaitUntil:
@@ -116,6 +135,11 @@ appId: com.triptrackr.app
 - tapOn: 'Back'
 - tapOn:
     id: 'tab-profile'
+- scrollUntilVisible:
+    element:
+      id: 'profile-sign-out'
+    direction: DOWN
+    centerElement: true
 - tapOn:
     id: 'profile-sign-out'
 # No warning panel: the push succeeded, so the sign-out simply completes.

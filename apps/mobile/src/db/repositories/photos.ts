@@ -22,10 +22,13 @@
  * documents directory (features/photos/photo-files.ts), because the absolute
  * container path changes across iOS app updates.
  *
- * Visibility posture: owner + explicit public (data-model.md §5), and every
- * row written here is private — `is_public` is always false, and nothing in
- * this story can change it (per-photo visibility is User Story 7). Screening
- * state starts `pending` and is only ever copied from the server (FR-056).
+ * Visibility posture: owner + explicit public (data-model.md §5). A row is
+ * private unless the capture was given the traveller's explicit choice of
+ * public (`is_public`, spec 006 FR-009: asked once per pick, per photo, and
+ * no answer is private); nothing else writes it, and changing it afterwards
+ * is User Story 7. A public photo is still unreachable to everyone but its
+ * owner: screening state starts `pending` and is only ever copied from the
+ * server (FR-056), and the public-read policy needs `approved`.
  *
  * `coverCandidatesQuery` (feature 004 T429; FR-012; research D4-09) adds one
  * read and no write. Posture: private. It reads the signed-in traveller's own
@@ -53,6 +56,8 @@ export interface CreatePhotoInput {
   exif_lng: number | null;
   /** The staged JPEG, relative to the documents directory. */
   local_file_uri: string;
+  /** The traveller's explicit choice at capture (spec 006); absent means private (FR-052). */
+  is_public?: boolean;
 }
 
 /** A photo with its filed city from the geography cache — nulls when never cached. */
@@ -75,6 +80,13 @@ export interface SyncReceipt {
   sentUpdatedAt: string;
   syncedAt: string;
   server?: ServerPhotoState;
+}
+
+/** What a registration answers with: the server's state, and the stamp it gave the row. */
+export interface UploadReceipt extends SyncReceipt {
+  server: ServerPhotoState;
+  /** The registered photo's `updated_at` on the server's clock, when the answer carried it. */
+  serverUpdatedAt?: string;
 }
 
 const live = (id: string) => and(eq(photos.id, id), isNull(photos.deleted_at));
@@ -176,7 +188,7 @@ function create(db: AppDatabase, input: CreatePhotoInput): PhotoRow {
     .insert(photos)
     .values({
       ...input,
-      is_public: false,
+      is_public: input.is_public ?? false,
       upload_state: 'pending',
       moderation_state: 'pending',
       has_thumbnail: false,
@@ -224,8 +236,40 @@ function markSynced(db: AppDatabase, id: string, receipt: SyncReceipt): void {
     .run();
 }
 
-/** The object store confirmed the bytes and the server registered them (FR-041). */
-function markUploaded(db: AppDatabase, id: string, receipt: Required<SyncReceipt>): void {
+/** Milliseconds since the epoch, reading a stamp with microseconds as the milliseconds it is. */
+function instantOf(iso: string): number {
+  return Date.parse(iso.replace(/(.d{3})d+/, '$1'));
+}
+
+/**
+ * The stamp of a change made once the server has registered the photo: the device clock,
+ * unless the server's own stamp is as late or later, then one millisecond after it. The
+ * server applies an incoming record only when it is strictly newer than the stored one,
+ * and a registration stamps the row with the server's clock.
+ */
+function afterRegistration(
+  syncedAt: string,
+  serverUpdatedAt: string | undefined,
+): string {
+  const device = instantOf(syncedAt);
+  const server = serverUpdatedAt === undefined ? Number.NaN : instantOf(serverUpdatedAt);
+  return new Date(
+    Number.isNaN(server) ? device : Math.max(device, server + 1),
+  ).toISOString();
+}
+
+/**
+ * The object store confirmed the bytes and the server registered them (FR-041).
+ *
+ * A private row is then clean: registration carried everything it holds. A PUBLIC row is
+ * not: `RegisterPhotoRequest` has no visibility, the registration made the photo private
+ * on the server, and the traveller's choice is a change still to push (spec 006 FR-012).
+ * It stays dirty with a new stamp, whatever else happened to it in flight, and travels in
+ * the next push cycle like any local edit; the push handler accepts `is_public` for a
+ * registered photo at any time, and the photo stays unreachable until screening approves
+ * it (FR-056).
+ */
+function markUploaded(db: AppDatabase, id: string, receipt: UploadReceipt): void {
   db.transaction((tx) => {
     tx.update(photos)
       .set({ upload_state: 'uploaded', ...receipt.server })
@@ -233,7 +277,20 @@ function markUploaded(db: AppDatabase, id: string, receipt: Required<SyncReceipt
       .run();
     tx.update(photos)
       .set({ is_dirty: false, synced_at: receipt.syncedAt })
-      .where(and(live(id), eq(photos.updated_at, receipt.sentUpdatedAt)))
+      .where(
+        and(
+          live(id),
+          eq(photos.is_public, false),
+          eq(photos.updated_at, receipt.sentUpdatedAt),
+        ),
+      )
+      .run();
+    tx.update(photos)
+      .set({
+        is_dirty: true,
+        updated_at: afterRegistration(receipt.syncedAt, receipt.serverUpdatedAt),
+      })
+      .where(and(live(id), eq(photos.is_public, true)))
       .run();
   });
 }

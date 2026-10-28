@@ -1,89 +1,70 @@
 /**
- * The expenses list header: "Add expense", the summary toggle, the toggled summary and the
- * write error — 004 T441 (FR-005, FR-007, FR-008, FR-014, FR-030).
+ * The spending screen's header - tasks.md T086, 004 T441, restyled by 005 T550 (FR-044,
+ * FR-047, FR-055; UI-SPEC 9.2; picture `more/expenses`): the shared `AreaHeader` (Back, the title
+ * "Spending" with the trip's name and the count under it, the "Only you" chip and the pictured
+ * more control), then the write error.
  *
- * The title and Back are the native header's (`app/trip/[id]/_layout.tsx`), so this draws
- * neither; the old `expenses-title` line ("Spending · <trip>") went with them. What stays
- * keeps its reading order (the action, the toggle, the summary, the error) and its ids and
- * names. "Add expense" is the screen's one primary control (FR-005); the summary toggle is
- * a quiet text-weight control, a word and a chevron in the accent, announced as before:
- * named for what it will do ("Hide summary" / "Show summary") and `expanded` or not (the
- * `Button` adapter announces no `expanded` state, so it is a `Tappable`). When the list is
- * empty the empty state offers "Add expense" again as a secondary under another id
- * (`expenses-empty-add`), as the Trips screen does.
+ * The navigator's header is hidden for this route (`trip/[id]/_layout.tsx`): the screen draws the
+ * title and Back itself, as the pictures do. `expenses-title` is the title; the line under it
+ * names the trip and counts the expenses (`expenses-subtitle`) and has no count while the store
+ * has not answered or could not be read (a count there would be invented). The title is the
+ * app's word, "Spending" (the picture's "Expenses" is the prototype's); the chip is on because
+ * expenses are private by construction (they have no visibility flag: Constitution I).
+ *
+ * "More" is pictured but has nothing behind it, so it is a coming-soon control (owner answer
+ * Q-11): `coming-soon-expenses-more`, one toast and nothing else. "Add expense" is the floating
+ * button (`AreaFab`, in the screen), `expenses-add`. The summary's fold-away toggle and the
+ * summary itself scroll with the list (`spending-summary.tsx`).
  */
-import type { ExpenseSummary } from '@triptrackr/contracts';
 import { View } from 'react-native';
 
-import { SpendingSummary } from '@/components/trip/spending-summary';
-import { Button } from '@/components/ui/button';
-import { Icon, type IconName } from '@/components/ui/icon';
+import { AreaHeader, areaMargin } from '@/components/ui/area-header';
+import { ComingSoonButton } from '@/components/ui/coming-soon-button';
 import { InlineError } from '@/components/ui/inline-error';
-import { Tappable } from '@/components/ui/tappable';
-import { Text } from '@/components/ui/text';
+import { Space } from '@/theme';
 
 export type ExpensesHeaderProps = {
-  summary: ExpenseSummary;
-  summaryLoading: boolean;
-  ratesAsOf: string | null;
-  showSummary: boolean;
+  tripTitle: string | null;
+  /** How many expenses the trip has; null while the store has not answered. */
+  count: number | null;
+  /** A failed local write (a delete), in words. */
   writeError: string | null;
-  onAdd: () => void;
-  onToggleSummary: () => void;
 };
 
-const ADD: IconName = 'plus';
-const COLLAPSE: IconName = 'chevron-up';
-const EXPAND: IconName = 'chevron-down';
-
-function SummaryToggle({
-  showSummary,
-  onToggle,
-}: {
-  showSummary: boolean;
-  onToggle: () => void;
-}) {
+/** "Portugal Road Trip · 3 expenses"; either half alone when the other is unknown. */
+export function expensesSubtitle(tripTitle: string | null, count: number | null) {
+  const counted =
+    count === null ? null : `${count} ${count === 1 ? 'expense' : 'expenses'}`;
   return (
-    <Tappable
-      testID="expenses-toggle-summary"
-      accessibilityLabel={showSummary ? 'Hide summary' : 'Show summary'}
-      accessibilityState={{ expanded: showSummary }}
-      className="flex-row items-center gap-1 px-3"
-      onPress={onToggle}>
-      <Text tone="accent">Summary</Text>
-      <Icon name={showSummary ? COLLAPSE : EXPAND} size={16} tone="accent" />
-    </Tappable>
+    [tripTitle, counted].filter((part): part is string => !!part).join(' · ') || null
   );
 }
 
-export function ExpensesHeader({
-  summary,
-  summaryLoading,
-  ratesAsOf,
-  showSummary,
-  writeError,
-  onAdd,
-  onToggleSummary,
-}: ExpensesHeaderProps) {
+export function ExpensesHeader({ tripTitle, count, writeError }: ExpensesHeaderProps) {
   return (
-    <View className="gap-3">
-      <View className="flex-row flex-wrap items-center gap-2">
-        <Button
-          testID="expenses-add"
-          variant="primary"
-          icon={ADD}
-          accessibilityLabel="Add expense"
-          onPress={onAdd}>
-          Add expense
-        </Button>
-        <SummaryToggle showSummary={showSummary} onToggle={onToggleSummary} />
-      </View>
-
-      {showSummary && !summaryLoading ? (
-        <SpendingSummary summary={summary} ratesAsOf={ratesAsOf} />
+    <View>
+      <AreaHeader
+        testID="expenses-header"
+        title="Spending"
+        subtitle={expensesSubtitle(tripTitle, count)}
+        titleTestID="expenses-title"
+        subtitleTestID="expenses-subtitle"
+        privacy
+        actions={
+          <ComingSoonButton
+            name="expenses-more"
+            label="More"
+            thing="More spending actions"
+            icon="ellipsis"
+            variant="tonal"
+          />
+        }
+      />
+      {writeError ? (
+        <View style={{ paddingHorizontal: areaMargin(), paddingTop: Space[2] }}>
+          <InlineError testID="expenses-write-error" message={writeError} />
+        </View>
       ) : null}
-
-      <InlineError testID="expenses-write-error" message={writeError} />
     </View>
   );
 }

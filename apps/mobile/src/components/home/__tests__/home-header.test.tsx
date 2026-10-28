@@ -258,18 +258,10 @@ describe('<HomeHeader> - as the pictures place it', () => {
     expect(screen.getAllByTestId('sync-banner')).toHaveLength(1);
   });
 
-  test('welcome (no trips): "0 of 195 countries" over "Welcome, Marta", and no search disc', async () => {
-    await renderHeader({ welcome: { countries: 0 } });
-    expect(screen.getByTestId('home-greeting')).toHaveTextContent('Welcome, Marta');
-    expect(screen.getByTestId('home-greeting-date')).toHaveTextContent(
-      '0 of 195 countries',
-    );
-    expect(screen.queryByTestId('coming-soon-search')).toBeNull();
-  });
-
-  test('welcome still shows what waits to sync: the chip is not dropped', async () => {
-    mockState.current = { kind: 'waiting', count: 2 };
-    await renderHeader({ welcome: { countries: 0 } });
-    expect(screen.getAllByTestId('sync-chip')).toHaveLength(1);
+  test('an empty Home greets like any other: the date over "Hello, Marta" and the search disc (feature 007)', async () => {
+    await renderHeader({});
+    expect(screen.getByTestId('home-greeting')).toHaveTextContent('Hello, Marta');
+    expect(screen.getByTestId('home-greeting-date')).not.toHaveTextContent('195');
+    expect(screen.getByTestId('coming-soon-search')).toBeTruthy();
   });
 });

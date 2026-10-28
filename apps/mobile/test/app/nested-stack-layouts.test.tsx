@@ -8,6 +8,7 @@
  * hands the navigator, per platform, not the navigator itself (which needs a router).
  */
 import { render } from '@testing-library/react-native';
+import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { Platform } from 'react-native';
@@ -86,10 +87,24 @@ describe('<TripsLayout> - a large title on iOS, a standard header on Android', (
     await render(<TripsLayout />);
     expect(screenOptions().headerShown).not.toBe(false);
   });
+
+  // trips-toast.png: a toast of this stack (the header's Search too) stands 8 dp above the zone
+  // the pill takes, so the layout owns the toast zone for the header and every screen below.
+  test('wraps the stack in the toast zone of the pill (the header and the screen share it)', async () => {
+    await render(
+      <BottomTabBarHeightContext.Provider value={88}>
+        <TripsLayout />
+      </BottomTabBarHeightContext.Provider>,
+    );
+    expect(Stack).toHaveBeenCalled();
+    expect(readFileSync(path.join(APP, 'trips', '_layout.tsx'), 'utf8')).toMatch(
+      /<ToastZone bottom=\{tabZone\}>/,
+    );
+  });
 });
 
-describe('<ProfileLayout> - a large title on iOS, a standard header on Android (T448)', () => {
-  test('on iOS: a large title named You, accent controls, flat header, the canvas behind', async () => {
+describe('<ProfileLayout> - the identity block on iOS, a standard header on Android (T448, F13)', () => {
+  test('on iOS: the options still name the screen You (the header itself is hidden), accent controls, flat, the canvas behind', async () => {
     const os = jest.replaceProperty(Platform, 'OS', 'ios');
     await render(<ProfileLayout />);
     os.restore();
@@ -118,8 +133,24 @@ describe('<ProfileLayout> - a large title on iOS, a standard header on Android (
     expect(flat(options.headerStyle).backgroundColor).toEqual(expect.any(String));
   });
 
-  test('shows the header (the tab bar has none of its own): the screen no longer lays out a title', async () => {
+  test('iOS hides the header: the identity block replaces the large title (UI-SPEC section 8)', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'ios');
     await render(<ProfileLayout />);
-    expect(screenOptions().headerShown).not.toBe(false);
+    os.restore();
+    expect(screenOptions().headerShown).toBe(false);
+    expect(screenOptions().title).toBe('You');
+  });
+
+  test('Android shows its standard "You" header', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    await render(<ProfileLayout />);
+    os.restore();
+    expect(screenOptions().headerShown).toBe(true);
+  });
+
+  test('wraps the stack in the toast zone of the pill (the coming-soon toasts of the screen)', () => {
+    expect(readFileSync(path.join(APP, 'profile', '_layout.tsx'), 'utf8')).toMatch(
+      /<ToastZone bottom={tabZone}>/,
+    );
   });
 });

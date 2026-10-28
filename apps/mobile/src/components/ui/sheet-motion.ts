@@ -5,7 +5,8 @@
  *
  * - `announce(detent)`: the traveller moved the sheet (a release, a tap, an accessibility
  *   action, the back button); the parent follows by passing the same `detent` back.
- * - `finish(detent)`: the sheet came to rest. This is the one settle: the selection haptic,
+ * - `finish(detent)`: the sheet came to rest. This is the one settle: the selection haptic
+ *   (only when the detent CHANGED: a drag that springs back to where it began is silent, T558),
  *   the `settled` state the body's scroller reads, and `onSettle`, which the Home uses to
  *   re-fit the camera. A spring that is taken over by a finger, or by another spring, never
  *   reaches it, because Reanimated calls an interrupted animation back with `finished: false`.
@@ -79,12 +80,16 @@ function useReports(input: SheetMotionInput) {
   // The detent the sheet is at or heading for: what a parent's change is compared with.
   const headingRef = useRef<SheetDetent>(input.detent);
   const [settled, setSettled] = useState<SheetDetent>(input.detent);
+  // The detent the sheet last rested on: the haptic is for a change, not for every settle.
+  const restedRef = useRef<SheetDetent>(input.detent);
   const latest = useLatest({ ...input, haptics });
 
   const finish = useCallback(
     (next: SheetDetent) => {
+      const changed = restedRef.current !== next;
+      restedRef.current = next;
       setSettled(next);
-      latest.current.haptics.sheetSnap();
+      if (changed) latest.current.haptics.sheetSnap();
       latest.current.onSettle?.(next);
     },
     [latest],

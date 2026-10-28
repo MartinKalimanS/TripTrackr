@@ -2,7 +2,7 @@
  * T521 - the reflow threshold of `screens.md` (the prototype's `data-bigtext`): at a font
  * scale of 1.15 and above the stat tiles become rows and the area pills two columns.
  */
-import { REFLOW_FONT_SCALE, areaColumns, isLargeText } from './reflow';
+import { REFLOW_FONT_SCALE, areaColumns, isLargeText, metaLines } from './reflow';
 
 describe('reflow threshold', () => {
   test('is 1.15 times the default text size', () => {
@@ -26,4 +26,19 @@ describe('reflow threshold', () => {
     expect(areaColumns(1.15)).toBe(2);
     expect(areaColumns(2)).toBe(2);
   });
+});
+
+describe('one-line text takes two lines at large text (the prototype .clamp-1 rule)', () => {
+  test.each([
+    [1, 1],
+    [1.14, 1],
+    [1.15, 2],
+    [1.5, 2],
+    [2, 2],
+  ])(
+    'at a font scale of %s a one-line title or meta line has %s line(s)',
+    (scale, lines) => {
+      expect(metaLines(scale)).toBe(lines);
+    },
+  );
 });

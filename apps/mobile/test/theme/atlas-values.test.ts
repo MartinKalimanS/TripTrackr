@@ -7,11 +7,10 @@
  * beside the code included, exactly as `no-neumorphism.test.ts` searches it.
  *
  * This guard was written to be red until T564 retired Atlas. T514 re-pointed the palette, the
- * globe colours and the comments in one change, so the search is already empty and the guard
- * is a standing regression test instead: a new literal, in a component or a comment, fails it.
- * The Atlas-only TREATMENTS (the 004 shape tables, the flat tab strip) still exist until
- * their screens are restyled; their guard is in `no-neumorphism.test.ts`, which is red-able on
- * demand with `ATLAS_RETIREMENT=1` and a ratchet otherwise.
+ * globe colours and the comments in one change, so the search was already empty and T564
+ * (which found no Atlas value left in `src/`) leaves it as a standing regression test: a new
+ * literal, in a component or a comment, fails it. The Atlas-only TREATMENTS are guarded in
+ * `no-neumorphism.test.ts` (a plain zero since T564 retired them).
  */
 import path from 'node:path';
 

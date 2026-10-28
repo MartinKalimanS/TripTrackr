@@ -235,8 +235,8 @@ describe('globeInvitation — what floats over a globe with nothing to draw (fea
   const globeOf = (...rows: GlobeStopRow[]) =>
     toGlobeTrips([trip('a', 'Alps'), trip('b', 'Baltic')], rows, TODAY);
 
-  test('no trips: invite the first one', () => {
-    expect(globeInvitation([])).toEqual({ reason: 'no-trips' });
+  test('no trips: no card, the sheet and the Plan a trip button are the invitation (feature 007)', () => {
+    expect(globeInvitation([])).toBeNull();
   });
 
   test('exactly one trip without a placed stop: invite its first stop and name the trip', () => {

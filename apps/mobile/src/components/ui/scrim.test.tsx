@@ -19,7 +19,14 @@ import { Colors } from '@/constants/theme';
 import type { AppearanceContext } from '@/hooks/use-appearance';
 import { ContrastFloor, PaletteNames, Palettes, type PaletteName } from '@/theme';
 import { blend, contrastRatio } from '@/theme/contrast';
-import { Passport, Sky, colourAt, scrimSpec, type GradientStop } from '@/theme/scrim';
+import {
+  CoverGlow,
+  Passport,
+  Sky,
+  colourAt,
+  scrimSpec,
+  type GradientStop,
+} from '@/theme/scrim';
 
 import { WHITE_PHOTO } from '../../../test/theme/palette-gate-support';
 
@@ -273,14 +280,17 @@ describe('Scrim - a generated cover is a gradient between two palette stops', ()
     },
   );
 
-  test('carries the faint amber corner of the passport as a layer above the gradient', async () => {
+  test('carries the amber corner of a cover (CoverGlow, not the passport glow) above the gradient', async () => {
     await render(<Scrim kind="cover" palette={0} />);
     const layers = layersOf('scrim-cover');
     expect(layers.map((layer) => layer.type)).toEqual([
       'radial-gradient',
       'linear-gradient',
     ]);
-    expect(stopsOf(layers[0])[0]).toMatchObject({ at: 0, rgb: Passport.glow.colour });
+    expect(stopsOf(layers[0])[0]).toMatchObject({ at: 0, rgb: CoverGlow.colour });
+    expect(stopsOf(layers[0])[0].alpha).toBeCloseTo(CoverGlow.alpha, 2);
+    expect(layers[0].size).toEqual({ x: '85%', y: '95%' });
+    expect(layers[0].position).toEqual({ left: '100%', top: '0%' });
   });
 
   test('takes the stops of the theme the traveller is in', async () => {
@@ -292,6 +302,59 @@ describe('Scrim - a generated cover is a gradient between two palette stops', ()
       Palettes['light-contrast'].cover2End,
     ]);
   });
+});
+
+describe('Scrim - the passport card (F13; C5-10 Passport)', () => {
+  test.each(PaletteNames)(
+    'is the navy cover of the card, whatever the theme (%s)',
+    async (name) => {
+      setTheme(name);
+      await render(<Scrim kind="passport" />);
+      const layers = layersOf('scrim-passport');
+      expect(layers.map((layer) => layer.type)).toEqual([
+        'radial-gradient',
+        'linear-gradient',
+      ]);
+      const linear = layers[1];
+      expect(linear.direction).toBe(`${Passport.angle}deg`);
+      expect(stopsOf(linear).map((stop) => stop.rgb)).toEqual([...Passport.stops]);
+    },
+  );
+
+  test('carries the faint amber glow of the passport in its top right corner', async () => {
+    await render(<Scrim kind="passport" />);
+    const [glow] = layersOf('scrim-passport');
+    expect(stopsOf(glow)[0]).toMatchObject({ at: 0, rgb: Passport.glow.colour });
+    expect(stopsOf(glow)[0].alpha).toBeCloseTo(Passport.glow.alpha, 2);
+    expect(glow.size).toEqual({ x: '70%', y: '90%' });
+    expect(glow.position).toEqual({ left: '100%', top: '0%' });
+  });
+
+  test('fills its parent, takes no touch and is hidden from assistive technology', async () => {
+    await render(<Scrim kind="passport" />);
+    expect(flat('scrim-passport')).toMatchObject({ position: 'absolute' });
+    expect(node('scrim-passport').props.pointerEvents).toBe('none');
+    expect(node('scrim-passport').props.importantForAccessibility).toBe(
+      'no-hide-descendants',
+    );
+  });
+});
+
+describe('Scrim - the recap tile (F13)', () => {
+  test.each(PaletteNames)(
+    'is the coral to amber gradient at 135 degrees (%s)',
+    async (name) => {
+      setTheme(name);
+      await render(<Scrim kind="recap" />);
+      const [linear] = layersOf('scrim-recap');
+      expect(linear.direction).toBe(`${Passport.angle}deg`);
+      expect(stopsOf(linear).map((stop) => stop.rgb)).toEqual([
+        Palettes[name].accent,
+        Palettes[name].amber,
+      ]);
+      expect(node('scrim-recap').props.pointerEvents).toBe('none');
+    },
+  );
 });
 
 describe('Scrim - the fade under the tab pill (T530, FR-022)', () => {
@@ -477,7 +540,16 @@ describe.each(PaletteNames)('ink and muted on the sky - %s', (name) => {
 
 describe('Scrim - the kinds are exactly those of the contract and the cover', () => {
   test('the type lists them', () => {
-    const kinds: ScrimKind[] = ['top', 'bottom', 'caption', 'sky', 'cover', 'fade'];
-    expect(kinds).toHaveLength(6);
+    const kinds: ScrimKind[] = [
+      'top',
+      'bottom',
+      'caption',
+      'sky',
+      'cover',
+      'fade',
+      'passport',
+      'recap',
+    ];
+    expect(kinds).toHaveLength(8);
   });
 });

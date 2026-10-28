@@ -21,6 +21,7 @@ import {
   renderHome,
   resetHome,
   sheetDetent,
+  trip,
   ui,
   withLiveTrip,
   withPastTrip,
@@ -297,7 +298,12 @@ describe('Touches: the globe stays interactive around the cards (003 FR-003)', (
       unknown
     >;
   const states = {
-    invitation: ['globe-empty-state', () => undefined],
+    invitation: [
+      'globe-empty-state',
+      () => {
+        globe.data = { ...globe.data, trips: [trip('lonely', 'planning', false)] };
+      },
+    ],
     notice: [
       'globe-notice',
       () => {
@@ -335,7 +341,6 @@ describe('The Home is built on the adapter layer (research D4-02)', () => {
     '@/components/home/home-header',
     '@/components/home/home-sheet',
     '@/components/home/home-states',
-    '@/components/home/invitation-card',
     '@/components/home/use-home-camera',
   ])(
     '%s imports neither the kit nor uniwind, and none of the retired primitives',

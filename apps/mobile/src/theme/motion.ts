@@ -9,8 +9,8 @@
  * the traveller asks for reduced motion every duration is zero, a press loses its scale,
  * a spring becomes a jump, and the destination state is still shown, instantly.
  *
- * `Motion` keeps the 004 keys (`pressMs`, `transitionMs`, `listEntranceMs`) with their
- * values and adds the Sunrise ones; the springs are in the unit mass of Reanimated's
+ * `Motion` keeps the 004 keys (`pressMs`, `transitionMs`) with their values and adds the
+ * Sunrise ones; the springs are in the unit mass of Reanimated's
  * `withSpring`.
  *
  * Pure data and pure helpers.
@@ -29,8 +29,6 @@ export const Motion = deepFreeze({
   pressScale: 0.97,
   /** An in-place change, at most 200 ms: movement and fade only. */
   transitionMs: 200,
-  /** 004 list entrance, kept until Phase 10. */
-  listEntranceMs: 150,
   /** Sheet and pill selection: ratio .9, settles within 300 ms. */
   sheetSpring: { stiffness: 700, damping: 47.6 },
   /** The camera follows with `easeTo`, once per settle. */
@@ -66,7 +64,6 @@ export type MotionName = keyof typeof Motion;
 export const MotionDurationNames = deepFreeze([
   'pressMs',
   'transitionMs',
-  'listEntranceMs',
   'cameraFollowMs',
   'pinStaggerMs',
   'countUpMs',

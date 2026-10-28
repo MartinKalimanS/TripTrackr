@@ -54,7 +54,7 @@ describe('contrastRatio', () => {
   });
 
   test('stays within the range [1, 21] across the token ramp', () => {
-    const tones = ['#E3E8EF', '#23272F', '#151A21', '#EDF0F5', '#79838F', '#2456C7'];
+    const tones = ['#E3E8EF', '#23272F', '#151A21', '#EDF0F5', '#79838F', '#E04A33'];
     for (const a of tones) {
       for (const b of tones) {
         const ratio = contrastRatio(a, b);
@@ -93,8 +93,8 @@ describe('contrastRatio', () => {
  */
 describe('blend — contract C4-2', () => {
   test('alpha 0 returns the background and alpha 1 the foreground', () => {
-    expect(blend('#2456C7', '#FEFDFB', 0)).toBe('#FEFDFB');
-    expect(blend('#2456C7', '#FEFDFB', 1)).toBe('#2456C7');
+    expect(blend('#E04A33', '#FFFFFF', 0)).toBe('#FFFFFF');
+    expect(blend('#E04A33', '#FFFFFF', 1)).toBe('#E04A33');
   });
 
   test('composites each sRGB channel linearly and rounds to the nearest integer', () => {
@@ -114,11 +114,11 @@ describe('blend — contract C4-2', () => {
 
   test('is symmetric under swapping the operands and mirroring alpha', () => {
     // Values chosen so no channel lands on a .5 rounding boundary.
-    expect(blend('#2456C7', '#FEFDFB', 0.15)).toBe(blend('#FEFDFB', '#2456C7', 0.85));
+    expect(blend('#E04A33', '#FFFFFF', 0.15)).toBe(blend('#FFFFFF', '#E04A33', 0.85));
   });
 
   test('is pure: the same inputs give the same output', () => {
-    expect(blend('#7FA8FF', '#141B25', 0.15)).toBe(blend('#7FA8FF', '#141B25', 0.15));
+    expect(blend('#FF8266', '#101318', 0.15)).toBe(blend('#FF8266', '#101318', 0.15));
   });
 
   test('reproduces the soft chip ratios measured in research D4-01', () => {
