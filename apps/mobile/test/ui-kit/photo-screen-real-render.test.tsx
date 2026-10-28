@@ -30,6 +30,12 @@ jest.mock('heroui-native', () => jest.requireActual('heroui-native'));
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ id: 'trip-42' }),
+  useRouter: () => ({
+    back: jest.fn(),
+    canGoBack: () => true,
+    replace: jest.fn(),
+    push: jest.fn(),
+  }),
 }));
 jest.mock('expo-file-system', () =>
   jest.requireActual('../features/photo-fakes').createFileSystemMock(),
@@ -76,11 +82,6 @@ beforeAll(() => {
 });
 afterAll(() => jest.restoreAllMocks());
 
-const classesOf = (node: { props: { className?: unknown } }) =>
-  String(node.props.className ?? '')
-    .split(/\s+/)
-    .filter(Boolean);
-
 function renderScreen() {
   return render(
     <HeroUINativeProvider config={CONFIG}>
@@ -96,21 +97,21 @@ describe('the photo gallery over the real kit', () => {
     mockPhotos.data = [pending, failed, uploaded];
     await renderScreen();
 
-    expect(screen.getByTestId('photos-title')).toHaveTextContent('Italy, spring 2026');
+    expect(screen.getByTestId('photos-title')).toHaveTextContent('Photos');
+    expect(screen.getByTestId('photos-subtitle')).toHaveTextContent(
+      'Italy, spring 2026 · 3 photos',
+    );
     expect(screen.getByTestId(`photo-thumbnail-${uploaded.id}`)).toBeTruthy();
-    const waiting = within(screen.getByTestId(`photo-tile-${pending.id}`)).getByLabelText(
-      'Waiting to upload',
-    );
-    expect(classesOf(waiting)).toEqual(
-      expect.arrayContaining(['border-dashed', 'border-pending']),
-    );
     expect(
-      classesOf(
-        within(screen.getByTestId(`photo-tile-${failed.id}`)).getByLabelText(
-          'Upload failed',
-        ),
+      within(screen.getByTestId(`photo-tile-${pending.id}`)).getByTestId(
+        'photo-status-icon',
+        { includeHiddenElements: true },
       ),
-    ).toContain('border-danger');
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId(`photo-tile-${failed.id}`)).getByText('Retry'),
+    ).toBeTruthy();
+    expect(screen.getByTestId('photos-upload-summary')).toBeTruthy();
   });
 
   test('"Add photos" is a button the kit names and presses, busy while a capture runs', async () => {

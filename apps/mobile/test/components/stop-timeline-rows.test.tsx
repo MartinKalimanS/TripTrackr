@@ -44,7 +44,7 @@ describe('<TransitRow>', () => {
     expect(screen.getByText('1,235 km', hidden)).toBeTruthy();
   });
 
-  test("follows the device's measurement system: miles for a region that measures in them", async () => {
+  test('stays in kilometres on a device that measures in miles', async () => {
     jest.mocked(Localization.getLocales).mockReturnValue([
       {
         languageTag: 'en-US',
@@ -60,7 +60,7 @@ describe('<TransitRow>', () => {
       },
     ] as never);
     await render(<TransitRow stopId="s2" km={160.9} />);
-    expect(screen.getByText('100 mi', hidden)).toBeTruthy();
+    expect(screen.getByText('161 km', hidden)).toBeTruthy();
   });
 
   test('is omitted when there is no distance: an unplaced stop is never guessed', async () => {

@@ -59,7 +59,13 @@ tags:
 - assertVisible: 'Plan it. Live it. Share what you want.'
 
 # Scenario 5.4: every action available by default remains available under each
-# adaptation. These are the welcome screen's two actions.
+# adaptation. These are the welcome screen's two actions. The screen scrolls (T561): at
+# the largest text sizes the sheet is taller than the window, so each action is scrolled
+# to before it is asserted or tapped (a no-op when it is already on screen).
+- scrollUntilVisible:
+    element:
+      id: 'welcome-sign-in'
+    direction: DOWN
 - assertVisible:
     id: 'welcome-sign-in'
 - assertVisible:
@@ -79,6 +85,10 @@ tags:
     id: 'welcome-screen'
 
 # Create account: three fields and the action.
+- scrollUntilVisible:
+    element:
+      id: 'welcome-create-account'
+    direction: DOWN
 - tapOn:
     id: 'welcome-create-account'
 - assertVisible:

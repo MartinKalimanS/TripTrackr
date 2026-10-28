@@ -32,6 +32,9 @@
  * - The countries figure is `travelSummary`'s statistic, so planned trips and countries this
  *   device has no name for are counted there but cannot all be listed (`country-summary.ts`).
  *   195 is the fixed reference. It reads the traveller's own local records only (FR-084).
+ * - **Every country is reachable** (SC-015): while a screen reader is on the list keeps all its
+ *   rows mounted (`useReachAllDistance`), so each country is a node a reader finds by name; with
+ *   none it recycles as usual.
  * - Margins: 20 dp at the sides, 16 dp on Android (`ScreenMargin`); the list ends
  *   `contentInsetBottom` above the bottom so the last row clears the tab pill.
  *
@@ -61,6 +64,7 @@ import {
   type CountrySummary,
 } from '@/features/passport/country-summary';
 import type { CountryOverview } from '@/features/passport/use-country-overview';
+import { useReachAllDistance } from '@/hooks/use-reach-all';
 import { deviceLocale } from '@/lib/locale';
 import { ScreenMargin } from '@/theme';
 
@@ -273,6 +277,7 @@ export function CountriesList({
   const [searching, setSearching] = useState(false);
   const { summaries, totals } = overview;
   const { items, sticky } = useCountryItems(overview, query);
+  const drawDistance = useReachAllDistance(items.length);
   const toggleSearch = () => {
     if (searching) setQuery('');
     setSearching(!searching);
@@ -292,6 +297,7 @@ export function CountriesList({
       <SheetScrollable>
         <FlashList
           {...sheet?.scrollProps}
+          {...(drawDistance === undefined ? null : { drawDistance })}
           data={items}
           renderItem={itemRenderer(onSelectCountry)}
           keyExtractor={(item) => item.key}

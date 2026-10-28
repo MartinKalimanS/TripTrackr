@@ -35,8 +35,10 @@ export interface CollapsedBarProps {
   style?: AnimatedViewStyle;
 }
 
-/** Room for the native Back control at the start, mirrored at the end so the title is centred. */
-const BACK_CLEARANCE = MinTouchTarget + Space[4] + Space[2];
+/** Back at the start: 16 from the edge, the 44 dp disc and 8 of air (`.td-collapsed`). */
+const START_CLEARANCE = Space[4] + MinTouchTarget + Space[2];
+/** Share and More at the end: 8 of air, two discs, 8 between them and 16 from the edge. */
+const END_CLEARANCE = Space[2] + MinTouchTarget * 2 + Space[2] + Space[4];
 
 export function CollapsedBar({ title, style }: CollapsedBarProps) {
   const insetTop = useContext(SafeAreaInsetsContext)?.top ?? 0;
@@ -66,7 +68,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     justifyContent: 'center',
-    paddingHorizontal: BACK_CLEARANCE,
+    paddingStart: START_CLEARANCE,
+    paddingEnd: END_CLEARANCE,
     borderBottomWidth: BorderHairline,
   },
 });

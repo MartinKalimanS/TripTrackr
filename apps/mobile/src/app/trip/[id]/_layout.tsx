@@ -24,6 +24,10 @@
  *   Navigation passes to `headerLeft` are not forwarded: `canGoBack` is false for a trip
  *   opened with nothing beneath it, and the button then goes home instead of vanishing. The
  *   sub-screens keep the plain `HeaderBackButton` below.
+ * - `headerRight` is SHARE and MORE as pictured (`trip.png`): glass discs that are coming-soon
+ *   controls (owner answer Q-11; `coming-soon-trip-share`, `coming-soon-trip-more`), one toast and
+ *   nothing else. Once the solid bar has replaced the picture the three controls lose their disc
+ *   (`trip-collapsed.png`; `TripHeaderProvider`).
  * - `title: ''`: the hero title is the screen's content (FR-007 exempts it) and a second
  *   copy in the bar would be read twice.
  * - The colours of the sub-screens' bars come from `useHeaderTheme` (tokens, never a literal).
@@ -39,50 +43,61 @@
  * the top-level lists. `document-capture` stays headerless: it is a camera surface with
  * its own opaque bar (see that screen's header comment).
  *
+ * Photos (feature 005, T549; FR-044) is the first of the everyday areas to draw the pictured
+ * header itself: Back, the title with the trip's name and a count under it, and the pictured
+ * controls (`AreaHeader`, `components/ui/area-header.tsx`), so the navigator's header is hidden
+ * for it (`headerShown: false`) and its title is the screen's. Notes (T551) does the same; the
+ * other areas adopt the header one by one and drop their `titled` entry here as they do.
+ *
+ * Documents (feature 005, T552; FR-049) adopts the same header: `documents` and `document-view`
+ * draw their own bars (the list's `AreaHeader`; the viewer's close, kind and "Only you" bar), so the
+ * navigator's header is hidden for both.
+ *
+ * Offline maps (F11, T552) adopts it too: with it no sub-screen has a native header any more, so the
+ * `titled()` helper and the plain Back are gone from this file.
+ *
  * No `unstable_settings` and no `initialParams` here: the root layout keeps the anchor
  * (`(tabs)`) and the route's params and deep links are exactly what they were.
  */
 import { Stack } from 'expo-router';
 
 import { RequireLocalStore } from '@/components/require-local-store';
-import { HeaderBackButton } from '@/components/ui/header-back-button';
 import { useHeaderTheme, useTransparentHeaderTheme } from '@/components/ui/header-theme';
-import { useHeaderTitleStyle } from '@/components/ui/header-title-style';
+import {
+  TripHeaderBack,
+  TripHeaderProvider,
+  TripHeaderTools,
+} from '@/components/trip/trip-header-controls';
 
-const renderBack = () => <HeaderBackButton />;
-const renderHeroBack = () => <HeaderBackButton variant="glass" />;
+const renderHeroBack = () => <TripHeaderBack />;
+const renderHeroTools = () => <TripHeaderTools />;
 
 export default function TripLayout() {
   const theme = useHeaderTheme();
   const transparent = useTransparentHeaderTheme();
-  const title = useHeaderTitleStyle();
-  const titled = (text: string) => ({
-    ...theme,
-    ...title,
-    headerShown: true,
-    title: text,
-    headerLeft: renderBack,
-  });
 
   return (
     <RequireLocalStore>
-      <Stack screenOptions={{ headerShown: false, contentStyle: theme.contentStyle }}>
-        <Stack.Screen
-          name="index"
-          options={{
-            ...transparent,
-            headerShown: true,
-            title: '',
-            headerLeft: renderHeroBack,
-          }}
-        />
-        <Stack.Screen name="notes" options={titled('Notes')} />
-        <Stack.Screen name="expenses" options={titled('Spending')} />
-        <Stack.Screen name="photos" options={titled('Photos')} />
-        <Stack.Screen name="documents" options={titled('Documents')} />
-        <Stack.Screen name="document-view" options={titled('Document')} />
-        <Stack.Screen name="offline-maps" options={titled('Offline maps')} />
-      </Stack>
+      <TripHeaderProvider>
+        <Stack screenOptions={{ headerShown: false, contentStyle: theme.contentStyle }}>
+          <Stack.Screen
+            name="index"
+            options={{
+              ...transparent,
+              headerShown: true,
+              title: '',
+              headerLeft: renderHeroBack,
+              headerRight: renderHeroTools,
+            }}
+          />
+          <Stack.Screen name="notes" options={{ headerShown: false }} />
+          <Stack.Screen name="expenses" options={{ headerShown: false }} />
+          <Stack.Screen name="photos" options={{ headerShown: false }} />
+          <Stack.Screen name="documents" options={{ headerShown: false }} />
+          <Stack.Screen name="document-view" options={{ headerShown: false }} />
+          <Stack.Screen name="offline-maps" options={{ headerShown: false }} />
+        </Stack>
+      </TripHeaderProvider>
     </RequireLocalStore>
   );
 }

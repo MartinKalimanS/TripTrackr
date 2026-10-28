@@ -2,14 +2,12 @@
  * How the gallery lays photos out and says what they are — tasks.md T117
  * (FR-041; feature 002 FR-010, FR-016, contract C13).
  *
- * Pure. The grid keeps a tile wide enough for its caption at the traveller's
- * text size (fewer columns as the text grows, never none); dates are the
+ * Pure. (The grid's geometry is `photo-mosaic.test.ts`, T549.) Dates are the
  * device locale's, in the time zone of the city a photo is filed under when
  * this device knows it; and every photo has a label that says, in words,
  * where its bytes are.
  */
 import type { PhotoWithPlace } from '@/db/repositories/photos';
-import { gridColumns, MAX_COLUMNS, toRows } from '@/features/photos/photo-grid';
 import {
   filingMismatchLine,
   formatTakenAt,
@@ -44,30 +42,6 @@ function photo(overrides: Partial<PhotoWithPlace> = {}): PhotoWithPlace {
     ...overrides,
   };
 }
-
-describe('gridColumns (FR-016)', () => {
-  test.each([
-    ['a phone at the default text size', 342, 1, 3],
-    ['a phone with larger text', 342, 1.5, 2],
-    ['a phone with the largest text', 342, 2.4, 1],
-    ['a small phone', 272, 1, 2],
-    ['the widest column', 752, 1, MAX_COLUMNS],
-    ['a width not measured yet', 0, 1, 1],
-    ['a font scale the platform could not report', 342, Number.NaN, 3],
-  ])('%s', (_label, width, fontScale, expected) => {
-    expect(gridColumns(width, fontScale)).toBe(expected);
-  });
-});
-
-describe('toRows', () => {
-  test('cuts the photos into rows of the column count, the last one short', () => {
-    expect(toRows(['a', 'b', 'c', 'd', 'e'], 3)).toEqual([
-      ['a', 'b', 'c'],
-      ['d', 'e'],
-    ]);
-    expect(toRows([], 3)).toEqual([]);
-  });
-});
 
 describe('dates', () => {
   test('in the time zone of the city the photo is filed under', () => {

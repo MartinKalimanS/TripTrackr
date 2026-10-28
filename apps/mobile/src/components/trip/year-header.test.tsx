@@ -46,22 +46,25 @@ describe('<YearHeader>', () => {
     );
   });
 
-  test('has a ground of its own and a hairline, so rows can scroll beneath it', async () => {
+  // Prototype `.year-head`: padding 12 0 4, the ground colour, and no line (the 004 header had a
+  // hairline and 8 dp below it; the picture has neither).
+  test('has a ground of its own and no line, 12 above and 4 below, so rows scroll beneath it', async () => {
     await render(<YearHeader year={2026} tripCount={1} distanceKm={0} />);
 
     const classes = classesOf(screen.getByTestId('year-header-2026'));
     expect(classes).toContain('bg-background');
-    expect(classes).toContain('border-b');
-    expect(classes).toContain('border-separator');
+    expect(classes).not.toContain('border-b');
+    expect(classes).toEqual(expect.arrayContaining(['pt-3', 'pb-1', 'items-baseline']));
   });
 
-  test('the year is the headline role and the counts are muted', async () => {
+  test('the year is the headline role and the count is muted, the distance subtle', async () => {
     await render(<YearHeader year={2026} tripCount={1} distanceKm={500} />);
 
     expect(classesOf(screen.getByText('2026'))).toEqual(
       expect.arrayContaining(['text-[22px]', 'text-foreground']),
     );
     expect(classesOf(screen.getByText('1 trip'))).toContain('text-muted');
-    expect(classesOf(screen.getByText('500 km'))).toContain('text-muted');
+    expect(classesOf(screen.getByText('500 km'))).toContain('text-subtle');
+    expect(classesOf(screen.getByText('1 trip'))).toContain('text-[13px]');
   });
 });

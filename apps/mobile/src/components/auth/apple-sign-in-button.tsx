@@ -11,18 +11,16 @@
  * The capability itself is `ios.usesAppleSignIn: true` + the config plugin in
  * app.config.ts.
  *
- * The button is the app's outline provider button (`ProviderButton`, T446) rather
- * than the native `AppleAuthenticationButton`, which offers only Apple's own looks
- * (black, white, white outline) and so cannot be drawn like the Google button
- * beside it, which the same-prominence rule asks for (App Store Review Guideline
- * 4.8). `signInAsync` starts the same sheet either way; how the sheet is requested
- * is untouched by the restyle. Apple's rules for custom buttons (its own logo
- * artwork, in black or white) still apply before release
- * (docs/release/store-readiness.md, "Branded sign-in buttons").
+ * The button is Apple's own (`AppleOfficialButton`, F12; owner decision 2026-10-22: Apple's
+ * official artwork wherever the Apple logo is drawn), the native
+ * `AppleAuthenticationButton`, as wide and as tall as the Google pill beside it (App Store
+ * Review Guideline 4.8, same prominence). `signInAsync` starts the same sheet as it always
+ * did; how the sheet is requested is untouched by the change of what draws the button.
  *
- * Where there is no native sheet — Android, or an iOS device that says it is
- * unavailable — the button shows disabled, as coming soon. While iOS is still
- * being asked, a spacer holds its place, so nothing flashes or jumps.
+ * Where there is no native sheet — Android, or an iOS device that says it is unavailable — the
+ * button is not drawn: Apple's logo is only ever drawn by Apple's button, which has no
+ * disabled copy. While iOS is still being asked, a spacer holds its place, so nothing flashes
+ * or jumps.
  */
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
@@ -30,7 +28,8 @@ import { Platform } from 'react-native';
 
 import type { AppleSignInInput } from '@/features/auth/use-session';
 
-import { ProviderButton, ProviderButtonSpacer } from './provider-button';
+import { AppleOfficialButton, type AppleIntent } from './apple-official-button';
+import { ProviderButtonSpacer } from './provider-button';
 
 function isCancellation(error: unknown): boolean {
   return (
@@ -93,6 +92,8 @@ export type AppleSignInButtonProps = {
   busy?: boolean;
   /** Something else on the screen is in flight. */
   disabled?: boolean;
+  /** Which of Apple's titles the screen says; Welcome says "Continue with Apple". */
+  intent?: AppleIntent;
 };
 
 export function AppleSignInButton({
@@ -101,9 +102,10 @@ export function AppleSignInButton({
   onError,
   busy,
   disabled,
+  intent = 'continue',
 }: AppleSignInButtonProps) {
   if (available === null) return <ProviderButtonSpacer />;
-  if (!available) return <ProviderButton provider="apple" />;
+  if (!available) return null;
 
   const signIn = async () => {
     try {
@@ -127,8 +129,8 @@ export function AppleSignInButton({
   };
 
   return (
-    <ProviderButton
-      provider="apple"
+    <AppleOfficialButton
+      intent={intent}
       busy={busy}
       disabled={disabled}
       onPress={() => void signIn()}

@@ -7,7 +7,7 @@
  *   <FlashList contentContainerStyle={{ paddingBottom: inset }} />
  *   <PlanTripFab style={{ bottom: inset }} />
  *
- * The pill (and the Android bar) floats over the scenes, so the scenes run under it. It
+ * The pill floats over the scenes, so the scenes run under it. It
  * reports `height + bottomOffset` through `BottomTabBarHeightCallbackContext` (88 dp on that
  * phone: the pill's 64 and the 24 below it) and the navigator hands that to every scene as
  * `BottomTabBarHeightContext`; a list ends with at least that plus 16 dp, a button floats 16 dp

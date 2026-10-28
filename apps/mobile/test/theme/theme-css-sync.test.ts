@@ -251,10 +251,10 @@ describe('buildThemeCss', () => {
     expect(() => buildThemeCss(withAlpha)).toThrow(/dark.*ink.*hex/);
     const translucent = {
       ...Palettes,
-      dark: { ...Palettes.dark, backdrop: '#04080E99' },
+      dark: { ...Palettes.dark, backdrop: '#0A162699' },
     };
     expect(() => buildThemeCss(translucent)).not.toThrow();
-    expect(parseThemes(buildThemeCss(translucent)).dark['--backdrop']).toBe('#04080e99');
+    expect(parseThemes(buildThemeCss(translucent)).dark['--backdrop']).toBe('#0a162699');
   });
 
   test('the translucent keys of the generator are exactly the keys the palette makes translucent', () => {

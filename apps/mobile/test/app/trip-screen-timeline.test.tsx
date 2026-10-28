@@ -319,7 +319,7 @@ describe('<TripScreen> the stop editor', () => {
     expect(screen.getByTestId('stop-editor')).toBeTruthy();
 
     await fireEvent.press(screen.getByTestId('pick-florence'));
-    expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Firenze');
+    expect(screen.getByTestId('stop-editor-place')).toHaveTextContent(/^Firenze/);
     // Rome departs 12 May, so Florence arrives 12 May.
     expect(
       screen.getByTestId('stop-editor-arrive').props.accessibilityValue.text,

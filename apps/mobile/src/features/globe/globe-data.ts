@@ -120,16 +120,20 @@ export function hasPlacedStop(trip: GlobeTrip): boolean {
 }
 
 /**
- * What floats over a globe with nothing to draw (feature 003 FR-002): invite
- * the first trip, or the first stop. With exactly one trip waiting for a stop
- * the invitation names it, so its action can open that trip; with several it
- * points at the list. `null` as soon as anything is placed.
+ * What floats over a globe whose trips have nothing to draw (feature 003 FR-002): invite the
+ * first stop. With exactly one trip waiting for a stop the invitation names it, so its action
+ * can open that trip; with several it points at the list. `null` as soon as anything is
+ * placed, and with no trip at all: the Home then shows the sheet and the "Plan a trip" button
+ * and the first-run tour teaches the rest (feature 007 FR-001).
  */
-export type GlobeInvitation =
-  { reason: 'no-trips' } | { reason: 'no-stops'; tripId?: string; tripTitle?: string };
+export type GlobeInvitation = {
+  reason: 'no-stops';
+  tripId?: string;
+  tripTitle?: string;
+};
 
 export function globeInvitation(trips: readonly GlobeTrip[]): GlobeInvitation | null {
-  if (trips.length === 0) return { reason: 'no-trips' };
+  if (trips.length === 0) return null;
   if (trips.some(hasPlacedStop)) return null;
   const [only] = trips;
   return trips.length === 1

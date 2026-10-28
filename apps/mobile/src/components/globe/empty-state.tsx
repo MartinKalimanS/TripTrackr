@@ -32,7 +32,7 @@
  * is deliberately NOT merged, exactly as before: its title, its reason and its button
  * are separate stops, and the button must stay individually focusable and pressable.
  */
-import type { PropsWithChildren, ReactNode } from 'react';
+import type { PropsWithChildren } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { ALERT_ICON } from '@/components/ui/alert-icon';
@@ -41,21 +41,12 @@ import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Spacing } from '@/constants/theme';
-import { ScreenMargin } from '@/theme';
 
-export type GlobeEmptyReason = 'no-trips' | 'no-stops';
+export type GlobeEmptyReason = 'no-stops';
 
 type Copy = { title: string; detail: string; action: string; testID: string };
 
-function copyFor(reason: GlobeEmptyReason, tripTitle?: string): Copy {
-  if (reason === 'no-trips') {
-    return {
-      title: 'Your globe is waiting for its first trip',
-      detail: 'Add where you are going and the arcs draw themselves.',
-      action: 'Plan a trip',
-      testID: 'home-plan-trip',
-    };
-  }
+function copyFor(tripTitle?: string): Copy {
   if (tripTitle) {
     return {
       title: 'Your trip needs a first stop',
@@ -90,43 +81,20 @@ export function overlayMaxHeight(windowHeight: number): number {
   return Math.max(0, Math.round(windowHeight * OVERLAY_MAX_HEIGHT_SHARE));
 }
 
-type OverlayCardProps = PropsWithChildren<{
-  testID: string;
-  /** Extra padding above the content, for art that overhangs the card (the invitation). */
-  topInset?: number;
-  /** The pictured invitation (`home-empty.png`): 20 at the sides, centred, 8 dp apart. */
-  invite?: boolean;
-}>;
-
-/** The invitation's content: 20 dp at the sides, 16 below, centred (prototype `.invite`). */
-const INVITE_CONTENT = {
-  paddingHorizontal: ScreenMargin.default,
-  paddingBottom: OVERLAY_CARD_INSET,
-  gap: Spacing.two,
-  alignItems: 'center',
-} as const;
+type OverlayCardProps = PropsWithChildren<{ testID: string }>;
 
 /**
  * The one card both messages use: opaque over the map, a capped width, and a
  * scroller that only matters when the traveller's text is large enough for the
  * words to outgrow their share of the window.
  */
-function OverlayCard({
-  testID,
-  topInset = 0,
-  invite = false,
-  children,
-}: OverlayCardProps) {
+function OverlayCard({ testID, children }: OverlayCardProps) {
   const { height } = useWindowDimensions();
   return (
     <Card overMap testID={testID} className={CARD_WIDTH} style={styles.card}>
       <ScrollView
         style={{ maxHeight: overlayMaxHeight(height) }}
-        contentContainerStyle={
-          invite
-            ? { ...INVITE_CONTENT, paddingTop: OVERLAY_CARD_INSET + topInset }
-            : [styles.content, { paddingTop: OVERLAY_CARD_INSET + topInset }]
-        }
+        contentContainerStyle={styles.content}
         alwaysBounceVertical={false}>
         {children}
       </ScrollView>
@@ -134,63 +102,19 @@ function OverlayCard({
   );
 }
 
-/** The headline, with its accent word (if the title has it) in the serif accent face. */
-function Headline({
-  title,
-  accent,
-  className,
-}: {
-  title: string;
-  accent?: string;
-  className?: string;
-}) {
-  const at = accent ? title.indexOf(accent) : -1;
-  if (!accent || at === -1) {
-    return (
-      <Text type="title" className={className}>
-        {title}
-      </Text>
-    );
-  }
-  return (
-    <Text type="title" className={className}>
-      {title.slice(0, at)}
-      <Text variant="accent">{accent}</Text>
-      {title.slice(at + accent.length)}
-    </Text>
-  );
-}
-
 export type GlobeEmptyStateProps = {
   reason: GlobeEmptyReason;
-  /** One word of the headline, set in the serif accent face (feature 005, FR-020). */
-  accent?: string;
-  /** Extra padding above the words, for the frames that overhang the card. */
-  topInset?: number;
   /** With exactly one trip waiting for a stop: its title, and `onAction` opens it. */
   tripTitle?: string;
   onAction: () => void;
-  /** The pictured layout (centred words, a full-width primary): the Home's first invitation. */
-  invite?: boolean;
-  /** A secondary control under the primary (the pictured text button); `invite` only. */
-  secondary?: ReactNode;
 };
 
-export function GlobeEmptyState({
-  reason,
-  tripTitle,
-  accent,
-  topInset,
-  onAction,
-  invite = false,
-  secondary,
-}: GlobeEmptyStateProps) {
-  const copy = copyFor(reason, tripTitle);
-  const centred = invite ? 'text-center' : undefined;
+export function GlobeEmptyState({ tripTitle, onAction }: GlobeEmptyStateProps) {
+  const copy = copyFor(tripTitle);
   return (
-    <OverlayCard testID="globe-empty-state" topInset={topInset} invite={invite}>
-      <Headline title={copy.title} accent={accent} className={centred} />
-      <Text type="callout" tone="muted" className={centred}>
+    <OverlayCard testID="globe-empty-state">
+      <Text variant="headline">{copy.title}</Text>
+      <Text variant="label" tone="muted">
         {copy.detail}
       </Text>
       <Button
@@ -199,10 +123,9 @@ export function GlobeEmptyState({
         accessibilityLabel={copy.action}
         // The press event is dropped on purpose: `onAction` takes no arguments.
         onPress={() => onAction()}
-        className={invite ? 'mt-3 self-stretch' : 'mt-2 self-start'}>
+        className="mt-2 self-start">
         {copy.action}
       </Button>
-      {invite ? secondary : null}
     </OverlayCard>
   );
 }
@@ -242,11 +165,11 @@ function NoticeBody({ title, detail }: GlobeNoticeProps) {
         <Icon name={ALERT_ICON} size={20} tone="danger" />
       </View>
       <View style={styles.noticeText}>
-        <Text type="headline" tone="danger">
+        <Text variant="callout" tone="danger">
           {title}
         </Text>
         {detail ? (
-          <Text type="callout" tone="muted">
+          <Text variant="label" tone="muted">
             {detail}
           </Text>
         ) : null}

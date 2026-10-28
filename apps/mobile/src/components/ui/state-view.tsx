@@ -79,6 +79,8 @@ type StateViewProps = SurfaceProps & {
 
 export type StateAction = {
   label: string;
+  /** What a screen reader says when it is more than the visible `label`. */
+  accessibilityLabel?: string;
   onPress: () => void;
   testID?: string;
   /** The action is under way: announced busy, presses are ignored. */
@@ -116,10 +118,17 @@ export function StateBox({ children, ...rest }: ViewProps) {
   );
 }
 
-export function Detail({ children }: { children?: string }) {
+export function Detail({
+  children,
+  testID,
+}: {
+  children?: string;
+  /** An id on the words, for a flow that waits on them. */
+  testID?: string;
+}) {
   if (!children) return null;
   return (
-    <Text variant="body" tone="muted" className="text-center">
+    <Text variant="body" tone="muted" className="text-center" testID={testID}>
       {children}
     </Text>
   );
@@ -148,7 +157,7 @@ export function EmptyState({
       {action ? (
         <Button
           variant={action.primary ? 'primary' : 'secondary'}
-          accessibilityLabel={action.label}
+          accessibilityLabel={action.accessibilityLabel ?? action.label}
           testID={action.testID}
           busy={action.busy}
           onPress={() => action.onPress()}

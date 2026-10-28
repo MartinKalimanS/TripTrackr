@@ -1,87 +1,52 @@
 /**
- * Spending summary — tasks.md T087 (FR-025, FR-026, SC-016), 004 T441 (FR-004, FR-014,
- * FR-025, FR-029); research D-26, D-27.
+ * The spending summary - tasks.md T087, 004 T441, restyled by 005 T550 (FR-047, FR-054, FR-025,
+ * FR-026, SC-016; research D-26, D5-15; UI-SPEC 9.2; pictures `more/expenses*.png`).
  *
- * Renders the wire's `ExpenseSummary`, whichever side computed it: totals by
- * category and by day in the home currency, the rates that were applied
- * whenever more than one currency is in play, and the rows still awaiting a
- * rate — by their own currency, never silently omitted. Every figure arrives
- * as a decimal string and is formatted by `Intl` in the device locale; no
- * arithmetic happens here.
+ * The head of the spending list, top to bottom as pictured: `SpendingHero` ("Spent so far", the
+ * big amount, the pill "281 / day - Day 3 of 8"), the rate line (an info icon and the rates in
+ * force), what still awaits a rate, `DayBars` ("Per day") and `CategoryBar` with its legend.
+ * Everything is derived from the local rows by `deriveSpendingView` (exact `decimal.js`; pending
+ * conversions counted and left out of every total); this file does no arithmetic and draws the
+ * rows' totals as `Intl` formats them.
  *
- * One raised `Card`. The total in the home currency is its most prominent figure (FR-014):
- * a `largeTitle` numeral in the display face, the only text of that size on the screen,
- * under a muted caption naming the currency. Below it the sections, each a heading:
- * the per-category summary, the days, the rates, and what still awaits a rate. Every amount,
- * and the date of a day, is a `numeric` text (tabular figures, FR-004) in the right-hand
- * cell of its row, so the digits line up down the card. The date of the exchange rates is
- * said in words ("as of 1 May 2026"). The card holds plain rows, not a `ListGroup`: a card
- * never contains another raised surface (FR-006).
+ * "Summary" at the end of the first row folds all of it away and back (`expenses-toggle-summary`,
+ * named "Hide summary" / "Show summary", expanded or not); the picture has no such control, it
+ * is the one the app already had. There is no card: the picture lays the summary on the canvas
+ * between hairlines.
+ *
+ * The rate line is the disclosure FR-026 asks for, in the app's words: "1 EUR = 0.888889 CHF"
+ * for each rate, "Each expense keeps the rate it was recorded at." and where the rates came
+ * from and when ("Rates by <source>, as of 1 May 2026."). It is drawn only when a foreign
+ * currency is in play: with nothing converted there is nothing to disclose and the picture's
+ * "Converted at today's rate" would be untrue (each row keeps the rate it was recorded at).
+ * "Awaiting a rate" is an alert with an icon, never colour alone, and names each currency's
+ * unconverted total.
  */
 import type { ExpenseSummary } from '@triptrackr/contracts';
-import type { ReactNode } from 'react';
-import { View, type ViewProps } from 'react-native';
+import { View } from 'react-native';
 
-import { Card } from '@/components/ui/card';
+import { Icon } from '@/components/ui/icon';
+import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
+import type { SpendingView } from '@/features/expenses/spending-summary';
 import { formatIsoDate } from '@/features/trips/stop-dates';
 import { describeRate, formatMoney } from '@/lib/locale';
+import { Radii, Space } from '@/theme';
+
+import { CategoryBar } from './category-bar';
+import { DayBars } from './day-bars';
+import { SpendingHero } from './spending-hero';
 
 export type SpendingSummaryProps = {
   summary: ExpenseSummary;
-  /** When the rates came from a cached snapshot — said in words beside the source. */
+  view: SpendingView;
+  /** When the rates came from a cached snapshot, said in words beside the source. */
   ratesAsOf?: string | null;
+  /** The summary is open; false folds all but the first row away. */
+  expanded?: boolean;
+  onToggle?: () => void;
+  fontScale?: number;
 };
-
-type RowProps = {
-  label: string;
-  value: string;
-  /** How many expenses it sums, in words, muted under the label. */
-  detail: string;
-  /** The label is a date: tabular figures like an amount. */
-  numericLabel?: boolean;
-  testID?: string;
-};
-
-/** A label (and a muted detail under it) on the left, its amount on the right. */
-function Row({ label, value, detail, numericLabel = false, testID }: RowProps) {
-  return (
-    <View testID={testID} className="flex-row items-center justify-between gap-3">
-      <View className="flex-1">
-        {numericLabel ? <Text type="numeric">{label}</Text> : <Text>{label}</Text>}
-        <Text type="callout" tone="muted">
-          {detail}
-        </Text>
-      </View>
-      <Text type="numeric" className="text-right">
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-type SectionProps = Pick<ViewProps, 'testID'> & {
-  title: string;
-  /** Announced on appearance, for what the traveller should not miss. */
-  alert?: boolean;
-  children: ReactNode;
-};
-
-/**
- * A titled group of rows; the title is a heading unless the whole section is an alert. The
- * section's `testID` is handed on with the rest of its host props, so each caller writes
- * its id out in full (the id extractor reads `testID="summary-rates"` where it is written).
- */
-function Section({ title, alert = false, children, ...host }: SectionProps) {
-  return (
-    <View {...host} accessibilityRole={alert ? 'alert' : undefined} className="gap-2">
-      <Text type="headline" accessibilityRole={alert ? undefined : 'header'}>
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
 
 const plural = (count: number, noun: string) =>
   `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -95,91 +60,134 @@ function describeRatesSource(source: string | null, asOf: string | null): string
   return null;
 }
 
-function RatesSection({ summary, ratesAsOf }: Required<SpendingSummaryProps>) {
-  const home = summary.home_currency;
-  const provenance = describeRatesSource(summary.rates_source, ratesAsOf);
+function SummaryToggle({
+  expanded,
+  onToggle,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <Section title="Rates applied" testID="summary-rates">
-      {summary.rates_applied.map((row) => (
-        <Row
-          key={`${row.currency}-${row.rate}`}
-          label={describeRate(row.currency, row.rate, home)}
-          detail={plural(row.count, 'expense')}
-          value={row.currency}
-        />
-      ))}
-      <Text type="callout" tone="muted">
-        Each expense keeps the rate it was recorded at.
-        {provenance ? ` ${provenance}` : ''}
-      </Text>
-    </Section>
+    <Tappable
+      testID="expenses-toggle-summary"
+      accessibilityLabel={expanded ? 'Hide summary' : 'Show summary'}
+      accessibilityState={{ expanded }}
+      className="flex-row items-center gap-1 px-3"
+      onPress={onToggle}>
+      <Text tone="accent">Summary</Text>
+      <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={16} tone="accent" />
+    </Tappable>
   );
 }
 
-export function SpendingSummary({ summary, ratesAsOf = null }: SpendingSummaryProps) {
-  const home = summary.home_currency;
-
+function RatesLine({
+  summary,
+  ratesAsOf,
+}: {
+  summary: ExpenseSummary;
+  ratesAsOf: string | null;
+}) {
+  if (summary.rates_applied.length === 0) return null;
+  const provenance = describeRatesSource(summary.rates_source, ratesAsOf);
   return (
-    <Card testID="spending-summary">
-      <View className="gap-4">
-        <View className="gap-1">
-          <Text type="caption" tone="muted">
-            Total in {home}
-          </Text>
-          <Text type="numeric" context="largeTitle" testID="summary-total">
-            {formatMoney(summary.total_home, home)}
-          </Text>
-        </View>
-
-        {summary.by_category.length > 0 ? (
-          <Section title="By category">
-            {summary.by_category.map((row) => (
-              <Row
-                key={row.category_id}
-                testID={`summary-category-${row.category_id}`}
-                label={row.name}
-                detail={plural(row.count, 'expense')}
-                value={formatMoney(row.total_home, home)}
-              />
-            ))}
-          </Section>
-        ) : null}
-
-        {summary.by_day.length > 0 ? (
-          <Section title="By day">
-            {summary.by_day.map((row) => (
-              <Row
-                key={row.date}
-                testID={`summary-day-${row.date}`}
-                label={formatIsoDate(row.date)}
-                numericLabel
-                detail={plural(row.count, 'expense')}
-                value={formatMoney(row.total_home, home)}
-              />
-            ))}
-          </Section>
-        ) : null}
-
-        {summary.rates_applied.length > 0 ? (
-          <RatesSection summary={summary} ratesAsOf={ratesAsOf} />
-        ) : null}
-
-        {summary.pending_conversion.count > 0 ? (
-          <Section title="Awaiting a rate" testID="summary-pending" alert>
-            {summary.pending_conversion.by_currency.map((row) => (
-              <Row
-                key={row.currency}
-                label={row.currency}
-                detail={plural(row.count, 'expense')}
-                value={formatMoney(row.total, row.currency)}
-              />
-            ))}
-            <Text type="callout" tone="muted">
-              Not yet in the {home} total — they convert as soon as a rate is available.
-            </Text>
-          </Section>
-        ) : null}
+    <View
+      testID="summary-rates"
+      className="flex-row items-start"
+      style={{ gap: Space[1], marginTop: Space[2] }}>
+      <View style={{ marginTop: 2 }}>
+        <Icon name="info" size={16} tone="subtle" />
       </View>
-    </Card>
+      <View className="min-w-0 flex-1">
+        {summary.rates_applied.map((row) => (
+          <Text
+            key={`${row.currency}-${row.rate}`}
+            variant="label"
+            tone="muted"
+            style={{ fontVariant: ['tabular-nums'] }}>
+            {`${describeRate(row.currency, row.rate, summary.home_currency)} · ${plural(row.count, 'expense')}`}
+          </Text>
+        ))}
+        <Text variant="label" tone="muted">
+          Each expense keeps the rate it was recorded at.
+          {provenance ? ` ${provenance}` : ''}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function PendingLine({ view }: { view: SpendingView }) {
+  if (view.pending.count === 0) return null;
+  return (
+    <View
+      testID="summary-pending"
+      accessibilityRole="alert"
+      className="flex-row items-start bg-amber-tint"
+      style={{
+        gap: Space[2],
+        marginTop: Space[3],
+        padding: Space[3],
+        borderRadius: Radii.lg,
+        borderCurve: 'continuous',
+      }}>
+      <Icon name="alert" size={20} tone="amberInk" />
+      <View className="min-w-0 flex-1">
+        <Text variant="callout" accessibilityRole="header">
+          Awaiting a rate
+        </Text>
+        {view.pending.byCurrency.map((row) => (
+          <Text
+            key={row.currency}
+            variant="label"
+            style={{ fontVariant: ['tabular-nums'] }}>
+            {`${formatMoney(row.total, row.currency)} · ${plural(row.count, 'expense')}`}
+          </Text>
+        ))}
+        <Text variant="label" tone="muted">
+          {`Not yet in the ${view.homeCurrency} total — they convert as soon as a rate is available.`}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+export function SpendingSummary({
+  summary,
+  view,
+  ratesAsOf = null,
+  expanded = true,
+  onToggle,
+  fontScale,
+}: SpendingSummaryProps) {
+  const folded = !expanded || (view.days.length === 0 && view.slices.length === 0);
+  return (
+    <View
+      testID={expanded ? 'spending-summary' : undefined}
+      style={{ paddingBottom: folded ? Space[5] : 0 }}>
+      <SpendingHero
+        view={view}
+        collapsed={!expanded}
+        trailing={
+          onToggle ? <SummaryToggle expanded={expanded} onToggle={onToggle} /> : undefined
+        }
+      />
+      {expanded ? (
+        <>
+          <RatesLine summary={summary} ratesAsOf={ratesAsOf} />
+          <PendingLine view={view} />
+          {view.days.length > 0 ? (
+            <View className="border-t border-separator" style={{ marginTop: Space[5] }}>
+              <DayBars
+                days={view.days}
+                todayIndex={view.todayIndex}
+                homeCurrency={view.homeCurrency}
+                fontScale={fontScale}
+              />
+            </View>
+          ) : null}
+          <CategoryBar slices={view.slices} homeCurrency={view.homeCurrency} />
+        </>
+      ) : null}
+    </View>
   );
 }

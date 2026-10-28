@@ -27,6 +27,8 @@ import { fxRatesRepository } from '@/db/repositories/fx-rates';
 import type { ExpenseCategoryRow, ExpenseRow } from '@/db/schema';
 import type { LiveResult } from '@/features/trips/use-trips';
 
+import type { PreviewSnapshot } from './amount-preview';
+
 /** A trip's live expenses, newest spend first. */
 export function useExpenses(tripId: string): LiveResult<ExpenseRow[]> {
   const db = useDatabase();
@@ -52,6 +54,19 @@ export function useFxSnapshotInfo(): { asOf: string | null; source: string | nul
   const result = useLiveQuery(fxRatesRepository.snapshotQuery(db));
   const first = result.data[0];
   return { asOf: first?.as_of ?? null, source: first?.source ?? null };
+}
+
+/** The cached FX snapshot, whole, live: what the amount-first form previews a rate from. */
+export function useFxSnapshot(): PreviewSnapshot | null {
+  const db = useDatabase();
+  const result = useLiveQuery(fxRatesRepository.snapshotQuery(db));
+  return useMemo(() => {
+    const first = result.data[0];
+    if (!first) return null;
+    const rates: Record<string, string> = {};
+    for (const row of result.data) rates[row.quote_currency] = row.rate;
+    return { asOf: first.as_of, rates };
+  }, [result.data]);
 }
 
 /**

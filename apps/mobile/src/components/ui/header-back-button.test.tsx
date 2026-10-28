@@ -136,6 +136,15 @@ describe('<HeaderBackButton> default press', () => {
   });
 });
 
+describe('<HeaderBackButton> the ghost variant - on the solid bar of the trip (F5, trip-collapsed.png)', () => {
+  test('is the bare glyph: no disc, still 44 dp and still named "Back"', async () => {
+    await render(<HeaderBackButton variant="ghost" />);
+    expect(back().props.accessibilityLabel).toBe('Back');
+    expect(styleOf(back())).toMatchObject({ width: 44, height: 44 });
+    expect(styleOf(back()).backgroundColor).toBeUndefined();
+  });
+});
+
 describe('<HeaderBackButton> the round control - D5-12', () => {
   test('the default is a 44 dp cream disc with a hairline on the canvas', async () => {
     await render(<HeaderBackButton />);

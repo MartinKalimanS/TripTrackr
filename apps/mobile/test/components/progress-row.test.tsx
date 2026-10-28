@@ -17,7 +17,6 @@ function row(props: Partial<React.ComponentProps<typeof ProgressRow>> = {}) {
     <ProgressRow
       status="active"
       dayOf={{ day: 3, of: 8 }}
-      currency="EUR"
       syncState={{ kind: 'synced' }}
       {...props}
     />
@@ -72,9 +71,28 @@ describe('<ProgressRow>', () => {
     expect(within(dots).getAllByTestId(/^trip-progress-dot-/, hidden)).toHaveLength(8);
   });
 
-  test('says the home currency, as the 004 row did', async () => {
+  test('draws no bare currency code: the picture has none, the Expenses figure carries it', async () => {
     await render(row());
-    expect(within(screen.getByTestId('trip-header-row')).getByText('EUR')).toBeTruthy();
+    expect(within(screen.getByTestId('trip-header-row')).queryByText('EUR')).toBeNull();
+  });
+
+  test('dots are 6 dp, 4 dp apart; the empty ones are sand with the field ring, the next to come ringed in coral', async () => {
+    await render(row());
+    const dots = screen.getByTestId('trip-progress-dots', hidden);
+    expect(String(dots.props.className)).toContain('gap-1');
+    expect(String(dots.props.className)).not.toContain('gap-1.5');
+    const rest = screen.getByTestId('trip-progress-dot-5-rest', hidden);
+    expect(String(rest.props.className)).toEqual(
+      expect.stringContaining('size-1.5 rounded-full border border-border bg-sand'),
+    );
+    const now = screen.getByTestId('trip-progress-dot-2-now', hidden);
+    expect(String(now.props.className)).toContain('border-accent-line');
+  });
+
+  test('"Day 3 of 8" and its dots sit 12 dp apart (the prototype .prog)', async () => {
+    await render(row());
+    const day = screen.getByTestId('trip-progress-day');
+    expect(String(day.parent?.props.className)).toContain('gap-3');
   });
 
   test('marks a trip that only exists on this device with the per-record marker, in words', async () => {

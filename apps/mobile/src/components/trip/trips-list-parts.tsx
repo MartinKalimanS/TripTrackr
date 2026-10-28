@@ -9,10 +9,10 @@
  * data, the filter and the router.
  */
 import type { ReactElement } from 'react';
-import { View, useWindowDimensions } from 'react-native';
+import { Platform, View, useWindowDimensions } from 'react-native';
 
 import { Banner } from '@/components/ui/banner';
-import { buttonFrame } from '@/components/ui/button';
+import { fabHeightAt } from '@/components/ui/plan-trip-fab';
 import { TripListSkeleton } from '@/components/ui/screen-skeletons';
 import { SegmentedPill, type SegmentOption } from '@/components/ui/segmented-pill';
 import { EmptyState, ErrorState } from '@/components/ui/state-view';
@@ -68,9 +68,15 @@ export function TripsListHeader({
   banner,
 }: TripsListHeaderProps) {
   return (
-    <View testID="trips-header" className="gap-3">
+    // 16 dp between the count, the filter and the banner (the prototype's `.list` gap); the count
+    // line keeps its 12 dp to the filter (`margin: -8px 0 12px` under the title).
+    <View testID="trips-header" style={{ gap: Spacing.three }}>
       {span ? (
-        <Text variant="label" tone="muted" testID="trips-count">
+        <Text
+          variant="label"
+          tone="muted"
+          testID="trips-count"
+          style={{ marginBottom: -Spacing.one }}>
           {tripsCountLine(span)}
         </Text>
       ) : null}
@@ -201,11 +207,14 @@ export function TripListItemView({
   }
 }
 
-/** The button's own minimum at this text size and the margin it keeps above the card. */
+/**
+ * The "Plan a trip" button's own height at this text size (52 dp on iOS, 56 dp on Android, a
+ * little more once its words reach the 1.3 cap) and the 16 dp above it: with the pill's zone and
+ * the 16 dp above that, the list ends 172 dp from the bottom (176 on Android).
+ */
 export function FabClearance() {
   const { fontScale } = useWindowDimensions();
-  const { minHeight } = buttonFrame('lg', false, fontScale);
-  const button = typeof minHeight === 'number' ? minHeight : 56;
+  const button = fabHeightAt(Platform.OS, fontScale);
   return (
     <View
       testID="trips-fab-clearance"

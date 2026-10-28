@@ -18,7 +18,6 @@ import { DateField } from '@/components/trip/date-field';
 import { fieldMinHeight } from '@/components/ui/field';
 import { MinTouchTarget } from '@/constants/theme';
 import { formatIsoDate } from '@/features/trips/stop-dates';
-import { numericStyle } from '@/theme';
 
 import { classesOf, hostsWhere } from '../helpers/host-nodes';
 import { resetKeyboard, setWindow } from '../helpers/keyboard';
@@ -92,11 +91,13 @@ describe('<DateField> as a field (FR-024, FR-025, FR-029)', () => {
     expect(classes).not.toContain('border-danger');
   });
 
-  test('the day uses tabular figures, at the body size', async () => {
+  test('the day is body text, at the body size', async () => {
     await renderField();
 
     const day = screen.getByText(formatIsoDate('2026-05-12'));
-    expect(flat(day).fontVariant).toEqual(numericStyle('body').fontVariant);
+    expect(classesOf(day)).toEqual(
+      expect.arrayContaining(['text-[16px]', 'leading-[24px]', 'font-body']),
+    );
   });
 
   test('the label is the Field’s: body size, medium weight', async () => {

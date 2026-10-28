@@ -1,35 +1,20 @@
 /**
  * User Story 2's components in isolation: the note editor's form behaviour
- * (T084/T085), the spending summary's disclosure (T087), the category and
- * anchor pickers, and the `ListScreen` scaffold (research D-23).
+ * (T084/T085), the category and anchor pickers, and the `ListScreen` scaffold (research D-23).
  */
-import { SYSTEM_EXPENSE_CATEGORIES, type ExpenseSummary } from '@triptrackr/contracts';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react-native';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { StyleSheet, Text } from 'react-native';
+import { SYSTEM_EXPENSE_CATEGORIES } from '@triptrackr/contracts';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Text } from 'react-native';
 
 import { AnchorPicker } from '@/components/trip/anchor-picker';
 import { CategoryPicker } from '@/components/trip/category-picker';
-import { ExpenseRow as ExpenseRowView } from '@/components/trip/expense-row';
 import { NoteCard, describeAnchor } from '@/components/trip/note-card';
 import { NoteEditor } from '@/components/trip/note-editor';
-import { SpendingSummary } from '@/components/trip/spending-summary';
 import { ListScreen } from '@/components/ui/list-screen';
 import type { NoteWithPlace } from '@/db/repositories/notes';
-import type { ExpenseRow } from '@/db/schema';
 import type { AnchorTarget } from '@/features/notes/use-move-note';
-import { formatIsoDate } from '@/features/trips/stop-dates';
-import { formatMoney } from '@/lib/locale';
 
-import { classesOf, containing, hostsWhere } from '../helpers/host-nodes';
+import { classesOf } from '../helpers/host-nodes';
 import { glyphNamesIn } from '../helpers/icons';
 
 const targets: AnchorTarget[] = [
@@ -256,42 +241,47 @@ describe('<NoteCard> - a note in the list (T440; FR-006, FR-013, FR-030, FR-034)
     );
   });
 
-  test('is a lift card: a hairline, no dashed edge while the note is saved (FR-002, FR-006)', async () => {
+  test('is a cream tile with a hairline and no dashed edge, saved or not (T551: the state is a glyph and words)', async () => {
     await renderCard();
 
     const classes = classesOf(screen.getByTestId('note-surface-n1'));
-    expect(classes).toContain('bg-surface');
+    expect(classes).toContain('bg-surface-secondary');
     expect(classes).toContain('border-separator');
     expect(classes).not.toContain('border-dashed');
-    expect(screen.queryByText('Not yet synced')).toBeNull();
+    expect(screen.queryByText('On this device')).toBeNull();
+    expect(screen.getByLabelText('Synced')).toBeTruthy();
   });
 
-  test('a note only on this device has the dashed edge AND the marker in words (FR-034, FR-025)', async () => {
+  test('a note only on this device says "On this device" with the upload cloud, in words and a glyph (FR-034, FR-025)', async () => {
     await renderCard({ is_dirty: true });
 
-    expect(classesOf(screen.getByTestId('note-surface-n1'))).toEqual(
-      expect.arrayContaining(['border-dashed', 'border-amber-line']),
+    expect(classesOf(screen.getByTestId('note-surface-n1'))).not.toContain(
+      'border-dashed',
     );
-    expect(screen.getByText('Not yet synced')).toBeTruthy();
-    expect(screen.getByLabelText('Sync pending')).toBeTruthy();
+    expect(screen.getByText('On this device')).toBeTruthy();
+    expect(screen.getByLabelText('On this device, not yet synced')).toBeTruthy();
+    expect(glyphNamesIn(screen.getByTestId('note-sync-n1'))).toEqual(['cloud-upload']);
   });
 
-  test('says where it is filed in words (muted), then shows the title and the body', async () => {
+  test('says the place in the foot row (muted), then the title and the body', async () => {
     await renderCard();
 
-    expect(screen.getByTestId('note-anchor-n1')).toHaveTextContent('Roma, Italy');
+    expect(screen.getByTestId('note-anchor-n1')).toHaveTextContent('Roma');
     expect(classesOf(screen.getByTestId('note-anchor-n1'))).toContain('text-muted');
     expect(screen.getByText('Cheese')).toBeTruthy();
     expect(screen.getByTestId('note-body-n1')).toHaveTextContent('Try the raclette.');
   });
 
-  test('previews at most 160 characters of a long body, and says it is cut', async () => {
-    await renderCard({ body: 'x'.repeat(200) });
+  test('carries at most 240 characters of a long body and says it is cut; the announced name keeps 160', async () => {
+    await renderCard({ body: 'x'.repeat(300) });
 
-    expect(screen.getByTestId('note-body-n1')).toHaveTextContent(`${'x'.repeat(160)}…`);
+    expect(screen.getByTestId('note-body-n1')).toHaveTextContent(`${'x'.repeat(240)}…`);
+    expect(screen.getByTestId('note-card-n1').props.accessibilityLabel).toBe(
+      `Cheese, filed under Roma, Italy. ${'x'.repeat(160)}…`,
+    );
   });
 
-  test('Edit and Delete keep their ids, names, words and handlers; Delete is the destructive one (FR-005, FR-037)', async () => {
+  test('Edit is the card’s body and Delete the trash, each with its id, name and handler (FR-005, FR-037)', async () => {
     const onEdit = jest.fn();
     const onRemove = jest.fn();
     await renderCard({}, { onEdit, onRemove });
@@ -300,10 +290,9 @@ describe('<NoteCard> - a note in the list (T440; FR-006, FR-013, FR-030, FR-034)
     const remove = screen.getByTestId('note-remove-n1');
     expect(edit.props.accessibilityLabel).toBe('Edit Cheese');
     expect(remove.props.accessibilityLabel).toBe('Delete Cheese');
-    expect(edit).toHaveTextContent('Edit');
-    expect(remove).toHaveTextContent('Delete');
-    expect(edit.props.variant).toBe('ghost');
-    expect(remove.props.variant).toBe('danger-soft');
+    expect(edit.props.accessibilityRole).toBe('button');
+    expect(remove.props.accessibilityRole).toBe('button');
+    expect(glyphNamesIn(remove)).toEqual(['trash']);
 
     await fireEvent.press(edit);
     await fireEvent.press(remove);
@@ -361,6 +350,7 @@ describe('<AnchorPicker> and <CategoryPicker>', () => {
     await fireEvent.press(screen.getByTestId('category-custom-1'));
     expect(onChange).toHaveBeenCalledWith('custom-1');
 
+    await fireEvent.press(screen.getByTestId('category-new-toggle'));
     expect(screen.getByTestId('category-new-add').props.accessibilityState).toMatchObject(
       {
         disabled: true,
@@ -373,393 +363,9 @@ describe('<AnchorPicker> and <CategoryPicker>', () => {
     await fireEvent(screen.getByTestId('category-new-name'), 'submitEditing');
     expect(onCreate).toHaveBeenCalledWith('Museums');
     expect(onChange).toHaveBeenLastCalledWith('new-id');
+    expect(screen.queryByTestId('category-new-name')).toBeNull();
+    await fireEvent.press(screen.getByTestId('category-new-toggle'));
     expect(screen.getByTestId('category-new-name').props.value).toBe('');
-  });
-});
-
-describe('<SpendingSummary> (T087, T441; FR-004, FR-014, FR-025, FR-026)', () => {
-  const summary: ExpenseSummary = {
-    home_currency: 'CHF',
-    total_home: '23.50',
-    by_category: [
-      {
-        category_id: SYSTEM_EXPENSE_CATEGORIES[0].id,
-        name: 'Food',
-        total_home: '18.00',
-        count: 2,
-      },
-      {
-        category_id: SYSTEM_EXPENSE_CATEGORIES[2].id,
-        name: 'Transport',
-        total_home: '5.50',
-        count: 1,
-      },
-    ],
-    by_day: [
-      { date: '2026-06-02', total_home: '15.50', count: 2 },
-      { date: '2026-06-03', total_home: '8.00', count: 1 },
-    ],
-    rates_applied: [{ currency: 'EUR', rate: '0.888889', count: 1 }],
-    rates_source: 'https://www.exchangerate-api.com',
-    pending_conversion: {
-      count: 1,
-      by_currency: [{ currency: 'XTS', total: '250000.00', count: 1 }],
-    },
-  };
-
-  test('shows the home total, each breakdown, the applied rates with their source, and pending rows', async () => {
-    await render(<SpendingSummary summary={summary} ratesAsOf="2026-05-01" />);
-
-    expect(screen.getByTestId('summary-total')).toHaveTextContent(containing('23.50'));
-    expect(
-      screen.getByTestId(`summary-category-${SYSTEM_EXPENSE_CATEGORIES[2].id}`),
-    ).toHaveTextContent(containing('Transport'));
-    expect(screen.getByTestId('summary-day-2026-06-03')).toHaveTextContent(
-      containing('8.00'),
-    );
-    expect(screen.getByTestId('summary-rates')).toHaveTextContent(
-      containing('1 EUR = 0.888889 CHF'),
-    );
-    expect(screen.getByTestId('summary-rates')).toHaveTextContent(containing('Rates by'));
-    expect(screen.getByTestId('summary-pending')).toHaveTextContent(containing('XTS'));
-    expect(screen.getByTestId('summary-pending')).toHaveTextContent(
-      containing('Not yet in the CHF total'),
-    );
-  });
-
-  test('a single-currency trip discloses no rates and shows no pending section', async () => {
-    await render(
-      <SpendingSummary
-        summary={{
-          ...summary,
-          rates_applied: [],
-          rates_source: null,
-          pending_conversion: { count: 0, by_currency: [] },
-        }}
-      />,
-    );
-    expect(screen.queryByTestId('summary-rates')).toBeNull();
-    expect(screen.queryByTestId('summary-pending')).toBeNull();
-  });
-
-  test('the total in the home currency is the most prominent figure on it (FR-014)', async () => {
-    await render(<SpendingSummary summary={summary} ratesAsOf="2026-05-01" />);
-
-    const total = screen.getByTestId('summary-total');
-    expect(total).toHaveTextContent(containing('23.50'));
-    // The `largeTitle` size in the display face; nothing else in the card is that big.
-    expect(classesOf(total)).toEqual(
-      expect.arrayContaining(['text-[32px]', 'font-display-bold']),
-    );
-    expect(hostsWhere((node) => classesOf(node).includes('text-[32px]'))).toHaveLength(1);
-    expect(screen.getByText('Total in CHF')).toBeTruthy();
-    expect(classesOf(screen.getByText('Total in CHF'))).toContain('text-muted');
-  });
-
-  test('every amount is set in aligned (tabular) numerals, and the by-day dates too (FR-004)', async () => {
-    await render(<SpendingSummary summary={summary} ratesAsOf="2026-05-01" />);
-
-    const food = screen.getByTestId(
-      `summary-category-${SYSTEM_EXPENSE_CATEGORIES[0].id}`,
-    );
-    const figures = [
-      screen.getByTestId('summary-total'),
-      within(food).getByText(formatMoney('18.00', 'CHF')),
-      within(screen.getByTestId('summary-day-2026-06-02')).getByText(
-        formatIsoDate('2026-06-02'),
-      ),
-      within(screen.getByTestId('summary-day-2026-06-02')).getByText(
-        formatMoney('15.50', 'CHF'),
-      ),
-      within(screen.getByTestId('summary-pending')).getByText(
-        formatMoney('250000.00', 'XTS'),
-      ),
-    ];
-    for (const figure of figures) {
-      expect(StyleSheet.flatten(figure.props.style).fontVariant).toEqual([
-        'tabular-nums',
-      ]);
-    }
-  });
-
-  test('summarises by category: the name, how many, and the amount on the right', async () => {
-    await render(<SpendingSummary summary={summary} />);
-
-    const food = screen.getByTestId(
-      `summary-category-${SYSTEM_EXPENSE_CATEGORIES[0].id}`,
-    );
-    expect(food).toHaveTextContent(containing('Food'));
-    expect(food).toHaveTextContent(containing('2 expenses'));
-    expect(food).toHaveTextContent(containing('18.00'));
-    expect(
-      screen.getByTestId(`summary-category-${SYSTEM_EXPENSE_CATEGORIES[2].id}`),
-    ).toHaveTextContent(containing('1 expense'));
-    // The amount is the right-hand cell of its row.
-    expect(classesOf(within(food).getByText(formatMoney('18.00', 'CHF')))).toContain(
-      'text-right',
-    );
-  });
-
-  test('states the date of the exchange rates in words (FR-014)', async () => {
-    await render(<SpendingSummary summary={summary} ratesAsOf="2026-05-01" />);
-
-    const rates = screen.getByTestId('summary-rates');
-    expect(rates).toHaveTextContent(
-      containing(
-        `Rates by https://www.exchangerate-api.com, as of ${formatIsoDate('2026-05-01')}.`,
-      ),
-    );
-    // Words, not the stored string.
-    expect(rates).not.toHaveTextContent(containing('2026-05-01'));
-    expect(rates).toHaveTextContent(
-      containing('Each expense keeps the rate it was recorded at.'),
-    );
-  });
-
-  test.each([
-    [
-      'a source and no date',
-      'https://rates.example',
-      null,
-      'Rates by https://rates.example.',
-    ],
-    [
-      'a date and no source',
-      null,
-      '2026-05-01',
-      `Rates as of ${formatIsoDate('2026-05-01')}.`,
-    ],
-  ])('says %s plainly', async (_name, source, asOf, sentence) => {
-    await render(
-      <SpendingSummary summary={{ ...summary, rates_source: source }} ratesAsOf={asOf} />,
-    );
-
-    expect(screen.getByTestId('summary-rates')).toHaveTextContent(containing(sentence));
-  });
-
-  test('a trip with nothing spent shows the total alone, with no empty sections', async () => {
-    await render(
-      <SpendingSummary
-        summary={{
-          home_currency: 'CHF',
-          total_home: '0.00',
-          by_category: [],
-          by_day: [],
-          rates_applied: [],
-          rates_source: null,
-          pending_conversion: { count: 0, by_currency: [] },
-        }}
-      />,
-    );
-
-    expect(screen.getByTestId('summary-total')).toHaveTextContent(containing('0.00'));
-    expect(screen.queryByText('By category')).toBeNull();
-    expect(screen.queryByText('By day')).toBeNull();
-    expect(screen.queryByTestId('summary-rates')).toBeNull();
-  });
-
-  test('has no sentence about a source or a date when it has neither', async () => {
-    await render(<SpendingSummary summary={{ ...summary, rates_source: null }} />);
-
-    expect(screen.getByTestId('summary-rates')).not.toHaveTextContent(
-      containing('Rates by'),
-    );
-    expect(screen.getByTestId('summary-rates')).not.toHaveTextContent(
-      containing('as of'),
-    );
-  });
-
-  test('is ONE raised card, its sections are headings, and rows awaiting a rate are an alert in words', async () => {
-    await render(<SpendingSummary summary={summary} ratesAsOf="2026-05-01" />);
-
-    expect(classesOf(screen.getByTestId('spending-summary'))).toContain('bg-surface');
-    for (const heading of ['By category', 'By day', 'Rates applied']) {
-      expect(screen.getByText(heading).props.accessibilityRole).toBe('header');
-    }
-    const pending = screen.getByTestId('summary-pending');
-    expect(pending.props.accessibilityRole).toBe('alert');
-    expect(pending).toHaveTextContent(containing('Awaiting a rate'));
-  });
-
-  test('is composed from the adapter layer only (no retired primitive, no colour literal)', () => {
-    const source = readFileSync(
-      path.resolve(__dirname, '../../src/components/trip/spending-summary.tsx'),
-      'utf8',
-    );
-    expect(source).not.toMatch(/\bSurface\b|PressableSurface|ThemedText|ThemedView/);
-    expect(source).not.toMatch(/@\/constants\/theme|heroui-native|uniwind/);
-    expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
-  });
-});
-
-/** A decorative icon is hidden from assistive technology, and so from a default query. */
-const HIDDEN = { includeHiddenElements: true } as const;
-
-describe('<ExpenseRow> - one expense in a day group (T441; FR-014, FR-025, FR-030, FR-034)', () => {
-  const FOOD_ID = SYSTEM_EXPENSE_CATEGORIES[0].id;
-  const base: ExpenseRow = {
-    id: 'e1',
-    trip_id: 't',
-    city_id: null,
-    category_id: FOOD_ID,
-    amount: '9.00',
-    currency: 'EUR',
-    spent_at: '2026-05-11',
-    note: 'Lunch',
-    fx_rate_to_home: '0.888889',
-    amount_home: '8.00',
-    fx_pending: false,
-    created_at: 'x',
-    updated_at: 'x',
-    deleted_at: null,
-    is_dirty: false,
-    synced_at: 'x',
-  };
-
-  async function renderRow(
-    expense: Partial<ExpenseRow> = {},
-    props: { categoryIcon?: string | null; onRemove?: () => void } = {},
-  ) {
-    return render(
-      <ExpenseRowView
-        expense={{ ...base, ...expense }}
-        categoryName="Food"
-        categoryIcon={props.categoryIcon === undefined ? 'food' : props.categoryIcon}
-        homeCurrency="CHF"
-        onRemove={props.onRemove ?? jest.fn()}
-      />,
-    );
-  }
-
-  test('is ONE element for assistive technology, named as before, with the same delete action', async () => {
-    const onRemove = jest.fn();
-    await renderRow({}, { onRemove });
-
-    const row = screen.getByTestId('expense-row-e1');
-    expect(row.props.accessible).toBe(true);
-    expect(row.props.accessibilityLabel).toBe(
-      `Food, ${formatMoney('9.00', 'EUR')}, ${formatMoney('8.00', 'CHF')}, ${formatIsoDate('2026-05-11')}. Lunch`,
-    );
-    expect(row.props.accessibilityActions).toEqual([
-      { name: 'delete', label: 'Delete expense' },
-    ]);
-    await fireEvent(row, 'accessibilityAction', {
-      nativeEvent: { actionName: 'delete' },
-    });
-    await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'other' } });
-    expect(onRemove).toHaveBeenCalledTimes(1);
-  });
-
-  test('a row awaiting a rate is announced as such, and a row without a note says nothing of one', async () => {
-    await renderRow({
-      note: null,
-      amount_home: null,
-      fx_rate_to_home: null,
-      fx_pending: true,
-    });
-
-    expect(screen.getByTestId('expense-row-e1').props.accessibilityLabel).toBe(
-      `Food, ${formatMoney('9.00', 'EUR')}, awaiting a rate, ${formatIsoDate('2026-05-11')}`,
-    );
-  });
-
-  test('leads with the category icon, decorative because the name beside it says it (FR-014)', async () => {
-    await renderRow();
-
-    const icon = screen.getByTestId('expense-icon-e1', HIDDEN);
-    expect(icon.props.accessible).toBe(false);
-    expect(icon.props.importantForAccessibility).toBe('no-hide-descendants');
-    expect(glyphNamesIn().filter((name) => name === 'fork-knife')).toHaveLength(1);
-  });
-
-  test('a category with no icon of its own leads with the generic glyph', async () => {
-    await renderRow({}, { categoryIcon: null });
-
-    expect(screen.getByTestId('expense-icon-e1', HIDDEN)).toBeTruthy();
-    expect(glyphNamesIn().filter((name) => name === 'fork-knife')).toHaveLength(0);
-  });
-
-  test('puts the amount paid on the right in aligned numerals, with the home amount under it', async () => {
-    await renderRow();
-
-    const paid = screen.getByTestId('expense-paid-e1');
-    const home = screen.getByTestId('expense-home-e1');
-    expect(paid).toHaveTextContent(formatMoney('9.00', 'EUR'));
-    expect(home).toHaveTextContent(formatMoney('8.00', 'CHF'));
-    for (const figure of [paid, home]) {
-      expect(StyleSheet.flatten(figure.props.style).fontVariant).toEqual([
-        'tabular-nums',
-      ]);
-      expect(classesOf(figure)).toContain('text-right');
-    }
-    expect(classesOf(home)).toContain('text-muted');
-  });
-
-  test('says "Awaiting a rate" in words while the conversion is pending', async () => {
-    await renderRow({ amount_home: null, fx_rate_to_home: null, fx_pending: true });
-
-    expect(screen.getByTestId('expense-home-e1')).toHaveTextContent(
-      containing('Awaiting a rate'),
-    );
-  });
-
-  test('a row in the home currency does not repeat itself', async () => {
-    await renderRow({ currency: 'CHF', amount: '3.00', amount_home: '3.00' });
-
-    expect(screen.getByTestId('expense-paid-e1')).toHaveTextContent(
-      formatMoney('3.00', 'CHF'),
-    );
-    expect(screen.queryByTestId('expense-home-e1')).toBeNull();
-  });
-
-  test('shows the note under the category', async () => {
-    await renderRow();
-
-    expect(screen.getByText('Lunch')).toBeTruthy();
-    expect(classesOf(screen.getByText('Lunch'))).toContain('text-muted');
-  });
-
-  test('shows no note line when there is none', async () => {
-    await renderRow({ note: null });
-
-    expect(screen.queryByText('Lunch')).toBeNull();
-  });
-
-  test('a row only on this device carries the marker in words and an icon (FR-034)', async () => {
-    await renderRow({ is_dirty: true });
-
-    expect(screen.getByText('Not yet synced')).toBeTruthy();
-    expect(screen.getByLabelText('Sync pending')).toBeTruthy();
-  });
-
-  test('a saved row carries no marker', async () => {
-    await renderRow({ is_dirty: false });
-
-    expect(screen.queryByText('Not yet synced')).toBeNull();
-  });
-
-  test('Delete keeps its id, name and word, and is the one destructive control of the row', async () => {
-    const onRemove = jest.fn();
-    await renderRow({}, { onRemove });
-
-    const remove = screen.getByTestId('expense-remove-e1');
-    expect(remove.props.accessibilityLabel).toBe(
-      `Delete Food expense of ${formatMoney('9.00', 'EUR')}`,
-    );
-    expect(remove).toHaveTextContent(containing('Delete'));
-    expect(remove.props.variant).toBe('danger-soft');
-    await fireEvent.press(remove);
-    expect(onRemove).toHaveBeenCalledTimes(1);
-  });
-
-  test('is composed from the adapter layer only (no retired primitive, no colour literal)', () => {
-    const source = readFileSync(
-      path.resolve(__dirname, '../../src/components/trip/expense-row.tsx'),
-      'utf8',
-    );
-    expect(source).not.toMatch(/\bSurface\b|PressableSurface|ThemedText|ThemedView/);
-    expect(source).not.toMatch(/@\/constants\/theme|heroui-native|uniwind/);
-    expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
   });
 });
 

@@ -11,12 +11,15 @@
  * What did not change: the props, `testID` on the container, `anchor-<key>` on each chip
  * named by the target's label, the radio group (unnamed, as before: its name would be a
  * label the guard in `scripts/testid-baseline.mjs` cannot read), the words for a trip with
- * no stop. New and additive: a refusal is words with an alert icon (`InlineError`, id
+ * no stop. Each chip leads with the country's flag when the stop has one cached (F9: the
+ * pictured place chip is a flag and a name; the flag is decorative, the label names the place).
+ * New and additive: a refusal is words with an alert icon (`InlineError`, id
  * `<testID>-error`, or `anchor-picker-error` with no `testID`), an alert as before.
  */
 import { View } from 'react-native';
 
 import { ChipGroup, type ChipOption } from '@/components/ui/chip';
+import { FlagChip } from '@/components/ui/flag-chip';
 import { InlineError } from '@/components/ui/inline-error';
 import { Text } from '@/components/ui/text';
 import type { AnchorTarget } from '@/features/notes/use-move-note';
@@ -37,6 +40,7 @@ function chipOptions(targets: readonly AnchorTarget[]): ChipOption[] {
     label: target.label,
     testID: `anchor-${target.key}`,
     accessibilityLabel: target.label,
+    leading: target.iso2 ? <FlagChip iso2={target.iso2} size="lg" /> : undefined,
   }));
 }
 
@@ -50,9 +54,9 @@ export function AnchorPicker({
 }: AnchorPickerProps) {
   return (
     <View className="gap-2" testID={testID}>
-      <Text type="callout">{label}</Text>
+      <Text variant="label">{label}</Text>
       {targets.length === 0 ? (
-        <Text type="callout" tone="muted">
+        <Text variant="label" tone="muted">
           Add a stop to this trip first — notes are filed under its countries and cities.
         </Text>
       ) : (

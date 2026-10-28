@@ -2,14 +2,20 @@
  * "Or continue with" Google and Apple — FR-002; spec Edge Cases (Accounts).
  *
  * The section under the email form on Sign in and Create account: a divider,
- * then one outline button per provider (`ProviderButton`), Google first, stacked
+ * then one pill per provider (`ProviderButton`), Apple first as pictured, stacked
  * in one column at the same width (Atlas, T446; FR-005, FR-017: they are the
  * secondary controls under the screen's one primary action).
  * The provider routes create an account transparently on first use
  * (Acceptance Scenario 1.2), so both screens offer both.
  *
+ * The Welcome screen (F12, owner decision Q-11) draws the same two buttons above its
+ * "Continue with email": `useSocialSignIn` is the one place the handlers, the in-flight
+ * state and the error live, so Apple and Google start the SAME flows there as here.
+ * Apple is not drawn on Android, where Sign in with Apple has no native sheet (Apple's rule
+ * is that it is offered wherever Google is on iOS); nothing says "coming soon" for it there.
+ *
  * A provider that cannot work on this build or platform yet — Google with no
- * client id, Apple anywhere without a native sheet — shows disabled, and one
+ * client id, Apple on an iOS device that says it is unavailable — shows disabled, and one
  * plain sentence under the buttons says which are coming soon. Failures (the
  * provider's own sheet, or the API refusing its token) are said in words
  * under the section, like the form's own errors (FR-010): an alert with an
@@ -18,14 +24,15 @@
  * On success nothing is navigated: the session store flips and the root
  * layout swaps the auth group for the tabs.
  */
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { InlineError } from '@/components/ui/inline-error';
 import { Text } from '@/components/ui/text';
 import { describeAuthError } from '@/features/auth/auth-errors';
 import { useAppleSignIn, useGoogleSignIn } from '@/features/auth/use-session';
 
+import type { AppleIntent } from './apple-official-button';
 import { AppleSignInButton, useAppleSignInAvailability } from './apple-sign-in-button';
 import { GoogleSignInButton, isGoogleSignInConfigured } from './google-sign-in-button';
 
@@ -43,12 +50,40 @@ export function comingSoonSentence(
     : `${missing.join(' and ')} sign-in are coming soon.`;
 }
 
+/** Apple's own title cannot change to say the sign-in is under way, so these words do (FR-025). */
+const APPLE_STATUS = 'Signing in with Apple\u2026';
+
 export type SocialSignInProps = {
   /** The screen's own form is submitting. */
   disabled?: boolean;
+  /** Which of Apple's titles this screen says; see `useSocialSignIn`. */
+  appleIntent?: AppleIntent;
 };
 
-export function SocialSignIn({ disabled = false }: SocialSignInProps) {
+export interface SocialSignInParts {
+  /** Sign in with Apple; null on Android, where it is not drawn. */
+  apple: ReactNode;
+  google: ReactNode;
+  /** "Signing in with Apple…" while that sign-in is in flight, or null: Apple's title cannot say it. */
+  status: string | null;
+  /** One quiet sentence naming what is coming soon, or null. */
+  soon: string | null;
+  /** A provider failure or an API refusal, in plain words, or null. */
+  error: string | null;
+}
+
+/**
+ * The two provider buttons with their handlers, the in-flight state and the error, for a
+ * screen to place (the form screens under their form, Welcome above "Continue with email").
+ * The handlers are the ones the buttons always had: the session mutations are untouched.
+ * `appleIntent` picks which of Apple's three titles its own button reads (Sign in says "Sign in
+ * with Apple", Create account "Sign up with Apple", Welcome, which does either, "Continue with
+ * Apple"); it changes nothing about what pressing it does.
+ */
+export function useSocialSignIn(
+  disabled = false,
+  appleIntent: AppleIntent = 'continue',
+): SocialSignInParts {
   const apple = useAppleSignIn();
   const google = useGoogleSignIn();
   const [providerError, setProviderError] = useState<string | null>(null);
@@ -59,34 +94,56 @@ export function SocialSignIn({ disabled = false }: SocialSignInProps) {
   const mutationError = apple.error ?? google.error;
   const error =
     providerError ?? (mutationError ? describeAuthError(mutationError) : null);
-  const soon = comingSoonSentence(isGoogleSignInConfigured(), appleAvailable);
+  const appleDrawn = Platform.OS !== 'android';
+  const soon = comingSoonSentence(
+    isGoogleSignInConfigured(),
+    appleDrawn ? appleAvailable : true,
+  );
+
+  return {
+    apple: appleDrawn ? (
+      <AppleSignInButton
+        available={appleAvailable}
+        busy={apple.isPending}
+        disabled={disabled || google.isPending}
+        intent={appleIntent}
+        onCredential={(input) => {
+          setProviderError(null);
+          apple.mutate(input);
+        }}
+        onError={failed}
+      />
+    ) : null,
+    google: (
+      <GoogleSignInButton
+        busy={google.isPending}
+        disabled={disabled || apple.isPending}
+        onIdToken={(idToken) => {
+          setProviderError(null);
+          google.mutate(idToken);
+        }}
+        onError={failed}
+      />
+    ),
+    status: apple.isPending ? APPLE_STATUS : null,
+    soon,
+    error,
+  };
+}
+
+export function SocialSignIn({ disabled = false, appleIntent }: SocialSignInProps) {
+  const { apple, google, status, soon, error } = useSocialSignIn(disabled, appleIntent);
 
   return (
     <View testID="social-sign-in" className="mt-3 gap-3">
       <Divider />
       <View testID="social-sign-in-buttons" className="gap-3">
-        <GoogleSignInButton
-          busy={google.isPending}
-          disabled={disabled || apple.isPending}
-          onIdToken={(idToken) => {
-            setProviderError(null);
-            google.mutate(idToken);
-          }}
-          onError={failed}
-        />
-        <AppleSignInButton
-          available={appleAvailable}
-          busy={apple.isPending}
-          disabled={disabled || google.isPending}
-          onCredential={(input) => {
-            setProviderError(null);
-            apple.mutate(input);
-          }}
-          onError={failed}
-        />
+        {apple}
+        {google}
       </View>
+      <ProviderStatus status={status} />
       {soon ? (
-        <Text type="callout" tone="muted" className="text-center">
+        <Text variant="label" tone="muted" className="text-center">
           {soon}
         </Text>
       ) : null}
@@ -95,12 +152,26 @@ export function SocialSignIn({ disabled = false }: SocialSignInProps) {
   );
 }
 
+/** A polite live region: the screen reader says it once when it appears; nothing when null. */
+export function ProviderStatus({ status }: { status: string | null }) {
+  if (!status) return null;
+  return (
+    <Text
+      variant="label"
+      tone="muted"
+      className="text-center"
+      accessibilityLiveRegion="polite">
+      {status}
+    </Text>
+  );
+}
+
 /** A hairline either side of the words, in the border ink. */
 function Divider() {
   return (
     <View className="flex-row items-center gap-2">
       <View className="flex-1 bg-border" style={styles.rule} />
-      <Text type="callout" tone="muted">
+      <Text variant="label" tone="muted">
         or continue with
       </Text>
       <View className="flex-1 bg-border" style={styles.rule} />

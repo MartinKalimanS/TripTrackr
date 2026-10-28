@@ -14,13 +14,16 @@
  * - One flat surface (the same as every state: `bg-surface rounded-2xl p-6 items-center`):
  *   the icon (decorative, 24 dp) in a 72 dp cream roundel, the title (`callout`, centred), the
  *   detail (`body`, muted) and the buttons.
- * - "Open Settings" is a SECONDARY `Button` (never a primary: the screen has its own, and a
- *   refusal is not the traveller's next step), named by `settingsLabel`. It calls
+ * - "Open Settings" is a SECONDARY `Button` (the screen has its own primary, and a refusal is
+ *   not the traveller's next step), named by `settingsLabel`. A screen whose only way forward
+ *   is the one this state offers (the document camera: no shutter until the camera is allowed)
+ *   says `primary`, so the state still shows exactly ONE primary (FR-005). It calls
  *   `onOpenSettings`, which is the screen's (`Linking.openSettings`), so the adapter reaches
  *   no platform API. `alternative` is a quiet text `Button` after it, so a refusal is never a
  *   dead end ("Choose files instead").
  * - `testID` and `accessibilityLiveRegion` land on the surface, as on every state;
- *   `<testID>-icon` is the roundel and `settingsTestID` the settings button.
+ *   `<testID>-icon` is the roundel, `detailTestID` the words and `settingsTestID` the
+ *   settings button.
  *
  * Colours are semantic classes, never a literal.
  */
@@ -30,6 +33,9 @@ import { Button } from './button';
 import { Icon, type IconName } from './icon';
 import { Detail, StateBox, type StateAction } from './state-view';
 import { Text } from './text';
+
+/** The name of the settings button unless the screen chooses another. */
+const OPEN_SETTINGS = 'Open Settings';
 
 export type PermissionStateProps = Pick<
   ViewProps,
@@ -43,9 +49,13 @@ export type PermissionStateProps = Pick<
   detail?: string;
   /** Opens the app's page in Settings. */
   onOpenSettings: () => void;
-  /** Default "Open Settings". */
+  /** Default "Open Settings" (the name the parity guard has always known). */
   settingsLabel?: string;
   settingsTestID?: string;
+  /** An id on the words under the title. */
+  detailTestID?: string;
+  /** Open Settings is the screen's one primary: only where the screen has no other. */
+  primary?: boolean;
   /** A way round the refusal, as a text button. */
   alternative?: StateAction;
 };
@@ -55,8 +65,10 @@ export function PermissionState({
   title,
   detail,
   onOpenSettings,
-  settingsLabel = 'Open Settings',
+  settingsLabel,
   settingsTestID,
+  detailTestID,
+  primary = false,
   alternative,
   ...surface
 }: PermissionStateProps) {
@@ -70,19 +82,19 @@ export function PermissionState({
       <Text variant="callout" className="text-center">
         {title}
       </Text>
-      <Detail>{detail}</Detail>
+      <Detail testID={detailTestID}>{detail}</Detail>
       <Button
-        variant="secondary"
-        accessibilityLabel={settingsLabel}
+        variant={primary ? 'primary' : 'secondary'}
+        accessibilityLabel={settingsLabel ?? OPEN_SETTINGS}
         testID={settingsTestID}
         onPress={() => onOpenSettings()}
         className="mt-2">
-        {settingsLabel}
+        {settingsLabel ?? OPEN_SETTINGS}
       </Button>
       {alternative ? (
         <Button
           variant="text"
-          accessibilityLabel={alternative.label}
+          accessibilityLabel={alternative.accessibilityLabel ?? alternative.label}
           testID={alternative.testID}
           busy={alternative.busy}
           onPress={() => alternative.onPress()}>

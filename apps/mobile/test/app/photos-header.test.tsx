@@ -1,11 +1,13 @@
 /**
- * `trip/[id]/_layout` for the photo gallery - the native header of the `photos` route
- * (tasks.md T442; FR-007, FR-008, FR-030; contract C4-10 rules 4 and 6; research D4-06).
+ * `trip/[id]/_layout` for the photo gallery - the `photos` route has NO native header
+ * (tasks.md T442, then T549; FR-007, FR-008, FR-030, FR-044; research D4-06): the screen draws
+ * the pictured `AreaHeader` itself, with Back, so the navigator's header is hidden for it.
  *
- * `trip-layout.test.tsx` pins which trip screens have a header at all; this suite pins
- * what the PHOTOS header carries, rendered the same way: through `expo-router/testing-library`,
- * a real router and the real native stack, so what is read is what the navigator would hand
- * the native header. The gallery itself is inert here (`photo-screen.test.tsx` covers it).
+ * `trip-layout.test.tsx` pins which trip screens have a header at all; this suite pins the
+ * photos route, rendered the same way: through `expo-router/testing-library`, a real router
+ * and the real native stack, so what is read is what the navigator would hand the native
+ * header. The gallery itself is inert here, but for the `AreaHeader` it draws, so Back is
+ * proved through the real router (`photo-screen.test.tsx` covers the gallery).
  *
  * NOT colocated in `src/app/`: expo-router treats every file there as a route.
  */
@@ -14,6 +16,8 @@ import { Stack, router } from 'expo-router';
 import { act, renderRouter, screen } from 'expo-router/testing-library';
 import * as HeroUI from 'heroui-native';
 import { StyleSheet, Text } from 'react-native';
+
+import { AreaHeader } from '@/components/ui/area-header';
 
 type TestInstance = typeof screen.container;
 
@@ -52,7 +56,7 @@ function routes() {
     index: () => <Text>home</Text>,
     'trip/[id]/_layout': require('@/app/trip/[id]/_layout'),
     'trip/[id]/index': () => <Text testID="trip-index">overview</Text>,
-    'trip/[id]/photos': () => <Text testID="photos-inert">photos</Text>,
+    'trip/[id]/photos': () => <AreaHeader title="Photos" testID="photos-inert" />,
   };
 }
 
@@ -103,38 +107,17 @@ async function openPhotos() {
   return { app };
 }
 
-describe('trip/[id]/_layout - the photos header (FR-007)', () => {
-  test('is shown, and titled "Photos": the title is the navigator’s, not a line of the page', async () => {
+describe('trip/[id]/_layout - the photos route draws its own header (FR-044)', () => {
+  test('has no native header: the title and Back are the screen’s (AreaHeader)', async () => {
     await openPhotos();
-    const header = tripHeaders().photos;
 
-    expect(header?.hidden).toBe(false);
-    expect(header?.title).toBe('Photos');
+    expect(tripHeaders().photos?.hidden).toBe(true);
+    expect(screen.getByTestId('photos-inert')).toBeTruthy();
   });
 
-  test('draws no hairline and takes its colours from the kit tokens', async () => {
+  test('the scene behind it is still the canvas colour', async () => {
     await openPhotos();
-    const header = tripHeaders().photos;
-
-    expect(header?.hideShadow).toBe(true);
-    expect(header?.backgroundColor).toBe(COLOURS.background);
-    expect(header?.color).toBe(COLOURS.accent);
     expect(contentBackground('photos')).toBe(COLOURS.background);
-  });
-
-  test('paints the title in the ink, not the accent that tints the controls (FR-003)', async () => {
-    await openPhotos();
-    const header = tripHeaders().photos;
-
-    expect(header?.titleColor).toBe(COLOURS.foreground);
-    expect(header?.titleColor).not.toBe(COLOURS.accent);
-    // The controls (the Back control's tint) are still the accent.
-    expect(header?.color).toBe(COLOURS.accent);
-  });
-
-  test('is a standard title: the large title is for the top-level lists', async () => {
-    await openPhotos();
-    expect(tripHeaders().photos?.largeTitle).toBeFalsy();
   });
 
   test('leaves the overview’s own header exactly as it was (no title, a hairline-free bar)', async () => {
@@ -147,26 +130,11 @@ describe('trip/[id]/_layout - the photos header (FR-007)', () => {
   });
 });
 
-/** The photos screen's own header: the overview's stays mounted beneath it. */
-function photosHeaderConfig(): TestInstance {
-  const [config] = screen.container.queryAll(
-    (node) =>
-      node.type === 'RNSScreenStackHeaderConfig' &&
-      !!node.parent &&
-      insideTrip(node.parent) &&
-      routeName(node.parent) === 'photos',
-  );
-  return config as TestInstance;
-}
-
 describe('trip/[id]/_layout - Back on the photos screen (FR-008, FR-030)', () => {
-  test('replaces the native back button with a control named "Back", whatever the trip is called', async () => {
+  test('is the one control named "Back", drawn by the screen', async () => {
     await openPhotos();
 
-    // `headerLeft` replaces the native button; only `headerBackVisible` would keep both.
-    expect(tripHeaders().photos?.backButtonInCustomView).toBe(false);
-    expect(tripHeaders().photos?.hideBackButton).toBe(false);
-    const back = within(photosHeaderConfig() as never).getAllByLabelText('Back');
+    const back = within(screen.getByTestId('photos-inert')).getAllByLabelText('Back');
     expect(back).toHaveLength(1);
     expect(back[0]?.props.accessibilityRole).toBe('button');
   });
@@ -175,7 +143,9 @@ describe('trip/[id]/_layout - Back on the photos screen (FR-008, FR-030)', () =>
     const { app } = await openPhotos();
     expect(app.getPathname()).toBe('/trip/abc/photos');
 
-    await fireEvent.press(within(photosHeaderConfig() as never).getByLabelText('Back'));
+    await fireEvent.press(
+      within(screen.getByTestId('photos-inert')).getByLabelText('Back'),
+    );
 
     expect(app.getPathname()).toBe('/trip/abc');
     expect(screen.getByTestId('trip-index')).toBeTruthy();

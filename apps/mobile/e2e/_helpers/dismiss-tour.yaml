@@ -1,0 +1,20 @@
+# Closes the first-run tour (feature 007) when a freshly created account meets it.
+#
+# A new account has no trips, so the tour starts by itself over the Home once the first sync has
+# arrived: it dims the screen and a touch on the dim does nothing, so every flow that registers
+# runs this before it taps anything. It waits a short while for the tour to appear and carries on
+# when it never does (an existing account, or a tour already seen).
+appId: com.triptrackr.app
+---
+- extendedWaitUntil:
+    visible:
+      id: 'tour-skip'
+    timeout: 8000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: 'tour-skip'
+    commands:
+      - tapOn:
+          id: 'tour-skip'

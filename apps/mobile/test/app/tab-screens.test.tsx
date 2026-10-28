@@ -10,6 +10,7 @@
  * profile can sign out.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 
 import ProfileScreen from '@/app/(tabs)/profile';
 import TripsScreen from '@/app/(tabs)/trips';
@@ -21,6 +22,17 @@ import { cardModel } from '../helpers/trip-card-fixture';
 // `mock`-prefixed so Jest's hoisted factory may reference it.
 const mockPush = jest.fn();
 const mockNavigate = jest.fn();
+
+// The You screen's passport has its own suites (components/profile, test/app/profile-screen):
+// here the store has no countries and the screen's own rows are what is pinned.
+const mockPassport = {
+  data: { trips: [], summaries: [], periods: ['all'] },
+  loading: false,
+  error: null as Error | null,
+};
+jest.mock('@/features/passport/use-passport', () => ({
+  usePassport: () => mockPassport,
+}));
 
 jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
@@ -248,7 +260,11 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     await render(<ProfileScreen />);
     const identity = screen.getByTestId('profile-identity');
     expect(within(identity).getByTestId('profile-display-name')).toBeTruthy();
-    expect(within(identity).getByTestId('profile-email')).toBeTruthy();
+    // The email is not pictured in the identity block: it is the first row of Account.
+    expect(within(identity).queryByTestId('profile-email')).toBeNull();
+    expect(
+      within(screen.getByTestId('profile-account-group')).getByTestId('profile-email'),
+    ).toBeTruthy();
     // The initials of "Ana", in the avatar, hidden from assistive technology (decorative).
     expect(screen.queryByText('A')).toBeNull();
     const initials = screen.getByText('A', hidden);
@@ -265,9 +281,9 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     }
   });
 
-  test('the name is not announced as a heading: the native header is the title (FR-030)', async () => {
+  test('the name is the heading of the screen on iOS, where the large native title gives way to it (FR-030)', async () => {
     await render(<ProfileScreen />);
-    expect(screen.getByTestId('profile-display-name').props.accessibilityRole).not.toBe(
+    expect(screen.getByTestId('profile-display-name').props.accessibilityRole).toBe(
       'header',
     );
   });
@@ -294,7 +310,7 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     expect(screen.getByText(/\(45\)/)).toBeTruthy();
   });
 
-  test('is a screen under the native header: the large title collapses over its scroller (props asserted; the collapse is a device check, T408)', async () => {
+  test('iOS: no native header, so the screen pads the top itself and the scroller is first (FR-007)', async () => {
     await render(<ProfileScreen />);
     const root = screen.toJSON() as {
       props: Record<string, unknown>;
@@ -302,10 +318,20 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     };
     expect(root.props.testID).toBe('profile-screen');
     expect(root.children[0].type).toBe('RCTScrollView');
-    expect(root.children[0].props.contentInsetAdjustmentBehavior).toBe('automatic');
-    // No title of its own any more: that is the header's (profile/_layout.tsx), "You".
+    expect(root.children[0].props.contentInsetAdjustmentBehavior).toBeUndefined();
     expect(screen.queryByText('Profile')).toBeNull();
     expect(screen.queryByText('You')).toBeNull();
+  });
+
+  test('Android: under the native "You" header, the scroller insets its content (props asserted; T408 is the device check)', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    await render(<ProfileScreen />);
+    os.restore();
+    const root = screen.toJSON() as {
+      children: { type: string; props: Record<string, unknown> }[];
+    };
+    expect(root.children[0].type).toBe('RCTScrollView');
+    expect(root.children[0].props.contentInsetAdjustmentBehavior).toBe('automatic');
   });
 
   test('sets Sign out and Delete account apart: after the groups, in a block of their own, not in either group', async () => {
@@ -356,12 +382,18 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     );
   });
 
-  test('has no primary control: every control is a row, so the one-primary rule holds (FR-005)', async () => {
+  test('has no primary control: the buttons are the pictured coming-soon ones and the rows (FR-005)', async () => {
     await render(<ProfileScreen />);
-    expect(screen.getAllByRole('button')).toHaveLength(2);
-    expect(
-      screen.getAllByRole('button').filter((node) => node.props.variant === 'primary'),
-    ).toHaveLength(0);
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.map((node) => node.props.testID)).toEqual([
+      'coming-soon-share-passport',
+      'coming-soon-profile-settings',
+      'coming-soon-recap',
+      'profile-take-tour',
+      'profile-sign-out',
+      'profile-delete-account',
+    ]);
+    expect(buttons.filter((node) => node.props.variant === 'primary')).toHaveLength(0);
   });
 
   test('signs out through the mutation (FR-004) and marks the row busy while it runs', async () => {
