@@ -233,17 +233,16 @@ describe('You reading order', () => {
     ]);
   });
 
-  test('the sign-out guard is a button, delete account says it is unavailable', async () => {
+  test('the sign-out guard and delete account are both buttons, and delete account is available', async () => {
     await render(<ProfileScreen />);
     const nodes = accessibleNodes();
     expect(nodes.find((node) => node.id === 'profile-sign-out')).toMatchObject({
       name: 'Sign out',
       role: 'button',
     });
-    expect(nodes.find((node) => node.id === 'profile-delete-account')).toMatchObject({
-      role: 'button',
-      state: ['disabled'],
-    });
+    const remove = nodes.find((node) => node.id === 'profile-delete-account');
+    expect(remove).toMatchObject({ role: 'button' });
+    expect(remove?.state ?? []).not.toContain('disabled');
   });
 
   test('no drawing is left exposed to assistive technology (FR-076)', async () => {

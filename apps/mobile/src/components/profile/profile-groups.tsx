@@ -12,9 +12,9 @@
  *   never colour alone (FR-025), in a block of their own. Sign out revokes this device's refresh
  *   token and ends the local session; it pushes first (T137): if changes would be left that the
  *   server has not acknowledged, `SignOutWarning` appears under the row with "Stay signed in" and
- *   "Sign out anyway", unchanged. Delete account is visible and inert ("Coming soon") until
- *   `DELETE /me` exists (T188): App Store Review 5.1.1(v) and Google Play require in-app deletion
- *   to be discoverable, and it never claims to do what it does not.
+ *   "Sign out anyway", unchanged. Delete account opens the confirmation sheet
+ *   (`modal/delete-account`, feature 008): App Store Review 5.1.1(v) and Google Play require in-app
+ *   deletion to be discoverable, and it does what it says.
  *
  * Visibility posture: private. Nothing is read from or sent to a server here except the sign-out
  * request.
@@ -43,9 +43,6 @@ function describeVersion(): string {
   const build = config?.ios?.buildNumber ?? config?.android?.versionCode;
   return build === undefined ? version : `${version} (${build})`;
 }
-
-/** Deletion is not wired yet (T188): the row is pressable-shaped but never acts. */
-const NOT_AVAILABLE_YET = () => undefined;
 
 /** The email and "Home currency: EUR" is one phrase to assistive technology, as it always was. */
 export function Account({ user }: { user: UserProfile }) {
@@ -115,7 +112,14 @@ function SignOutOutcome({ signOut }: { signOut: SignOut }) {
 }
 
 /** Sign out and Delete account: set apart from the groups, destructive by ink and icon. */
-export function SetApart({ signOut }: { signOut: SignOut }) {
+export function SetApart({
+  signOut,
+  onDeleteAccount,
+}: {
+  signOut: SignOut;
+  /** Opens the Delete account sheet (feature 008). */
+  onDeleteAccount: () => void;
+}) {
   return (
     <View testID="profile-actions" className="mt-4 gap-3">
       <ListGroup>
@@ -143,12 +147,11 @@ export function SetApart({ signOut }: { signOut: SignOut }) {
         <ListRow
           testID="profile-delete-account"
           title="Delete account"
-          description="Coming soon"
+          description="Removes everything you recorded, for good"
           tone="destructive"
           accessibilityLabel="Delete account"
-          accessibilityHint="Permanently removes your account and everything you recorded"
-          disabled
-          onPress={NOT_AVAILABLE_YET}
+          accessibilityHint="Opens a confirmation. Permanently removes your account and everything you recorded"
+          onPress={onDeleteAccount}
         />
       </ListGroup>
     </View>
