@@ -1,7 +1,7 @@
 # Progress
 
 The single place that says what is done. Tick a box **only** with a link to the merged PR or the evidence file.
-Last updated: 2026-10-24 (UI features F1 to F14 built; T564 shape tables retired). Sessions end by updating this file (`P-HANDOFF`).
+Last updated: 2026-10-28 (UI features F1 to F14 built; T564 shape tables retired). Sessions end by updating this file (`P-HANDOFF`).
 
 ## Milestones
 
@@ -134,6 +134,7 @@ row here is not done. Test counts are the full Jest run of the workspace on that
 | 2026-10-24 | T564 done: 004 text roles removed, `Text` is `variant` only, ratchet is zero                                     | `feat/ui-stack`                        | 429 suites / 9,850 tests, tsc, ESLint, Prettier green; `as-built/f14-atlas.md` addendum                                                          |
 | 2026-10-24 | Android tab bar is the floating pill (as `home-contrast.png`); `AndroidNavBar` deleted                           | `feat/ui-stack`                        | 428 suites; tab-bar test pins the Android pill; `as-built/f3-tabbar-android.md` addendum                                                         |
 | 2026-10-24 | Spec 007: open empty Home (no card, no counter) and the first-run tour (5 spotlight steps, closable, replayable) | `feat/ui-stack` (`d0c73d1`, `708cd9a`) | 432 suites / 9,853 tests, tsc, ESLint, Prettier, parity, theme green; `specs/007-first-run-tour/as-built.md`; device checks listed there         |
+| 2026-10-28 | PR #30 CI green (10 of 10); T568 met; one device checklist for the owner                                         | `feat/ui-stack`                        | run 40104800682; `docs/release/device-checklist.md`                                                                                              |
 
 ## Feature 001 open tasks (65 of 228 at 2026-10-21; the list moves to the steps above)
 
