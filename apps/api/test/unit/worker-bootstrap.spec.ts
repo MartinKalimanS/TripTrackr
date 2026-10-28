@@ -26,6 +26,9 @@ jest.mock('@/workers/fx-refresh.processor', () => ({
 jest.mock('@/workers/media.processor', () => ({ processPhoto: jest.fn() }));
 
 jest.mock('@/workers/tombstone-purge.processor', () => ({ purgeTombstones: jest.fn() }));
+jest.mock('@/workers/account-deletion.processor', () => ({
+  processAccountDeletion: jest.fn(),
+}));
 
 jest.mock('bullmq', () => ({
   ...jest.requireActual<typeof import('bullmq')>('bullmq'),
@@ -55,6 +58,10 @@ const { processPhoto } = jest.requireMock<{ processPhoto: jest.Mock }>(
 const { purgeTombstones } = jest.requireMock<{ purgeTombstones: jest.Mock }>(
   '@/workers/tombstone-purge.processor',
 );
+
+const { processAccountDeletion } = jest.requireMock<{
+  processAccountDeletion: jest.Mock;
+}>('@/workers/account-deletion.processor');
 
 const { Queue, Worker } = jest.requireMock<{ Queue: jest.Mock; Worker: jest.Mock }>(
   'bullmq',
@@ -435,6 +442,7 @@ describe('bootstrapWorker', () => {
     }
     purgeTombstones.mockReset();
     processPhoto.mockReset();
+    processAccountDeletion.mockReset();
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -450,7 +458,37 @@ describe('bootstrapWorker', () => {
     expect(started.processors).toEqual({
       [QUEUE_NAMES.fxRefresh]: expect.any(Function),
       [QUEUE_NAMES.media]: expect.any(Function),
+      [QUEUE_NAMES.storageSweep]: expect.any(Function),
       [QUEUE_NAMES.tombstonePurge]: expect.any(Function),
+    });
+  });
+
+  it('runs the account-deletion sweep on the same store and connection, one job at a time', async () => {
+    const started = await start();
+    processAccountDeletion.mockResolvedValueOnce({
+      completed: true,
+      objectsRemoved: 3,
+      accountDeleted: true,
+    });
+    const stdout = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+
+    await (started.processors[QUEUE_NAMES.storageSweep] as Processor)(
+      { data: { userId: 'u' } } as Job,
+      't',
+    );
+
+    const [deps, data] = processAccountDeletion.mock.calls[0] as [
+      { sql: unknown; storage: unknown },
+      unknown,
+    ];
+    expect(deps.storage).toBe(started.storage);
+    expect(deps.sql).toBe(started.sql);
+    expect(data).toEqual({ userId: 'u' });
+    // Counts only: never the traveller's id.
+    expect(String(stdout.mock.calls[0]?.[0])).not.toContain('"u"');
+    expect(started.workerOptions[QUEUE_NAMES.storageSweep]).toEqual({
+      connection: started.connection,
+      concurrency: CONCURRENCY[QUEUE_NAMES.storageSweep],
     });
   });
 

@@ -12,13 +12,12 @@ contact us, and you do not need an active subscription.
 
 ## From the app (fastest)
 
-1. Open **Profile** (bottom tab).
-2. Tap **Account**, then **Delete account**.
-3. Read what will be removed, then confirm. You may be asked to sign in again first.
+1. Open **You** (bottom tab).
+2. Scroll to the end and tap **Delete account**.
+3. Read what will be removed, enter your password (leave it empty if you signed in with Google or Apple) and confirm.
 
 Your public profile and any public trips, notes and photos stop being visible to anyone
-**immediately**. Permanent removal of every record and file completes within
-[[PLACEHOLDER: 30]] days (see "The grace period" below).
+**immediately**, and permanent removal of every record and file follows within minutes (see "When it happens" below).
 
 ## By email
 
@@ -52,15 +51,17 @@ Deletion is verified by an automated check that finds no remaining records **or 
 belonging to the account — a database cascade alone would leave photos and documents behind,
 and we treat that as a failure.
 
-## The grace period
+## When it happens
 
-Permanent removal completes within [[PLACEHOLDER: 30]] days of your request. The delay exists
-for one reason: a device that was offline when you asked (a phone in a drawer, a tablet on a
-plane) must learn that the account is gone rather than push stale copies back to a server that
-no longer has them. During the grace period nothing of yours is visible to anyone, and you can
-cancel the deletion by signing in and choosing **Keep my account**.
+Deletion starts the moment you confirm. Every device signed in to your account is signed out at once, nobody
+can see anything of yours, and our servers remove your records and then every stored file. It normally
+finishes within minutes; if our storage is unavailable it keeps retrying until it succeeds, and we count the
+deletion as complete only after the files are gone.
 
-After the grace period the deletion is irreversible. We cannot recover your data.
+There is **no grace period and no undo**: once you confirm, the deletion cannot be cancelled and we cannot
+recover your data. A device that was offline when you deleted the account learns it the next time it connects:
+its session is refused, and the copy of your data that it holds is removed when you sign out of it or remove the
+app.
 
 ## Backups
 

@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import type { PatchMeRequest, UserProfile } from '@triptrackr/contracts';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 import { rlsDb } from '@/common/db/rls-db';
 import { apiError } from '@/common/errors/api-error';
@@ -46,7 +46,8 @@ export class UsersRepository {
     const [row] = await rlsDb()
       .select(PROFILE_COLUMNS)
       .from(users)
-      .where(eq(users.id, userId))
+      // An account that has asked to be deleted answers as an account that is gone.
+      .where(and(eq(users.id, userId), isNull(users.deletionRequestedAt)))
       .limit(1);
 
     if (!row) {

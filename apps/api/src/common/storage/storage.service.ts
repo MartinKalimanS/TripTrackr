@@ -3,6 +3,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -209,6 +210,33 @@ export class StorageService {
       if (isNotFound(error)) return;
       throw error;
     }
+  }
+
+  /**
+   * Every key under `prefix`, following the listing's pages to the end.
+   *
+   * The account-deletion sweep lists `<ownerId>/` (buildKey's prefix) so that an object
+   * no row points at any more cannot outlive its traveller, and lists it again to prove
+   * nothing is left. Unlike {@link objectSize} it does not swallow a failure: a store
+   * that cannot be listed throws, because "I could not look" is not "there is nothing".
+   */
+  async listObjects(bucket: StorageBucket, prefix: string): Promise<string[]> {
+    const keys: string[] = [];
+    let token: string | undefined;
+    do {
+      const page = await this.client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucketName(bucket),
+          Prefix: prefix,
+          ContinuationToken: token,
+        }),
+      );
+      for (const object of page.Contents ?? []) {
+        if (object.Key !== undefined) keys.push(object.Key);
+      }
+      token = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (token !== undefined);
+    return keys;
   }
 
   private bucketName(bucket: StorageBucket): string {
