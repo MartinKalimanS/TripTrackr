@@ -15,7 +15,7 @@
  * 3. "Account" (email, home currency) and "App" (version) as grouped rows.
  * 4. Sign out and Delete account, SET APART at the bottom (FR-016), danger ink AND an icon, in a
  *    block of their own. The sign-out guard (`SignOutWarning`, `sign-out-warning*`) is unchanged;
- *    Delete account stays visible and inert ("Coming soon") until `DELETE /me` exists (T188).
+ *    Delete account opens the `modal/delete-account` sheet (feature 008).
  *
  * No control here is primary (FR-005). Visibility posture: private. The screen shows the
  * signed-in traveller's own session profile and their own local passport and no one else's;
@@ -72,7 +72,10 @@ export default function ProfileScreen() {
       />
       {user ? <Account user={user} /> : null}
       <AppInfo onTakeTour={takeTour} />
-      <SetApart signOut={signOut} />
+      <SetApart
+        signOut={signOut}
+        onDeleteAccount={() => router.push('/modal/delete-account')}
+      />
     </Screen>
   );
 }

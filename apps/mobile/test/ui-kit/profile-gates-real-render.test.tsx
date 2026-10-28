@@ -177,8 +177,10 @@ describe('the profile over the real kit (T448)', () => {
 
     const remove = screen.getByTestId('profile-delete-account');
     expect(remove.props.accessibilityLabel).toBe('Delete account');
-    expect(remove.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(remove.props.accessibilityState).not.toMatchObject({ disabled: true });
     await fireEvent.press(remove);
+    expect(mockPush).toHaveBeenCalledWith('/modal/delete-account');
+    // Deleting opens a sheet; it never signs out by itself.
     expect(mockSignOut.mutate).toHaveBeenCalledTimes(1);
   });
 

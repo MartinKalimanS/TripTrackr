@@ -12,6 +12,7 @@ import { screen, waitFor } from '@testing-library/react-native';
 
 import AddExpenseScreen from '@/app/modal/add-expense';
 import AddTripScreen from '@/app/modal/add-trip';
+import DeleteAccountScreen from '@/app/modal/delete-account';
 import DocumentCaptureScreen from '@/app/trip/[id]/document-capture';
 import DocumentViewScreen from '@/app/trip/[id]/document-view';
 import DocumentsScreen from '@/app/trip/[id]/documents';
@@ -52,6 +53,15 @@ jest.mock('expo-router', () => ({
   // Focus is mount here: the effect runs once, as on first focus.
   useFocusEffect: (effect: () => void) =>
     (require('react') as typeof import('react')).useEffect(effect, [effect]),
+}));
+// The deletion itself has suites of its own; the sheet is swept for how it looks.
+jest.mock('@/features/auth/use-delete-account', () => ({
+  useDeleteAccount: () => ({
+    mutate: jest.fn(),
+    reset: jest.fn(),
+    isPending: false,
+    error: null,
+  }),
 }));
 jest.mock('@/lib/sentry', () => ({
   Sentry: { captureException: jest.fn() },
@@ -298,6 +308,7 @@ sweepScreen(
   loaded,
 );
 sweepScreen('Plan a trip (sheet)', () => <AddTripScreen />, prepareTrip);
+sweepScreen('Delete account (sheet)', () => <DeleteAccountScreen />, prepareTrip);
 sweepScreen('Add an expense (sheet)', () => <AddExpenseScreen />, prepareTrip);
 
 // ---- the states a screen shows before and instead of its content (FR-064): a skeleton, the

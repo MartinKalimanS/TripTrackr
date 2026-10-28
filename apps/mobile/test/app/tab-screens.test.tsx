@@ -415,20 +415,20 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     expect(mockSignOut.mutate).not.toHaveBeenCalled();
   });
 
-  test('presents the account-deletion entry point the stores require, disabled until wired', async () => {
+  test('presents the account-deletion entry point the stores require, and it opens the sheet', async () => {
     // App Store Review 5.1.1(v) and Google Play's account-deletion policy both
-    // require in-app deletion to be discoverable. It is visible now and inert
-    // until T188 lands `DELETE /me`; hiding it until then would risk shipping
-    // a build without it.
+    // require in-app deletion to be discoverable. It opens the Delete account
+    // sheet (feature 008), where the traveller confirms with their password.
     await render(<ProfileScreen />);
     const row = screen.getByLabelText('Delete account');
     expect(row).toBe(screen.getByTestId('profile-delete-account'));
-    expect(row.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(row.props.accessibilityState).not.toMatchObject({ disabled: true });
     expect(row.props.accessibilityHint).toBe(
-      'Permanently removes your account and everything you recorded',
+      'Opens a confirmation. Permanently removes your account and everything you recorded',
     );
-    expect(screen.getByText('Coming soon')).toBeTruthy();
+    expect(screen.queryByText('Coming soon')).toBeNull();
     await fireEvent.press(row);
+    expect(mockPush).toHaveBeenCalledWith('/modal/delete-account');
     expect(mockSignOut.mutate).not.toHaveBeenCalled();
   });
 

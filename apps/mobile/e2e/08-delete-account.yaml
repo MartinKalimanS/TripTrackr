@@ -1,0 +1,104 @@
+# Feature 008 - delete my account (specs/008-account-deletion).
+#
+# A new account opens You, taps Delete account, is refused with a wrong password (nothing happens),
+# confirms with the right one, lands on Welcome, and can no longer sign in with that e-mail.
+#
+# PREREQUISITES: those of 01-account-and-trip.yaml (development build, reachable API) and a worker
+# running against it: the account is only fully gone when the sweep finishes, but the sign-in is
+# refused from the moment the request is accepted.
+appId: com.triptrackr.app
+tags:
+  - deletion
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    id: 'welcome-screen'
+
+# --- Register ---------------------------------------------------------------
+- evalScript: ${output.email = 'maestro-delete-' + Date.now() + '@example.com'}
+- tapOn:
+    id: 'welcome-create-account'
+- tapOn:
+    id: 'register-display-name'
+- inputText: 'Maestro Leaver'
+- tapOn:
+    id: 'register-email'
+- inputText: ${output.email}
+- tapOn:
+    id: 'register-password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'register-confirm-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register-submit'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+- runFlow: _helpers/dismiss-tour.yaml
+
+# --- Open the sheet ------------------------------------------------------------------
+- tapOn:
+    id: 'tab-profile'
+- scrollUntilVisible:
+    element:
+      id: 'profile-delete-account'
+- tapOn:
+    id: 'profile-delete-account'
+- assertVisible:
+    id: 'delete-account-screen'
+- assertVisible: 'cannot be undone'
+- takeScreenshot: 08-delete-account-sheet
+
+# --- A wrong password: refused in words, nothing happens ------------------------------
+- tapOn:
+    id: 'delete-account-password'
+- inputText: 'not my password at all'
+- hideKeyboard
+- tapOn:
+    id: 'delete-account-save'
+- assertVisible:
+    id: 'delete-account-error'
+- assertVisible:
+    id: 'delete-account-screen'
+
+# --- Cancel changes nothing ---------------------------------------------------------------
+- tapOn:
+    id: 'delete-account-cancel'
+- assertVisible:
+    id: 'profile-delete-account'
+
+# --- The right password: the account goes, the phone forgets it ----------------------------
+- tapOn:
+    id: 'profile-delete-account'
+- tapOn:
+    id: 'delete-account-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'delete-account-save'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome-screen'
+    timeout: 30000
+
+# --- It cannot be signed back into ------------------------------------------------------------
+- tapOn:
+    id: 'welcome-sign-in'
+- tapOn:
+    id: 'login-email'
+- inputText: ${output.email}
+- tapOn:
+    id: 'login-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'login-submit'
+- assertVisible:
+    id: 'login-error'
