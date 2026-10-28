@@ -1,0 +1,7 @@
+# Waivers for the Trivy image scan (.github/workflows/security.yml, step S-01).
+#
+# Empty on purpose. The scan already skips vulnerabilities with no fix (`ignore-unfixed`); an
+# entry here is for a vulnerability that HAS a fix we cannot take yet. Each needs a `statement`
+# saying why it is not exploitable in the image and an `expired_at` (at most 90 days out), after
+# which the scan fails again. Format: https://trivy.dev/latest/docs/configuration/filtering/
+vulnerabilities: []

@@ -21,6 +21,8 @@
     "test": "npm run test --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test:scripts": "node --test \"scripts/**/*.test.mjs\"",
+    "audit:gate": "node scripts/audit-gate.mjs",
     "infra:up": "docker compose --env-file .env -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose --env-file .env -f infra/docker-compose.yml down",
     "infra:logs": "docker compose --env-file .env -f infra/docker-compose.yml logs -f api worker"
