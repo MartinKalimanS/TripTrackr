@@ -11,7 +11,7 @@
 
 FROM rclone/rclone:1.75.1@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5 AS rclone
 
-FROM postgis/postgis:17-3.5
+FROM postgis/postgis:17-3.6
 
 COPY --from=rclone /usr/local/bin/rclone /usr/local/bin/rclone
 COPY scripts/backup.sh \
