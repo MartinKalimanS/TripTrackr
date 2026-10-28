@@ -67,3 +67,7 @@ in production dependencies (one critical, `shell-quote`). They are waived in `se
 **2026-11-27** so that the gate can be switched on, and the fix is tracked as a follow-up (five are fixed by `npm audit
 fix`; the other two wait for NestJS 12 and a zod bump). **The waivers expire on purpose**: on that date the gate goes red
 again unless the advisories are fixed or the waivers are re-reviewed.
+
+The **backup image scan is report-only** for the same reason: its base is Debian 11, with 45 operating-system findings (2 critical) and Go
+standard-library findings in `gosu` and `rclone` (first scan, 2026-10-28). The API image scan blocks. The follow-up (S-22) moves the backup base image and
+repeats the restore rehearsal, then sets `exit: '1'` for it in `security.yml`.
