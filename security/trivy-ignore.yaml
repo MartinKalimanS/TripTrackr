@@ -12,3 +12,10 @@ vulnerabilities:
       go to the store by signed URL and documents arrive as base64 JSON), so the code path is not
       reachable. Fixed by multer 2.5.0 with NestJS 12 (Dependabot PR open); re-review then.
     expired_at: 2026-11-27
+  - id: CVE-2023-54404
+    statement: >-
+      zod 4.6.5: memory use while validating oversized constrained collections. Fixed in 4.6.6, a lockfile
+      update that is held for the dependency PR that also moves NestJS and Expo (the same advisory is
+      waived in security/audit-allowlist.json). Every body the API validates is size-capped by the
+      reverse proxy and by the schemas themselves.
+    expired_at: 2026-11-27

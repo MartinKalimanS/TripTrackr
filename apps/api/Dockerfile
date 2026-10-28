@@ -29,7 +29,10 @@ WORKDIR /repo
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/contracts/package.json packages/contracts/
-RUN npm ci --omit=dev --workspace apps/api --workspace packages/contracts --include-workspace-root=false \
+# --omit=peer: drizzle-orm's optional expo-sqlite peer (the mobile app's driver) pulled the whole Expo
+# toolchain, 584 packages and its vulnerabilities, into this image. Everything the API needs is a
+# direct dependency of apps/api (checked: the API, the worker and the migration runner all load).
+RUN npm ci --omit=dev --omit=peer --workspace apps/api --workspace packages/contracts --include-workspace-root=false \
  && npm cache clean --force \
  # The runtime starts `node` directly (the API, the worker and the migration runner all do), so the
  # package managers the base image ships have no job here, and their own dependencies were the
