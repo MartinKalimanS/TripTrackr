@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { PasswordService } from '@/modules/auth/password.service';
 
 import { DeletionService } from './deletion.service';
+import { ExportService } from './export.service';
 import { TravelStatsService } from './travel-stats.service';
 import { UsersController } from './users.controller';
 import { UsersRepository } from './users.repository';
@@ -20,7 +21,13 @@ import { UsersRepository } from './users.repository';
   controllers: [UsersController],
   // PasswordService is stateless (Argon2): provided here as well as in the auth module,
   // which imports this one, so the dependency still runs one way.
-  providers: [UsersRepository, TravelStatsService, DeletionService, PasswordService],
+  providers: [
+    UsersRepository,
+    TravelStatsService,
+    DeletionService,
+    ExportService,
+    PasswordService,
+  ],
   exports: [UsersRepository],
 })
 export class UsersModule {}

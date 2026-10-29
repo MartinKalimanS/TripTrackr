@@ -9,6 +9,8 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
 
 import { loadEnv } from '@/common/config/env.schema';
 
@@ -105,10 +107,21 @@ export class StorageService {
   }
 
   /** A short-lived pre-signed GET. FR-030. */
-  async createDownloadUrl(bucket: StorageBucket, storageKey: string): Promise<string> {
+  async createDownloadUrl(
+    bucket: StorageBucket,
+    storageKey: string,
+    /** Makes a browser save the object under this name instead of showing it (the data export). */
+    downloadName?: string,
+  ): Promise<string> {
     return getSignedUrl(
       this.signer,
-      new GetObjectCommand({ Bucket: this.bucketName(bucket), Key: storageKey }),
+      new GetObjectCommand({
+        Bucket: this.bucketName(bucket),
+        Key: storageKey,
+        ...(downloadName && {
+          ResponseContentDisposition: `attachment; filename="${downloadName}"`,
+        }),
+      }),
       { expiresIn: loadEnv().S3_SIGNED_URL_TTL_SECONDS },
     );
   }
@@ -129,6 +142,28 @@ export class StorageService {
         Bucket: this.bucketName(bucket),
         Key: storageKey,
         Body: body,
+        ContentType: contentType,
+      }),
+    );
+  }
+
+  /**
+   * Writes a file from disk: the data export's archive, which can be hundreds of megabytes and is
+   * streamed rather than read into memory. A failed write throws.
+   */
+  async putObjectFromFile(
+    bucket: StorageBucket,
+    storageKey: string,
+    path: string,
+    contentType: string,
+  ): Promise<void> {
+    const { size } = await stat(path);
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucketName(bucket),
+        Key: storageKey,
+        Body: createReadStream(path),
+        ContentLength: size,
         ContentType: contentType,
       }),
     );

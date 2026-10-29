@@ -13,6 +13,7 @@ export * from './sync/envelope';
 export * from './api/errors';
 export * from './api/auth';
 export * from './api/users';
+export * from './api/exports';
 export * from './api/lookups';
 export * from './api/trips';
 export * from './api/notes';

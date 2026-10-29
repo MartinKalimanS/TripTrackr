@@ -46,6 +46,16 @@ export const TOMBSTONE_PURGE_SCHEDULER = {
   everyMs: 24 * 60 * 60 * 1_000,
 } as const;
 
+/**
+ * The job scheduler that removes expired data-export archives once a day (spec 009 FR-006), exactly as
+ * {@link TOMBSTONE_PURGE_SCHEDULER} keeps the purge running. No `immediately`: a fresh deployment has
+ * nothing to expire.
+ */
+export const EXPORT_CLEANUP_SCHEDULER = {
+  id: 'export-cleanup-daily',
+  everyMs: 24 * 60 * 60 * 1_000,
+} as const;
+
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 
 /** DI token for a queue, e.g. `@Inject(queueToken(QUEUE_NAMES.media))`. */

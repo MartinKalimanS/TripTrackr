@@ -3,19 +3,28 @@ import type Redis from 'ioredis';
 import postgres, { type Sql } from 'postgres';
 
 import { loadEnv } from '@/common/config/env.schema';
+import { EnvelopeService } from '@/common/crypto/envelope.service';
 import {
+  EXPORT_CLEANUP_SCHEDULER,
   FX_REFRESH_SCHEDULER,
   QUEUE_NAMES,
   TOMBSTONE_PURGE_SCHEDULER,
   type QueueName,
 } from '@/common/queue/queue.constants';
 import { StorageService } from '@/common/storage/storage.service';
+import { createEmailSender } from '@/modules/auth/email-sender';
+import { BoardingPassService } from '@/modules/documents/boarding-pass.service';
 
 import { refreshFxRates } from './fx-refresh.processor';
 import {
   processAccountDeletion,
   type DeletionStorage,
 } from './account-deletion.processor';
+import {
+  cleanupExpiredExports,
+  processAccountExport,
+  type AccountExportDeps,
+} from './account-export.processor';
 import { processPhoto, type MediaStorage } from './media.processor';
 import { FailClosedPhotoScreening, type PhotoScreening } from './photo-screening';
 import { purgeTombstones, type PurgeStorage } from './tombstone-purge.processor';
@@ -110,6 +119,12 @@ export interface ProcessorDeps {
    * every deletion job, loudly, rather than deleting rows whose bytes it cannot remove.
    */
   readonly sweepStorage?: DeletionStorage;
+  /**
+   * What the data export needs besides the connection (T190): the object store, the envelope that
+   * opens documents, the boarding-pass reader and the e-mail sender. `bootstrapWorker` supplies it;
+   * a registry built without it fails every export job, loudly.
+   */
+  readonly exporter?: Omit<AccountExportDeps, 'sql'>;
   /** Photo screening (research D-34); the fail-closed port when absent. */
   readonly screening?: PhotoScreening;
   readonly streams?: WorkerStreams;
@@ -164,6 +179,26 @@ export function buildProcessors(
       logLine('info', { queue: QUEUE_NAMES.storageSweep, ...result }, deps.streams);
       return result;
     },
+    [QUEUE_NAMES.accountExport]: async (job) => {
+      if (!deps.exporter) {
+        throw new Error(
+          'The data export was built without its dependencies; bootstrapWorker supplies them.',
+        );
+      }
+      const exporter = { sql: deps.sql, ...deps.exporter };
+      // Two jobs share the queue: one archive, and the daily removal of the expired ones.
+      const result =
+        job.name === EXPORT_CLEANUP_JOB
+          ? await cleanupExpiredExports(exporter)
+          : await processAccountExport(exporter, job.data);
+      // Counts and the outcome only: never a key, an id, a title or a traveller.
+      logLine(
+        'info',
+        { queue: QUEUE_NAMES.accountExport, job: job.name, ...result },
+        deps.streams,
+      );
+      return result;
+    },
     [QUEUE_NAMES.tombstonePurge]: async () => {
       if (!deps.purgeStorage) {
         throw new Error(
@@ -205,6 +240,9 @@ interface Schedule {
   readonly assert: (queue: SchedulerQueue) => Promise<unknown>;
 }
 
+/** The name of the repeatable job that removes expired archives (scheduled below). */
+export const EXPORT_CLEANUP_JOB = 'cleanup';
+
 const SCHEDULES: readonly Schedule[] = [
   {
     queue: QUEUE_NAMES.fxRefresh,
@@ -214,6 +252,15 @@ const SCHEDULES: readonly Schedule[] = [
         FX_REFRESH_SCHEDULER.id,
         { every: FX_REFRESH_SCHEDULER.everyMs, immediately: true },
         { name: 'refresh' },
+      ),
+  },
+  {
+    queue: QUEUE_NAMES.accountExport,
+    assert: (queue) =>
+      queue.upsertJobScheduler(
+        EXPORT_CLEANUP_SCHEDULER.id,
+        { every: EXPORT_CLEANUP_SCHEDULER.everyMs },
+        { name: EXPORT_CLEANUP_JOB },
       ),
   },
   {
@@ -400,6 +447,7 @@ export function bootstrapWorker(connection: Redis): void {
   // both roles it plays: the media worker's best-effort store and the purge's
   // strict `removeObject`.
   const storage = new StorageService();
+  const envelope = new EnvelopeService();
 
   const workers = startWorkers(
     buildProcessors({
@@ -409,6 +457,12 @@ export function bootstrapWorker(connection: Redis): void {
       storage,
       purgeStorage: storage,
       sweepStorage: storage,
+      exporter: {
+        storage,
+        envelope,
+        boardingPass: new BoardingPassService(envelope),
+        email: createEmailSender(env),
+      },
       screening: new FailClosedPhotoScreening(),
     }),
     bullWorkerFactory(connection),
