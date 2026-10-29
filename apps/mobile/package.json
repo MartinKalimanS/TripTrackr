@@ -96,6 +96,8 @@
     "e2e": "maestro test e2e/",
     "doctor": "expo-doctor",
     "theme:build": "node scripts/build-theme-css.mjs",
-    "theme:check": "node scripts/build-theme-css.mjs --check"
+    "theme:check": "node scripts/build-theme-css.mjs --check",
+    "licenses": "node scripts/build-licenses.mjs",
+    "licenses:check": "node scripts/build-licenses.mjs --check"
   }
 }

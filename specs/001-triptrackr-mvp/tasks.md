@@ -452,10 +452,10 @@ _Amended 2026-09-29 for research D-31..D-34: documents are sealed by the API fro
 
 - [ ] T188 [P] Implement account deletion — `DELETE /me` cascading rows **and** enqueuing an object-storage sweep that must confirm before deletion is complete — in `apps/api/src/modules/users/deletion.service.ts` and `apps/api/src/workers/storage-sweep.processor.ts` (FR-006, Constitution V)
 - [ ] T189 [P] Write the residue test asserting no object-storage key survives an account deletion, in `apps/api/test/integration/deletion-residue.spec.ts` (SC-015)
-- [ ] T190 [P] Implement the async `POST /me/export` job producing a portable archive delivered by signed URL, in `apps/api/src/modules/users/export.service.ts` (FR-007)
+- [x] T190 [P] Implement the async `POST /me/export` job producing a portable archive delivered by signed URL, in `apps/api/src/modules/users/export.service.ts` (FR-007)
 - [ ] T191 [P] Write the backup and restore-rehearsal scripts in `infra/scripts/backup.sh` and `infra/scripts/restore-rehearsal.sh`, and perform an actual restore (SC-020, RTO 1h / RPO 24h)
 - [ ] T192 [P] Write k6 load tests for `/planner/generate` and `/feed` in `apps/api/test/load/` (SC-003)
-- [ ] T193 [P] State the 90-day tombstone retention window plainly to travellers in the privacy section of `apps/mobile/src/app/(tabs)/profile.tsx` (Constitution V)
+- [x] T193 [P] State the 90-day tombstone retention window plainly to travellers in the privacy section of `apps/mobile/src/app/(tabs)/profile.tsx` (Constitution V) - built as the About sheet, `modal/about.tsx` (spec 010)
 - [ ] T194 Verify cold start to interactive globe is under 3 seconds on a mid-tier device (SC-001)
 - [ ] T195 Verify coverage is at or above 80% across unit, integration, and E2E, and that CI fails below it (Constitution III)
 - [ ] T196 Security hardening pass — Traefik rate limits, secret rotation procedure, and confirmation that no raw card field exists anywhere in the codebase (FR-081)

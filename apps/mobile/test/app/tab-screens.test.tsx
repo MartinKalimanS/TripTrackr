@@ -391,6 +391,7 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
       'coming-soon-recap',
       'profile-export-data',
       'profile-take-tour',
+      'profile-about',
       'profile-sign-out',
       'profile-delete-account',
     ]);

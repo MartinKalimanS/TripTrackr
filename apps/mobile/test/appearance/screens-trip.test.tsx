@@ -13,6 +13,7 @@ import { screen, waitFor } from '@testing-library/react-native';
 import AddExpenseScreen from '@/app/modal/add-expense';
 import AddTripScreen from '@/app/modal/add-trip';
 import DeleteAccountScreen from '@/app/modal/delete-account';
+import AboutScreen from '@/app/modal/about';
 import ExportDataScreen from '@/app/modal/export-data';
 import DocumentCaptureScreen from '@/app/trip/[id]/document-capture';
 import DocumentViewScreen from '@/app/trip/[id]/document-view';
@@ -75,6 +76,7 @@ jest.mock('@/features/account/use-data-export', () => ({
     restart: jest.fn(),
   }),
 }));
+jest.mock('expo-web-browser', () => ({ openBrowserAsync: jest.fn() }));
 jest.mock('@/lib/sentry', () => ({
   Sentry: { captureException: jest.fn() },
   initSentry: jest.fn(),
@@ -320,6 +322,7 @@ sweepScreen(
   loaded,
 );
 sweepScreen('Plan a trip (sheet)', () => <AddTripScreen />, prepareTrip);
+sweepScreen('About (sheet)', () => <AboutScreen />, prepareTrip);
 sweepScreen('Export my data (sheet)', () => <ExportDataScreen />, prepareTrip);
 sweepScreen('Delete account (sheet)', () => <DeleteAccountScreen />, prepareTrip);
 sweepScreen('Add an expense (sheet)', () => <AddExpenseScreen />, prepareTrip);

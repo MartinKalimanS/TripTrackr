@@ -81,7 +81,13 @@ export function Account({
   );
 }
 
-export function AppInfo({ onTakeTour }: { onTakeTour: () => void }) {
+export function AppInfo({
+  onTakeTour,
+  onAbout,
+}: {
+  onTakeTour: () => void;
+  onAbout: () => void;
+}) {
   return (
     <ListGroup header="App" testID="profile-app-group">
       <ListRow
@@ -91,6 +97,14 @@ export function AppInfo({ onTakeTour }: { onTakeTour: () => void }) {
         accessibilityLabel="Take the tour"
         accessibilityHint="Opens the Globe and walks you through the app"
         onPress={onTakeTour}
+      />
+      <ListRow
+        testID="profile-about"
+        title="About TripTrackr"
+        description="Legal, support and credits"
+        accessibilityLabel="About TripTrackr"
+        accessibilityHint="Opens the legal links, credits and what we keep"
+        onPress={onAbout}
       />
       <ListRow
         title="Version"
