@@ -79,19 +79,45 @@ Reset everything, including data: `docker compose -f infra/docker-compose.yml do
 
 ### Geo catalogue
 
-The country/city picker needs the GeoNames extracts loaded once (and refreshed occasionally):
+The country/city picker needs the GeoNames extracts loaded once (and refreshed occasionally). The
+data is CC BY 4.0; the in-app About sheet carries the attribution.
+
+**1. Download and fingerprint the extracts** (GeoNames re-publishes them, so a pinned checksum would
+go stale within days; record the one you imported instead):
 
 ```bash
-# from the repository root, with the dev stack up (5432 is published in development).
-# MIGRATION_DATABASE_URL is read from the root .env. The script runs with apps/api as its
-# working directory, so pass absolute paths ($PWD expands in bash and PowerShell alike).
-npm run geo:import -w apps/api -- --countries "$PWD/data/countryInfo.txt" --cities "$PWD/data/cities15000.txt"
+mkdir -p data && cd data
+curl -fLO https://download.geonames.org/export/dump/countryInfo.txt
+curl -fLO https://download.geonames.org/export/dump/cities15000.zip && unzip -o cities15000.zip
+sha256sum countryInfo.txt cities15000.txt        # keep these lines in the release notes
+wc -l countryInfo.txt cities15000.txt            # about 250 countries, about 26,000 cities
+cd ..
 ```
 
-The import connects as the **owner** (it alters reference tables). In production 5432 is not
-published; run it from the host over an SSH tunnel to the container, or temporarily add a
-`127.0.0.1:5432:5432` port mapping in a local override file. Packaging the import into the API
-image as a one-shot command is a follow-up.
+**2. Import** (from the repository root; `MIGRATION_DATABASE_URL` is read from the root `.env`;
+the script runs with `apps/api` as its working directory, so pass absolute paths, `$PWD` expands in
+bash and PowerShell alike):
+
+```bash
+npm run geo:import -w apps/api -- --countries "$PWD/data/countryInfo.txt" --cities "$PWD/data/cities15000.txt"
+# Imported 250 countries and 25xxx cities in 9.4s (N rows skipped).
+```
+
+The import connects as the **owner** (it alters reference tables). In development 5432 is
+published. In production it is not: run the import from the host over an SSH tunnel to the
+container (`ssh -L 5432:127.0.0.1:5432` after publishing it on the loopback only in a local override
+file), then remove the override. It is **idempotent**: every row is upserted on its natural key
+(`iso_code`, `geoname_id`), so a monthly refresh updates in place and `cities.id` stays stable, which
+a traveller's stops depend on. A non-zero exit means a partial catalogue: just run it again.
+`test/integration/geo-import.spec.ts` pins that behaviour on a tiny fixture in CI.
+
+**3. Verify** that the API serves it (non-empty is the store-readiness check):
+
+```bash
+curl -fsS https://$API_HOST/v1/countries | node -e "let b='';process.stdin.on('data',d=>b+=d).on('end',()=>console.log(JSON.parse(b).countries.length))"
+```
+
+Packaging the import into the API image as a one-shot command is a follow-up (S-26).
 
 ## Production (single VPS)
 
