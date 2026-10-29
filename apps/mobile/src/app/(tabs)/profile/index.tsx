@@ -73,7 +73,7 @@ export default function ProfileScreen() {
       {user ? (
         <Account user={user} onExportData={() => router.push('/modal/export-data')} />
       ) : null}
-      <AppInfo onTakeTour={takeTour} />
+      <AppInfo onTakeTour={takeTour} onAbout={() => router.push('/modal/about')} />
       <SetApart
         signOut={signOut}
         onDeleteAccount={() => router.push('/modal/delete-account')}
