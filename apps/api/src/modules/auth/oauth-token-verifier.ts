@@ -35,6 +35,9 @@ export class OAuthProviderUnavailableError extends Error {
 }
 
 export const APPLE_ISSUER = 'https://appleid.apple.com';
+
+/** Apple signs identity tokens with RS256 and nothing else; any other algorithm is refused. */
+export const APPLE_ALGORITHMS = ['RS256'];
 const APPLE_JWKS_URL = new URL('https://appleid.apple.com/auth/keys');
 
 /** The two provider clients, as the slices this module calls. */
@@ -48,7 +51,7 @@ export interface OAuthClients {
   readonly apple: {
     verify(
       token: string,
-      options: { issuer: string; audience: string[] },
+      options: { issuer: string; audience: string[]; algorithms: string[] },
     ): Promise<{ payload: JWTPayload }>;
   };
 }
@@ -133,6 +136,7 @@ export class OAuthTokenVerifier {
       const { payload: claims } = await this.clients.apple.verify(identityToken, {
         issuer: APPLE_ISSUER,
         audience,
+        algorithms: [...APPLE_ALGORITHMS],
       });
       return claims;
     });
