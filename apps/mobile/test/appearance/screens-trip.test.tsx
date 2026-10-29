@@ -13,6 +13,7 @@ import { screen, waitFor } from '@testing-library/react-native';
 import AddExpenseScreen from '@/app/modal/add-expense';
 import AddTripScreen from '@/app/modal/add-trip';
 import DeleteAccountScreen from '@/app/modal/delete-account';
+import ExportDataScreen from '@/app/modal/export-data';
 import DocumentCaptureScreen from '@/app/trip/[id]/document-capture';
 import DocumentViewScreen from '@/app/trip/[id]/document-view';
 import DocumentsScreen from '@/app/trip/[id]/documents';
@@ -61,6 +62,17 @@ jest.mock('@/features/auth/use-delete-account', () => ({
     reset: jest.fn(),
     isPending: false,
     error: null,
+  }),
+}));
+// Exporting has suites of its own; the sheet is swept for how it looks.
+jest.mock('@/features/account/use-data-export', () => ({
+  useDataExport: () => ({
+    phase: 'form',
+    downloadUrl: null,
+    isStarting: false,
+    error: null,
+    start: jest.fn(),
+    restart: jest.fn(),
   }),
 }));
 jest.mock('@/lib/sentry', () => ({
@@ -308,6 +320,7 @@ sweepScreen(
   loaded,
 );
 sweepScreen('Plan a trip (sheet)', () => <AddTripScreen />, prepareTrip);
+sweepScreen('Export my data (sheet)', () => <ExportDataScreen />, prepareTrip);
 sweepScreen('Delete account (sheet)', () => <DeleteAccountScreen />, prepareTrip);
 sweepScreen('Add an expense (sheet)', () => <AddExpenseScreen />, prepareTrip);
 

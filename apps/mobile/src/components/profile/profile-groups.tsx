@@ -45,7 +45,14 @@ function describeVersion(): string {
 }
 
 /** The email and "Home currency: EUR" is one phrase to assistive technology, as it always was. */
-export function Account({ user }: { user: UserProfile }) {
+export function Account({
+  user,
+  onExportData,
+}: {
+  user: UserProfile;
+  /** Opens the Export my data sheet (spec 009). */
+  onExportData: () => void;
+}) {
   return (
     <ListGroup header="Account" testID="profile-account-group">
       <ListRow
@@ -61,6 +68,14 @@ export function Account({ user }: { user: UserProfile }) {
         title="Home currency"
         accessibilityLabel={`Home currency: ${user.home_currency}`}
         trailing={<Text tone="muted">{user.home_currency}</Text>}
+      />
+      <ListRow
+        testID="profile-export-data"
+        title="Export my data"
+        description="Get a zip of everything you recorded"
+        accessibilityLabel="Export my data"
+        accessibilityHint="Opens a sheet to request a zip file of your data"
+        onPress={onExportData}
       />
     </ListGroup>
   );
