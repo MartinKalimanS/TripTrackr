@@ -25,7 +25,7 @@ is limited to one a day, never logs what it contains, expires, and is deleted wi
 ## Requirements
 
 - **FR-001** `POST /me/export` `{ password? }` (an account with a password must send it: `403
-  REAUTHENTICATION_REQUIRED`; 5 tries an hour per address) answers **202** `{ export }` with `status: 'pending'`.
+REAUTHENTICATION_REQUIRED`; 5 tries an hour per address) answers **202** `{ export }` with `status: 'pending'`.
 - **FR-002** One export a day: while an export of the last 24 hours exists (pending or ready), the request is
   refused `429 EXPORT_RATE_LIMITED` with `details.export_id` of that export. A failed one does not count.
 - **FR-003** `GET /me/export/:id` (owner only; another traveller's id is a 404) answers `{ export }`: `status`
