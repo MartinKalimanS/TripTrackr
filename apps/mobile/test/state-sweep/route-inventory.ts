@@ -361,6 +361,25 @@ export const ROUTE_INVENTORY: readonly RouteRow[] = [
     sweep: SWEEP('areas'),
   },
   {
+    route: 'src/app/modal/export-data.tsx',
+    loading: {
+      shows:
+        'the pending phase: "Preparing your file" with a Close action, while the export is polled',
+      pins: [[SWEEP('export-data'), 'export-data-pending']],
+    },
+    empty: { na: 'a form, not a list' },
+    error: {
+      shows:
+        'the refusal in words (InlineError): wrong password, no connection, anything else; an ended export says so and offers to ask again',
+      pins: [
+        [SWEEP('export-data'), 'export-data-error'],
+        [SWEEP('export-data'), 'export-data-ended'],
+      ],
+    },
+    primary: '"Request my data" in the form, "Download" once ready',
+    sweep: SWEEP('export-data'),
+  },
+  {
     route: 'src/app/modal/delete-account.tsx',
     loading: { na: 'a form on local state; nothing is read first' },
     empty: { na: 'a form, not a list' },

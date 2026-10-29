@@ -70,7 +70,9 @@ export default function ProfileScreen() {
         holder={user?.display_name ?? ''}
         today={today}
       />
-      {user ? <Account user={user} /> : null}
+      {user ? (
+        <Account user={user} onExportData={() => router.push('/modal/export-data')} />
+      ) : null}
       <AppInfo onTakeTour={takeTour} />
       <SetApart
         signOut={signOut}

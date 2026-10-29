@@ -1,0 +1,91 @@
+# Spec 009 - export my data (specs/009-data-export).
+#
+# A new account opens You, taps Export my data, is refused with a wrong password (the words, and the
+# sheet stays), requests with the right one, sees "Preparing your file", and (with the worker
+# running) gets Download once the archive is ready. The download itself is handed to the system and
+# is a device check (specs/009-data-export/as-built.md).
+#
+# PREREQUISITES: those of 08-delete-account.yaml (development build, reachable API) and the worker
+# running against it: the archive is only built by the worker.
+appId: com.triptrackr.app
+tags:
+  - export
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    id: 'welcome-screen'
+
+# --- Register ---------------------------------------------------------------
+- evalScript: ${output.email = 'maestro-export-' + Date.now() + '@example.com'}
+- tapOn:
+    id: 'welcome-create-account'
+- tapOn:
+    id: 'register-display-name'
+- inputText: 'Maestro Exporter'
+- tapOn:
+    id: 'register-email'
+- inputText: ${output.email}
+- tapOn:
+    id: 'register-password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'register-confirm-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register-submit'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+- runFlow: _helpers/dismiss-tour.yaml
+
+# --- Open the sheet ------------------------------------------------------------------
+- tapOn:
+    id: 'tab-profile'
+- scrollUntilVisible:
+    element:
+      id: 'profile-export-data'
+- tapOn:
+    id: 'profile-export-data'
+- assertVisible:
+    id: 'export-data-screen'
+- takeScreenshot: 09-export-data-sheet
+
+# --- A wrong password: refused in words, the sheet stays --------------------------------
+- tapOn:
+    id: 'export-data-password'
+- inputText: 'not my password at all'
+- hideKeyboard
+- tapOn:
+    id: 'export-data-save'
+- assertVisible:
+    id: 'export-data-error'
+- assertVisible:
+    id: 'export-data-screen'
+
+# --- The right password: the file is prepared, then ready ------------------------------------
+- tapOn:
+    id: 'export-data-password'
+- eraseText: 40
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'export-data-save'
+- assertVisible:
+    id: 'export-data-pending'
+- extendedWaitUntil:
+    visible: 'Your file is ready.'
+    timeout: 90000
+- assertVisible: 'Download'
+- takeScreenshot: 09-export-data-ready
+
+# --- Closing loses nothing -----------------------------------------------------------------------
+- tapOn:
+    id: 'export-data-cancel'
+- assertVisible:
+    id: 'profile-export-data'
