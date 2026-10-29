@@ -1,7 +1,7 @@
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { PostgresJsSession } from 'drizzle-orm/postgres-js/session';
-import type { Sql } from 'postgres';
+import type { Sql, TransactionSql } from 'postgres';
 
 import { requireRlsTransaction } from '@/common/rls/rls-context';
 
@@ -37,8 +37,16 @@ const dialect = new PgDialect();
  * nothing on it except `unsafe()`, which both provide.
  */
 export function rlsDb(): RlsDatabase {
-  const tx = requireRlsTransaction() as unknown as Sql;
-  const session = new PostgresJsSession(tx, dialect, undefined, {});
+  return drizzleOver(requireRlsTransaction());
+}
+
+/**
+ * Drizzle over a transaction that already has its traveller's identity: the request's, or the
+ * export job's (`workers/account-export.processor.ts`, which takes the identity with
+ * `set_config` as the request path does, so row-level security filters everything it reads).
+ */
+export function drizzleOver(tx: TransactionSql): RlsDatabase {
+  const session = new PostgresJsSession(tx as unknown as Sql, dialect, undefined, {});
 
   return new PostgresJsDatabase(dialect, session, undefined);
 }

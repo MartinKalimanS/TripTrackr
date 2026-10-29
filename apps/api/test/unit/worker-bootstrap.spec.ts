@@ -3,6 +3,7 @@ import type { Job, Processor } from 'bullmq';
 import {
   FX_REFRESH_SCHEDULER,
   QUEUE_NAMES,
+  EXPORT_CLEANUP_SCHEDULER,
   TOMBSTONE_PURGE_SCHEDULER,
   type QueueName,
 } from '@/common/queue/queue.constants';
@@ -28,6 +29,17 @@ jest.mock('@/workers/media.processor', () => ({ processPhoto: jest.fn() }));
 jest.mock('@/workers/tombstone-purge.processor', () => ({ purgeTombstones: jest.fn() }));
 jest.mock('@/workers/account-deletion.processor', () => ({
   processAccountDeletion: jest.fn(),
+}));
+jest.mock('@/workers/account-export.processor', () => ({
+  processAccountExport: jest.fn(),
+  cleanupExpiredExports: jest.fn(),
+}));
+jest.mock('@/common/crypto/envelope.service', () => ({ EnvelopeService: jest.fn() }));
+jest.mock('@/modules/documents/boarding-pass.service', () => ({
+  BoardingPassService: jest.fn(),
+}));
+jest.mock('@/modules/auth/email-sender', () => ({
+  createEmailSender: jest.fn(() => ({})),
 }));
 
 jest.mock('bullmq', () => ({
@@ -62,6 +74,11 @@ const { purgeTombstones } = jest.requireMock<{ purgeTombstones: jest.Mock }>(
 const { processAccountDeletion } = jest.requireMock<{
   processAccountDeletion: jest.Mock;
 }>('@/workers/account-deletion.processor');
+
+const { processAccountExport, cleanupExpiredExports } = jest.requireMock<{
+  processAccountExport: jest.Mock;
+  cleanupExpiredExports: jest.Mock;
+}>('@/workers/account-export.processor');
 
 const { Queue, Worker } = jest.requireMock<{ Queue: jest.Mock; Worker: jest.Mock }>(
   'bullmq',
@@ -241,7 +258,11 @@ describe('ensureSchedulers', () => {
     await ensureSchedulers({} as never, sink().streams, queues.makeQueue);
 
     const purge = queues.get(QUEUE_NAMES.tombstonePurge);
-    expect(queues.built()).toEqual([QUEUE_NAMES.fxRefresh, QUEUE_NAMES.tombstonePurge]);
+    expect(queues.built()).toEqual([
+      QUEUE_NAMES.fxRefresh,
+      QUEUE_NAMES.accountExport,
+      QUEUE_NAMES.tombstonePurge,
+    ]);
     expect(purge.upsert).toHaveBeenCalledTimes(1);
     expect(purge.upsert).toHaveBeenCalledWith(
       TOMBSTONE_PURGE_SCHEDULER.id,
@@ -344,20 +365,23 @@ describe('ensureSchedulers', () => {
     ]);
   });
 
-  it('with no seams supplied, asserts both schedules through BullMQ Queues on the shared connection and logs their errors to stderr', async () => {
+  it('with no seams supplied, asserts every schedule through BullMQ Queues on the shared connection and logs their errors to stderr', async () => {
     const fx = fakeQueue();
     const purge = fakeQueue();
-    Queue.mockImplementation((name: QueueName) =>
-      name === QUEUE_NAMES.fxRefresh ? fx.queue : purge.queue,
-    );
+    const exports = fakeQueue();
+    Queue.mockImplementation((name: QueueName) => {
+      if (name === QUEUE_NAMES.fxRefresh) return fx.queue;
+      return name === QUEUE_NAMES.accountExport ? exports.queue : purge.queue;
+    });
     const connection = { status: 'ready' } as never;
 
     await ensureSchedulers(connection);
 
-    // Two queues, on the connection the workers already hold.
-    expect(Queue).toHaveBeenCalledTimes(2);
+    // Three queues, on the connection the workers already hold.
+    expect(Queue).toHaveBeenCalledTimes(3);
     expect(Queue.mock.calls.map((call: unknown[]) => call[0])).toEqual([
       QUEUE_NAMES.fxRefresh,
+      QUEUE_NAMES.accountExport,
       QUEUE_NAMES.tombstonePurge,
     ]);
     for (const call of Queue.mock.calls as [string, { connection: unknown }][]) {
@@ -443,6 +467,8 @@ describe('bootstrapWorker', () => {
     purgeTombstones.mockReset();
     processPhoto.mockReset();
     processAccountDeletion.mockReset();
+    processAccountExport.mockReset();
+    cleanupExpiredExports.mockReset();
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -459,8 +485,47 @@ describe('bootstrapWorker', () => {
       [QUEUE_NAMES.fxRefresh]: expect.any(Function),
       [QUEUE_NAMES.media]: expect.any(Function),
       [QUEUE_NAMES.storageSweep]: expect.any(Function),
+      [QUEUE_NAMES.accountExport]: expect.any(Function),
       [QUEUE_NAMES.tombstonePurge]: expect.any(Function),
     });
+  });
+
+  it('runs an export job and the daily cleanup on the one export queue, with the same store and connection', async () => {
+    const started = await start();
+    processAccountExport.mockResolvedValueOnce({ outcome: 'ready', files: 8, bytes: 10 });
+    cleanupExpiredExports.mockResolvedValueOnce({ removed: 2 });
+    const stdout = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+    const run = started.processors[QUEUE_NAMES.accountExport] as Processor;
+
+    await run({ name: 'export', data: { exportId: 'e', userId: 'u' } } as Job, 't');
+    await run({ name: 'cleanup', data: {} } as Job, 't');
+
+    const [exportDeps, data] = processAccountExport.mock.calls[0] as [
+      { sql: unknown; storage: unknown },
+      unknown,
+    ];
+    expect(exportDeps.storage).toBe(started.storage);
+    expect(exportDeps.sql).toBe(started.sql);
+    expect(data).toEqual({ exportId: 'e', userId: 'u' });
+    expect(cleanupExpiredExports).toHaveBeenCalledTimes(1);
+    // Outcomes and counts only: never the ids.
+    const logged = stdout.mock.calls.map((call) => String(call[0])).join('');
+    expect(logged).not.toContain('"u"');
+    expect(logged).not.toContain('"e"');
+    expect(started.workerOptions[QUEUE_NAMES.accountExport]).toEqual({
+      connection: started.connection,
+      concurrency: CONCURRENCY[QUEUE_NAMES.accountExport],
+    });
+  });
+
+  it('asserts the daily export cleanup beside the other schedules', async () => {
+    const started = await start();
+
+    expect(started.upserts[QUEUE_NAMES.accountExport]).toHaveBeenCalledWith(
+      EXPORT_CLEANUP_SCHEDULER.id,
+      { every: EXPORT_CLEANUP_SCHEDULER.everyMs },
+      { name: 'cleanup' },
+    );
   });
 
   it('runs the account-deletion sweep on the same store and connection, one job at a time', async () => {

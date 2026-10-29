@@ -5,13 +5,18 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Patch,
+  Post,
 } from '@nestjs/common';
 import {
   DeleteMeRequest,
   DeleteMeResponse,
+  ExportResponse,
   MeResponse,
   PatchMeRequest,
+  StartExportRequest,
+  Uuid,
 } from '@triptrackr/contracts';
 
 import { RateLimited } from '@/common/guards/rate-limit.guard';
@@ -19,6 +24,7 @@ import { respond } from '@/common/validation/respond';
 import { ZodValidationPipe } from '@/common/validation/zod-validation.pipe';
 
 import { DELETE_ME_RATE_LIMIT, DeletionService } from './deletion.service';
+import { ExportService, START_EXPORT_RATE_LIMIT } from './export.service';
 import { TravelStatsService } from './travel-stats.service';
 import { UsersRepository } from './users.repository';
 
@@ -37,6 +43,7 @@ export class UsersController {
     private readonly users: UsersRepository,
     private readonly stats: TravelStatsService,
     private readonly deletion: DeletionService,
+    private readonly exports: ExportService,
   ) {}
 
   /** Profile plus stats: countries visited, distance travelled (FR-050). */
@@ -73,5 +80,27 @@ export class UsersController {
     @Body(new ZodValidationPipe(DeleteMeRequest)) body: DeleteMeRequest,
   ): Promise<DeleteMeResponse> {
     return respond(DeleteMeResponse, await this.deletion.request(body.password));
+  }
+
+  /**
+   * Export my data (FR-007; spec 009): 202, a pending export; the worker builds one zip and the
+   * traveller downloads it through `GET /me/export/:id`. The password is required when the
+   * account has one; one a day.
+   */
+  @Post('export')
+  @RateLimited(START_EXPORT_RATE_LIMIT)
+  @HttpCode(HttpStatus.ACCEPTED)
+  async startExport(
+    @Body(new ZodValidationPipe(StartExportRequest)) body: StartExportRequest,
+  ): Promise<ExportResponse> {
+    return respond(ExportResponse, await this.exports.start(body.password));
+  }
+
+  /** The export's state, and a fresh short-lived download link while it is ready. Owner only. */
+  @Get('export/:id')
+  async exportStatus(
+    @Param('id', new ZodValidationPipe(Uuid)) id: string,
+  ): Promise<ExportResponse> {
+    return respond(ExportResponse, await this.exports.get(id));
   }
 }
