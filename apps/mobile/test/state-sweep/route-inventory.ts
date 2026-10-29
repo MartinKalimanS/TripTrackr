@@ -380,6 +380,17 @@ export const ROUTE_INVENTORY: readonly RouteRow[] = [
     sweep: SWEEP('export-data'),
   },
   {
+    route: 'src/app/modal/about.tsx',
+    loading: { na: 'static: nothing is read before it shows' },
+    empty: { na: 'static content, not a list' },
+    error: {
+      shows: 'a link that cannot open says so in words (InlineError) and changes nothing',
+      pins: [[SWEEP('about'), 'about-link-error']],
+    },
+    primary: '"Close"',
+    sweep: SWEEP('about'),
+  },
+  {
     route: 'src/app/modal/delete-account.tsx',
     loading: { na: 'a form on local state; nothing is read first' },
     empty: { na: 'a form, not a list' },
