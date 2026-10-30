@@ -1,8 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { TRIP_ALLOWANCE_REACHED, type CreateTripRequest } from '@triptrackr/contracts';
+import {
+  TRIP_ALLOWANCE_REACHED,
+  type CoverSource,
+  type CreateTripRequest,
+} from '@triptrackr/contracts';
 
 import { loadEnv } from '@/common/config/env.schema';
-import { apiError } from '@/common/errors/api-error';
+import { apiError, notFound } from '@/common/errors/api-error';
 
 import { AllowanceRepository } from './allowance.repository';
 import { chooseCover, ORDINARY, type CoverDecision, type Standing } from './cover-order';
@@ -85,6 +89,40 @@ export class AllowanceService {
     }
 
     return (await this.repository.earlierOrdinaryTrips(tripId)) >= this.freeTrips();
+  }
+
+  /**
+   * Covers a trip that arrived over the allowance (spec 014, FR-018). Order: Unlimited, a Tier 1 use,
+   * then a credit; there is no free slot to offer, the trip is already past them. Idempotent: a
+   * covered trip answers with what covers it and spends nothing more.
+   */
+  async coverTrip(tripId: string): Promise<CoverSource> {
+    await this.repository.lockTraveller();
+    const trip = await this.repository.liveOwnTrip(tripId);
+    if (!trip) throw notFound('TRIP_NOT_FOUND', 'Trip');
+
+    const existing = await this.repository.coverSource(tripId);
+    if (existing !== null) return existing;
+
+    const over =
+      this.isCharging() &&
+      (await this.repository.earlierOrdinaryTrips(tripId)) >= this.freeTrips();
+    if (!over) {
+      throw apiError(
+        HttpStatus.CONFLICT,
+        'TRIP_NOT_OVER_ALLOWANCE',
+        'This trip is within your free trips and needs no cover.',
+      );
+    }
+
+    const standing = await this.repository.standing();
+    const choice = chooseCover(standing, 0);
+    if (choice === null || choice.kind !== 'covered') {
+      throw this.refusal(standing, { title: trip.title, home_currency: trip.homeCurrency });
+    }
+
+    await this.repository.insertCover(tripId, choice);
+    return choice.source;
   }
 
   private refusal(standing: Standing, submitted: CreateTripRequest) {

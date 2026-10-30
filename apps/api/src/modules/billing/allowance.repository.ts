@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { CoverSource } from '@triptrackr/contracts';
 import { sql } from 'drizzle-orm';
 
 import { rlsDb } from '@/common/db/rls-db';
@@ -118,6 +119,14 @@ export class AllowanceRepository {
     return rows.length > 0;
   }
 
+  /** What covers the caller's trip, or null when it is an ordinary trip. */
+  async coverSource(tripId: string): Promise<CoverSource | null> {
+    const rows = await rlsDb().execute<{ source: CoverSource }>(
+      sql`SELECT c.source FROM trip_covers c WHERE c.trip_id = ${tripId}::uuid AND c.user_id = ${requireCurrentUserId()}::uuid`,
+    );
+    return rows[0]?.source ?? null;
+  }
+
   /** Whether this is a live trip of the caller's. */
   async isLiveOwnTrip(tripId: string): Promise<boolean> {
     const rows = await rlsDb().execute(sql`
@@ -143,6 +152,16 @@ export class AllowanceRepository {
           SELECT o.created_at, o.id FROM trips o
           WHERE o.id = ${tripId}::uuid AND o.owner_id = ${userId}::uuid AND o.deleted_at IS NULL)`);
     return rows[0]?.earlier ?? 0;
+  }
+
+  /** The caller's live trip as a refusal echoes it, or null when it is not theirs or is deleted. */
+  async liveOwnTrip(tripId: string): Promise<{ title: string; homeCurrency: string } | null> {
+    const rows = await rlsDb().execute<{ title: string; home_currency: string }>(sql`
+      SELECT t.title, t.home_currency FROM trips t
+      WHERE t.id = ${tripId}::uuid AND t.owner_id = ${requireCurrentUserId()}::uuid
+        AND t.deleted_at IS NULL`);
+    const row = rows[0];
+    return row ? { title: row.title, homeCurrency: row.home_currency } : null;
   }
 
   /** While charging is off: this traveller would have been stopped by this create. */
