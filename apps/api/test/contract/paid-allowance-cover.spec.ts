@@ -66,7 +66,7 @@ describe('paid allowance: covering a trip that arrived over the allowance', () =
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ source: 'credit' });
     const [again] = await push(app, traveller, 'trips', [
-      { ...tripRecord(), id: flagged } as never,
+      { ...tripRecord(), id: flagged },
     ]);
     expect(JSON.stringify(again)).not.toContain('over_allowance');
     expect(await readCovers(owner, traveller)).toHaveLength(1);

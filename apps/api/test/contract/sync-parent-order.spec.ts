@@ -14,7 +14,6 @@ import {
   type RegisteredTraveller,
 } from '../support/app';
 import { uploadDocument } from '../support/documents';
-import { grantEntitlement } from '../support/entitlement';
 import { createTripFor } from '../support/expenses';
 import { createHarness, type Harness } from '../integration/harness';
 import {
@@ -60,9 +59,6 @@ describe('contract — parents before children, and ids that are not yours', () 
     harness = await createHarness();
     a = await registerTraveller(app);
     b = await registerTraveller(app);
-    // Both create many trips over REST as fixtures; the free allowance is not under test here.
-    await grantEntitlement(harness.owner, a);
-    await grantEntitlement(harness.owner, b);
   });
 
   afterAll(async () => {
