@@ -118,9 +118,9 @@ export function useSocialSignIn(
       <GoogleSignInButton
         busy={google.isPending}
         disabled={disabled || apple.isPending}
-        onIdToken={(idToken) => {
+        onIdToken={(idToken, nonce) => {
           setProviderError(null);
-          google.mutate(idToken);
+          google.mutate({ idToken, nonce });
         }}
         onError={failed}
       />

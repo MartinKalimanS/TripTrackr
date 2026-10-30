@@ -422,11 +422,15 @@ describe('no field value leaves its field (T447)', () => {
   test('a provider token goes to its mutation and nowhere else', async () => {
     process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID = 'client-id';
     process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID = 'client-id';
-    mockGoogleResponse = { type: 'success', params: { id_token: SECRET } };
-    await render(<LoginScreen />);
+    const { rerender } = await render(<LoginScreen />);
     await fireEvent.press(await screen.findByTestId('google-sign-in'));
+    mockGoogleResponse = { type: 'success', params: { id_token: SECRET } };
+    await rerender(<LoginScreen />);
 
-    expect(mockMutations.google.mutate).toHaveBeenCalledWith(SECRET);
+    expect(mockMutations.google.mutate).toHaveBeenCalledWith({
+      idToken: SECRET,
+      nonce: 'server-issued-nonce-0123456789',
+    });
     expect(appearances(SECRET)).toEqual([]);
     expect(consoleOutput()).not.toContain(SECRET);
     expect(Sentry.captureException).not.toHaveBeenCalled();
