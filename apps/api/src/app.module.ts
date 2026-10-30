@@ -11,6 +11,7 @@ import { RedisModule } from '@/common/redis/redis.module';
 import { RlsModule } from '@/common/rls/rls.module';
 import { StorageModule } from '@/common/storage/storage.module';
 import { AuthModule } from '@/modules/auth/auth.module';
+import { BillingModule } from '@/modules/billing/billing.module';
 import { DocumentsModule } from '@/modules/documents/documents.module';
 import { ExpensesModule } from '@/modules/expenses/expenses.module';
 import { HealthModule } from '@/modules/health/health.module';
@@ -68,6 +69,7 @@ import { UsersModule } from '@/modules/users/users.module';
     RlsModule,
     AuthModule,
     UsersModule,
+    BillingModule,
     TripsModule,
     NotesModule,
     ExpensesModule,

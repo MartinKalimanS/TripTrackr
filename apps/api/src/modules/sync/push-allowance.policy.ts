@@ -5,6 +5,7 @@ import { loadEnv } from '@/common/config/env.schema';
 import { rlsDb } from '@/common/db/rls-db';
 import { requireCurrentUserId } from '@/common/rls/rls-context';
 import { trips } from '@/db/schema';
+import { AllowanceService } from '@/modules/billing/allowance.service';
 
 /**
  * Whether a trip that arrived by push is one the free allowance does not cover
@@ -19,10 +20,8 @@ import { trips } from '@/db/schema';
  * rule, which Constitution V forbids outright. Nothing in this class can reach
  * the trip: it answers a question and writes nothing.
  *
- * One small injectable class so that User Story 9 replaces exactly one thing —
- * subscription-aware logic in place of a bare count — and the push does not
- * change. `POST /trips` (REST) does not consult it: its allowance branch is User
- * Story 9's and arrives in that one method (trips.service.ts).
+ * An entitled account is never over: the entitlement comes from `AllowanceService`, the one reader of
+ * the entitlement row (spec 013). `POST /trips` (REST) refuses at the allowance instead; a push only flags.
  *
  * The question is ranked, not counted at this instant, so that it has the same
  * answer every time it is asked about the same trip. A trip is over the allowance
@@ -37,7 +36,11 @@ import { trips } from '@/db/schema';
  */
 @Injectable()
 export class TripAllowancePolicy {
+  constructor(private readonly allowances: AllowanceService) {}
+
   async isOverAllowance(tripId: string): Promise<boolean> {
+    if ((await this.allowances.entitlement()).isActive) return false;
+
     const allowance = loadEnv().FREE_TRIP_ALLOWANCE;
     const userId = requireCurrentUserId();
 
