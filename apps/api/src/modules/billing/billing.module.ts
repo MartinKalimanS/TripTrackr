@@ -1,15 +1,17 @@
 import { Module } from '@nestjs/common';
 
+import { AllowanceRepository } from './allowance.repository';
 import { AllowanceService } from './allowance.service';
 import { EntitlementController } from './entitlement.controller';
+import { EntitlementService } from './entitlement.service';
 
 /**
- * The allowance and the caller's entitlement (spec 013). Purchase verification and the provider
- * webhook join it in S-11.
+ * The paid trip allowance and the caller's entitlement (spec 014). The provider webhook and purchase
+ * verification join it in S-11.
  */
 @Module({
   controllers: [EntitlementController],
-  providers: [AllowanceService],
+  providers: [AllowanceRepository, AllowanceService, EntitlementService],
   exports: [AllowanceService],
 })
 export class BillingModule {}
