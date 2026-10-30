@@ -6,7 +6,7 @@ row level security.
 
 ## Visibility posture
 
-All five tables are the traveller's own commerce records. No table has a visibility flag and none is readable by
+All four tables are the traveller's own commerce records. No table has a visibility flag and none is readable by
 anyone but its owner. **No policy, view, list, export or sync path of another table may mention them** (Constitution
 V). The API role connects without ownership of any of them.
 
@@ -66,15 +66,6 @@ Trigger `trip_covers_year_guard` (BEFORE INSERT): for `source = 'year'` refuse u
 RLS: `SELECT` and `INSERT` for the owner (`WITH CHECK user_id = current user`). No `UPDATE`, no `DELETE` for the API
 role; refunds delete through `billing_*` functions.
 
-## `billing_state` — the charging switch (one row)
-
-| Column | Type | Notes |
-| ------ | ---- | ----- |
-| `singleton` | boolean PK DEFAULT true, check true | exactly one row |
-| `enforced_at` | timestamptz NULL | NULL = charging off |
-
-API role: `SELECT` only. Written by the owner script (D14-06).
-
 ## `allowance_shadow` — who would have been stopped
 
 | Column | Type | Notes |
@@ -83,7 +74,7 @@ API role: `SELECT` only. Written by the owner script (D14-06).
 | `first_blocked_at` | timestamptz NOT NULL | |
 | `attempts` | int NOT NULL | |
 
-RLS: owner `SELECT`, `INSERT`, `UPDATE`. Holds no trip content. Deleted by `billing:enforce`.
+RLS: owner `SELECT`, `INSERT`, `UPDATE`. Holds no trip content. Deleted by `billing:grandfather`.
 
 ## Functions (all `SECURITY DEFINER`, owned by the migration role, named `billing_*`)
 
@@ -93,7 +84,6 @@ RLS: owner `SELECT`, `INSERT`, `UPDATE`. Holds no trip content. Deleted by `bill
 | `billing_open_period(user, provider, tier, orig_txn, starts, ends, cancel_at_end)` | insert or extend a year, set `ladder_step`, refresh the `subscriptions` row | idempotent on `(orig_txn, starts)` |
 | `billing_end_period(orig_txn, at)` | mark expired / cancelled | touches periods only |
 | `billing_refund(txn, at)` | refund a credit or a year; delete that credit's cover | D14-10 |
-| `billing_enforce()` | the switch-on transaction (D14-06) | owner role only |
 
 None takes a trip id, a title or any traveller content. Callable only from the signature-verified webhook
 handler and the owner script.
@@ -105,5 +95,5 @@ credit:   (purchased) → unspent → spent (cover row)            refunded → 
                                    └─ trip deleted: stays spent
 year:     (renewed) → active (uses 0..10) → ended (ends_at)    uses expire; covers stay
 trip:     ordinary → (flagged by sync) → covered | stays flagged
-charging: off → (billing:enforce) → on   [covers every live trip first]
+charging: off → (billing:grandfather, then BILLING_ENFORCED=true) → on
 ```

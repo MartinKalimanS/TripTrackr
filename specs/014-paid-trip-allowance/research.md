@@ -53,8 +53,7 @@ only party hurt by a bug is the owner's revenue, not a traveller's privacy).
 
 ## D14-05 — Which tables the API role may touch
 
-**Decision**: the API role gets `SELECT` on `trip_credits`, `subscription_periods`, `billing_state` and
-`allowance_shadow`; `SELECT, INSERT` on `trip_covers`; `INSERT, UPDATE` on `allowance_shadow` for its own row. The
+**Decision**: the API role gets `SELECT` on `trip_credits` and `subscription_periods`; `SELECT, INSERT` on `trip_covers`; `INSERT, UPDATE` on `allowance_shadow` for its own row. The
 webhook and the owner script write the commerce tables through `SECURITY DEFINER` functions named `billing_*`
 (the pattern of 0013 and 0014), because RevenueCat calls us with no traveller identity.
 
@@ -62,22 +61,26 @@ webhook and the owner script write the commerce tables through `SECURITY DEFINER
 mentions these tables; only functions named `billing_*` read them; in `src/` only files under `modules/billing/`
 mention them".
 
-## D14-06 — The charging switch is a database row plus one owner script
+## D14-06 — The charging switch is an environment value plus an idempotent grandfathering script
 
-**Decision**: `billing_state` holds one row, `enforced_at timestamptz NULL`. The owner script
-`npm run billing:enforce -w apps/api` runs, in one transaction: set `enforced_at = now()`, insert a
-`grandfathered` cover for every live trip that has none (FR-029, option A), delete the `allowance_shadow` rows. The
-API reads the row (cached for 30 seconds). `npm run billing:shadow-report -w apps/api` prints counts only.
+**Decision**: `BILLING_ENFORCED` (boolean, default false) is read per API instance. Before flipping it the owner runs
+`npm run billing:grandfather -w apps/api`, which inserts a `grandfathered` cover for every live trip that has none
+(FR-029, option A) and deletes the `allowance_shadow` rows; it is idempotent, so running it again right after the
+restart covers any trip created in the gap. `npm run billing:shadow-report -w apps/api` prints counts only. Switching
+off is unsetting the variable; covers stay.
 
-**Rationale**: an environment variable could be flipped without the grandfathering, and a flip with the wrong
-timing would block early users. One transaction makes "switch on" and "protect existing trips" inseparable, and it
-needs no app release (FR-028). Switching off sets `enforced_at` to NULL; it does not remove covers.
+**Rationale**: the switch needs no app release (FR-028) and, being per instance, each test app can boot with its own
+value while the suites share one database (a database row would leak charging between parallel spec files). A trip
+created in the seconds between the script and the restart is simply treated as an ordinary new trip, which is what
+the rules say for any trip made after charging starts. The script runs as the owner role, so it needs no keyhole.
 
-**Alternatives**: `BILLING_ENFORCED` env var (rejected: no atomic grandfathering, needs a restart).
+**Alternatives**: a `billing_state` row with one switch-on transaction (rejected: global state in the shared test
+database, and a second moving part); grandfathering implied by `created_at < enforced_at` (rejected: `created_at`
+can be set by a device on push, so a back-dated trip could dodge the limit).
 
 ## D14-07 — Shadow mode records an aggregate per traveller, never content
 
-**Decision**: while `enforced_at IS NULL`, the create path writes `allowance_shadow(user_id, first_blocked_at,
+**Decision**: while `BILLING_ENFORCED` is off, the create path writes `allowance_shadow(user_id, first_blocked_at,
 attempts)` when the traveller is past what the rules would allow. Nothing is returned to the client. The report
 returns `{ travellers_blocked, attempts }` and nothing else.
 
@@ -148,4 +151,4 @@ required here) prove it.
 | Refund event shape for consumables | recorded fixture + sandbox | S-11, S-13 |
 | Moving a subscriber to the next ladder product at renewal | sandbox in both stores | S-13 before S-12 |
 | Final prices, floor and the free number | owner | configuration, any time |
-| When to run `billing:enforce` | owner | after the shadow report |
+| When to run `billing:grandfather` and set `BILLING_ENFORCED` | owner | after the shadow report |

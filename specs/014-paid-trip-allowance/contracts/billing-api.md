@@ -82,11 +82,10 @@ wait and never grants anything the provider does not confirm.
 | Script | Does |
 | ------ | ---- |
 | `npm run billing:shadow-report -w apps/api` | prints `{ travellers_blocked, attempts }` |
-| `npm run billing:enforce -w apps/api` | the switch-on transaction (D14-06); refuses to run twice |
-| `npm run billing:pause -w apps/api` | sets `enforced_at` back to NULL; covers stay |
+| `npm run billing:grandfather -w apps/api` | covers every live trip lacking a cover, clears the shadow table; idempotent (D14-06). Run it, set `BILLING_ENFORCED=true`, restart, run it again. |
 
 ## Configuration (all validated at startup in `env.schema.ts`)
 
-`FREE_TRIP_ALLOWANCE` (default 3), `TIER1_YEARLY_TRIPS` (default 10), `BILLING_PRODUCTS` (JSON map of store
+`BILLING_ENFORCED` (default false), `FREE_TRIP_ALLOWANCE` (default 3), `TIER1_YEARLY_TRIPS` (default 10), `BILLING_PRODUCTS` (JSON map of store
 product id → `{ kind: credit | tier1 | unlimited, step?: 1 | 2 | 3 }`), `REVENUECAT_API_KEY`,
 `REVENUECAT_WEBHOOK_SECRET`.

@@ -10,7 +10,7 @@ Replace the flat allowance of spec 013 with: 3 free held trips, single-trip cred
 trips per year) and an Unlimited yearly plan, with trips marked as **covered** by what paid for them. A server-owned
 spend ledger (`trip_covers`) records the cover; `AllowanceService` decides the spending order under the per-traveller
 advisory lock. Charging is off at launch: the product records who would have been stopped, and one owner script
-switches charging on while protecting existing trips. The stores cannot lower a price per subscriber, so the yearly
+protects existing trips before charging is switched on with an environment value. The stores cannot lower a price per subscriber, so the yearly
 ladder is one store product per step. The server work (this plan) is independent of the store setup (S-13) and the
 screens (S-12).
 
@@ -21,7 +21,7 @@ screens (S-12).
 **Primary Dependencies**: `postgres.js`, Drizzle (types only), zod via `@triptrackr/contracts`, RevenueCat
 webhooks (no SDK on the server).
 
-**Storage**: PostgreSQL. Five new tables and five `billing_*` functions in migration `0016` (data-model.md).
+**Storage**: PostgreSQL. Four new tables and four `billing_*` functions in migration `0016` (data-model.md).
 
 **Testing**: Jest projects `unit`, `contract`, `integration`, `privacy` (Testcontainers; Docker required).
 
@@ -84,7 +84,7 @@ apps/api/src/modules/billing/
 └── billing.module.ts
 apps/api/src/modules/trips/trips.service.ts  # reserve before insert, record cover after
 apps/api/src/modules/sync/push-allowance.policy.ts
-apps/api/scripts/billing-{enforce,pause,shadow-report}.ts
+apps/api/scripts/billing-{grandfather,shadow-report}.ts
 apps/api/test/{contract,integration,privacy,unit}/...
 docs/roadmap/PROGRESS.md, specs/001-triptrackr-mvp/tasks.md   # cross-references
 ```
@@ -98,7 +98,7 @@ commerce tables" rule of the neutrality test stays a single directory. The mobil
 2. **Spend** — `AllowanceService` decision and cover insert, `POST /trips`, shadow recording, concurrency test.
 3. **Sync and cover** — push policy on covered trips and Unlimited, `POST /trips/:id/cover`.
 4. **Entitlement** — `GET /me/entitlement`, `years_subscribed` and `next_product_id`.
-5. **Switch** — the three owner scripts and the rehearsal test.
+5. **Switch** — the grandfather and report scripts and the rehearsal test.
 6. **Provider (S-11)** — webhook, purchase-completed, `billing_*` calls, recorded fixtures, replay and tamper tests,
    security review.
 7. **Evidence** — "reads identical" suite, account-deletion residue test updated, PROGRESS.md.

@@ -34,11 +34,11 @@ npm run billing:shadow-report -w apps/api
 ```
 
 ```bash
-npm run billing:enforce -w apps/api
+npm run billing:grandfather -w apps/api
 ```
 
-Expect the report to count travellers who went past 3 while charging was off; after `billing:enforce` every
-pre-existing live trip has a `grandfathered` cover, the shadow table is empty, and a new 4th trip is refused.
+Expect the report to count travellers who went past 3 while charging was off; after `billing:grandfather` every
+pre-existing live trip has a `grandfathered` cover, the shadow table is empty, and with `BILLING_ENFORCED=true` a new 4th trip is refused.
 
 ## 4. Sandbox (owner, S-13)
 

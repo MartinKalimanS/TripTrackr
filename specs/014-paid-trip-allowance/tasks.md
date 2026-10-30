@@ -27,21 +27,21 @@ description: 'Task list for the paid trip allowance (spec 014)'
 
 - [ ] T003 [P] Write the failing contract schema tests for the new `TripAllowanceDetails`, `EntitlementResponse` and `CoverResponse` in `packages/contracts/test/billing.test.ts` (routes include `buy_trip`; `charging_enabled` false means the other fields are null or 0)
 - [ ] T004 Implement those schemas in `packages/contracts/src/api/billing.ts` and rebuild the package
-- [ ] T005 Write the failing migration test `apps/api/test/integration/paid-allowance-schema.spec.ts`: the five tables exist with `ENABLE` and `FORCE` RLS; the API role has exactly `SELECT` (credits, periods, billing_state), `SELECT, INSERT` (trip_covers), `SELECT, INSERT, UPDATE` (allowance_shadow); `trip_covers.trip_id` and `credit_id` unique; the year trigger refuses an 11th cover and a cover after `ends_at`; a tombstone purge of a trip leaves its cover row
-- [ ] T006 Write `apps/api/src/db/migrations/0016_paid_trip_allowance.sql` per data-model.md (tables, checks, policies, grants, `trip_covers_year_guard`, the five `billing_*` SECURITY DEFINER functions with `GREATEST`-style bounds and no row-aiming arguments) and mirror the table types in `apps/api/src/db/schema/commerce.ts`
-- [ ] T007 Widen `apps/api/test/privacy/entitlement-neutrality.spec.ts` (failing first): no policy or view mentions the five tables; only functions named `billing_*` read them; in `src/` only `modules/billing/*` and the schema files mention them; the API role's grants are exactly those of T005
-- [ ] T008 Add test helpers `apps/api/test/support/billing.ts`: `grantCredit`, `openPeriod(tier, {uses?, endsAt?})`, `enforceCharging()` (calls `billing_enforce` as owner) and `readCovers(user)`
+- [ ] T005 Write the failing migration test `apps/api/test/integration/paid-allowance-schema.spec.ts`: the four tables exist with `ENABLE` and `FORCE` RLS; the API role has exactly `SELECT` (credits, periods), `SELECT, INSERT` (trip_covers), `SELECT, INSERT, UPDATE` (allowance_shadow); `trip_covers.trip_id` and `credit_id` unique; the year trigger refuses an 11th cover and a cover after `ends_at`; a tombstone purge of a trip leaves its cover row
+- [ ] T006 Write `apps/api/src/db/migrations/0016_paid_trip_allowance.sql` per data-model.md (tables, checks, policies, grants, `trip_covers_year_guard`, the four `billing_*` SECURITY DEFINER functions with `GREATEST`-style bounds and no row-aiming arguments) and mirror the table types in `apps/api/src/db/schema/commerce.ts`
+- [ ] T007 Widen `apps/api/test/privacy/entitlement-neutrality.spec.ts` (failing first): no policy or view mentions the four tables; only functions named `billing_*` read them; in `src/` only `modules/billing/*` and the schema files mention them; the API role's grants are exactly those of T005
+- [ ] T008 Add test helpers `apps/api/test/support/billing.ts`: `grantCredit`, `openPeriod(tier, {uses?, endsAt?})`, `bootCharging(options)` (boots the app with `BILLING_ENFORCED=true`) and `readCovers(user)`
 
 **Checkpoint**: migration applies, T005 and T007 green.
 
 ## Phase 3: User Story 1 - Charging off, shadow measurement (P1)
 
-**Goal**: with `billing_state.enforced_at` NULL nobody is blocked; the owner can read how many would have been.
+**Goal**: with `BILLING_ENFORCED` off nobody is blocked; the owner can read how many would have been.
 
 **Independent test**: create 6 trips with charging off, all 201, no cover rows, one shadow row with `attempts = 3`; the report prints the counts only.
 
 - [ ] T009 [P] [US1] Failing contract tests in `apps/api/test/contract/paid-allowance-shadow.spec.ts`: every create is 201 with body `{ trip }` only; shadow row written from the 4th trip; two travellers give `travellers_blocked: 2`; the report output contains no title or id
-- [ ] T010 [US1] Rewrite `apps/api/src/modules/billing/allowance.service.ts`: replace the 013 logic with `decide(submitted)` returning `{ outcome, cover? }` (D14-04 order) and `apply(tripId, cover)` inserting the `trip_covers` row; read `billing_state` with a 30-second cache; record shadow rows while charging is off
+- [ ] T010 [US1] Rewrite `apps/api/src/modules/billing/allowance.service.ts`: replace the 013 logic with `decide(submitted)` returning `{ outcome, cover? }` (D14-04 order) and `apply(tripId, cover)` inserting the `trip_covers` row; read `BILLING_ENFORCED` from the loaded env; record shadow rows while charging is off
 - [ ] T011 [US1] Wire it in `apps/api/src/modules/trips/trips.service.ts` (`create`: replay first, then `decide`, insert, `apply`) and update its header comment
 - [ ] T012 [P] [US1] `apps/api/scripts/billing-shadow-report.ts` and the `billing:shadow-report` script in `apps/api/package.json` (owner URL, counts only); unit test for the output shape
 
@@ -51,8 +51,8 @@ description: 'Task list for the paid trip allowance (spec 014)'
 
 - [ ] T013 [P] [US2] Failing contract tests in `apps/api/test/contract/paid-allowance-free.spec.ts`: 3 are 201 with no allowance wording; the 4th is 409 `TRIP_ALLOWANCE_REACHED` with `trips_held`, `allowance`, `year_uses_left`, `credits`, `routes` and the echoed submission; the refusal writes nothing; deleting one lets the same create succeed; two simultaneous creates at the last slot give 201 and 409; a replay of an owned id is 201
 - [ ] T014 [US2] Make T013 pass in `allowance.service.ts` (ordinary count = live trips with no `trip_covers` row; 409 via `apiError` with the new details); update `apps/api/test/contract/trip-allowance.spec.ts` (013) to the new numbers and details
-- [ ] T015 [US2] `apps/api/scripts/billing-enforce.ts` and `billing-pause.ts` with scripts `billing:enforce` and `billing:pause`; `billing_enforce()` in the migration grandfathers every live trip lacking a cover, clears the shadow table, refuses a second run (FR-029, D14-06)
-- [ ] T016 [P] [US2] Integration test `apps/api/test/integration/billing-enforce.spec.ts`: a traveller with 12 trips before the switch keeps all 12 as `grandfathered`, can still read, edit and export them, has 3 free slots empty, and is refused at their 4th new trip after 3; `billing_enforce` twice fails; `pause` keeps covers
+- [ ] T015 [US2] `apps/api/scripts/billing-grandfather.ts` with the script `billing:grandfather` (owner role): covers every live trip lacking a cover as `grandfathered`, clears the shadow table, idempotent (FR-029, D14-06)
+- [ ] T016 [P] [US2] Integration test `apps/api/test/integration/billing-grandfather.spec.ts`: a traveller with 12 trips before the switch keeps all 12 as `grandfathered`, can still read, edit and export them, has 3 free slots empty, and is refused at their 4th new trip after 3; running the script twice changes nothing the second time; unsetting `BILLING_ENFORCED` keeps covers
 
 ## Phase 5: User Story 3 - Single-trip credit (P1)
 
@@ -61,7 +61,7 @@ description: 'Task list for the paid trip allowance (spec 014)'
 - [ ] T017 [P] [US3] Failing contract tests in `apps/api/test/contract/paid-allowance-credit.spec.ts`: with 3 ordinary trips and one credit the 4th is 201 with a `credit` cover; delete that trip then a new create is 409 again; the covered trip does not count against the 3; deleting a covered trip frees nothing, deleting an ordinary one frees a slot; two simultaneous creates with one credit give one 201; a credit never expires (a purchase 5 years old still spends); account deletion removes unspent credits
 - [ ] T018 [US3] Implement the credit branch in `allowance.service.ts`: pick the oldest unspent, unrefunded credit with `FOR UPDATE SKIP LOCKED` under the advisory lock; `UNIQUE(credit_id)` is the backstop
 - [ ] T019 [P] [US3] Integration test `apps/api/test/integration/billing-purge.spec.ts`: run the tombstone purge on a deleted covered trip older than 90 days; the credit stays spent (D14-02)
-- [ ] T020 [P] [US3] Extend the account-deletion residue test (`apps/api/test/integration/account-deletion*.spec.ts`) to list the five tables
+- [ ] T020 [P] [US3] Extend the account-deletion residue test (`apps/api/test/integration/account-deletion*.spec.ts`) to list the four tables
 
 ## Phase 6: User Story 4 - Tier 1 yearly plan (P2)
 
@@ -103,7 +103,7 @@ description: 'Task list for the paid trip allowance (spec 014)'
 
 - [ ] T037 Update `docs/roadmap/PROGRESS.md` (S-10 superseded by 014, S-11 built), tick T172 to T180 notes in `specs/001-triptrackr-mvp/tasks.md`, mark spec 013 `Superseded by 014` in `specs/013-trip-allowance/spec.md`
 - [ ] T038 Run lint, typecheck, `test:unit`, then each database project once (contract, integration, privacy), coverage floor 80%; record counts in PROGRESS.md
-- [ ] T039 Code review (`code-reviewer`) and open the PR with the visibility posture of all five tables
+- [ ] T039 Code review (`code-reviewer`) and open the PR with the visibility posture of all four tables
 
 ## Dependencies and order
 
