@@ -240,7 +240,11 @@ describe('OAuthTokenVerifier', () => {
       expect(fake.appleCalls).toEqual([
         {
           token: 'the-identity-token',
-          options: { issuer: APPLE_ISSUER, audience: ['app.triptrackr.ios'] },
+          options: {
+            issuer: APPLE_ISSUER,
+            audience: ['app.triptrackr.ios'],
+            algorithms: ['RS256'],
+          },
         },
       ]);
       expect(identity).toEqual({
