@@ -5,6 +5,7 @@ import {
   GoogleOAuthRequest,
   LoginRequest,
   LogoutRequest,
+  OAuthNonceResponse,
   PasswordResetConfirm,
   PasswordResetRequest,
   RefreshRequest,
@@ -20,6 +21,7 @@ import { ZodValidationPipe } from '@/common/validation/zod-validation.pipe';
 
 import { AUTH_RATE_LIMITS } from './auth-rate-limits';
 import { AuthService } from './auth.service';
+import { OAuthNonceService } from './oauth-nonce.service';
 import { OAuthService } from './oauth.service';
 import { RefreshService } from './refresh.service';
 import { VerificationService } from './verification.service';
@@ -41,6 +43,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly oauth: OAuthService,
+    private readonly oauthNonces: OAuthNonceService,
     private readonly refresh: RefreshService,
     private readonly verification: VerificationService,
   ) {}
@@ -67,7 +70,16 @@ export class AuthController {
     return respond(AuthTokens, await this.auth.login(body));
   }
 
-  /** FR-002. `{id_token}`, verified server-side; creates transparently on first use. */
+  /** Spec 012. A fresh single-use nonce for one provider sign-in attempt. */
+  @Public()
+  @RateLimited({ limit: 60, windowSeconds: 3_600 })
+  @Post('oauth/nonce')
+  @HttpCode(HttpStatus.OK)
+  async nonce(): Promise<OAuthNonceResponse> {
+    return respond(OAuthNonceResponse, { nonce: await this.oauthNonces.issue() });
+  }
+
+  /** FR-002. `{id_token, nonce}`, verified server-side; creates transparently on first use. */
   @Public()
   @Post('oauth/google')
   @HttpCode(HttpStatus.OK)
@@ -77,7 +89,7 @@ export class AuthController {
     return respond(AuthTokens, await this.oauth.google(body));
   }
 
-  /** FR-002. `{identity_token, display_name?}`. */
+  /** FR-002. `{identity_token, nonce, display_name?}`. */
   @Public()
   @Post('oauth/apple')
   @HttpCode(HttpStatus.OK)

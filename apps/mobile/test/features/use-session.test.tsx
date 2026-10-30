@@ -163,12 +163,15 @@ describe('OAuth sign-in (FR-002)', () => {
     apiFetch.mockResolvedValueOnce(tokens);
     const { result } = await renderHook(() => useGoogleSignIn(), { wrapper });
 
-    result.current.mutate('google-id-token');
+    result.current.mutate({
+      idToken: 'google-id-token',
+      nonce: 'server-nonce-0123456789',
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(apiFetch).toHaveBeenCalledWith(expect.anything(), '/auth/oauth/google', {
       method: 'POST',
-      body: { id_token: 'google-id-token' },
+      body: { id_token: 'google-id-token', nonce: 'server-nonce-0123456789' },
       auth: false,
     });
   });
@@ -177,19 +180,30 @@ describe('OAuth sign-in (FR-002)', () => {
     apiFetch.mockResolvedValue(tokens);
     const { result } = await renderHook(() => useAppleSignIn(), { wrapper });
 
-    result.current.mutate({ identityToken: 'apple-jwt', displayName: 'Ana' });
+    result.current.mutate({
+      identityToken: 'apple-jwt',
+      nonce: 'server-nonce-0123456789',
+      displayName: 'Ana',
+    });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(apiFetch).toHaveBeenLastCalledWith(expect.anything(), '/auth/oauth/apple', {
       method: 'POST',
-      body: { identity_token: 'apple-jwt', display_name: 'Ana' },
+      body: {
+        identity_token: 'apple-jwt',
+        nonce: 'server-nonce-0123456789',
+        display_name: 'Ana',
+      },
       auth: false,
     });
 
-    result.current.mutate({ identityToken: 'apple-jwt-2' });
+    result.current.mutate({
+      identityToken: 'apple-jwt-2',
+      nonce: 'server-nonce-9876543210',
+    });
     await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(2));
     expect(apiFetch).toHaveBeenLastCalledWith(expect.anything(), '/auth/oauth/apple', {
       method: 'POST',
-      body: { identity_token: 'apple-jwt-2' },
+      body: { identity_token: 'apple-jwt-2', nonce: 'server-nonce-9876543210' },
       auth: false,
     });
   });

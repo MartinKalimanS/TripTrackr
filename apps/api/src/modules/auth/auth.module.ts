@@ -10,6 +10,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { createEmailSender, EMAIL_SENDER, type EmailSender } from './email-sender';
 import { OAuthTokenVerifier } from './oauth-token-verifier';
+import { OAuthNonceService } from './oauth-nonce.service';
 import { OAuthService } from './oauth.service';
 import { PasswordService } from './password.service';
 import { RefreshService } from './refresh.service';
@@ -42,6 +43,7 @@ import { VerificationService } from './verification.service';
     PasswordService,
     AuthService,
     OAuthTokenVerifier,
+    OAuthNonceService,
     OAuthService,
     RefreshService,
     VerificationService,
