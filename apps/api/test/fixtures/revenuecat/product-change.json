@@ -1,0 +1,18 @@
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "evt-product_change-1",
+    "type": "PRODUCT_CHANGE",
+    "app_user_id": "__USER__",
+    "original_app_user_id": "__USER__",
+    "store": "APP_STORE",
+    "environment": "SANDBOX",
+    "event_timestamp_ms": 1768046400000,
+    "product_id": "unl_y1",
+    "new_product_id": "unl_y1",
+    "original_transaction_id": "orig-1000",
+    "transaction_id": "txn-1002",
+    "purchased_at_ms": 1768910400000,
+    "expiration_at_ms": 1800446400000
+  }
+}
