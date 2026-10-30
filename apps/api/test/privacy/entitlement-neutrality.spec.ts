@@ -34,6 +34,8 @@ const COMMERCE_WORDS = new RegExp(
 const ALLOWED_FILES = new Set([
   join('db', 'schema', 'commerce.ts'),
   join('db', 'schema', 'index.ts'),
+  // The owner's switch-on tools: run by hand as the migration role, never part of a request.
+  join('db', 'billing-admin.ts'),
 ]);
 const BILLING_DIR = join('modules', 'billing') + sep;
 

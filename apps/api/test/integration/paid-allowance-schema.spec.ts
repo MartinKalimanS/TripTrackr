@@ -161,7 +161,7 @@ describe('paid allowance schema', () => {
       const userId = await newUser();
       const extra = ids === 'credit' ? { credit: await newCredit(userId) } : {};
 
-      await expect(cover(userId, source as string, extra)).rejects.toThrow(
+      await expect(cover(userId, source, extra)).rejects.toThrow(
         /trip_covers_source_check/,
       );
     });
