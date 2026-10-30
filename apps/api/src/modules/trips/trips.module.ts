@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { BillingModule } from '@/modules/billing/billing.module';
+
 import { ArcsService } from './arcs.service';
 import { StopsController } from './stops.controller';
 import { StopsService } from './stops.service';
@@ -19,6 +21,7 @@ import { TripsService } from './trips.service';
  * different shape and belongs to the social story behind the sync gate.
  */
 @Module({
+  imports: [BillingModule],
   controllers: [TripsController, StopsController],
   providers: [
     TripsRepository,

@@ -11,6 +11,7 @@ import {
   type RegisteredTraveller,
 } from '../support/app';
 import { PASS_FIELDS, uploadDocument } from '../support/documents';
+import { grantEntitlement } from '../support/entitlement';
 import { FX, createTripFor, seedFxRates } from '../support/expenses';
 import { CITY } from '../support/geography';
 import { createHarness, type Harness } from '../integration/harness';
@@ -51,6 +52,10 @@ describe('contract — the REST rules hold when a record arrives by push', () =>
     harness = await createHarness();
     await seedFxRates(harness.owner);
     a = await registerTraveller(app);
+    // `a` is the shared traveller whose tests push many trips and create REST fixtures; an active
+    // entitlement keeps those fixtures clear of the allowance (spec 013). The allowance tests use
+    // travellers of their own.
+    await entitle(a);
     tripId = await createTripFor(app, a, 'CHF', 'Rules fixture');
   });
 
@@ -59,6 +64,8 @@ describe('contract — the REST rules hold when a record arrives by push', () =>
     await app?.close();
   });
 
+  const entitle = (traveller: RegisteredTraveller) =>
+    grantEntitlement(harness.owner, traveller);
   const stored = (table: Parameters<typeof requireRow>[1], id: unknown) =>
     requireRow(harness.owner, table, id as string);
   const asA = () => bearer(a.tokens.access_token);
@@ -200,7 +207,23 @@ describe('contract — the REST rules hold when a record arrives by push', () =>
       spy.mockRestore();
     });
 
-    it('leaves REST POST /trips as it was: no allowance branch until User Story 9', async () => {
+    it('does not flag a trip pushed by an entitled account (spec 013)', async () => {
+      const traveller = await registerTraveller(app);
+      await push(
+        app,
+        traveller,
+        'trips',
+        Array.from({ length: 5 }, () => tripRecord()),
+      );
+      await entitle(traveller);
+
+      const result = await pushOne(app, traveller, 'trips', tripRecord());
+
+      expect(result).toMatchObject({ status: 'applied' });
+      expect(result).not.toHaveProperty('warnings');
+    });
+
+    it('refuses a REST create at the allowance even when the trips arrived by push', async () => {
       const traveller = await registerTraveller(app);
       await push(
         app,
@@ -214,7 +237,8 @@ describe('contract — the REST rules hold when a record arrives by push', () =>
         .set(bearer(traveller.tokens.access_token))
         .send({ title: 'Through REST', home_currency: 'CHF' });
 
-      expect(response.status).toBe(201);
+      expect(response.status).toBe(409);
+      expect(response.body.error.code).toBe('TRIP_ALLOWANCE_REACHED');
     });
   });
 

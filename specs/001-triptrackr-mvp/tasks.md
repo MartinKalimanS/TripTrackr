@@ -422,18 +422,18 @@ _Amended 2026-09-29 for research D-31..D-34: documents are sealed by the API fro
 
 ### Tests for User Story 9 ⚠️ Write first, confirm failing
 
-- [ ] T172 [P] [US9] Contract test — `POST /trips` at the allowance returns 409 carrying trips held, the allowance, both routes forward, and the echoed submission — in `apps/api/test/contract/allowance-blocked.spec.ts` (contract test 5, FR-077, FR-079)
-- [ ] T173 [P] [US9] Contract test — `POST /trips` below the allowance returns no allowance or payment field at all — in `apps/api/test/contract/allowance-silent.spec.ts` (contract test 6, FR-084)
-- [ ] T174 [P] [US9] Contract test — every non-create endpoint behaves identically under an active and a lapsed entitlement — in `apps/api/test/contract/lapsed-entitlement.spec.ts` (contract test 7, FR-080, SC-021)
+- [x] T172 [P] [US9] Contract test — `POST /trips` at the allowance returns 409 carrying trips held, the allowance, both routes forward, and the echoed submission — in `apps/api/test/contract/allowance-blocked.spec.ts` (contract test 5, FR-077, FR-079)
+- [x] T173 [P] [US9] Contract test — `POST /trips` below the allowance returns no allowance or payment field at all — in `apps/api/test/contract/allowance-silent.spec.ts` (contract test 6, FR-084)
+- [x] T174 [P] [US9] Contract test — every non-create endpoint behaves identically under an active and a lapsed entitlement — in `apps/api/test/contract/lapsed-entitlement.spec.ts` (contract test 7, FR-080, SC-021)
 - [ ] T175 [P] [US9] Contract test — `POST /billing/purchase-completed` replayed with the same transaction id grants exactly once — in `apps/api/test/contract/purchase-idempotency.spec.ts` (contract test 11, FR-083, SC-025)
 - [ ] T176 [P] [US9] Privacy test — account B's read results are identical whether A's entitlement is active or lapsed — in `apps/api/test/privacy/entitlement-neutrality.spec.ts` (adversarial row 12)
-- [ ] T177 [P] [US9] Integration test — deleting a trip frees a slot immediately, and repeated delete-and-recreate never drifts — in `apps/api/test/integration/allowance-accounting.spec.ts` (FR-075)
+- [x] T177 [P] [US9] Integration test — deleting a trip frees a slot immediately, and repeated delete-and-recreate never drifts — in `apps/api/test/integration/allowance-accounting.spec.ts` (FR-075)
 
 ### Implementation for User Story 9
 
-- [ ] T178 [US9] Implement the allowance check inside the `POST /trips` transaction as a live `count(*)` against a configured limit, in `apps/api/src/modules/trips/allowance.service.ts` — **the only code path in the API that reads entitlement state** (FR-074, FR-076, research D-08)
-- [ ] T179 [US9] Make the launch allowance of 5 a configuration value in `apps/api/src/common/config/env.schema.ts`, not a constant in code (FR-074)
-- [ ] T180 [P] [US9] Implement `GET /me/entitlement` returning `is_active`, `current_period_end`, `trips_held`, and `allowance` in `apps/api/src/modules/billing/entitlement.controller.ts` (FR-077, FR-082)
+- [x] T178 [US9] Implement the allowance check inside the `POST /trips` transaction as a live `count(*)` against a configured limit, in `apps/api/src/modules/trips/allowance.service.ts` — **the only code path in the API that reads entitlement state** (FR-074, FR-076, research D-08)
+- [x] T179 [US9] Make the launch allowance of 5 a configuration value in `apps/api/src/common/config/env.schema.ts`, not a constant in code (FR-074)
+- [x] T180 [P] [US9] Implement `GET /me/entitlement` returning `is_active`, `current_period_end`, `trips_held`, and `allowance` in `apps/api/src/modules/billing/entitlement.controller.ts` (FR-077, FR-082)
 - [ ] T181 [US9] Implement `POST /billing/purchase-completed` verifying with RevenueCat before granting, idempotent by transaction id, in `apps/api/src/modules/billing/purchase.service.ts` (FR-078, FR-083)
 - [ ] T182 [US9] Implement the signature-verified `POST /billing/webhook` as the authoritative entitlement update, rejecting unsigned calls, in `apps/api/src/modules/billing/webhook.controller.ts` (research D-07)
 - [ ] T183 [P] [US9] Integrate `react-native-purchases` and build the paywall in `apps/mobile/src/features/billing/use-purchases.ts` and `apps/mobile/src/app/modal/paywall.tsx` (FR-078, FR-081)

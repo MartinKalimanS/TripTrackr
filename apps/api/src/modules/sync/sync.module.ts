@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { BillingModule } from '@/modules/billing/billing.module';
 import { BoardingPassService } from '@/modules/documents/boarding-pass.service';
 import { ExpensesModule } from '@/modules/expenses/expenses.module';
 
@@ -21,7 +22,7 @@ import { PushService } from './push.service';
  */
 @Module({
   // FxService, for the conversion a pushed expense freezes at entry (D-10).
-  imports: [ExpensesModule],
+  imports: [BillingModule, ExpensesModule],
   controllers: [SyncPullController, SyncPushController],
   providers: [
     PullService,
