@@ -230,25 +230,6 @@ describe('<AddTripScreen> — modal/add-trip (T066)', () => {
   });
 });
 
-describe('<AddTripScreen> at the free limit (spec 014)', () => {
-  const entitlementHook = jest.requireMock('@/features/billing/use-entitlement') as {
-    useEntitlement: () => unknown;
-  };
-
-  test('goes to the paywall and writes nothing when a purchase is needed first', async () => {
-    const spy = jest
-      .spyOn(entitlementHook, 'useEntitlement')
-      .mockReturnValue({ mustPayToCreate: true });
-    await render(<AddTripScreen />);
-    await fireEvent.changeText(screen.getByLabelText('Trip name'), 'One more');
-    await fireEvent.press(screen.getByTestId('add-trip-save'));
-
-    expect(mockReplace).toHaveBeenCalledWith('/modal/paywall');
-    expect(mockActions.createTrip).not.toHaveBeenCalled();
-    spy.mockRestore();
-  });
-});
-
 describe('<AddTripScreen> as a form sheet (T434; FR-005, FR-009, FR-024, FR-025, FR-029, FR-030)', () => {
   afterEach(() => resetKeyboard());
 

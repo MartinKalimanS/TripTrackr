@@ -40,6 +40,7 @@ import {
   type GlobeInvitation,
   type GlobeTrip,
 } from '@/features/globe/globe-data';
+import { usePlanTrip } from '@/features/billing/use-plan-trip';
 import { idleSpinAllowed } from '@/features/globe/idle-spin';
 import type { GlobeData } from '@/features/globe/use-globe';
 import { describeGlobe } from '@/features/home/describe-globe';
@@ -194,6 +195,7 @@ function FloatingCard({
 export function HomeGlobe(props: HomeGlobeProps) {
   const { data, failed, home, overview, name, today } = props;
   const router = useRouter();
+  const planTrip = usePlanTrip();
   const layout = useHomeLayout();
   const invitation = failed ? null : globeInvitation(data.trips);
   const sheetShown = !failed && invitation === null;
@@ -254,7 +256,7 @@ export function HomeGlobe(props: HomeGlobeProps) {
       )}
       <PlanTripFab
         screen="home"
-        onPress={() => router.push('/modal/add-trip')}
+        onPress={planTrip}
         bottomInset={layout.tabZone}
         collapsed={camera.detent === 'peek'}
         hidden={!sheetShown || planTripFabHidden({ sheetFull: full })}

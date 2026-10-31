@@ -48,6 +48,7 @@ import { PlanTripFab } from '@/components/ui/plan-trip-fab';
 import { SyncChip } from '@/components/ui/sync-chip';
 import { useToastVisible } from '@/components/ui/toast-zone';
 import { Spacing } from '@/constants/theme';
+import { usePlanTrip } from '@/features/billing/use-plan-trip';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
 import {
   YEAR_SCRUBBER_MIN_TRIPS,
@@ -289,7 +290,7 @@ export default function TripsScreen() {
   const toastUp = useToastVisible();
   const headerOptions = useHeaderOptions(sync);
 
-  const onPlan = useCallback(() => router.push('/modal/add-trip'), [router]);
+  const onPlan = usePlanTrip();
   const onOpen = useCallback((id: string) => router.push(`/trip/${id}`), [router]);
   const showStrip =
     list.settled &&
