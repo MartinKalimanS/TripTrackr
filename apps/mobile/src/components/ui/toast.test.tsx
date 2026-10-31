@@ -11,6 +11,8 @@
  * accessibility contract of what it rendered, never the kit's animation.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
+
+import { glyphsIn } from '../../../test/helpers/icons';
 import { StyleSheet } from 'react-native';
 
 import { Colors } from '@/constants/theme';
@@ -135,6 +137,23 @@ describe('<Toast> - the Sunrise toast over the kit', () => {
     return props;
   };
 
+  test('draws a status icon and a bold title only when asked for them', async () => {
+    await body();
+    expect(screen.queryByText('Credit added')).toBeNull();
+    expect(glyphsIn()).toHaveLength(0);
+  });
+
+  test('a tone adds its icon and a title sits above the message', async () => {
+    await body({
+      tone: 'success',
+      title: 'Credit added',
+      message: 'You can add one more trip.',
+    });
+    expect(screen.getByText('Credit added')).toBeTruthy();
+    expect(screen.getByText('You can add one more trip.')).toBeTruthy();
+    expect(glyphsIn()).toHaveLength(1);
+  });
+
   test('is announced politely, as a status and not an alert', async () => {
     await body();
     const root = screen.getByTestId('toast-t1');
@@ -170,7 +189,7 @@ describe('<Toast> - the Sunrise toast over the kit', () => {
     await body();
     const words = screen.getByText('Trip deleted');
     expect(tokens(words.props.className)).toEqual(
-      expect.arrayContaining(['text-toast-ink', 'text-[14px]', 'flex-1']),
+      expect.arrayContaining(['text-toast-ink', 'text-[14px]']),
     );
     expect(words.props.numberOfLines).toBeUndefined();
   });

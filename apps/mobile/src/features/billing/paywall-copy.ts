@@ -4,9 +4,11 @@
  * stop it. Prices are never written here: the store supplies every price and its currency.
  */
 export const PAYWALL_COPY = {
-  title: 'Add another trip',
+  title: 'Room for more trips',
   lead: (held: number, allowance: number) =>
-    `You have ${held} of your ${allowance} free trips. Pick how to add this one.`,
+    `Your ${held} of ${allowance} free trips are in use. Pick how to add this one.`,
+  continue: 'Continue',
+  cheaper: 'Yearly plans get cheaper each year you renew.',
   option: {
     credit: { name: 'This trip only', detail: 'One trip. Never expires.' },
     tier1: { name: 'Yearly: 10 trips', detail: '10 new trips each year.' },
