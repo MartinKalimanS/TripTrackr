@@ -8,7 +8,8 @@ export const RevenueCatWebhook = z.object({
   event: z.object({
     id: z.string().optional(),
     type: z.string().min(1),
-    app_user_id: z.string().min(1),
+    // Absent on a TRANSFER event (UNVERIFIED), which names `transferred_from` and `transferred_to`.
+    app_user_id: z.string().min(1).optional(),
     product_id: z.string().optional(),
     store: z.string().optional(),
     transaction_id: z.string().optional(),

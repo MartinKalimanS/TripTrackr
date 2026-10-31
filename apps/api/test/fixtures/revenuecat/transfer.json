@@ -1,0 +1,16 @@
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "evt-transfer-1",
+    "type": "TRANSFER",
+    "store": "APP_STORE",
+    "environment": "SANDBOX",
+    "transferred_from": [
+      "__USER__"
+    ],
+    "transferred_to": [
+      "$RCAnonymousID:abc123"
+    ],
+    "event_timestamp_ms": 1768046400000
+  }
+}

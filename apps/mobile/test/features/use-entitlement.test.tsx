@@ -9,6 +9,8 @@ import type { PropsWithChildren } from 'react';
 
 import { useCoverTrip, useEntitlement } from '@/features/billing/use-entitlement';
 
+jest.unmock('@/features/billing/use-entitlement');
+
 jest.mock('@/lib/api-client', () => {
   const actual = jest.requireActual('@/lib/api-client');
   return { ...actual, apiFetch: jest.fn() };
@@ -73,6 +75,14 @@ describe('useEntitlement', () => {
     await waitFor(() => expect(result.current.isLoaded).toBe(true));
     expect(result.current.atLimit).toBe(true);
     expect(result.current.canCreateWithoutPaying).toBe(false);
+    expect(result.current.mustPayToCreate).toBe(true);
+  });
+
+  test('never asks for payment before the entitlement is known (offline-first)', async () => {
+    apiFetch.mockRejectedValue(new Error('offline'));
+    const { result } = await renderHook(() => useEntitlement(), { wrapper: wrapper() });
+
+    expect(result.current.mustPayToCreate).toBe(false);
   });
 
   test.each([
@@ -85,6 +95,7 @@ describe('useEntitlement', () => {
 
     await waitFor(() => expect(result.current.isLoaded).toBe(true));
     expect(result.current.canCreateWithoutPaying).toBe(true);
+    expect(result.current.mustPayToCreate).toBe(false);
   });
 });
 

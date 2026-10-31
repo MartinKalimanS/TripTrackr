@@ -35,6 +35,8 @@ export function useEntitlement() {
     canCreateWithoutPaying,
     /** Whether any screen may mention buying anything. False while charging is off. */
     showPaywallEntry: atLimit,
+    /** Creating a trip now needs a purchase first: at the limit with nothing to spend. */
+    mustPayToCreate: atLimit && !canCreateWithoutPaying,
     refetch: query.refetch,
   };
 }

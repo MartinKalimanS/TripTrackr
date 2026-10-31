@@ -40,6 +40,7 @@ import { Icon } from '@/components/ui/icon';
 import { InlineError } from '@/components/ui/inline-error';
 import { Text } from '@/components/ui/text';
 import { useSessionStore } from '@/features/auth/session-store';
+import { useEntitlement } from '@/features/billing/use-entitlement';
 import {
   TRIP_FIELD_COPY,
   TRIP_FORM_COPY,
@@ -61,6 +62,7 @@ function useAddTripForm() {
   const homeCurrency = useSessionStore((session) => session.user?.home_currency ?? 'USD');
   const { createTrip } = useTripActions();
   const haptics = useHaptics();
+  const { mustPayToCreate } = useEntitlement();
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const { control, handleSubmit } = useForm<TripFormValues>({
@@ -71,6 +73,12 @@ function useAddTripForm() {
   // `values` are the resolver's parsed output — the title already trimmed by
   // the schema — so what is written is exactly what the server would accept.
   const save = handleSubmit((values) => {
+    // Spec 014: at the free limit with nothing to spend, the way forward is the paywall. Only when the
+    // server's standing is known: offline, the trip is saved here and flagged at sync, never refused.
+    if (mustPayToCreate) {
+      router.replace('/modal/paywall');
+      return;
+    }
     try {
       const trip = createTrip(values);
       haptics.success();

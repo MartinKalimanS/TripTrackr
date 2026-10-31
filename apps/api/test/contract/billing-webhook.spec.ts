@@ -255,7 +255,7 @@ describe('billing webhook', () => {
   });
 
   describe('things we do not act on', () => {
-    test.each(['unknown-type', 'unknown-product', 'anonymous-user'])(
+    test.each(['unknown-type', 'unknown-product', 'anonymous-user', 'transfer'])(
       '%s is acknowledged with 200 and grants nothing',
       async (name) => {
         const response = await send(mine(name));

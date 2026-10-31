@@ -32,10 +32,12 @@ import {
   describeDeleteError,
 } from '@/features/auth/delete-account-copy';
 import { useDeleteAccount } from '@/features/auth/use-delete-account';
+import { useEntitlement } from '@/features/billing/use-entitlement';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
   const deletion = useDeleteAccount();
+  const credits = useEntitlement().entitlement?.credits ?? 0;
   const [password, setPassword] = useState('');
 
   const confirm = () => {
@@ -68,6 +70,12 @@ export default function DeleteAccountScreen() {
       <Text variant="label" tone="muted">
         {DELETE_ACCOUNT_COPY.subscription}
       </Text>
+
+      {credits > 0 ? (
+        <Text testID="delete-account-credits" variant="label">
+          {DELETE_ACCOUNT_COPY.credits(credits)}
+        </Text>
+      ) : null}
 
       <Field
         testID="delete-account-password"
