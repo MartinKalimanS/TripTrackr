@@ -28,10 +28,11 @@
  * (FR-013). Visibility posture: private, local, never transmitted; the counts, the total and the
  * pictures are the signed-in traveller's own and show no other person's content.
  */
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -240,6 +241,17 @@ function StopsSection({
   );
 }
 
+/** Opened from "Where to?" in New trip (`?addStop=1`): the first stop's editor, once, when ready. */
+function useOpenFirstStop(ready: boolean, openAdd: () => void) {
+  const { addStop } = useLocalSearchParams<{ addStop?: string }>();
+  const opened = useRef(false);
+  useEffect(() => {
+    if (addStop !== '1' || !ready || opened.current) return;
+    opened.current = true;
+    openAdd();
+  }, [addStop, ready, openAdd]);
+}
+
 /** What the screen reads and writes: the stops, the five areas' summary, sync and the editor. */
 function useTripData(trip: TripRow) {
   const stops = useTripStops(trip.id);
@@ -247,6 +259,7 @@ function useTripData(trip: TripRow) {
   const sync = useTripSync({ overview });
   const writes = useStopWrites(trip.id);
   const editing = useStopEditor(stops.data, writes.save);
+  useOpenFirstStop(!stops.loading, editing.openAdd);
   const days = useMemo(() => tripDays(stops.data), [stops.data]);
   return { stops, overview, sync, writes, editing, days };
 }
