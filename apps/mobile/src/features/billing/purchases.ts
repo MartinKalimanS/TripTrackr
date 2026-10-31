@@ -119,13 +119,23 @@ export function createPurchases(sdk: PurchasesSdk, config: PurchasesConfig): Pur
  * The real SDK, loaded on first use so Jest and Expo Go never evaluate the native module. This app
  * needs a dev client anyway (AGENTS.md), and the test store keys work in one.
  */
-export function reactNativePurchasesSdk(): PurchasesSdk {
+export function reactNativePurchasesSdk(offeringId?: string): PurchasesSdk {
   // Loaded here, not at the top, so Jest never evaluates the native module.
   const sdk =
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('react-native-purchases') as typeof import('react-native-purchases');
   const { default: Purchases, PRODUCT_CATEGORY } = sdk;
   const CREDIT_IDS = new Set(['credit_single']);
+
+  /** The packages of the named offering, matched to products by product id (never by package id). */
+  const offeringPackages = async () => {
+    const offerings = await Purchases.getOfferings();
+    const offering = offeringId ? offerings.all[offeringId] : undefined;
+    if (!offering) {
+      throw new PurchasesIdentityError(`Offering ${offeringId} is not available.`);
+    }
+    return offering.availablePackages;
+  };
 
   const toProduct = (product: {
     identifier: string;
@@ -149,6 +159,12 @@ export function reactNativePurchasesSdk(): PurchasesSdk {
     isAnonymous: () => Purchases.isAnonymous(),
     getAppUserId: () => Purchases.getAppUserID(),
     getProducts: async (ids) => {
+      if (offeringId) {
+        const packages = await offeringPackages();
+        return packages
+          .filter((pack) => ids.includes(pack.product.identifier))
+          .map((pack) => toProduct(pack.product));
+      }
       const credits = ids.filter((id) => CREDIT_IDS.has(id));
       const subscriptions = ids.filter((id) => !CREDIT_IDS.has(id));
       const [one, many] = await Promise.all([
@@ -162,14 +178,26 @@ export function reactNativePurchasesSdk(): PurchasesSdk {
       return [...one, ...many].map(toProduct);
     },
     purchaseProduct: async (id) => {
-      const [product] = await Purchases.getProducts(
-        [id],
-        CREDIT_IDS.has(id)
-          ? PRODUCT_CATEGORY.NON_SUBSCRIPTION
-          : PRODUCT_CATEGORY.SUBSCRIPTION,
-      );
-      if (!product) throw new PurchasesIdentityError(`The store has no product ${id}.`);
       try {
+        if (offeringId) {
+          const pack = (await offeringPackages()).find(
+            (p) => p.product.identifier === id,
+          );
+          if (!pack) {
+            throw new PurchasesIdentityError(
+              `Offering ${offeringId} has no package for product ${id}.`,
+            );
+          }
+          await Purchases.purchasePackage(pack);
+          return { outcome: 'purchased' };
+        }
+        const [product] = await Purchases.getProducts(
+          [id],
+          CREDIT_IDS.has(id)
+            ? PRODUCT_CATEGORY.NON_SUBSCRIPTION
+            : PRODUCT_CATEGORY.SUBSCRIPTION,
+        );
+        if (!product) throw new PurchasesIdentityError(`The store has no product ${id}.`);
         await Purchases.purchaseStoreProduct(product);
         return { outcome: 'purchased' };
       } catch (error) {
@@ -189,12 +217,15 @@ let shared: Purchases | undefined;
 
 /** The app's one purchases layer, with the public keys inlined by Expo at build time. */
 export function appPurchases(): Purchases {
-  shared ??= createPurchases(reactNativePurchasesSdk(), {
-    platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    keys: {
-      ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
-      android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
+  shared ??= createPurchases(
+    reactNativePurchasesSdk(process.env.EXPO_PUBLIC_REVENUECAT_OFFERING),
+    {
+      platform: Platform.OS === 'ios' ? 'ios' : 'android',
+      keys: {
+        ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
+        android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
+      },
     },
-  });
+  );
   return shared;
 }
