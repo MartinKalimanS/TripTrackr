@@ -1,0 +1,98 @@
+# Spec 014 (S-12) - the fourth trip meets the paywall; nothing is hidden or deleted.
+#
+# NOT YET RUN on a device: written from the screens' test ids and the as-built notes. Treat the
+# first real run as the verification and fix any id that moved.
+#
+# PREREQUISITES
+# -------------
+# - A development build with EXPO_PUBLIC_API_URL pointing at a reachable API that has
+#   BILLING_ENFORCED=true and FREE_TRIP_ALLOWANCE=3 (the API's root .env). With charging off the
+#   fourth trip is simply created and this flow fails on purpose: that is the shadow mode.
+# - RevenueCat TEST keys only (test_...). The flow never pays: it opens the paywall and leaves.
+# - Every account is unique (the email carries Date.now()).
+appId: com.triptrackr.app
+tags:
+  - allowance
+env:
+  PASSWORD: correct-horse-battery-staple
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    id: 'welcome-screen'
+- evalScript: ${output.email = 'maestro-allowance-' + Date.now() + '@example.com'}
+- tapOn:
+    id: 'welcome-create-account'
+- tapOn:
+    id: 'register-display-name'
+- inputText: 'Maestro Allowance'
+- tapOn:
+    id: 'register-email'
+- inputText: ${output.email}
+- tapOn:
+    id: 'register-password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'register-confirm-password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register-submit'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-bar'
+    timeout: 20000
+- runFlow: _helpers/dismiss-tour.yaml
+- tapOn:
+    id: 'tab-trips'
+- assertVisible:
+    id: 'trips-screen'
+
+# --- Three free trips are created with no question asked -----------------------
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: 'trips-plan-trip'
+      - assertVisible:
+          id: 'add-trip-screen'
+      - tapOn:
+          id: 'add-trip-title'
+      - inputText: 'Free trip'
+      - hideKeyboard
+      - tapOn:
+          id: 'add-trip-save'
+      - assertVisible:
+          id: 'trip-screen'
+      - tapOn: 'Back'
+      - assertVisible:
+          id: 'trips-screen'
+
+# --- The fourth opens the paywall instead of the form -------------------------
+# The standing is read from the server in the background; give it a moment.
+- extendedWaitUntil:
+    visible:
+      id: 'trips-plan-trip'
+    timeout: 5000
+- tapOn:
+    id: 'trips-plan-trip'
+- extendedWaitUntil:
+    visible:
+      id: 'paywall-screen'
+    timeout: 10000
+- assertVisible:
+    id: 'paywall-option-credit'
+- assertVisible:
+    id: 'paywall-option-tier1'
+- assertVisible:
+    id: 'paywall-option-unlimited'
+- assertVisible:
+    id: 'paywall-restore'
+
+# --- Leaving costs nothing and every trip is still there ------------------------
+- tapOn:
+    id: 'paywall-cancel'
+- assertVisible:
+    id: 'trips-screen'
+- assertVisible: 'Free trip'
