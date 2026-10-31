@@ -6,19 +6,47 @@ import type { Sql } from 'postgres';
 import { ensureMigrated, migrationSql } from '../support/db';
 
 /**
- * Entitlement neutrality (research D-08; FR-076, FR-080; tasks T177; Constitution V).
+ * Entitlement neutrality (research D-08, D14-12; FR-020, FR-021; tasks T177; Constitution V).
  *
- * A lapsed subscription must not be able to change what a traveller can see, keep or export, so
- * nothing but the allowance may read it. Two watchers, because each fails differently: the database
- * one catches a policy, view or function that joins `subscriptions`; the source one catches a read
- * path that does.
+ * A lapsed subscription, a refund or a spent credit must not be able to change what a traveller can
+ * see, keep or export, so nothing but the allowance may read the commerce tables. Two watchers,
+ * because each fails differently: the database one catches a policy, view or function that joins
+ * them; the source one catches a read path that does. The functions named `billing_*` (the webhook's
+ * keyholes) and `trip_covers_guard` are the only functions allowed to name them.
  */
 const SRC = join(__dirname, '..', '..', 'src');
-const ALLOWED_READERS = new Set([
-  join('modules', 'billing', 'allowance.service.ts'),
+const COMMERCE_TABLES = [
+  'subscriptions',
+  'trip_credits',
+  'subscription_periods',
+  'trip_covers',
+  'allowance_shadow',
+];
+const COMMERCE_WORDS = new RegExp(
+  `\\b(${[
+    ...COMMERCE_TABLES,
+    'tripCredits',
+    'subscriptionPeriods',
+    'tripCovers',
+    'allowanceShadow',
+  ].join('|')})\\b`,
+);
+const ALLOWED_FILES = new Set([
   join('db', 'schema', 'commerce.ts'),
   join('db', 'schema', 'index.ts'),
+  // The owner's switch-on tools: run by hand as the migration role, never part of a request.
+  join('db', 'billing-admin.ts'),
 ]);
+const BILLING_DIR = join('modules', 'billing') + sep;
+
+const isAllowedReader = (file: string): boolean =>
+  ALLOWED_FILES.has(file) || file.startsWith(BILLING_DIR);
+
+/** SQL: a policy, view or function body that mentions any of the commerce tables. */
+const mentionsCommerce = (column: string): string =>
+  COMMERCE_TABLES.map((table) => `coalesce(${column}, '') ILIKE '%${table}%'`).join(
+    ' OR ',
+  );
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -41,29 +69,35 @@ describe('privacy — entitlement neutrality', () => {
     await owner?.end();
   });
 
-  test('no policy of another table mentions subscriptions', async () => {
-    const rows = await owner<{ tablename: string; policyname: string }[]>`
-      SELECT tablename, policyname FROM pg_policies
-      WHERE tablename <> 'subscriptions'
-        AND (coalesce(qual, '') ILIKE '%subscriptions%'
-          OR coalesce(with_check, '') ILIKE '%subscriptions%')`;
+  test('no policy of another table mentions a commerce table', async () => {
+    const rows = await owner.unsafe<{ tablename: string; policyname: string }[]>(
+      `SELECT tablename, policyname FROM pg_policies
+       WHERE tablename <> ALL ($1::text[])
+         AND (${mentionsCommerce('qual')} OR ${mentionsCommerce('with_check')})`,
+      [COMMERCE_TABLES],
+    );
 
     expect(rows).toEqual([]);
   });
 
-  test('no view reads subscriptions', async () => {
-    const rows = await owner<{ viewname: string }[]>`
-      SELECT viewname FROM pg_views
-      WHERE schemaname = 'public' AND definition ILIKE '%subscriptions%'`;
+  test('no view reads a commerce table', async () => {
+    const rows = await owner.unsafe<{ viewname: string }[]>(
+      `SELECT viewname FROM pg_views
+       WHERE schemaname = 'public' AND (${mentionsCommerce('definition')})`,
+    );
 
     expect(rows).toEqual([]);
   });
 
-  test('no function in public reads subscriptions', async () => {
-    const rows = await owner<{ proname: string }[]>`
-      SELECT p.proname FROM pg_proc p
-      JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname = 'public' AND p.prosrc ILIKE '%subscriptions%'`;
+  test('only the billing keyholes and the cover guard read a commerce table', async () => {
+    const rows = await owner.unsafe<{ proname: string }[]>(
+      `SELECT p.proname FROM pg_proc p
+       JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public'
+         AND p.proname NOT LIKE 'billing\\_%'
+         AND p.proname <> 'trip_covers_guard'
+         AND (${mentionsCommerce('p.prosrc')})`,
+    );
 
     expect(rows).toEqual([]);
   });
@@ -76,12 +110,11 @@ describe('privacy — entitlement neutrality', () => {
     expect(rows.map((row) => row.privilege_type)).toEqual(['SELECT']);
   });
 
-  test('only the allowance service reads the subscriptions table in application code', () => {
+  test('only the billing module reads a commerce table in application code', () => {
     const readers = sourceFiles(SRC)
-      .filter((file) => /\bsubscriptions\b/.test(readFileSync(file, 'utf8')))
-      .map((file) => relative(SRC, file).split(sep).join(sep));
+      .filter((file) => COMMERCE_WORDS.test(readFileSync(file, 'utf8')))
+      .map((file) => relative(SRC, file));
 
-    const unexpected = readers.filter((file) => !ALLOWED_READERS.has(file));
-    expect(unexpected).toEqual([]);
+    expect(readers.filter((file) => !isAllowedReader(file))).toEqual([]);
   });
 });

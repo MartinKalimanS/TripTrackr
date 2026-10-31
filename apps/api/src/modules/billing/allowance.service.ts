@@ -1,79 +1,142 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { TRIP_ALLOWANCE_REACHED, type CreateTripRequest } from '@triptrackr/contracts';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import {
+  TRIP_ALLOWANCE_REACHED,
+  type CoverSource,
+  type CreateTripRequest,
+} from '@triptrackr/contracts';
 
 import { loadEnv } from '@/common/config/env.schema';
-import { rlsDb } from '@/common/db/rls-db';
-import { apiError } from '@/common/errors/api-error';
-import { requireCurrentUserId } from '@/common/rls/rls-context';
-import { subscriptions, trips } from '@/db/schema';
+import { apiError, notFound } from '@/common/errors/api-error';
 
-export interface Entitlement {
-  readonly isActive: boolean;
-  readonly currentPeriodEnd: Date | null;
-}
+import { AllowanceRepository } from './allowance.repository';
+import { chooseCover, ORDINARY, type CoverDecision, type Standing } from './cover-order';
 
 /**
- * The trip allowance (research D-07, D-08; FR-074 to FR-084; spec 013). This is the ONLY code that
- * reads `subscriptions`: no read, list or export path and no RLS policy of another table may join it,
- * which is what keeps a lapsed entitlement from touching anything a traveller recorded (Constitution V).
+ * The paid trip allowance (spec 014, supersedes 013; research D14-03, D14-04). Together with
+ * `AllowanceRepository` this is the ONLY code that reads the commerce tables: no read, list or export
+ * path and no RLS policy of another table may join them, which is what keeps a lapse, a refund or a
+ * spent credit from touching anything a traveller recorded (Constitution V; FR-020, FR-021).
  *
- * The entitlement is the server's own row, a cache of the store's truth refreshed by webhook (S-11),
- * never a claim the client sends. The count is live, never a counter.
+ * A create is decided in two steps inside the request transaction: `decide` before the trip is
+ * inserted (under a per-traveller lock, so two creates cannot both take the last slot) and
+ * `recordCover` after, which writes the spend into the ledger. Charging is off until the owner
+ * switches it on; while off nothing is refused, nothing is spent, and a would-have-been-stopped
+ * count is kept instead (FR-026, FR-027).
  *
- * Visibility posture: reads the caller's own row and trips only, under their RLS identity.
+ * Visibility posture: reads the caller's own rows only, under their RLS identity.
  */
 @Injectable()
 export class AllowanceService {
-  allowance(): number {
+  constructor(private readonly repository: AllowanceRepository) {}
+
+  /** Whether charging is switched on (`BILLING_ENFORCED`). */
+  isCharging(): boolean {
+    return loadEnv().BILLING_ENFORCED;
+  }
+
+  /** The number of ordinary trips a traveller may hold without paying. */
+  freeTrips(): number {
     return loadEnv().FREE_TRIP_ALLOWANCE;
   }
 
-  async entitlement(): Promise<Entitlement> {
-    const [row] = await rlsDb()
-      .select({
-        isActive: subscriptions.isActive,
-        currentPeriodEnd: subscriptions.currentPeriodEnd,
-      })
-      .from(subscriptions)
-      .where(eq(subscriptions.userId, requireCurrentUserId()));
+  /**
+   * What the new trip will be paid for with, or a 409 `TRIP_ALLOWANCE_REACHED` when nothing can pay
+   * for it. Holds the traveller's allowance lock until the request commits.
+   */
+  async decide(submitted: CreateTripRequest): Promise<CoverDecision> {
+    await this.repository.lockTraveller();
+    const standing = await this.repository.standing();
+    const choice = chooseCover(standing, this.freeTrips());
 
-    return row ?? { isActive: false, currentPeriodEnd: null };
+    if (!this.isCharging()) {
+      if (choice === null) await this.repository.recordWouldHaveBeenStopped();
+      return ORDINARY;
+    }
+
+    if (choice === null) throw this.refusal(standing, submitted);
+    return choice;
   }
 
-  async tripsHeld(): Promise<number> {
-    const [row] = await rlsDb()
-      .select({ held: sql<number>`count(*)::int` })
-      .from(trips)
-      .where(and(eq(trips.ownerId, requireCurrentUserId()), isNull(trips.deletedAt)));
-
-    return row?.held ?? 0;
+  /** Writes the spend for a trip that was just inserted. An ordinary trip leaves no row. */
+  async recordCover(tripId: string, decision: CoverDecision): Promise<void> {
+    if (decision.kind === 'covered') await this.repository.insertCover(tripId, decision);
   }
 
   /**
-   * Refuses a new trip at the allowance. Serialised per traveller with a transaction-scoped advisory
-   * lock held until the request commits, so two creates cannot both take the last slot.
+   * Whether a trip that arrived by sync push is one the traveller is not allowed (spec 014, research
+   * D14-11; FR-018). The push KEEPS it and flags it; refusing it would destroy something the traveller
+   * recorded to enforce a business rule (Constitution V). Never over while charging is off, never
+   * over when covered. Under an active Unlimited year the trip is covered on arrival (FR-019). The
+   * question is ranked, not counted at this instant, so a retried push answers the same way.
    */
-  async assertCanCreate(submitted: CreateTripRequest): Promise<void> {
-    const userId = requireCurrentUserId();
-    await rlsDb().execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId}, 0))`,
-    );
+  async isPushedTripOver(tripId: string): Promise<boolean> {
+    if (!this.isCharging()) return false;
 
-    if ((await this.entitlement()).isActive) return;
+    await this.repository.lockTraveller();
+    if (await this.repository.isCovered(tripId)) return false;
 
-    const held = await this.tripsHeld();
-    const allowance = this.allowance();
-    if (held < allowance) return;
+    const standing = await this.repository.standing();
+    if (standing.unlimitedPeriodId !== null) {
+      if (await this.repository.isLiveOwnTrip(tripId)) {
+        await this.repository.insertCover(tripId, {
+          kind: 'covered',
+          source: 'unlimited',
+          periodId: standing.unlimitedPeriodId,
+          creditId: null,
+        });
+      }
+      return false;
+    }
 
-    throw apiError(
+    return (await this.repository.earlierOrdinaryTrips(tripId)) >= this.freeTrips();
+  }
+
+  /**
+   * Covers a trip that arrived over the allowance (spec 014, FR-018). Order: Unlimited, a Tier 1 use,
+   * then a credit; there is no free slot to offer, the trip is already past them. Idempotent: a
+   * covered trip answers with what covers it and spends nothing more.
+   */
+  async coverTrip(tripId: string): Promise<CoverSource> {
+    await this.repository.lockTraveller();
+    const trip = await this.repository.liveOwnTrip(tripId);
+    if (!trip) throw notFound('TRIP_NOT_FOUND', 'Trip');
+
+    const existing = await this.repository.coverSource(tripId);
+    if (existing !== null) return existing;
+
+    const over =
+      this.isCharging() &&
+      (await this.repository.earlierOrdinaryTrips(tripId)) >= this.freeTrips();
+    if (!over) {
+      throw apiError(
+        HttpStatus.CONFLICT,
+        'TRIP_NOT_OVER_ALLOWANCE',
+        'This trip is within your free trips and needs no cover.',
+      );
+    }
+
+    const standing = await this.repository.standing();
+    const choice = chooseCover(standing, 0);
+    if (choice === null || choice.kind !== 'covered') {
+      throw this.refusal(standing, { title: trip.title, home_currency: trip.homeCurrency });
+    }
+
+    await this.repository.insertCover(tripId, choice);
+    return choice.source;
+  }
+
+  private refusal(standing: Standing, submitted: CreateTripRequest) {
+    const allowance = this.freeTrips();
+    return apiError(
       HttpStatus.CONFLICT,
       TRIP_ALLOWANCE_REACHED,
-      `You have ${held} of ${allowance} trips. Subscribe for unlimited trips, or delete a trip to make room.`,
+      `You have ${standing.ordinaryHeld} of ${allowance} free trips. Buy this trip, take a yearly plan, or delete a trip to make room.`,
       {
-        trips_held: held,
+        trips_held: standing.ordinaryHeld,
         allowance,
-        routes: ['subscribe', 'delete_trip'],
+        year_uses_left: standing.yearUsesLeft,
+        credits: standing.credits,
+        routes: ['buy_trip', 'subscribe', 'delete_trip'],
         submitted: { title: submitted.title, home_currency: submitted.home_currency },
       },
     );

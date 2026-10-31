@@ -1,6 +1,6 @@
 # Feature 013: Trip allowance and entitlement (server)
 
-Status: built from roadmap step S-10 (T172 to T180; FR-074 to FR-084; research D-07, D-08), 2026-10-30. API and
+Status: **SUPERSEDED by `specs/014-paid-trip-allowance`** (free 3, single-trip credits, Tier 1 and Unlimited yearly plans, shadow mode). Kept for history. Originally built from roadmap step S-10 (T172 to T180; FR-074 to FR-084; research D-07, D-08), 2026-10-30. API and
 contracts only; the mobile paywall is a later step.
 
 ## Why

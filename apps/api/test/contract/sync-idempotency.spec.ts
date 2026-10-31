@@ -146,26 +146,6 @@ describe('contract — a retried push is the same push', () => {
     });
   });
 
-  it('gives the retry of an over-allowance trip the same warning as the first request', async () => {
-    // A traveller of their own: the allowance counts an account's live trips.
-    const heavy = await registerTraveller(app);
-    await push(
-      app,
-      heavy,
-      'trips',
-      Array.from({ length: 5 }, () => tripRecord()),
-    );
-    const sixth = tripRecord();
-
-    const first = await push(app, heavy, 'trips', [sixth]);
-    const retry = await push(app, heavy, 'trips', [sixth]);
-
-    expect(first).toEqual([
-      { id: sixth.id, status: 'applied', warnings: ['over_allowance'] },
-    ]);
-    expect(retry).toEqual(first);
-  });
-
   describe('the same id twice in one batch', () => {
     it('applies them in input order through the same rule: an identical pair is one row, twice applied', async () => {
       const note = noteRecord(tripId);

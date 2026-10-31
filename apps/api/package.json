@@ -23,6 +23,8 @@
     "test:cov": "jest --coverage",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts",
+    "billing:shadow-report": "tsx --env-file-if-exists=../../.env src/db/billing-admin.ts shadow-report",
+    "billing:grandfather": "tsx --env-file-if-exists=../../.env src/db/billing-admin.ts grandfather",
     "geo:import": "tsx --env-file-if-exists=../../.env ../../infra/scripts/import-geo-catalogue.ts"
   },
   "dependencies": {

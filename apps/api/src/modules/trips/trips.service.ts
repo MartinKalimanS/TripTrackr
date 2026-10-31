@@ -64,7 +64,7 @@ export class TripsService {
     const replay = request.id ? await this.repository.findOwnedTrip(request.id) : null;
     if (replay) return this.loadOwned(replay.id);
 
-    await this.allowance.assertCanCreate(request);
+    const cover = await this.allowance.decide(request);
 
     const inserted = await this.repository.insertTrip({
       id: request.id,
@@ -72,7 +72,10 @@ export class TripsService {
       homeCurrency: request.home_currency,
     });
 
-    if (inserted) return toTrip(inserted, [], todayIsoDate());
+    if (inserted) {
+      await this.allowance.recordCover(inserted.id, cover);
+      return toTrip(inserted, [], todayIsoDate());
+    }
 
     // The id is taken. If it is this traveller's own live trip, the create is
     // a replay; otherwise the id names something the caller cannot see, and
