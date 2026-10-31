@@ -14,7 +14,12 @@ import { EntitlementService } from './entitlement.service';
  */
 @Module({
   controllers: [EntitlementController, CoverController, BillingWebhookController],
-  providers: [AllowanceRepository, AllowanceService, BillingEventsService, EntitlementService],
+  providers: [
+    AllowanceRepository,
+    AllowanceService,
+    BillingEventsService,
+    EntitlementService,
+  ],
   exports: [AllowanceService],
 })
 export class BillingModule {}

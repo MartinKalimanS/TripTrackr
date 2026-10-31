@@ -43,7 +43,9 @@ export class BillingEventsService {
 
   private async route(event: RevenueCatEvent): Promise<boolean> {
     const provider = PROVIDERS[event.store ?? ''];
-    const product = event.product_id ? loadEnv().BILLING_PRODUCTS[event.product_id] : undefined;
+    const product = event.product_id
+      ? loadEnv().BILLING_PRODUCTS[event.product_id]
+      : undefined;
     const userId = event.app_user_id;
     if (!userId || !UUID.test(userId) || !provider || !product) {
       return false;
@@ -56,7 +58,10 @@ export class BillingEventsService {
     if (refund) return this.refund(event);
 
     if (product.kind === 'credit') {
-      return event.type === 'NON_RENEWING_PURCHASE' && this.grantCredit(event, userId, provider);
+      return (
+        event.type === 'NON_RENEWING_PURCHASE' &&
+        this.grantCredit(event, userId, provider)
+      );
     }
     if (SUBSCRIPTION_STARTS.has(event.type)) {
       return this.openPeriod(event, userId, provider, product.kind, false);
@@ -89,7 +94,12 @@ export class BillingEventsService {
     cancelAtEnd: boolean,
   ): Promise<boolean> {
     const { transaction_id: txn, original_transaction_id: original } = event;
-    if (!txn || !original || event.purchased_at_ms === undefined || !event.expiration_at_ms) {
+    if (
+      !txn ||
+      !original ||
+      event.purchased_at_ms === undefined ||
+      !event.expiration_at_ms
+    ) {
       return false;
     }
     const uses = tier === 'tier1' ? loadEnv().TIER1_YEARLY_TRIPS : null;
@@ -105,7 +115,8 @@ export class BillingEventsService {
   private async endPeriod(event: RevenueCatEvent): Promise<boolean> {
     if (!event.original_transaction_id) return false;
     const at = new Date(event.expiration_at_ms ?? Date.now()).toISOString();
-    await this.sql`SELECT billing_end_period(${event.original_transaction_id}, ${at}::timestamptz)`;
+    await this
+      .sql`SELECT billing_end_period(${event.original_transaction_id}, ${at}::timestamptz)`;
     return true;
   }
 

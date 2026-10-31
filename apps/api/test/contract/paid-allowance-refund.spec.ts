@@ -59,7 +59,9 @@ describe('paid allowance: refunds', () => {
 
     await owner`SELECT billing_refund(${txn}, now())`;
 
-    expect((await server().get(`/v1/trips/${covered}`).set(auth(traveller))).status).toBe(200);
+    expect((await server().get(`/v1/trips/${covered}`).set(auth(traveller))).status).toBe(
+      200,
+    );
     expect(await readCovers(owner, traveller)).toEqual([]);
     expect((await entitlement(traveller)).trips_held).toBe(FREE + 1);
   });

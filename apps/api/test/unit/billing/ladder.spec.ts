@@ -31,7 +31,9 @@ describe('price ladder: which product comes next', () => {
 
   test('never offers a credit product or the other tier', () => {
     expect(nextProductId({ credit_single: { kind: 'credit' } }, 'tier1', 1)).toBeNull();
-    expect(nextProductId({ unl_y1: { kind: 'unlimited', step: 1 } }, 'tier1', 1)).toBeNull();
+    expect(
+      nextProductId({ unl_y1: { kind: 'unlimited', step: 1 } }, 'tier1', 1),
+    ).toBeNull();
   });
 
   test('no products configured gives null', () => {

@@ -121,8 +121,8 @@ export function createPurchases(sdk: PurchasesSdk, config: PurchasesConfig): Pur
  */
 export function reactNativePurchasesSdk(): PurchasesSdk {
   // Loaded here, not at the top, so Jest never evaluates the native module.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const sdk =
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('react-native-purchases') as typeof import('react-native-purchases');
   const { default: Purchases, PRODUCT_CATEGORY } = sdk;
   const CREDIT_IDS = new Set(['credit_single']);

@@ -19,7 +19,9 @@ describe('chooseCover: free slot, then year, then credit; Unlimited first', () =
   });
 
   test('at the limit a year use is spent before a credit', () => {
-    expect(chooseCover({ ...none, ...withYear, ...withCredit, ordinaryHeld: 3 }, 3)).toEqual({
+    expect(
+      chooseCover({ ...none, ...withYear, ...withCredit, ordinaryHeld: 3 }, 3),
+    ).toEqual({
       kind: 'covered',
       source: 'year',
       periodId: 'y1',
@@ -47,6 +49,8 @@ describe('chooseCover: free slot, then year, then credit; Unlimited first', () =
   });
 
   test('a free number of zero offers no free slot', () => {
-    expect(chooseCover({ ...none, ...withCredit }, 0)).toMatchObject({ source: 'credit' });
+    expect(chooseCover({ ...none, ...withCredit }, 0)).toMatchObject({
+      source: 'credit',
+    });
   });
 });

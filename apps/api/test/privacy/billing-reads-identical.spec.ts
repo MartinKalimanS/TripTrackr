@@ -31,7 +31,9 @@ describe('billing never changes what a traveller reads', () => {
     const traveller = await registerTraveller(app);
     const auth = bearer(traveller.tokens.access_token);
     const server = () => request(app.getHttpServer());
-    const { originalTransactionId } = await openPeriod(owner, traveller, { tier: 'unlimited' });
+    const { originalTransactionId } = await openPeriod(owner, traveller, {
+      tier: 'unlimited',
+    });
     const credit = await grantCredit(owner, traveller);
     const ids: string[] = [];
     for (let i = 0; i < FREE + 3; i += 1) {
@@ -46,7 +48,10 @@ describe('billing never changes what a traveller reads', () => {
     const read = async () => ({
       list: (await server().get('/v1/trips').set(auth)).body,
       each: await Promise.all(
-        ids.map(async (id): Promise<unknown> => (await server().get(`/v1/trips/${id}`).set(auth)).body as unknown),
+        ids.map(
+          async (id): Promise<unknown> =>
+            (await server().get(`/v1/trips/${id}`).set(auth)).body as unknown,
+        ),
       ),
     });
     const before = await read();

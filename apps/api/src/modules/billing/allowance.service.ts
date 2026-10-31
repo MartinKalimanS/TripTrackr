@@ -118,7 +118,10 @@ export class AllowanceService {
     const standing = await this.repository.standing();
     const choice = chooseCover(standing, 0);
     if (choice === null || choice.kind !== 'covered') {
-      throw this.refusal(standing, { title: trip.title, home_currency: trip.homeCurrency });
+      throw this.refusal(standing, {
+        title: trip.title,
+        home_currency: trip.homeCurrency,
+      });
     }
 
     await this.repository.insertCover(tripId, choice);
