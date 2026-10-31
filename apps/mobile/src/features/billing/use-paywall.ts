@@ -17,6 +17,7 @@ import {
 } from '@/features/billing/use-entitlement';
 import { apiFetch } from '@/lib/api-client';
 import { Sentry } from '@/lib/sentry';
+import { useSyncWarningsStore } from '@/sync/warnings';
 
 const WAIT = { attempts: 8, delayMs: 1_500 } as const;
 const ALL_PRODUCTS = [
@@ -31,7 +32,10 @@ const ALL_PRODUCTS = [
 
 export type PaywallStatus = 'idle' | 'buying' | 'confirmed' | 'pending' | 'failed';
 
-export function usePaywall(tripId: string | null, purchases: () => Purchases = appPurchases) {
+export function usePaywall(
+  tripId: string | null,
+  purchases: () => Purchases = appPurchases,
+) {
   const client = useQueryClient();
   const { entitlement } = useEntitlement();
   const cover = useCoverTrip();
@@ -62,7 +66,10 @@ export function usePaywall(tripId: string | null, purchases: () => Purchases = a
         );
         await client.invalidateQueries({ queryKey: ENTITLEMENT_KEY });
         if (result === 'pending') return setStatus('pending');
-        if (tripId) await cover.mutateAsync(tripId);
+        if (tripId) {
+          await cover.mutateAsync(tripId);
+          useSyncWarningsStore.getState().acknowledgeOverAllowance(tripId);
+        }
         setStatus('confirmed');
       } catch (error) {
         Sentry.captureException(error);

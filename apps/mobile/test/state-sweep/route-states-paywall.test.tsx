@@ -15,6 +15,9 @@ import {
   primaryControls,
 } from '../helpers/dead-controls';
 
+jest.mock('@/components/ui/toast', () => ({
+  useToast: () => ({ show: jest.fn(), hide: jest.fn() }),
+}));
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), replace: jest.fn() }),
   useLocalSearchParams: () => ({}),

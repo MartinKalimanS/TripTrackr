@@ -43,7 +43,10 @@ export class PurchasesIdentityError extends Error {
 
 export interface PurchasesConfig {
   readonly platform: 'ios' | 'android';
-  readonly keys: { readonly ios: string | undefined; readonly android: string | undefined };
+  readonly keys: {
+    readonly ios: string | undefined;
+    readonly android: string | undefined;
+  };
 }
 
 export interface Purchases {
@@ -119,7 +122,8 @@ export function createPurchases(sdk: PurchasesSdk, config: PurchasesConfig): Pur
 export function reactNativePurchasesSdk(): PurchasesSdk {
   // Loaded here, not at the top, so Jest never evaluates the native module.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const sdk = require('react-native-purchases') as typeof import('react-native-purchases');
+  const sdk =
+    require('react-native-purchases') as typeof import('react-native-purchases');
   const { default: Purchases, PRODUCT_CATEGORY } = sdk;
   const CREDIT_IDS = new Set(['credit_single']);
 
@@ -160,7 +164,9 @@ export function reactNativePurchasesSdk(): PurchasesSdk {
     purchaseProduct: async (id) => {
       const [product] = await Purchases.getProducts(
         [id],
-        CREDIT_IDS.has(id) ? PRODUCT_CATEGORY.NON_SUBSCRIPTION : PRODUCT_CATEGORY.SUBSCRIPTION,
+        CREDIT_IDS.has(id)
+          ? PRODUCT_CATEGORY.NON_SUBSCRIPTION
+          : PRODUCT_CATEGORY.SUBSCRIPTION,
       );
       if (!product) throw new PurchasesIdentityError(`The store has no product ${id}.`);
       try {

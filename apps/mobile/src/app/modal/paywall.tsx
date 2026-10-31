@@ -18,7 +18,7 @@
  * Visibility posture: private to the signed-in traveller; reads their own entitlement only.
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { LegalLine } from '@/components/auth/legal-line';
@@ -27,6 +27,7 @@ import { FormSheet } from '@/components/ui/form-sheet';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
+import { useToast } from '@/components/ui/toast';
 import type { PaywallOption } from '@/features/billing/paywall-model';
 import { PAYWALL_COPY } from '@/features/billing/paywall-copy';
 import { usePaywall, type PaywallStatus } from '@/features/billing/use-paywall';
@@ -118,6 +119,7 @@ function OptionRow({
 
 export default function PaywallScreen() {
   const router = useRouter();
+  const toast = useToast();
   const { tripId } = useLocalSearchParams<{ tripId?: string }>();
   const paywall = usePaywall(tripId ?? null);
   const { entitlement, options } = paywall;
@@ -125,6 +127,16 @@ export default function PaywallScreen() {
   const selected =
     options.find((option) => option.productId === chosen) ?? defaultOption(options);
   const busy = paywall.status === 'buying';
+  const confirmed = paywall.status === 'confirmed';
+  useEffect(() => {
+    if (!confirmed) return;
+    toast.show({
+      tone: 'success',
+      title: PAYWALL_COPY.done.title,
+      message: tripId ? PAYWALL_COPY.done.covered : PAYWALL_COPY.done.added,
+    });
+    router.back();
+  }, [confirmed, router, toast, tripId]);
   const message = paywall.productsFailed
     ? PAYWALL_COPY.unavailable
     : (STATUS_COPY[paywall.status] ?? null);

@@ -14,6 +14,7 @@ import AddExpenseScreen from '@/app/modal/add-expense';
 import AddTripScreen from '@/app/modal/add-trip';
 import DeleteAccountScreen from '@/app/modal/delete-account';
 import AboutScreen from '@/app/modal/about';
+import ManageSubscriptionScreen from '@/app/modal/manage-subscription';
 import PaywallScreen from '@/app/modal/paywall';
 import ExportDataScreen from '@/app/modal/export-data';
 import DocumentCaptureScreen from '@/app/trip/[id]/document-capture';
@@ -51,6 +52,9 @@ jest.mock('react-native-worklets', () => require('../mocks/worklets'));
 jest.mock('react-native-reanimated', () =>
   require('../app/trip-screen-harness').reanimatedModule(),
 );
+jest.mock('@/components/ui/toast', () => ({
+  useToast: () => ({ show: jest.fn(), hide: jest.fn() }),
+}));
 jest.mock('expo-router', () => ({
   ...require('../app/trip-screen-harness').routerModule(),
   // Focus is mount here: the effect runs once, as on first focus.
@@ -360,6 +364,7 @@ sweepScreen('About (sheet)', () => <AboutScreen />, prepareTrip);
 sweepScreen('Export my data (sheet)', () => <ExportDataScreen />, prepareTrip);
 sweepScreen('Delete account (sheet)', () => <DeleteAccountScreen />, prepareTrip);
 sweepScreen('Paywall (sheet)', () => <PaywallScreen />, prepareTrip);
+sweepScreen('Plan and credits (sheet)', () => <ManageSubscriptionScreen />, prepareTrip);
 sweepScreen('Add an expense (sheet)', () => <AddExpenseScreen />, prepareTrip);
 
 // ---- the states a screen shows before and instead of its content (FR-064): a skeleton, the

@@ -26,4 +26,18 @@ export const PAYWALL_COPY = {
   failed: 'The purchase did not go through. You have not been charged.',
   unavailable: 'Purchases are not available right now. Please try again later.',
   restored: 'Purchases restored.',
+  done: {
+    title: 'All set',
+    covered: 'Your trip is covered.',
+    added: 'Your plan is up to date.',
+  },
+  flagged: {
+    title: 'A trip needs covering',
+    message: (count: number) =>
+      count === 1
+        ? 'One trip was added past your free trips. It stays exactly as it is; choose how to cover it.'
+        : `${count} trips were added past your free trips. They stay exactly as they are; choose how to cover them.`,
+    action: 'See options',
+    later: 'Later',
+  },
 } as const;

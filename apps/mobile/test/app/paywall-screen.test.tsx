@@ -10,15 +10,21 @@ import PaywallScreen from '@/app/modal/paywall';
 const mockBack = jest.fn();
 const mockBuy = jest.fn();
 const mockRestore = jest.fn();
+const mockShow = jest.fn();
+let mockStatus = 'idle';
+let mockTripId: string | undefined;
 
+jest.mock('@/components/ui/toast', () => ({
+  useToast: () => ({ show: mockShow, hide: jest.fn() }),
+}));
 jest.mock('expo-router', () => ({
   useRouter: () => ({ back: mockBack }),
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => ({ tripId: mockTripId }),
 }));
 
 jest.mock('@/features/billing/use-paywall', () => ({
   usePaywall: () => ({
-    status: 'idle',
+    status: mockStatus,
     productsFailed: false,
     entitlement: { trips_held: 3, allowance: 3 },
     options: [
@@ -49,7 +55,11 @@ jest.mock('@/features/billing/use-paywall', () => ({
   }),
 }));
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockStatus = 'idle';
+  mockTripId = undefined;
+});
 
 const selected = (tier: string) =>
   screen.getByTestId(`paywall-option-${tier}`).props.accessibilityState?.selected ===
@@ -103,4 +113,24 @@ test('says renewal and that trips are never touched', async () => {
   expect(screen.getByText(/renew automatically until you cancel/)).toBeTruthy();
   expect(screen.getByText(/always stay yours/)).toBeTruthy();
   expect(screen.getByTestId('paywall-cheaper')).toBeTruthy();
+});
+
+test('a confirmed purchase closes the sheet with a success toast', async () => {
+  mockStatus = 'confirmed';
+  await render(<PaywallScreen />);
+
+  expect(mockShow).toHaveBeenCalledWith(
+    expect.objectContaining({ tone: 'success', message: 'Your plan is up to date.' }),
+  );
+  expect(mockBack).toHaveBeenCalledTimes(1);
+});
+
+test('when opened for a trip, the toast says the trip is covered', async () => {
+  mockStatus = 'confirmed';
+  mockTripId = 'trip-1';
+  await render(<PaywallScreen />);
+
+  expect(mockShow).toHaveBeenCalledWith(
+    expect.objectContaining({ message: 'Your trip is covered.' }),
+  );
 });

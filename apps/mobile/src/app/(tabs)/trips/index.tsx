@@ -48,6 +48,7 @@ import { PlanTripFab } from '@/components/ui/plan-trip-fab';
 import { SyncChip } from '@/components/ui/sync-chip';
 import { useToastVisible } from '@/components/ui/toast-zone';
 import { Spacing } from '@/constants/theme';
+import { OverAllowanceAlert } from '@/components/billing/over-allowance-alert';
 import { usePlanTrip } from '@/features/billing/use-plan-trip';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
 import {
@@ -224,13 +225,16 @@ function TripsHeader({ cards, settled, filter, onFilter, banner }: TripsHeaderPr
     [cards, settled],
   );
   return (
-    <TripsListHeader
-      span={span}
-      counts={counts}
-      filter={filter}
-      onFilter={onFilter}
-      banner={banner}
-    />
+    <>
+      <OverAllowanceAlert />
+      <TripsListHeader
+        span={span}
+        counts={counts}
+        filter={filter}
+        onFilter={onFilter}
+        banner={banner}
+      />
+    </>
   );
 }
 
