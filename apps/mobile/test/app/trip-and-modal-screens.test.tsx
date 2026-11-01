@@ -479,7 +479,7 @@ describe('<AddTripScreen> as a form sheet (T434; FR-005, FR-009, FR-024, FR-025,
       mockActions.createTrip.mockReturnValue({ ...trip, id: 'new-trip' });
       await render(<AddTripScreen />);
       await fireEvent.changeText(screen.getByLabelText('Trip name'), 'Italy');
-      await fireEvent.press(screen.getByTestId('coming-soon-trip-destination'));
+      await fireEvent.press(screen.getByTestId('trip-destination-add'));
 
       expect(mockActions.createTrip).toHaveBeenCalledTimes(1);
       expect(mockReplace).toHaveBeenCalledWith({
@@ -491,7 +491,7 @@ describe('<AddTripScreen> as a form sheet (T434; FR-005, FR-009, FR-024, FR-025,
     test('"Where to?" without a trip name saves nothing', async () => {
       mockActions.createTrip.mockClear();
       await render(<AddTripScreen />);
-      await fireEvent.press(screen.getByTestId('coming-soon-trip-destination'));
+      await fireEvent.press(screen.getByTestId('trip-destination-add'));
 
       expect(mockActions.createTrip).not.toHaveBeenCalled();
     });

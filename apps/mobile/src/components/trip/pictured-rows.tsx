@@ -81,7 +81,7 @@ function PicturedRow({
   const onPress = onAction ?? comingSoon;
   return (
     <Tappable
-      testID={`coming-soon-${name}`}
+      testID={onAction ? `${name}-add` : `coming-soon-${name}`}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={onAction ? undefined : COMING_SOON_HINT}
       onPress={onPress}
