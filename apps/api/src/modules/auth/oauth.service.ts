@@ -9,6 +9,7 @@ import { apiError } from '@/common/errors/api-error';
 import { requireRlsTransaction } from '@/common/rls/rls-context';
 
 import { AuthService } from './auth.service';
+import { OAuthNonceService } from './oauth-nonce.service';
 import {
   OAuthProviderUnavailableError,
   OAuthTokenInvalidError,
@@ -41,24 +42,41 @@ export class OAuthService {
   constructor(
     private readonly verifier: OAuthTokenVerifier,
     private readonly auth: AuthService,
+    private readonly nonces: OAuthNonceService,
   ) {}
 
   async google(request: GoogleOAuthRequest): Promise<AuthTokens> {
     const identity = await this.verify(() =>
-      this.verifier.verifyGoogle(request.id_token),
+      this.verifier.verifyGoogle(request.id_token, request.nonce),
     );
+    await this.spend(request.nonce);
 
     return this.signIn(identity, null);
   }
 
   async apple(request: AppleOAuthRequest): Promise<AuthTokens> {
     const identity = await this.verify(() =>
-      this.verifier.verifyApple(request.identity_token),
+      this.verifier.verifyApple(request.identity_token, request.nonce),
     );
+    await this.spend(request.nonce);
 
     // Apple supplies the name only on the very first authorisation, and only
     // to the client; it is used here only if an account is being created.
     return this.signIn(identity, request.display_name ?? null);
+  }
+
+  /**
+   * The token carried the nonce; now it is used up. A nonce that is unknown, spent or expired is
+   * the same refusal as a bad token (spec 012; FR-004).
+   */
+  private async spend(nonce: string): Promise<void> {
+    if (await this.nonces.consume(nonce)) return;
+
+    throw apiError(
+      HttpStatus.UNAUTHORIZED,
+      'OAUTH_TOKEN_INVALID',
+      'The sign-in could not be verified. Please try again.',
+    );
   }
 
   private async verify(fn: () => Promise<VerifiedIdentity>): Promise<VerifiedIdentity> {
