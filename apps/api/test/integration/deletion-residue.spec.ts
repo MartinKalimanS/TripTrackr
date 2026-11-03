@@ -284,6 +284,10 @@ describe('DELETE /me and the sweep that finishes it', () => {
                (${bystander.userId}::uuid, 'trip', ${victim.tripIds[0]!}::uuid, 'spam')
       `;
       await owner`
+        INSERT INTO oauth_identities (user_id, provider, provider_uid)
+        VALUES (${victim.userId}::uuid, 'google', ${`residue-${victim.userId}`})
+      `;
+      await owner`
         INSERT INTO planner_requests (user_id, cache_key)
         VALUES (${victim.userId}::uuid, 'lisbon-4-days')
       `;
@@ -301,6 +305,7 @@ describe('DELETE /me and the sweep that finishes it', () => {
           'photos',
           'documents',
           'refresh_tokens',
+          'oauth_identities',
           'follows',
           'blocks',
           'reports',

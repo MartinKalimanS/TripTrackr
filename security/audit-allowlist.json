@@ -35,6 +35,11 @@
       "id": "GHSA-MRHX-C7XC-M3W5",
       "reason": "zod: found by the first run of the gate (2026-10-28) and NOT yet assessed beyond this note: fixed in zod 4.6.6; the contracts validate bodies the API already caps in size. Fix tracked as S-22 follow-up in docs/roadmap/PROGRESS.md.",
       "expires": "2026-11-27"
+    },
+    {
+      "id": "GHSA-QR28-FPJM-WQ7F",
+      "reason": "decode-uri-component: published 2026-10-30 and NOT fixed upstream (the advisory covers every release up to 0.4.2, so there is nothing to upgrade to). It arrives only through expo-router > query-string 7, which parses URL query strings inside the mobile app; the worst case is a crafted deep link making the app itself spin, with no data exposed and no server involved. It is not in the API image. Fix tracked as S-22 follow-up in docs/roadmap/PROGRESS.md: re-check upstream, then drop this entry.",
+      "expires": "2026-11-27"
     }
   ]
 }
