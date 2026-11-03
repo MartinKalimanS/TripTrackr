@@ -59,6 +59,8 @@ type RowProps = {
   shape?: 'field' | 'capsule';
   /** Shows a chevron at the end. */
   chevron?: boolean;
+  /** A real capability behind the row: replaces the coming-soon toast. */
+  onAction?: () => void;
 };
 
 const ROW =
@@ -73,13 +75,15 @@ function PicturedRow({
   text,
   shape = 'field',
   chevron = false,
+  onAction,
 }: RowProps) {
-  const onPress = useComingSoon(thing);
+  const comingSoon = useComingSoon(thing);
+  const onPress = onAction ?? comingSoon;
   return (
     <Tappable
-      testID={`coming-soon-${name}`}
+      testID={onAction ? `${name}-add` : `coming-soon-${name}`}
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint={COMING_SOON_HINT}
+      accessibilityHint={onAction ? undefined : COMING_SOON_HINT}
       onPress={onPress}
       className={ROW}
       style={[cornerOf(shape === 'capsule' ? 'full' : 'md'), { minHeight: 56 }]}>
@@ -93,7 +97,7 @@ function PicturedRow({
 }
 
 /** "Where to?": the label, its hint and the empty search field. */
-export function PicturedDestination() {
+export function PicturedDestination({ onAction }: { onAction?: () => void } = {}) {
   return (
     <View testID="trip-destination" className="gap-2">
       <PicturedLabel label="Where to?" hint="Cities or countries" />
@@ -103,6 +107,7 @@ export function PicturedDestination() {
         accessibilityLabel="Add a city or country"
         icon="search"
         text="Add a city or country"
+        onAction={onAction}
       />
     </View>
   );
