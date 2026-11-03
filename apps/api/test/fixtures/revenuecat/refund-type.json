@@ -1,0 +1,17 @@
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "evt-refund-1",
+    "type": "REFUND",
+    "app_user_id": "__USER__",
+    "original_app_user_id": "__USER__",
+    "store": "APP_STORE",
+    "environment": "SANDBOX",
+    "event_timestamp_ms": 1768046400000,
+    "product_id": "tier1_y1",
+    "original_transaction_id": "orig-1000",
+    "transaction_id": "txn-1000",
+    "purchased_at_ms": 1768046400000,
+    "expiration_at_ms": 1799582400000
+  }
+}

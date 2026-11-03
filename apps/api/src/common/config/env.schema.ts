@@ -22,6 +22,36 @@ const commaSeparated = z.string().transform((value) =>
     .filter((part) => part.length > 0),
 );
 
+/**
+ * The store products the server recognises (spec 014, research D14-08, D14-09), as JSON:
+ * `{ "<store product id>": { "kind": "credit" | "tier1" | "unlimited", "step": 1 | 2 | 3 } }`.
+ * A credit has no ladder step; a subscription must name the step of the price ladder it sits on.
+ * Unset or blank parses to an empty map, which means no product is recognised yet.
+ */
+const BillingProduct = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('credit') }),
+  z.strictObject({
+    kind: z.enum(['tier1', 'unlimited']),
+    step: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  }),
+]);
+
+const billingProducts = z
+  .string()
+  .transform((value, ctx) => {
+    if (value.trim() === '') return {};
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      ctx.addIssue({ code: 'custom', message: 'must be valid JSON' });
+      return z.NEVER;
+    }
+  })
+  .pipe(z.record(z.string().min(1), BillingProduct));
+
+/** `BILLING_ENFORCED` is on only for the literal "true"; anything else but "false" or unset is an error. */
+const switchValue = z.enum(['true', 'false']).transform((value) => value === 'true');
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -67,8 +97,12 @@ const envSchema = z
     DOCUMENT_MASTER_KEY: z.string().min(44),
     DOCUMENT_MASTER_KEY_ID: z.string().min(1).default('v1'),
 
-    // The trip allowance is a business-tunable value, not a constant in code (FR-074).
-    FREE_TRIP_ALLOWANCE: z.coerce.number().int().positive().default(5),
+    // The paid trip allowance (spec 014): every number is configuration, not a constant in code
+    // (FR-001, FR-013). Charging is off until the owner switches it on (FR-026, research D14-06).
+    FREE_TRIP_ALLOWANCE: z.coerce.number().int().positive().default(3),
+    TIER1_YEARLY_TRIPS: z.coerce.number().int().positive().default(10),
+    BILLING_ENFORCED: switchValue.default(false),
+    BILLING_PRODUCTS: billingProducts.default({}),
 
     // Tombstone grace window before hard deletion (sync-protocol.md §5).
     TOMBSTONE_RETENTION_DAYS: z.coerce.number().int().positive().default(90),

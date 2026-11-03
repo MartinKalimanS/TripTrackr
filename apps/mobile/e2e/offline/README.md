@@ -50,7 +50,7 @@ is no honest single-device run of this gate.
    without it for the gate, or the flows will not find the app.
 4. **API and data.** API, worker, Postgres and the object store running (`npm run infra:up`);
    the geography catalogue imported with **Rome (IT) and Paris (FR)**; note the API's
-   `FREE_TRIP_ALLOWANCE` (default 5; row 15 needs it, pass `-e ALLOWANCE=<n>` if it differs).
+   `FREE_TRIP_ALLOWANCE` (default 3) and run the API with `BILLING_ENFORCED=true`: row 15 needs both, and with charging off nothing is flagged (pass `-e ALLOWANCE=<n>` if the number differs).
 5. **Tools**: `maestro` (free, CLI), `adb`, Node 22+. Nothing else is installed or paid for.
 6. **Clean airplane state.** An interrupted run leaves a device offline. Before a run:
    turn airplane mode off in quick settings (`adb -s <id> shell cmd connectivity airplane-mode disable` on Android 11 and later).

@@ -1,0 +1,14 @@
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "evt-something_new-1",
+    "type": "SOMETHING_NEW",
+    "app_user_id": "__USER__",
+    "original_app_user_id": "__USER__",
+    "store": "APP_STORE",
+    "environment": "SANDBOX",
+    "event_timestamp_ms": 1768046400000,
+    "product_id": "tier1_y1",
+    "transaction_id": "txn-x"
+  }
+}

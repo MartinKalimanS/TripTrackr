@@ -2,8 +2,6 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentsResponse, type DocumentParsedFields } from '@triptrackr/contracts';
 import request from 'supertest';
 
-import { TripAllowancePolicy } from '@/modules/sync/push-allowance.policy';
-
 import {
   bearer,
   bootTestApp,
@@ -11,7 +9,6 @@ import {
   type RegisteredTraveller,
 } from '../support/app';
 import { PASS_FIELDS, uploadDocument } from '../support/documents';
-import { grantEntitlement } from '../support/entitlement';
 import { FX, createTripFor, seedFxRates } from '../support/expenses';
 import { CITY } from '../support/geography';
 import { createHarness, type Harness } from '../integration/harness';
@@ -52,10 +49,6 @@ describe('contract — the REST rules hold when a record arrives by push', () =>
     harness = await createHarness();
     await seedFxRates(harness.owner);
     a = await registerTraveller(app);
-    // `a` is the shared traveller whose tests push many trips and create REST fixtures; an active
-    // entitlement keeps those fixtures clear of the allowance (spec 013). The allowance tests use
-    // travellers of their own.
-    await entitle(a);
     tripId = await createTripFor(app, a, 'CHF', 'Rules fixture');
   });
 
@@ -64,8 +57,6 @@ describe('contract — the REST rules hold when a record arrives by push', () =>
     await app?.close();
   });
 
-  const entitle = (traveller: RegisteredTraveller) =>
-    grantEntitlement(harness.owner, traveller);
   const stored = (table: Parameters<typeof requireRow>[1], id: unknown) =>
     requireRow(harness.owner, table, id as string);
   const asA = () => bearer(a.tokens.access_token);
@@ -127,118 +118,6 @@ describe('contract — the REST rules hold when a record arrives by push', () =>
         fx_rate_to_home: '0.888889',
         amount_home: '8.89',
       });
-    });
-  });
-
-  describe('trips: the allowance flags a new trip and never rejects it (D-08, Constitution V)', () => {
-    it('applies the sixth live trip with a warning, and keeps every recorded trip', async () => {
-      const traveller = await registerTraveller(app);
-      const trips = Array.from({ length: 7 }, () => tripRecord());
-
-      const results = await push(app, traveller, 'trips', trips);
-
-      expect(results.map((result) => result.status)).toEqual(Array(7).fill('applied'));
-      expect(results.map((result) => 'warnings' in result && result.warnings)).toEqual([
-        false,
-        false,
-        false,
-        false,
-        false,
-        ['over_allowance'],
-        ['over_allowance'],
-      ]);
-      for (const trip of trips)
-        expect(await rowOf(harness.owner, 'trips', trip.id as string)).toBeDefined();
-    });
-
-    it('counts live trips only: a deleted trip frees its slot at once (FR-075)', async () => {
-      const traveller = await registerTraveller(app);
-      const trips = Array.from({ length: 5 }, () => tripRecord());
-      await push(app, traveller, 'trips', trips);
-      await pushOne(app, traveller, 'trips', { ...trips[0], deleted: true });
-
-      const result = await pushOne(app, traveller, 'trips', tripRecord());
-
-      expect(result).toMatchObject({ status: 'applied' });
-      expect(result).not.toHaveProperty('warnings');
-    });
-
-    it('does not warn for a trip that is pushed already deleted', async () => {
-      const traveller = await registerTraveller(app);
-      await push(
-        app,
-        traveller,
-        'trips',
-        Array.from({ length: 5 }, () => tripRecord()),
-      );
-
-      const result = await pushOne(
-        app,
-        traveller,
-        'trips',
-        tripRecord({ deleted: true }),
-      );
-
-      expect(result).not.toHaveProperty('warnings');
-    });
-
-    it('does not warn for an edit of a trip the account already had', async () => {
-      const traveller = await registerTraveller(app);
-      const trips = Array.from({ length: 6 }, () => tripRecord());
-      await push(app, traveller, 'trips', trips);
-
-      const result = await pushOne(app, traveller, 'trips', {
-        ...trips[5],
-        title: 'Renamed',
-        updated_at: minutesAgo(1),
-      });
-
-      expect(result).toEqual({ id: trips[5]?.id, status: 'applied' });
-    });
-
-    it('asks one injectable policy, so a subscription-aware one can replace it', async () => {
-      const policy = app.get(TripAllowancePolicy);
-      const spy = jest.spyOn(policy, 'isOverAllowance').mockResolvedValue(true);
-
-      const result = await pushOne(app, a, 'trips', tripRecord());
-
-      expect(spy).toHaveBeenCalledTimes(1);
-      expect(result).toMatchObject({ status: 'applied', warnings: ['over_allowance'] });
-      spy.mockRestore();
-    });
-
-    it('does not flag a trip pushed by an entitled account (spec 013)', async () => {
-      const traveller = await registerTraveller(app);
-      await push(
-        app,
-        traveller,
-        'trips',
-        Array.from({ length: 5 }, () => tripRecord()),
-      );
-      await entitle(traveller);
-
-      const result = await pushOne(app, traveller, 'trips', tripRecord());
-
-      expect(result).toMatchObject({ status: 'applied' });
-      expect(result).not.toHaveProperty('warnings');
-    });
-
-    it('refuses a REST create at the allowance even when the trips arrived by push', async () => {
-      const traveller = await registerTraveller(app);
-      await push(
-        app,
-        traveller,
-        'trips',
-        Array.from({ length: 6 }, () => tripRecord()),
-      );
-
-      const response = await request(app.getHttpServer())
-        .post('/v1/trips')
-        .set(bearer(traveller.tokens.access_token))
-        .send({ title: 'Through REST', home_currency: 'CHF' });
-
-      expect(response.status).toBe(409);
-      expect(response.body.error.code).toBe('TRIP_ALLOWANCE_REACHED');
     });
   });
 

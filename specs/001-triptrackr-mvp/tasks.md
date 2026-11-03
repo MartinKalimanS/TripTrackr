@@ -425,8 +425,8 @@ _Amended 2026-09-29 for research D-31..D-34: documents are sealed by the API fro
 - [x] T172 [P] [US9] Contract test — `POST /trips` at the allowance returns 409 carrying trips held, the allowance, both routes forward, and the echoed submission — in `apps/api/test/contract/allowance-blocked.spec.ts` (contract test 5, FR-077, FR-079)
 - [x] T173 [P] [US9] Contract test — `POST /trips` below the allowance returns no allowance or payment field at all — in `apps/api/test/contract/allowance-silent.spec.ts` (contract test 6, FR-084)
 - [x] T174 [P] [US9] Contract test — every non-create endpoint behaves identically under an active and a lapsed entitlement — in `apps/api/test/contract/lapsed-entitlement.spec.ts` (contract test 7, FR-080, SC-021)
-- [ ] T175 [P] [US9] Contract test — `POST /billing/purchase-completed` replayed with the same transaction id grants exactly once — in `apps/api/test/contract/purchase-idempotency.spec.ts` (contract test 11, FR-083, SC-025)
-- [ ] T176 [P] [US9] Privacy test — account B's read results are identical whether A's entitlement is active or lapsed — in `apps/api/test/privacy/entitlement-neutrality.spec.ts` (adversarial row 12)
+- [x] T175 [P] [US9] Contract test — `POST /billing/purchase-completed` replayed with the same transaction id grants exactly once — in `apps/api/test/contract/purchase-idempotency.spec.ts` (contract test 11, FR-083, SC-025)
+- [x] T176 [P] [US9] Privacy test — account B's read results are identical whether A's entitlement is active or lapsed — in `apps/api/test/privacy/entitlement-neutrality.spec.ts` (adversarial row 12)
 - [x] T177 [P] [US9] Integration test — deleting a trip frees a slot immediately, and repeated delete-and-recreate never drifts — in `apps/api/test/integration/allowance-accounting.spec.ts` (FR-075)
 
 ### Implementation for User Story 9
