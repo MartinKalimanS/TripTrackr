@@ -45,8 +45,20 @@ jest.mock('expo-crypto', () => {
     getRandomBytesAsync: jest.fn(
       async (count: number) => new Uint8Array(nodeCrypto.randomBytes(count)),
     ),
+    // The real digest: a sign-in nonce is hashed for Apple, and a fake hash would hide a mismatch.
+    CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+    digestStringAsync: jest.fn(async (_algorithm: string, data: string) =>
+      nodeCrypto.createHash('sha256').update(data).digest('hex'),
+    ),
   };
 });
+
+// Sign-in nonces come from the server. Suites that render the provider buttons get a fixed one;
+// the module's own suite asks for the real one with jest.requireActual.
+jest.mock('@/features/auth/oauth-nonce', () => ({
+  ...jest.requireActual('@/features/auth/oauth-nonce'),
+  fetchOAuthNonce: jest.fn(async () => 'server-issued-nonce-0123456789'),
+}));
 
 // expo-sqlite is native. Suites that need a real database build one over
 // `node:sqlite` through test/db/sqlite-harness.ts and hand it to drizzle; the

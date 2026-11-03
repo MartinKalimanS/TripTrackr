@@ -6,6 +6,7 @@ import {
   OAuthProviderUnavailableError,
   OAuthTokenInvalidError,
   OAuthTokenVerifier,
+  sha256Hex,
   type OAuthClients,
 } from '@/modules/auth/oauth-token-verifier';
 
@@ -21,6 +22,9 @@ import { applyUnitTestEnv } from '../support/env';
  * configured at all, so the endpoint answers 503 rather than accepting a
  * token it could not have checked against any audience.
  */
+
+/** The nonce the app sent; Google echoes it, Apple echoes its SHA-256 (spec 012). */
+const NONCE = 'a-single-use-nonce-0123456789';
 
 interface GoogleCall {
   idToken: string;
@@ -48,6 +52,7 @@ function clients(overrides: Partial<OAuthClients> = {}): {
           email: 'Traveller@Example.test',
           email_verified: true,
           name: 'Traveller One',
+          nonce: NONCE,
         }),
       });
     },
@@ -64,6 +69,7 @@ function clients(overrides: Partial<OAuthClients> = {}): {
           email: 'private@privaterelay.appleid.com',
           email_verified: 'true',
           is_private_email: 'true',
+          nonce: sha256Hex(NONCE),
         },
       });
     },
@@ -86,13 +92,75 @@ describe('OAuthTokenVerifier', () => {
   afterEach(() => resetEnvCache());
   afterEach(() => jest.restoreAllMocks());
 
+  describe('nonce (spec 012; FR-003)', () => {
+    const withGoogleNonce = (nonce: unknown) =>
+      clients({
+        google: {
+          verifyIdToken: () =>
+            Promise.resolve({
+              getPayload: () => ({
+                iss: 'https://accounts.google.com',
+                sub: 'google-sub-1',
+                aud: 'ios-client-id',
+                iat: 1,
+                exp: 2,
+                nonce: nonce as string,
+              }),
+            }),
+        },
+      }).clients;
+    const withAppleNonce = (nonce: unknown) =>
+      clients({
+        apple: {
+          verify: () =>
+            Promise.resolve({
+              payload: { iss: APPLE_ISSUER, sub: 'apple-sub-1', nonce } as never,
+            }),
+        },
+      }).clients;
+
+    it('refuses a Google token whose nonce is another one, absent, or not text', async () => {
+      applyUnitTestEnv({ GOOGLE_OAUTH_CLIENT_IDS: 'ios-client-id' });
+      for (const claim of ['someone-elses-nonce-000000', undefined, 42, null]) {
+        const verifier = new OAuthTokenVerifier(withGoogleNonce(claim));
+        await expect(verifier.verifyGoogle('t', NONCE)).rejects.toBeInstanceOf(
+          OAuthTokenInvalidError,
+        );
+      }
+    });
+
+    it('refuses an Apple token carrying the raw nonce instead of its hash, or none', async () => {
+      applyUnitTestEnv({ APPLE_OAUTH_CLIENT_IDS: 'app.triptrackr.ios' });
+      for (const claim of [NONCE, 'x'.repeat(64), undefined]) {
+        const verifier = new OAuthTokenVerifier(withAppleNonce(claim));
+        await expect(verifier.verifyApple('t', NONCE)).rejects.toBeInstanceOf(
+          OAuthTokenInvalidError,
+        );
+      }
+    });
+
+    it('accepts an Apple token whose claim is the lower-case hex SHA-256 of the nonce', async () => {
+      applyUnitTestEnv({ APPLE_OAUTH_CLIENT_IDS: 'app.triptrackr.ios' });
+      const verifier = new OAuthTokenVerifier(withAppleNonce(sha256Hex(NONCE)));
+      await expect(verifier.verifyApple('t', NONCE)).resolves.toMatchObject({
+        subject: 'apple-sub-1',
+      });
+    });
+
+    it('hashes to the known SHA-256 vector', () => {
+      expect(sha256Hex('abc')).toBe(
+        'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+      );
+    });
+  });
+
   describe('google', () => {
     it('verifies against every configured client id and reduces the payload to an identity', async () => {
       applyUnitTestEnv({ GOOGLE_OAUTH_CLIENT_IDS: 'ios-client-id, android-client-id' });
       const fake = clients();
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      const identity = await verifier.verifyGoogle('the-id-token');
+      const identity = await verifier.verifyGoogle('the-id-token', NONCE);
 
       expect(fake.googleCalls).toEqual([
         { idToken: 'the-id-token', audience: ['ios-client-id', 'android-client-id'] },
@@ -113,7 +181,7 @@ describe('OAuthTokenVerifier', () => {
       const fake = clients();
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      await expect(verifier.verifyGoogle('the-id-token')).rejects.toBeInstanceOf(
+      await expect(verifier.verifyGoogle('the-id-token', NONCE)).rejects.toBeInstanceOf(
         OAuthProviderUnavailableError,
       );
       expect(fake.googleCalls).toHaveLength(0);
@@ -129,7 +197,7 @@ describe('OAuthTokenVerifier', () => {
       });
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      const attempt = verifier.verifyGoogle('stale');
+      const attempt = verifier.verifyGoogle('stale', NONCE);
 
       await expect(attempt).rejects.toBeInstanceOf(OAuthTokenInvalidError);
       await expect(attempt).rejects.not.toThrow(/too late|1700000000/);
@@ -142,7 +210,7 @@ describe('OAuthTokenVerifier', () => {
       });
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      await expect(verifier.verifyGoogle('empty')).rejects.toBeInstanceOf(
+      await expect(verifier.verifyGoogle('empty', NONCE)).rejects.toBeInstanceOf(
         OAuthTokenInvalidError,
       );
     });
@@ -161,13 +229,14 @@ describe('OAuthTokenVerifier', () => {
                 exp: 2,
                 email: 'unverified@example.test',
                 email_verified: false,
+                nonce: NONCE,
               }),
             }),
         },
       });
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      const identity = await verifier.verifyGoogle('t');
+      const identity = await verifier.verifyGoogle('t', NONCE);
 
       expect(identity.emailVerified).toBe(false);
       expect(identity.displayName).toBeNull();
@@ -187,13 +256,14 @@ describe('OAuthTokenVerifier', () => {
                 aud: 'ios-client-id',
                 iat: 1,
                 exp: 2,
+                nonce: NONCE,
               }),
             }),
         },
       });
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      const identity = await verifier.verifyGoogle('t');
+      const identity = await verifier.verifyGoogle('t', NONCE);
 
       expect(identity).toEqual({
         provider: 'google',
@@ -218,7 +288,7 @@ describe('OAuthTokenVerifier', () => {
       const verifier = new OAuthTokenVerifier(fake.clients);
 
       // Act
-      const attempt = verifier.verifyGoogle('t');
+      const attempt = verifier.verifyGoogle('t', NONCE);
 
       // Assert — the provider's words reach the log, never the caller (FR-072).
       await expect(attempt).rejects.toBeInstanceOf(OAuthTokenInvalidError);
@@ -235,7 +305,7 @@ describe('OAuthTokenVerifier', () => {
       const fake = clients();
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      const identity = await verifier.verifyApple('the-identity-token');
+      const identity = await verifier.verifyApple('the-identity-token', NONCE);
 
       expect(fake.appleCalls).toEqual([
         {
@@ -264,7 +334,7 @@ describe('OAuthTokenVerifier', () => {
       const fake = clients();
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      await expect(verifier.verifyApple('t')).rejects.toBeInstanceOf(
+      await expect(verifier.verifyApple('t', NONCE)).rejects.toBeInstanceOf(
         OAuthProviderUnavailableError,
       );
       expect(fake.appleCalls).toHaveLength(0);
@@ -279,7 +349,7 @@ describe('OAuthTokenVerifier', () => {
       });
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      await expect(verifier.verifyApple('t')).rejects.toBeInstanceOf(
+      await expect(verifier.verifyApple('t', NONCE)).rejects.toBeInstanceOf(
         OAuthTokenInvalidError,
       );
     });
@@ -301,7 +371,7 @@ describe('OAuthTokenVerifier', () => {
       });
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      await expect(verifier.verifyApple('t')).rejects.toBeInstanceOf(
+      await expect(verifier.verifyApple('t', NONCE)).rejects.toBeInstanceOf(
         OAuthTokenInvalidError,
       );
     });
@@ -316,13 +386,14 @@ describe('OAuthTokenVerifier', () => {
                 iss: APPLE_ISSUER,
                 sub: 'apple-sub-2',
                 aud: 'app.triptrackr.ios',
+                nonce: sha256Hex(NONCE),
               },
             }),
         },
       });
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      const identity = await verifier.verifyApple('t');
+      const identity = await verifier.verifyApple('t', NONCE);
 
       expect(identity).toEqual({
         provider: 'apple',
@@ -347,13 +418,14 @@ describe('OAuthTokenVerifier', () => {
                 aud: 'app.triptrackr.ios',
                 email: 'Someone@Example.test',
                 email_verified: true,
+                nonce: sha256Hex(NONCE),
               },
             }),
         },
       });
       const verifier = new OAuthTokenVerifier(fake.clients);
 
-      const identity = await verifier.verifyApple('t');
+      const identity = await verifier.verifyApple('t', NONCE);
 
       expect(identity.email).toBe('someone@example.test');
       expect(identity.emailVerified).toBe(true);

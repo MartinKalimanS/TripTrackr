@@ -26,6 +26,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { fetchOAuthNonce, hashNonce } from '@/features/auth/oauth-nonce';
 import type { AppleSignInInput } from '@/features/auth/use-session';
 
 import { AppleOfficialButton, type AppleIntent } from './apple-official-button';
@@ -109,7 +110,10 @@ export function AppleSignInButton({
 
   const signIn = async () => {
     try {
+      // A fresh server nonce for this attempt; Apple is given its hash (spec 012).
+      const nonce = await fetchOAuthNonce();
       const credential = await AppleAuthentication.signInAsync({
+        nonce: await hashNonce(nonce),
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
@@ -120,6 +124,7 @@ export function AppleSignInButton({
       }
       onCredential({
         identityToken: credential.identityToken,
+        nonce,
         displayName: displayNameFrom(credential.fullName),
       });
     } catch (error) {
