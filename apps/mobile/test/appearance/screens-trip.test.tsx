@@ -14,6 +14,8 @@ import AddExpenseScreen from '@/app/modal/add-expense';
 import AddTripScreen from '@/app/modal/add-trip';
 import DeleteAccountScreen from '@/app/modal/delete-account';
 import AboutScreen from '@/app/modal/about';
+import ManageSubscriptionScreen from '@/app/modal/manage-subscription';
+import PaywallScreen from '@/app/modal/paywall';
 import ExportDataScreen from '@/app/modal/export-data';
 import DocumentCaptureScreen from '@/app/trip/[id]/document-capture';
 import DocumentViewScreen from '@/app/trip/[id]/document-view';
@@ -50,6 +52,9 @@ jest.mock('react-native-worklets', () => require('../mocks/worklets'));
 jest.mock('react-native-reanimated', () =>
   require('../app/trip-screen-harness').reanimatedModule(),
 );
+jest.mock('@/components/ui/toast', () => ({
+  useToast: () => ({ show: jest.fn(), hide: jest.fn() }),
+}));
 jest.mock('expo-router', () => ({
   ...require('../app/trip-screen-harness').routerModule(),
   // Focus is mount here: the effect runs once, as on first focus.
@@ -74,6 +79,39 @@ jest.mock('@/features/account/use-data-export', () => ({
     error: null,
     start: jest.fn(),
     restart: jest.fn(),
+  }),
+}));
+// Buying has suites of its own; the sheet is swept for how it looks, with all three options drawn.
+jest.mock('@/features/billing/use-paywall', () => ({
+  usePaywall: () => ({
+    status: 'idle',
+    productsFailed: false,
+    entitlement: { trips_held: 3, allowance: 3 },
+    options: [
+      {
+        productId: 'credit_single',
+        tier: 'credit',
+        priceString: '$3.99',
+        periodLabel: null,
+        renews: false,
+      },
+      {
+        productId: 'tier1_y1',
+        tier: 'tier1',
+        priceString: '$14.99',
+        periodLabel: 'per year',
+        renews: true,
+      },
+      {
+        productId: 'unl_y1',
+        tier: 'unlimited',
+        priceString: '$29.99',
+        periodLabel: 'per year',
+        renews: true,
+      },
+    ],
+    buy: jest.fn(),
+    restore: jest.fn(),
   }),
 }));
 jest.mock('expo-web-browser', () => ({ openBrowserAsync: jest.fn() }));
@@ -325,6 +363,8 @@ sweepScreen('Plan a trip (sheet)', () => <AddTripScreen />, prepareTrip);
 sweepScreen('About (sheet)', () => <AboutScreen />, prepareTrip);
 sweepScreen('Export my data (sheet)', () => <ExportDataScreen />, prepareTrip);
 sweepScreen('Delete account (sheet)', () => <DeleteAccountScreen />, prepareTrip);
+sweepScreen('Paywall (sheet)', () => <PaywallScreen />, prepareTrip);
+sweepScreen('Plan and credits (sheet)', () => <ManageSubscriptionScreen />, prepareTrip);
 sweepScreen('Add an expense (sheet)', () => <AddExpenseScreen />, prepareTrip);
 
 // ---- the states a screen shows before and instead of its content (FR-064): a skeleton, the

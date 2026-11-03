@@ -28,7 +28,7 @@ const SCREENS = routes(APP).filter(
 
 describe('the route inventory', () => {
   test('has the screens this feature built', () => {
-    expect(SCREENS).toHaveLength(20);
+    expect(SCREENS).toHaveLength(22);
   });
 
   test('is swept: every screen is rendered by a sweep suite', () => {

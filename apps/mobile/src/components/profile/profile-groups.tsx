@@ -19,6 +19,7 @@
  * Visibility posture: private. Nothing is read from or sent to a server here except the sign-out
  * request.
  */
+import { MANAGE_COPY } from '@/features/billing/manage-copy';
 import type { UserProfile } from '@triptrackr/contracts';
 import Constants from 'expo-constants';
 import { View } from 'react-native';
@@ -48,10 +49,13 @@ function describeVersion(): string {
 export function Account({
   user,
   onExportData,
+  onManagePlan,
 }: {
   user: UserProfile;
   /** Opens the Export my data sheet (spec 009). */
   onExportData: () => void;
+  /** Opens Plan and credits (spec 014); undefined while the traveller holds nothing. */
+  onManagePlan?: () => void;
 }) {
   return (
     <ListGroup header="Account" testID="profile-account-group">
@@ -69,6 +73,16 @@ export function Account({
         accessibilityLabel={`Home currency: ${user.home_currency}`}
         trailing={<Text tone="muted">{user.home_currency}</Text>}
       />
+      {onManagePlan ? (
+        <ListRow
+          testID="profile-manage-plan"
+          title={MANAGE_COPY.row.title}
+          description={MANAGE_COPY.row.description}
+          accessibilityLabel="Plan and credits"
+          accessibilityHint="Opens a sheet with your plan, renewal date and trip credits"
+          onPress={onManagePlan}
+        />
+      ) : null}
       <ListRow
         testID="profile-export-data"
         title="Export my data"

@@ -15,6 +15,11 @@ export const DELETE_ACCOUNT_COPY = {
   ],
   subscription:
     'Deleting your account does not cancel a subscription. Cancel it in the App Store or Google Play.',
+  /** Spec 014, FR-010: only said to a traveller who holds unused single-trip credits. */
+  credits: (count: number) =>
+    count === 1
+      ? 'You have 1 unused single-trip credit. It is lost with your account and cannot be refunded or moved.'
+      : `You have ${count} unused single-trip credits. They are lost with your account and cannot be refunded or moved.`,
   passwordLabel: 'Password',
   passwordHint:
     'Your password confirms it. If you signed in with Google or Apple, leave it empty.',

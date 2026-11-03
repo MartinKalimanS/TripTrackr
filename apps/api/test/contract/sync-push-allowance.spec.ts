@@ -48,7 +48,9 @@ describe('sync push: the allowance flags a trip and never rejects it', () => {
     const first = await push(app, traveller, 'trips', [over]);
     const retry = await push(app, traveller, 'trips', [over]);
 
-    expect(first).toEqual([{ id: over.id, status: 'applied', warnings: ['over_allowance'] }]);
+    expect(first).toEqual([
+      { id: over.id, status: 'applied', warnings: ['over_allowance'] },
+    ]);
     expect(retry).toEqual(first);
   });
 

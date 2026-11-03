@@ -155,7 +155,9 @@ export class AllowanceRepository {
   }
 
   /** The caller's live trip as a refusal echoes it, or null when it is not theirs or is deleted. */
-  async liveOwnTrip(tripId: string): Promise<{ title: string; homeCurrency: string } | null> {
+  async liveOwnTrip(
+    tripId: string,
+  ): Promise<{ title: string; homeCurrency: string } | null> {
     const rows = await rlsDb().execute<{ title: string; home_currency: string }>(sql`
       SELECT t.title, t.home_currency FROM trips t
       WHERE t.id = ${tripId}::uuid AND t.owner_id = ${requireCurrentUserId()}::uuid

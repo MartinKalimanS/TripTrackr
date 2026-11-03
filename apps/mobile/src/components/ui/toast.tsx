@@ -44,6 +44,7 @@ import { Animated, Easing, I18nManager, View } from 'react-native';
 import { useAppearance } from '@/hooks/use-appearance';
 import { cornerOf } from '@/theme';
 
+import { Icon, type IconName } from './icon';
 import { useLiftStyle } from './lift';
 
 /** The toast leaves after this long. */
@@ -55,8 +56,21 @@ export type ToastAction = {
   testID?: string;
 };
 
+/** What a toast reports: the icon beside its words (never colour alone). */
+export type ToastTone = 'success' | 'info' | 'warning';
+
+const TONE_ICON: Record<ToastTone, IconName> = {
+  success: 'check-circle',
+  info: 'info',
+  warning: 'warning',
+};
+
 export type ToastOptions = {
   message: string;
+  /** A short bold line above the message. */
+  title?: string;
+  /** Draws a status icon before the words. */
+  tone?: ToastTone;
   /** The one action: "Undo". */
   action?: ToastAction;
   /** Shown once while an id is on screen. */
@@ -72,7 +86,7 @@ type KitToastProps = Pick<
 > & { id: string };
 
 export type ToastProps = KitToastProps &
-  Pick<ToastOptions, 'message' | 'action'> & { durationMs: number };
+  Pick<ToastOptions, 'message' | 'action' | 'title' | 'tone'> & { durationMs: number };
 
 const ACTION_LABEL = 'text-accent-press font-body-semibold text-[14px] leading-[20px]';
 
@@ -108,7 +122,7 @@ function CountdownBar({ durationMs, testID }: { durationMs: number; testID: stri
 }
 
 /** The toast itself, as the kit renders it: pass it what the kit hands a component. */
-export function Toast({ message, action, durationMs, ...kit }: ToastProps) {
+export function Toast({ message, title, tone, action, durationMs, ...kit }: ToastProps) {
   const { prefersLessMotion } = useAppearance();
   const lift = useLiftStyle('lift2');
   const testID = `toast-${kit.id}`;
@@ -121,9 +135,17 @@ export function Toast({ message, action, durationMs, ...kit }: ToastProps) {
       animation={prefersLessMotion ? 'disable-all' : undefined}
       className="min-h-[52px] flex-row items-center gap-3 bg-toast-surface py-2 pe-2 ps-4"
       style={[cornerOf('lg'), lift]}>
-      <KitToast.Description className="flex-1 font-body text-[14px] leading-[20px] text-toast-ink">
-        {message}
-      </KitToast.Description>
+      {tone ? <Icon name={TONE_ICON[tone]} size={20} tone="onInk" /> : null}
+      <View className="flex-1">
+        {title ? (
+          <KitToast.Title className="font-body-semibold text-[14px] leading-[20px] text-toast-ink">
+            {title}
+          </KitToast.Title>
+        ) : null}
+        <KitToast.Description className="font-body text-[14px] leading-[20px] text-toast-ink">
+          {message}
+        </KitToast.Description>
+      </View>
       {action ? (
         <KitToast.Action
           size="md"
@@ -160,12 +182,19 @@ export function useToast(): AppToast {
   }, [toast]);
   return useMemo<AppToast>(
     () => ({
-      show: ({ message, action, id, durationMs = TOAST_DURATION_MS }) =>
+      show: ({ message, title, tone, action, id, durationMs = TOAST_DURATION_MS }) =>
         kit.current.show({
           id,
           duration: durationMs,
           component: (props) => (
-            <Toast {...props} message={message} action={action} durationMs={durationMs} />
+            <Toast
+              {...props}
+              message={message}
+              title={title}
+              tone={tone}
+              action={action}
+              durationMs={durationMs}
+            />
           ),
         }),
       hide: (id) => kit.current.hide(id),

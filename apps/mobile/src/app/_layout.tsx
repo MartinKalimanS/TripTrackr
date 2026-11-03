@@ -59,6 +59,7 @@ import { ConflictNotices } from '@/components/ui/conflict-notice';
 import { formSheetOptions } from '@/components/ui/form-sheet';
 import { LocalStoreProvider, useOpenDatabase } from '@/db/client';
 import { useSessionStore } from '@/features/auth/session-store';
+import { usePurchasesIdentity } from '@/features/billing/use-purchases-identity';
 import { useAppSwitcherProtection } from '@/features/documents/use-screen-capture-guard';
 import { useAppearance, type AppearanceContext } from '@/hooks/use-appearance';
 import { configureMapbox } from '@/lib/mapbox';
@@ -207,6 +208,8 @@ function useSessionGate(appearanceReady: boolean) {
   // T135: nothing is bound until there is a traveller AND their open database.
   const signedIn = status === 'signed-in';
   useSyncTriggers(signedIn ? store.db : null, signedIn ? userId : null);
+  // Spec 014: the store's buyer is our user id, or purchases stay off.
+  usePurchasesIdentity(signedIn ? userId : null);
 
   useEffect(() => {
     // The store fails closed on its own; reporting is this layer's job.

@@ -146,9 +146,9 @@ required here) prove it.
 
 ## Open items carried to later steps
 
-| Item | Who | Where |
-| ---- | --- | ----- |
-| Refund event shape for consumables | recorded fixture + sandbox | S-11, S-13 |
-| Moving a subscriber to the next ladder product at renewal | sandbox in both stores | S-13 before S-12 |
-| Final prices, floor and the free number | owner | configuration, any time |
-| When to run `billing:grandfather` and set `BILLING_ENFORCED` | owner | after the shadow report |
+| Item                                                         | Who                        | Where                   |
+| ------------------------------------------------------------ | -------------------------- | ----------------------- |
+| Refund event shape for consumables                           | recorded fixture + sandbox | S-11, S-13              |
+| Moving a subscriber to the next ladder product at renewal    | sandbox in both stores     | S-13 before S-12        |
+| Final prices, floor and the free number                      | owner                      | configuration, any time |
+| When to run `billing:grandfather` and set `BILLING_ENFORCED` | owner                      | after the shadow report |

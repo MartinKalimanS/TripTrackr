@@ -391,6 +391,39 @@ export const ROUTE_INVENTORY: readonly RouteRow[] = [
     sweep: SWEEP('about'),
   },
   {
+    route: 'src/app/modal/paywall.tsx',
+    loading: {
+      shows:
+        'no rows until the store answers; Restore purchases and Not now are already there',
+      pins: [[SWEEP('paywall'), 'the store has not answered']],
+    },
+    empty: { na: 'a choice of plans, not a list that can be empty of content' },
+    error: {
+      shows:
+        'the store failed or the purchase did not go through: words, nothing charged',
+      pins: [[SWEEP('paywall'), 'paywall-status']],
+    },
+    primary: '"Continue" (buys the selected plan)',
+    sweep: SWEEP('paywall'),
+  },
+  {
+    route: 'src/app/modal/manage-subscription.tsx',
+    loading: {
+      shows:
+        'words until the server answers; the store button and Close are already there',
+      pins: [[SWEEP('manage-subscription'), 'before the server answers']],
+    },
+    empty: {
+      shows: 'holding nothing says so, in words, and offers the plans',
+      pins: [[SWEEP('manage-subscription'), 'manage-empty']],
+    },
+    error: {
+      na: 'reads the cached entitlement; an unreadable answer is the loading words',
+    },
+    primary: '"Manage in store"',
+    sweep: SWEEP('manage-subscription'),
+  },
+  {
     route: 'src/app/modal/delete-account.tsx',
     loading: { na: 'a form on local state; nothing is read first' },
     empty: { na: 'a form, not a list' },

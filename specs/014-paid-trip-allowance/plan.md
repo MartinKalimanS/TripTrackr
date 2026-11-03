@@ -40,13 +40,13 @@ the API role cannot write commerce rows except `INSERT` into `trip_covers`; offl
 
 ## Constitution Check
 
-| Principle | Status | How |
-| --------- | ------ | --- |
-| I Privacy is structural | PASS | New tables are owner-only, no visibility flag, no public policy. Posture stated in data-model.md. |
-| II Offline default | PASS | Sync push still never rejects; a flagged trip can be covered later (D14-11). Charging off blocks nothing. |
-| III Test-first, privacy as attacker | PASS | Every task has the failing test first; the neutrality suite is widened and a "reads identical" suite is added. |
-| IV Verify before you render | PASS | Prices and currency come from the store, not from our data; no invented numbers. |
-| V Nothing recorded is held hostage | PASS | A lapse, refund or cancellation only changes `ordinary_held` or the next create. A spent credit is never returned but its trip is never touched. |
+| Principle                           | Status | How                                                                                                                                              |
+| ----------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| I Privacy is structural             | PASS   | New tables are owner-only, no visibility flag, no public policy. Posture stated in data-model.md.                                                |
+| II Offline default                  | PASS   | Sync push still never rejects; a flagged trip can be covered later (D14-11). Charging off blocks nothing.                                        |
+| III Test-first, privacy as attacker | PASS   | Every task has the failing test first; the neutrality suite is widened and a "reads identical" suite is added.                                   |
+| IV Verify before you render         | PASS   | Prices and currency come from the store, not from our data; no invented numbers.                                                                 |
+| V Nothing recorded is held hostage  | PASS   | A lapse, refund or cancellation only changes `ordinary_held` or the next create. A spent credit is never returned but its trip is never touched. |
 
 No violations; the Complexity Tracking table is empty.
 

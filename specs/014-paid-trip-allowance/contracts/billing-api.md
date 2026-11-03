@@ -7,15 +7,15 @@ shape. Replaces the 409 and entitlement shapes of spec 013.
 
 Unchanged request. Outcomes, in the spending order of D14-04:
 
-| State | Result |
-| ----- | ------ |
-| Charging off | 201. If the traveller would have been stopped, a shadow row is written; the response is the same as any other 201. |
-| Replay of an id the caller already owns | 201 with that trip; nothing spent. |
-| Unlimited active | 201; cover `unlimited`. |
-| `ordinary_held < free` | 201; no cover. |
-| Tier 1 year with uses left | 201; cover `year`. |
-| Unspent credit | 201; cover `credit`. |
-| None of the above | 409 `TRIP_ALLOWANCE_REACHED` (below). Nothing is written. |
+| State                                   | Result                                                                                                             |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Charging off                            | 201. If the traveller would have been stopped, a shadow row is written; the response is the same as any other 201. |
+| Replay of an id the caller already owns | 201 with that trip; nothing spent.                                                                                 |
+| Unlimited active                        | 201; cover `unlimited`.                                                                                            |
+| `ordinary_held < free`                  | 201; no cover.                                                                                                     |
+| Tier 1 year with uses left              | 201; cover `year`.                                                                                                 |
+| Unspent credit                          | 201; cover `credit`.                                                                                               |
+| None of the above                       | 409 `TRIP_ALLOWANCE_REACHED` (below). Nothing is written.                                                          |
 
 The 201 body is exactly `{ trip }`. It never carries a cover, allowance or payment field (FR-003).
 
@@ -79,10 +79,10 @@ wait and never grants anything the provider does not confirm.
 
 ## Owner scripts (no HTTP)
 
-| Script | Does |
-| ------ | ---- |
-| `npm run billing:shadow-report -w apps/api` | prints `{ travellers_blocked, attempts }` |
-| `npm run billing:grandfather -w apps/api` | covers every live trip lacking a cover, clears the shadow table; idempotent (D14-06). Run it, set `BILLING_ENFORCED=true`, restart, run it again. |
+| Script                                      | Does                                                                                                                                              |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run billing:shadow-report -w apps/api` | prints `{ travellers_blocked, attempts }`                                                                                                         |
+| `npm run billing:grandfather -w apps/api`   | covers every live trip lacking a cover, clears the shadow table; idempotent (D14-06). Run it, set `BILLING_ENFORCED=true`, restart, run it again. |
 
 ## Configuration (all validated at startup in `env.schema.ts`)
 

@@ -500,3 +500,20 @@ jest.mock('uniwind', () => {
 afterEach(() => {
   jest.clearAllMocks();
 });
+
+// Spec 014: screens that read the entitlement (add trip, delete account) render without a query
+// client and see a quiet standing, as a traveller below the free limit does. The hook's own suite
+// un-mocks it; a screen test that needs a loud standing spies on `useEntitlement`.
+jest.mock('@/features/billing/use-entitlement', () => ({
+  ENTITLEMENT_KEY: ['entitlement'],
+  useEntitlement: () => ({
+    entitlement: null,
+    isLoaded: false,
+    atLimit: false,
+    canCreateWithoutPaying: true,
+    showPaywallEntry: false,
+    mustPayToCreate: false,
+    refetch: () => Promise.resolve(),
+  }),
+  useCoverTrip: () => ({ mutateAsync: () => Promise.resolve({ source: 'credit' }) }),
+}));

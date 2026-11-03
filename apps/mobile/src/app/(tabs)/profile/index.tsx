@@ -34,6 +34,7 @@ import { PassportSection } from '@/components/profile/passport-section';
 import { Screen } from '@/components/ui/screen';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useSignOut } from '@/features/auth/use-sign-out';
+import { useEntitlement } from '@/features/billing/use-entitlement';
 import { useTourStore } from '@/features/tour/tour-store';
 import { usePassport } from '@/features/passport/use-passport';
 import { todayIso } from '@/features/trips/stop-dates';
@@ -44,6 +45,10 @@ export default function ProfileScreen() {
   const user = useSessionStore((session) => session.user);
   const signOut = useSignOut();
   const router = useRouter();
+  const { entitlement } = useEntitlement();
+  // Silent until there is something to show: a plan, or at least one trip credit.
+  const holdsAnything =
+    entitlement !== null && (entitlement.tier !== null || entitlement.credits > 0);
   // The tour lights the Home's controls, so replaying it goes to the Globe first (feature 007).
   const takeTour = () => {
     router.navigate('/');
@@ -71,7 +76,13 @@ export default function ProfileScreen() {
         today={today}
       />
       {user ? (
-        <Account user={user} onExportData={() => router.push('/modal/export-data')} />
+        <Account
+          user={user}
+          onExportData={() => router.push('/modal/export-data')}
+          onManagePlan={
+            holdsAnything ? () => router.push('/modal/manage-subscription') : undefined
+          }
+        />
       ) : null}
       <AppInfo onTakeTour={takeTour} onAbout={() => router.push('/modal/about')} />
       <SetApart

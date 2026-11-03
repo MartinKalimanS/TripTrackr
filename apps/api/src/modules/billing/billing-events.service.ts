@@ -43,8 +43,13 @@ export class BillingEventsService {
 
   private async route(event: RevenueCatEvent): Promise<boolean> {
     const provider = PROVIDERS[event.store ?? ''];
-    const product = event.product_id ? loadEnv().BILLING_PRODUCTS[event.product_id] : undefined;
-    if (!UUID.test(event.app_user_id) || !provider || !product) return false;
+    const product = event.product_id
+      ? loadEnv().BILLING_PRODUCTS[event.product_id]
+      : undefined;
+    const userId = event.app_user_id;
+    if (!userId || !UUID.test(userId) || !provider || !product) {
+      return false;
+    }
 
     const refund =
       event.type === 'REFUND' ||
@@ -53,41 +58,54 @@ export class BillingEventsService {
     if (refund) return this.refund(event);
 
     if (product.kind === 'credit') {
-      return event.type === 'NON_RENEWING_PURCHASE' && this.grantCredit(event, provider);
+      return (
+        event.type === 'NON_RENEWING_PURCHASE' &&
+        this.grantCredit(event, userId, provider)
+      );
     }
     if (SUBSCRIPTION_STARTS.has(event.type)) {
-      return this.openPeriod(event, provider, product.kind, false);
+      return this.openPeriod(event, userId, provider, product.kind, false);
     }
     if (event.type === 'CANCELLATION') {
-      return this.openPeriod(event, provider, product.kind, true);
+      return this.openPeriod(event, userId, provider, product.kind, true);
     }
     if (event.type === 'EXPIRATION') return this.endPeriod(event);
     return false;
   }
 
-  private async grantCredit(event: RevenueCatEvent, provider: string): Promise<boolean> {
+  private async grantCredit(
+    event: RevenueCatEvent,
+    userId: string,
+    provider: string,
+  ): Promise<boolean> {
     if (!event.transaction_id || event.purchased_at_ms === undefined) return false;
     await this.sql`
       SELECT billing_grant_credit(
-        ${event.app_user_id}::uuid, ${provider}, ${event.transaction_id},
+        ${userId}::uuid, ${provider}, ${event.transaction_id},
         ${event.product_id ?? ''}, ${new Date(event.purchased_at_ms).toISOString()}::timestamptz)`;
     return true;
   }
 
   private async openPeriod(
     event: RevenueCatEvent,
+    userId: string,
     provider: string,
     tier: 'tier1' | 'unlimited',
     cancelAtEnd: boolean,
   ): Promise<boolean> {
     const { transaction_id: txn, original_transaction_id: original } = event;
-    if (!txn || !original || event.purchased_at_ms === undefined || !event.expiration_at_ms) {
+    if (
+      !txn ||
+      !original ||
+      event.purchased_at_ms === undefined ||
+      !event.expiration_at_ms
+    ) {
       return false;
     }
     const uses = tier === 'tier1' ? loadEnv().TIER1_YEARLY_TRIPS : null;
     await this.sql`
       SELECT billing_open_period(
-        ${event.app_user_id}::uuid, ${provider}, ${tier}, ${original}, ${txn},
+        ${userId}::uuid, ${provider}, ${tier}, ${original}, ${txn},
         ${new Date(event.purchased_at_ms).toISOString()}::timestamptz,
         ${new Date(event.expiration_at_ms).toISOString()}::timestamptz,
         ${uses}::integer, ${cancelAtEnd})`;
@@ -97,7 +115,8 @@ export class BillingEventsService {
   private async endPeriod(event: RevenueCatEvent): Promise<boolean> {
     if (!event.original_transaction_id) return false;
     const at = new Date(event.expiration_at_ms ?? Date.now()).toISOString();
-    await this.sql`SELECT billing_end_period(${event.original_transaction_id}, ${at}::timestamptz)`;
+    await this
+      .sql`SELECT billing_end_period(${event.original_transaction_id}, ${at}::timestamptz)`;
     return true;
   }
 

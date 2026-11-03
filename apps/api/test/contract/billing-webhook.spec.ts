@@ -255,7 +255,7 @@ describe('billing webhook', () => {
   });
 
   describe('things we do not act on', () => {
-    test.each(['unknown-type', 'unknown-product', 'anonymous-user'])(
+    test.each(['unknown-type', 'unknown-product', 'anonymous-user', 'transfer'])(
       '%s is acknowledged with 200 and grants nothing',
       async (name) => {
         const response = await send(mine(name));
@@ -273,7 +273,10 @@ describe('billing webhook', () => {
     });
 
     test('an event for an account that does not exist is discarded', async () => {
-      const body = fixture('non-renewing-purchase', '00000000-0000-4000-8000-000000000001');
+      const body = fixture(
+        'non-renewing-purchase',
+        '00000000-0000-4000-8000-000000000001',
+      );
       body.event.transaction_id = `ghost-${traveller.tokens.user.id}`;
 
       const response = await send(body);

@@ -398,6 +398,29 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     expect(buttons.filter((node) => node.props.variant === 'primary')).toHaveLength(0);
   });
 
+  test('shows Plan and credits only when the traveller holds a plan or a credit (spec 014)', async () => {
+    const entitlementHook = jest.requireMock('@/features/billing/use-entitlement') as {
+      useEntitlement: () => unknown;
+    };
+    const held = (patch: Record<string, unknown>) => ({
+      entitlement: { tier: null, credits: 0, ...patch },
+    });
+
+    await render(<ProfileScreen />);
+    expect(screen.queryByTestId('profile-manage-plan')).toBeNull();
+
+    const spy = jest
+      .spyOn(entitlementHook, 'useEntitlement')
+      .mockReturnValue(held({ credits: 1 }));
+    await render(<ProfileScreen />);
+    expect(screen.getByTestId('profile-manage-plan')).toBeTruthy();
+
+    spy.mockReturnValue(held({ tier: 'tier1' }));
+    await render(<ProfileScreen />);
+    expect(screen.getByTestId('profile-manage-plan')).toBeTruthy();
+    spy.mockRestore();
+  });
+
   test('signs out through the mutation (FR-004) and marks the row busy while it runs', async () => {
     await render(<ProfileScreen />);
     await fireEvent.press(screen.getByTestId('profile-sign-out'));

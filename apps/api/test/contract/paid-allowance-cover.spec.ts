@@ -38,7 +38,10 @@ describe('paid allowance: covering a trip that arrived over the allowance', () =
     for (let i = 0; i < count; i += 1) {
       const record = tripRecord();
       const [result] = await push(app, t, 'trips', [record]);
-      out.push({ id: record.id as string, warnings: (result as { warnings?: string[] }).warnings });
+      out.push({
+        id: record.id as string,
+        warnings: (result as { warnings?: string[] }).warnings,
+      });
     }
     return out;
   };
@@ -133,7 +136,10 @@ describe('paid allowance: covering a trip that arrived over the allowance', () =
     const traveller = await registerTraveller(app);
     const pushed = await pushTrips(traveller, FREE + 1);
     await grantCredit(owner, traveller);
-    await server().delete(`/v1/trips/${pushed[FREE]!.id}`).set(auth(traveller)).expect(204);
+    await server()
+      .delete(`/v1/trips/${pushed[FREE]!.id}`)
+      .set(auth(traveller))
+      .expect(204);
 
     expect((await cover(traveller, pushed[FREE]!.id)).status).toBe(404);
   });

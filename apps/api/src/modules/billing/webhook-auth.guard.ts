@@ -24,7 +24,9 @@ const digest = (value: string): Buffer => createHash('sha256').update(value).dig
 export class WebhookAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const header = context.switchToHttp().getRequest<Request>().headers.authorization;
-    const presented = header?.startsWith(BEARER) ? header.slice(BEARER.length) : (header ?? '');
+    const presented = header?.startsWith(BEARER)
+      ? header.slice(BEARER.length)
+      : (header ?? '');
 
     const matches = timingSafeEqual(
       digest(presented),
