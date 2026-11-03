@@ -17,6 +17,7 @@ import {
   type RegisteredTraveller,
 } from '../support/app';
 import { migrationSql } from '../support/db';
+import { grantEntitlement } from '../support/entitlement';
 import { CITY, seedGeography } from '../support/geography';
 
 /**
@@ -47,6 +48,8 @@ describe('trips and stops', () => {
     owner = migrationSql();
     await seedGeography(owner);
     traveller = await registerTraveller(app);
+    // One traveller creates many trips here; the free allowance is not under test (see trip-allowance.spec.ts).
+    await grantEntitlement(owner, traveller);
   });
 
   afterAll(async () => {
