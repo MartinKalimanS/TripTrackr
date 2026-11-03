@@ -50,8 +50,8 @@ export class TripsController {
   }
 
   /**
-   * FR-009. 201 with the trip and nothing else — no allowance, no payment
-   * field (FR-084). The allowance branch arrives with User Story 9.
+   * FR-009. 201 with the trip and nothing else — no allowance, no payment field (FR-084). At the
+   * allowance and without an entitlement: 409 `TRIP_ALLOWANCE_REACHED` (FR-077, spec 013).
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)

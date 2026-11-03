@@ -21,4 +21,5 @@ export * from './api/expenses';
 export * from './api/fx';
 export * from './api/photos';
 export * from './api/documents';
+export * from './api/billing';
 export * from './boarding-pass';

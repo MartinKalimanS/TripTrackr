@@ -8,6 +8,7 @@ import type {
 } from '@triptrackr/contracts';
 
 import { apiError, notFound } from '@/common/errors/api-error';
+import { AllowanceService } from '@/modules/billing/allowance.service';
 
 import { deriveTripStatus, todayIsoDate } from './trip-status.service';
 import { TripsRepository, type StopRow, type TripRow } from './trips.repository';
@@ -18,11 +19,9 @@ export const tripNotFound = () => notFound('TRIP_NOT_FOUND', 'Trip');
 /**
  * Trips (rest-api.md §3; FR-009, FR-013). Access rule: owner.
  *
- * **Creation consults nothing about entitlement.** The allowance branch of
- * `POST /trips` — the 409 with counts and routes (FR-077) — is User Story 9's
- * and is added there, in this one method and nowhere else (research D-08).
- * Until then a trip is created, full stop, and the response carries no
- * allowance or payment field of any kind (FR-084).
+ * **Creation is the one place the allowance is checked** (FR-074, research D-08; spec 013), through
+ * `AllowanceService`, and below the allowance the response carries no allowance or payment field of any
+ * kind (FR-084).
  *
  * `GET /trips/:id` is owner-only in this story. The contract marks it
  * owner-or-public, but the public variant is the curated view of FR-055 — a
@@ -31,7 +30,10 @@ export const tripNotFound = () => notFound('TRIP_NOT_FOUND', 'Trip');
  */
 @Injectable()
 export class TripsService {
-  constructor(private readonly repository: TripsRepository) {}
+  constructor(
+    private readonly repository: TripsRepository,
+    private readonly allowance: AllowanceService,
+  ) {}
 
   async list(query: ListTripsQuery): Promise<Trip[]> {
     const rows = await this.repository.listOwnedTrips();
@@ -57,6 +59,13 @@ export class TripsService {
    * already exists, because the retry and the original are one intention.
    */
   async create(request: CreateTripRequest): Promise<Trip> {
+    // A replay of a create this traveller already made is the same intention, not a new trip, so it is
+    // answered before the allowance is asked.
+    const replay = request.id ? await this.repository.findOwnedTrip(request.id) : null;
+    if (replay) return this.loadOwned(replay.id);
+
+    await this.allowance.assertCanCreate(request);
+
     const inserted = await this.repository.insertTrip({
       id: request.id,
       title: request.title,
