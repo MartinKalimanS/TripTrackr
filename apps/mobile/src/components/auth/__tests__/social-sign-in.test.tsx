@@ -16,8 +16,10 @@ import {
   within,
 } from '@testing-library/react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { createHash } from 'node:crypto';
 import { Platform, StyleSheet } from 'react-native';
 
+import { fetchOAuthNonce } from '@/features/auth/oauth-nonce';
 import { ApiRequestError } from '@/lib/api-client';
 
 import { SocialSignIn } from '../social-sign-in';
@@ -47,8 +49,12 @@ let mockGoogleResponse: {
   params: Record<string, string>;
   error?: Error;
 } | null = null;
+const mockGoogleConfigs: { extraParams?: { nonce?: string } }[] = [];
 jest.mock('expo-auth-session/providers/google', () => ({
-  useIdTokenAuthRequest: () => [{ loaded: true }, mockGoogleResponse, mockPromptAsync],
+  useIdTokenAuthRequest: (config: { extraParams?: { nonce?: string } }) => {
+    mockGoogleConfigs.push(config);
+    return [{ loaded: true }, mockGoogleResponse, mockPromptAsync];
+  },
 }));
 
 const isAvailable = AppleAuthentication.isAvailableAsync as jest.Mock;
@@ -69,6 +75,8 @@ beforeEach(() => {
     mutation.error = null;
   }
   mockGoogleResponse = null;
+  mockGoogleConfigs.length = 0;
+  (fetchOAuthNonce as jest.Mock).mockClear();
   delete process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
   delete process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
   isAvailable.mockResolvedValue(false);
@@ -228,16 +236,24 @@ describe('<SocialSignIn> — providers that cannot work yet', () => {
 describe('<SocialSignIn> — providers that work', () => {
   test('Google, once configured, runs its flow and forwards the id_token', async () => {
     configureGoogle();
-    mockGoogleResponse = { type: 'success', params: { id_token: 'google-jwt' } };
-    await render(<SocialSignIn />);
+    const { rerender } = await render(<SocialSignIn />);
+    // The sheet opens only once the server nonce is in the request (spec 012).
+    await waitFor(() =>
+      expect(mockGoogleConfigs.at(-1)?.extraParams?.nonce).toBeTruthy(),
+    );
 
     const google = screen.getByTestId('google-sign-in');
     expect(google.props.accessibilityLabel).toBe('Continue with Google');
     await fireEvent.press(google);
-
     expect(mockPromptAsync).toHaveBeenCalled();
+
+    mockGoogleResponse = { type: 'success', params: { id_token: 'google-jwt' } };
+    await rerender(<SocialSignIn />);
     await waitFor(() =>
-      expect(mockMutations.google.mutate).toHaveBeenCalledWith('google-jwt'),
+      expect(mockMutations.google.mutate).toHaveBeenCalledWith({
+        idToken: 'google-jwt',
+        nonce: 'server-issued-nonce-0123456789',
+      }),
     );
   });
 
@@ -268,9 +284,52 @@ describe('<SocialSignIn> — providers that work', () => {
     await waitFor(() =>
       expect(mockMutations.apple.mutate).toHaveBeenCalledWith({
         identityToken: 'apple-jwt',
+        nonce: 'server-issued-nonce-0123456789',
         displayName: 'Ana Rossi',
       }),
     );
+  });
+
+  test('Apple is handed the SHA-256 of a fresh server nonce, never the nonce itself (spec 012)', async () => {
+    isAvailable.mockResolvedValue(true);
+    signInAsync.mockResolvedValue({ identityToken: 'apple-jwt', fullName: null });
+    await render(<SocialSignIn />);
+
+    await fireEvent.press(await screen.findByTestId('apple-sign-in'));
+
+    await waitFor(() => expect(signInAsync).toHaveBeenCalled());
+    const [options] = signInAsync.mock.calls[0] as [{ nonce: string }];
+    expect(options.nonce).toBe(
+      createHash('sha256').update('server-issued-nonce-0123456789').digest('hex'),
+    );
+    expect(fetchOAuthNonce).toHaveBeenCalledTimes(1);
+  });
+
+  test('Apple that cannot get a nonce is a failure in words, and the sheet never opens', async () => {
+    isAvailable.mockResolvedValue(true);
+    (fetchOAuthNonce as jest.Mock).mockRejectedValueOnce(
+      new ApiRequestError(0, { code: 'NETWORK', message: 'x' }),
+    );
+    await render(<SocialSignIn />);
+
+    await fireEvent.press(await screen.findByTestId('apple-sign-in'));
+
+    expect(await screen.findByTestId('social-sign-in-error')).toBeTruthy();
+    expect(signInAsync).not.toHaveBeenCalled();
+    expect(mockMutations.apple.mutate).not.toHaveBeenCalled();
+  });
+
+  test('Google builds its request with the server nonce, and asks for another after an attempt (spec 012)', async () => {
+    configureGoogle();
+    mockGoogleResponse = { type: 'success', params: { id_token: 'google-jwt' } };
+    await render(<SocialSignIn />);
+
+    await waitFor(() =>
+      expect(mockGoogleConfigs.at(-1)?.extraParams).toEqual({
+        nonce: 'server-issued-nonce-0123456789',
+      }),
+    );
+    await waitFor(() => expect(fetchOAuthNonce).toHaveBeenCalledTimes(2));
   });
 
   test('a cancelled Apple sheet is not an error', async () => {

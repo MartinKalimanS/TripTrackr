@@ -18,7 +18,7 @@ columns say whether the control exists in code, whether a test pins it, and what
 | Account lockout                                  | partial | yes           | The per-account bucket is the lockout (10 guesses / 15 min, then 429). There is no persistent lock that survives the window; judged sufficient, recorded as a decision below.                                                                                          |
 | Google token: signature, `aud`, `iss`, `exp`     | yes     | yes           | `google-auth-library` checks them; audience list is mandatory. OK.                                                                                                                                                                                                     |
 | Apple token: signature, `iss`, `aud`, `exp`      | yes     | yes           | `jose` with the issuer and audience. **Fixed:** the algorithm is now pinned to RS256 (`APPLE_ALGORITHMS`), unit-tested.                                                                                                                                                |
-| Provider token nonce                             | **no**  | no            | **Open, needs the owner:** see decision 2.                                                                                                                                                                                                                             |
+| Provider token nonce                             | yes     | yes           | **Fixed** (spec 012): server-issued, single-use, bound into the Google and Apple requests and checked against the token claim.                                                                                                                                         |
 | Unverified provider email never links an account | yes     | yes           | `email_unverified` outcome refused as `EMAIL_TAKEN`. OK.                                                                                                                                                                                                               |
 | Apple relay addresses                            | yes     | yes           | Treated as the verified address Apple vouches for; `email_verified` accepts boolean and `"true"`. OK.                                                                                                                                                                  |
 | OAuth identities removed with the account        | yes     | no            | FK `ON DELETE CASCADE`. **Added** an `oauth_identities` row to the deletion residue fixture, so the residue test now proves it.                                                                                                                                        |
@@ -29,11 +29,10 @@ columns say whether the control exists in code, whether a test pins it, and what
 
 1. **Lockout is the account rate limit.** A persistent per-account lock would let anyone lock a victim out by guessing
    at their address; the windowed limit gives the same protection against guessing without that denial of service.
-2. **Nonce (open).** Neither provider token is bound to a nonce, so a stolen but unexpired identity token could be replayed
-   to `POST /auth/oauth/*`. Closing it changes the wire format (`nonce` on both requests, a hashed nonce for Apple) and
-   both sign-in buttons, and cannot be verified without a device. Recommendation: do it as one change with the device
-   run of S-03, require the nonce, and ship the app and API together. Not done here because a token-format change needs a
-   migration plan (AGENT-PROMPTS `P-S09`).
+2. **Nonce (closed, spec 012).** Sign-in tokens are bound to a server-issued, single-use nonce (`POST /auth/oauth/nonce`), so a
+   leaked token cannot be replayed. The Google and Apple client credentials are the owner's to supply; the device run is
+   listed in `specs/012-oauth-nonce/as-built.md`.
+
 3. **Registration reveals that an address is taken** (`409 EMAIL_TAKEN`). That is the spec's documented edge case and is
    limited to 5 attempts an hour per address.
 4. Email verification is not required to use the app. Recorded as is; making it a gate is a product decision.

@@ -10,6 +10,7 @@ import {
   type OAuthTokenVerifier,
   type VerifiedIdentity,
 } from '@/modules/auth/oauth-token-verifier';
+import { OAuthNonceService } from '@/modules/auth/oauth-nonce.service';
 import { OAuthService } from '@/modules/auth/oauth.service';
 import type { PasswordService } from '@/modules/auth/password.service';
 
@@ -33,6 +34,9 @@ import type { PasswordService } from '@/modules/auth/password.service';
  *   (409) — answered exactly as a password registration conflict is, because
  *   which kind of account holds an address is not the caller's to learn.
  */
+
+/** The nonce on every request; the verifier fake does not look at it. */
+const NONCE = 'a-single-use-nonce-0123456789';
 
 const USER_ID = '22222222-2222-4222-8222-222222222222';
 const ADDRESS = 'traveller@example.test';
@@ -62,8 +66,11 @@ type SignInEntry = readonly [
 
 /** Both routes share the verification step, so both owe the same refusals. */
 const ENTRY_POINTS: readonly SignInEntry[] = [
-  ['google', (service) => service.google({ id_token: 'presented-token' })],
-  ['apple', (service) => service.apple({ identity_token: 'presented-token' })],
+  ['google', (service) => service.google({ id_token: 'presented-token', nonce: NONCE })],
+  [
+    'apple',
+    (service) => service.apple({ identity_token: 'presented-token', nonce: NONCE }),
+  ],
 ];
 
 /** The pair and profile AuthService.signIn would mint for `userId`. */
@@ -127,11 +134,14 @@ interface Harness {
   readonly presented: string[];
   /** Account ids AuthService.signIn was asked to mint tokens for. */
   readonly signedIn: string[];
+  /** Nonces the service asked to consume, in order. */
+  readonly consumed: string[];
 }
 
-function harness(verify: () => Promise<VerifiedIdentity>): Harness {
+function harness(verify: () => Promise<VerifiedIdentity>, nonceIsLive = true): Harness {
   const presented: string[] = [];
   const signedIn: string[] = [];
+  const consumed: string[] = [];
 
   const verifier = {
     verifyGoogle: (token: string) => {
@@ -151,7 +161,19 @@ function harness(verify: () => Promise<VerifiedIdentity>): Harness {
     },
   } as unknown as AuthService;
 
-  return { service: new OAuthService(verifier, auth), presented, signedIn };
+  const nonces = {
+    consume: (nonce: string) => {
+      consumed.push(nonce);
+      return Promise.resolve(nonceIsLive);
+    },
+  } as unknown as OAuthNonceService;
+
+  return {
+    service: new OAuthService(verifier, auth, nonces),
+    presented,
+    signedIn,
+    consumed,
+  };
 }
 
 /**
@@ -192,6 +214,49 @@ describe('OAuthService', () => {
 
   const loggedLines = () => logged.mock.calls.map(([message]) => String(message));
 
+  describe('nonce (spec 012; FR-004)', () => {
+    it.each(ENTRY_POINTS)(
+      'spends the nonce once the %s token has verified, before any account is touched',
+      async (_provider, signIn) => {
+        const deps = harness(() => Promise.resolve(GOOGLE_IDENTITY));
+
+        await anonymous(upsertAnswering(USER_ID, 'existing'), () => signIn(deps.service));
+
+        expect(deps.consumed).toEqual([NONCE]);
+      },
+    );
+
+    it.each(ENTRY_POINTS)(
+      'refuses a %s sign-in whose nonce is unknown, spent or expired, and signs nobody in',
+      async (_provider, signIn) => {
+        const deps = harness(() => Promise.resolve(GOOGLE_IDENTITY), false);
+        const script = upsertAnswering(USER_ID, 'existing');
+
+        await expect(anonymous(script, () => signIn(deps.service))).rejects.toMatchObject(
+          {
+            response: { error: { code: 'OAUTH_TOKEN_INVALID' } },
+          },
+        );
+
+        expect(script.calls).toEqual([]);
+        expect(deps.signedIn).toEqual([]);
+      },
+    );
+
+    it.each(ENTRY_POINTS)(
+      'does not burn the nonce when the %s token itself is refused',
+      async (_provider, signIn) => {
+        const deps = harness(() => Promise.reject(new OAuthTokenInvalidError('google')));
+
+        await expect(
+          anonymous(upsertAnswering(USER_ID, 'existing'), () => signIn(deps.service)),
+        ).rejects.toBeDefined();
+
+        expect(deps.consumed).toEqual([]);
+      },
+    );
+  });
+
   describe('google', () => {
     it('hands the keyhole what Google verified and signs in the account it names', async () => {
       // Arrange
@@ -200,7 +265,7 @@ describe('OAuthService', () => {
 
       // Act
       const tokens = await anonymous(script, () =>
-        deps.service.google({ id_token: 'google-id-token' }),
+        deps.service.google({ id_token: 'google-id-token', nonce: NONCE }),
       );
 
       // Assert — Google's own name for the traveller is the one bound, because
@@ -225,7 +290,7 @@ describe('OAuthService', () => {
         const script = upsertAnswering(USER_ID, outcome);
 
         const tokens = await anonymous(script, () =>
-          deps.service.google({ id_token: 'google-id-token' }),
+          deps.service.google({ id_token: 'google-id-token', nonce: NONCE }),
         );
 
         expect(tokens).toEqual(tokensFor(USER_ID));
@@ -249,6 +314,7 @@ describe('OAuthService', () => {
       const tokens = await anonymous(script, () =>
         deps.service.apple({
           identity_token: 'apple-identity-token',
+          nonce: NONCE,
           display_name: 'Ada Lovelace',
         }),
       );
@@ -269,7 +335,7 @@ describe('OAuthService', () => {
       const script = upsertAnswering(USER_ID, 'existing');
 
       const tokens = await anonymous(script, () =>
-        deps.service.apple({ identity_token: 'apple-identity-token' }),
+        deps.service.apple({ identity_token: 'apple-identity-token', nonce: NONCE }),
       );
 
       expect(script.calls[0]?.values).toEqual([
@@ -334,7 +400,9 @@ describe('OAuthService', () => {
       const script = scriptedTx({});
 
       await expect(
-        anonymous(script, () => deps.service.google({ id_token: 'google-id-token' })),
+        anonymous(script, () =>
+          deps.service.google({ id_token: 'google-id-token', nonce: NONCE }),
+        ),
       ).rejects.toBe(fault);
       expect(script.calls).toHaveLength(0);
       expect(deps.signedIn).toHaveLength(0);
@@ -352,7 +420,7 @@ describe('OAuthService', () => {
       // Act
       const error = await refusalOf(
         anonymous(script, () =>
-          deps.service.apple({ identity_token: 'apple-identity-token' }),
+          deps.service.apple({ identity_token: 'apple-identity-token', nonce: NONCE }),
         ),
       );
 
@@ -376,7 +444,7 @@ describe('OAuthService', () => {
       // Act
       const oauthConflict = await refusalOf(
         anonymous(upsertAnswering(null, 'email_unverified'), () =>
-          deps.service.google({ id_token: 'google-id-token' }),
+          deps.service.google({ id_token: 'google-id-token', nonce: NONCE }),
         ),
       );
       const registrationConflict = await refusalOf(

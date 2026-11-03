@@ -34,9 +34,25 @@ export const LoginRequest = z.strictObject({
 });
 export type LoginRequest = z.infer<typeof LoginRequest>;
 
-/** Google's `id_token`, verified server-side against Google's certificates (FR-002). */
+/**
+ * The nonce a sign-in with a provider is bound to (spec 012). Issued by `POST /auth/oauth/nonce`,
+ * handed to the provider for the one attempt and sent back here with the token the provider
+ * returned. The server accepts each one once.
+ */
+export const OAuthNonce = z.string().min(16).max(128);
+export type OAuthNonce = z.infer<typeof OAuthNonce>;
+
+/** `POST /auth/oauth/nonce`: a fresh single-use nonce, valid for ten minutes. */
+export const OAuthNonceResponse = z.strictObject({ nonce: OAuthNonce });
+export type OAuthNonceResponse = z.infer<typeof OAuthNonceResponse>;
+
+/**
+ * Google's `id_token`, verified server-side against Google's certificates (FR-002). Its `nonce`
+ * claim must equal `nonce`.
+ */
 export const GoogleOAuthRequest = z.strictObject({
   id_token: z.string().min(1),
+  nonce: OAuthNonce,
 });
 export type GoogleOAuthRequest = z.infer<typeof GoogleOAuthRequest>;
 
@@ -47,6 +63,8 @@ export type GoogleOAuthRequest = z.infer<typeof GoogleOAuthRequest>;
  */
 export const AppleOAuthRequest = z.strictObject({
   identity_token: z.string().min(1),
+  /** Apple's token carries the lower-case hex SHA-256 of this value as its `nonce` claim. */
+  nonce: OAuthNonce,
   display_name: DisplayName.optional(),
 });
 export type AppleOAuthRequest = z.infer<typeof AppleOAuthRequest>;

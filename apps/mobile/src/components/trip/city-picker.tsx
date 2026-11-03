@@ -35,7 +35,7 @@ import { View } from 'react-native';
 import { Field } from '@/components/ui/field';
 import { FlagChip } from '@/components/ui/flag-chip';
 import { ListGroup, ListRow } from '@/components/ui/list-group';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
+import { EmptyState, ErrorState, ListSkeleton } from '@/components/ui/state-view';
 import { Text } from '@/components/ui/text';
 import { useCitySearch, useCountries } from '@/features/geography/use-geography';
 import { foldAccents } from '@/db/repositories/geography';
@@ -107,7 +107,9 @@ function CountryStep({ onPick }: CountryStepProps) {
   const [filter, setFilter] = useState('');
   const countries = useCountries();
 
-  if (countries.isPending) return <LoadingState title="Loading countries" />;
+  if (countries.isPending) {
+    return <ListSkeleton variant="row" rows={8} label="Loading countries" />;
+  }
   if (countries.isError) {
     return (
       <ErrorState
@@ -175,7 +177,9 @@ function CityResults({ search, country, query, onPick }: CityResultsProps) {
       />
     );
   }
-  if (search.isPending) return <LoadingState title="Searching cities" />;
+  if (search.isPending) {
+    return <ListSkeleton variant="row" rows={5} label="Searching cities" />;
+  }
   if (search.data.items.length === 0) {
     return (
       <EmptyState
