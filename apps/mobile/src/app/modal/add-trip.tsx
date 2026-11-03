@@ -70,20 +70,28 @@ function useAddTripForm() {
 
   // `values` are the resolver's parsed output — the title already trimmed by
   // the schema — so what is written is exactly what the server would accept.
-  const save = handleSubmit((values) => {
-    try {
-      const trip = createTrip(values);
-      haptics.success();
-      router.replace(`/trip/${trip.id}`);
-    } catch (error) {
-      // A local write failing is a defect worth knowing about (FR-073) AND a
-      // message the traveller must see — never a silent no-op.
-      Sentry.captureException(error);
-      setSaveError(TRIP_FORM_COPY.saveFailed);
-    }
-  });
+  // `addStop`: the traveller tapped "Where to?", so the trip opens on the first stop's editor.
+  const saveThen = (addStop: boolean) =>
+    handleSubmit((values) => {
+      try {
+        const trip = createTrip(values);
+        haptics.success();
+        router.replace(
+          addStop
+            ? { pathname: '/trip/[id]', params: { id: trip.id, addStop: '1' } }
+            : `/trip/${trip.id}`,
+        );
+      } catch (error) {
+        // A local write failing is a defect worth knowing about (FR-073) AND a
+        // message the traveller must see — never a silent no-op.
+        Sentry.captureException(error);
+        setSaveError(TRIP_FORM_COPY.saveFailed);
+      }
+    });
+  const save = saveThen(false);
+  const saveAndAddStop = saveThen(true);
 
-  return { control, save, saveError, cancel: () => router.back() };
+  return { control, save, saveAndAddStop, saveError, cancel: () => router.back() };
 }
 
 type TitleFieldProps = { control: TripControl; onSubmitEditing: () => void };
@@ -144,7 +152,7 @@ function HomeCurrencyField({ control }: { control: TripControl }) {
 }
 
 export default function AddTripScreen() {
-  const { control, save, saveError, cancel } = useAddTripForm();
+  const { control, save, saveAndAddStop, saveError, cancel } = useAddTripForm();
 
   return (
     <FormSheet
@@ -160,7 +168,7 @@ export default function AddTripScreen() {
       }}>
       <TitleField control={control} onSubmitEditing={() => void save()} />
 
-      <PicturedDestination />
+      <PicturedDestination onAction={() => void saveAndAddStop()} />
 
       <PicturedCover />
 
