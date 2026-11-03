@@ -84,8 +84,17 @@ describe('useCountries', () => {
     apiFetch.mockRejectedValueOnce(offline());
     const { result } = await renderHook(() => useCountries(), { wrapper });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(result.current.data?.offline).toBe(true));
     expect(result.current.data).toEqual({ items: [italy], offline: true });
+  });
+
+  test('draws the saved countries at once, before the network answers', async () => {
+    geographyRepository.cacheCountries(sqlite.db, [italy]);
+    apiFetch.mockReturnValueOnce(new Promise(() => undefined));
+    const { result } = await renderHook(() => useCountries(), { wrapper });
+
+    expect(result.current.isPending).toBe(false);
+    expect(result.current.data).toEqual({ items: [italy], offline: false });
   });
 
   test('falls back on a server failure too — a 503 is not the traveller’s fault', async () => {
@@ -95,8 +104,7 @@ describe('useCountries', () => {
     );
     const { result } = await renderHook(() => useCountries(), { wrapper });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.offline).toBe(true);
+    await waitFor(() => expect(result.current.data?.offline).toBe(true));
   });
 
   test('does not hide an authentication failure behind the cache', async () => {
@@ -152,7 +160,16 @@ describe('useCitySearch', () => {
     apiFetch.mockRejectedValueOnce(offline());
     const { result } = await renderHook(() => useCitySearch(1, 'RÓ'), { wrapper });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(result.current.data?.offline).toBe(true));
     expect(result.current.data).toEqual({ items: [rome], offline: true });
+  });
+
+  test('draws what the device saved at once, before the network answers', async () => {
+    geographyRepository.cacheCities(sqlite.db, [rome]);
+    apiFetch.mockReturnValueOnce(new Promise(() => undefined));
+    const { result } = await renderHook(() => useCitySearch(1, 'Ro'), { wrapper });
+
+    expect(result.current.isPending).toBe(false);
+    expect(result.current.data).toEqual({ items: [rome], offline: false });
   });
 });
