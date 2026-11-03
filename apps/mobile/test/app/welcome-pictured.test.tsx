@@ -291,6 +291,7 @@ describe('Welcome - the three buttons (owner decision Q-11)', () => {
     expect(signInAsync).toHaveBeenCalledTimes(1);
     expect(mockMutations.apple.mutate).toHaveBeenCalledWith({
       identityToken: 'apple-token',
+      nonce: 'server-issued-nonce-0123456789',
       displayName: 'Ana Lopez',
     });
   });
@@ -303,7 +304,10 @@ describe('Welcome - the three buttons (owner decision Q-11)', () => {
 
     mockGoogleResponse = { type: 'success', params: { id_token: 'google-token' } };
     await rerender(<WelcomeScreen />);
-    expect(mockMutations.google.mutate).toHaveBeenCalledWith('google-token');
+    expect(mockMutations.google.mutate).toHaveBeenCalledWith({
+      idToken: 'google-token',
+      nonce: 'server-issued-nonce-0123456789',
+    });
   });
 
   test('a provider failure or refusal is said inline, in words, as an alert, on Welcome', async () => {

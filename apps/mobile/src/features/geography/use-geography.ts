@@ -73,13 +73,37 @@ async function fetchCities(
   }
 }
 
-/** `GET /countries` — "cached aggressively" (rest-api.md §11): a day is plenty. */
+/** The cities the device saved for a country matching `query`; `undefined` when none. */
+function savedCities(
+  db: AppDatabase,
+  countryId: number,
+  query: string,
+): GeographyResult<City> | undefined {
+  const items = geographyRepository.searchCities(db, countryId, query);
+  return items.length > 0 ? { items, offline: false } : undefined;
+}
+
+const COUNTRIES_STALE_MS = 24 * 60 * 60 * 1000;
+
+/** What the device already holds, as an answer; `undefined` when it holds nothing yet. */
+function savedCountries(db: AppDatabase): GeographyResult<Country> | undefined {
+  const items = geographyRepository.listCountries(db);
+  return items.length > 0 ? { items, offline: false } : undefined;
+}
+
+/**
+ * `GET /countries` — "cached aggressively" (rest-api.md §11): a day is plenty. Local first:
+ * the countries saved on the device are the first answer (the picker draws at once), and the
+ * network refreshes them behind it. Only a device that has never fetched them waits.
+ */
 export function useCountries() {
   const db = useDatabase();
   return useQuery({
     queryKey: ['geography', 'countries'],
     queryFn: () => fetchCountries(db),
-    staleTime: 24 * 60 * 60 * 1000,
+    staleTime: COUNTRIES_STALE_MS,
+    initialData: () => savedCountries(db),
+    initialDataUpdatedAt: 0,
   });
 }
 
@@ -96,6 +120,7 @@ export function useCitySearch(countryId: number | null, query: string) {
     queryFn: () => fetchCities(db, countryId!, trimmed),
     enabled: countryId !== null,
     staleTime: 60 * 60 * 1000,
-    placeholderData: (previous) => previous,
+    // The previous answer while typing, else what the device saved for this country.
+    placeholderData: (previous) => previous ?? savedCities(db, countryId!, trimmed),
   });
 }

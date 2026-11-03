@@ -25,8 +25,10 @@
  * hook is called (hence two components).
  */
 import * as Google from 'expo-auth-session/providers/google';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Platform } from 'react-native';
+
+import { useOAuthNonce } from '@/features/auth/use-oauth-nonce';
 
 import { ProviderButton } from './provider-button';
 
@@ -48,7 +50,8 @@ export function isGoogleSignInConfigured(): boolean {
 }
 
 export type GoogleSignInButtonProps = {
-  onIdToken: (idToken: string) => void;
+  /** The id_token and the server-issued nonce its request carried (spec 012). */
+  onIdToken: (idToken: string, nonce: string) => void;
   onError: (error: unknown) => void;
   /** The Google sign-in mutation is in flight. */
   busy?: boolean;
@@ -62,7 +65,13 @@ function ConfiguredGoogleSignInButton({
   busy = false,
   disabled = false,
 }: GoogleSignInButtonProps) {
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(clientIds());
+  // The nonce is fetched before the request is built and replaced after every attempt.
+  const { nonce, renew } = useOAuthNonce(onError);
+  const extraParams = useMemo(() => (nonce ? { nonce } : undefined), [nonce]);
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    ...clientIds(),
+    extraParams,
+  });
   const handled = useRef<typeof response>(null);
 
   useEffect(() => {
@@ -71,18 +80,20 @@ function ConfiguredGoogleSignInButton({
 
     if (response.type === 'success') {
       const idToken = response.params.id_token;
-      if (idToken) onIdToken(idToken);
+      if (idToken && nonce) onIdToken(idToken, nonce);
       else onError(new Error('Google returned no id_token.'));
+      renew();
     } else if (response.type === 'error') {
       onError(response.error ?? new Error('Google sign-in failed.'));
+      renew();
     }
     // 'cancel' / 'dismiss' / 'locked' / 'opened' are not outcomes to report.
-  }, [response, onIdToken, onError]);
+  }, [response, nonce, renew, onIdToken, onError]);
 
   return (
     <ProviderButton
       provider="google"
-      busy={busy || request === null}
+      busy={busy || request === null || nonce === null}
       disabled={disabled}
       onPress={() => void promptAsync()}
     />

@@ -9,18 +9,19 @@ Baseline from `docs/travelappfullspec.md` §4. Endpoints added or changed by the
 
 ## 1. Auth
 
-| Method | Path                           | Access | Notes                                                                                              |
-| ------ | ------------------------------ | ------ | -------------------------------------------------------------------------------------------------- |
-| POST   | `/auth/register`               | public | `{email, password, display_name}`. Creates the account, sends verification, returns tokens. FR-001 |
-| POST   | `/auth/login`                  | public | Returns `{access_token, refresh_token, user}`. FR-001                                              |
-| POST   | `/auth/oauth/google`           | public | `{id_token}`, verified server-side. Creates transparently on first use. FR-002                     |
-| POST   | `/auth/oauth/apple`            | public | `{identity_token}`. Same. FR-002                                                                   |
-| POST   | `/auth/refresh`                | public | Rotates the refresh token; the old one is revoked. FR-003, FR-005                                  |
-| POST   | `/auth/logout`                 | owner  | Revokes one refresh token. FR-004                                                                  |
-| POST   | `/auth/logout-all`             | owner  | Revokes every refresh token for the account. FR-004                                                |
-| POST   | `/auth/verify-email`           | public | **Added** — spec Assumptions places verification in scope                                          |
-| POST   | `/auth/password-reset/request` | public | **Added** — same                                                                                   |
-| POST   | `/auth/password-reset/confirm` | public | **Added** — same                                                                                   |
+| Method | Path                           | Access | Notes                                                                                                       |
+| ------ | ------------------------------ | ------ | ----------------------------------------------------------------------------------------------------------- |
+| POST   | `/auth/register`               | public | `{email, password, display_name}`. Creates the account, sends verification, returns tokens. FR-001          |
+| POST   | `/auth/login`                  | public | Returns `{access_token, refresh_token, user}`. FR-001                                                       |
+| POST   | `/auth/oauth/nonce`            | public | Issues a single-use nonce (10 min) for ONE provider sign-in. `200 {nonce}`. Spec 012                        |
+| POST   | `/auth/oauth/google`           | public | `{id_token, nonce}`, verified server-side; the token's `nonce` claim must equal `nonce`, spent once. FR-002 |
+| POST   | `/auth/oauth/apple`            | public | `{identity_token, nonce}`. The claim is the lower-case hex SHA-256 of `nonce`. Same. FR-002                 |
+| POST   | `/auth/refresh`                | public | Rotates the refresh token; the old one is revoked. FR-003, FR-005                                           |
+| POST   | `/auth/logout`                 | owner  | Revokes one refresh token. FR-004                                                                           |
+| POST   | `/auth/logout-all`             | owner  | Revokes every refresh token for the account. FR-004                                                         |
+| POST   | `/auth/verify-email`           | public | **Added** — spec Assumptions places verification in scope                                                   |
+| POST   | `/auth/password-reset/request` | public | **Added** — same                                                                                            |
+| POST   | `/auth/password-reset/confirm` | public | **Added** — same                                                                                            |
 
 **Token contract**: access tokens are 15-minute JWTs; refresh tokens are opaque random strings,
 stored only as hashes, valid 30 days, and rotated on every use.

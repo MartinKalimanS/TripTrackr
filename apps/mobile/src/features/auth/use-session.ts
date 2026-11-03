@@ -68,16 +68,27 @@ export function useLogin() {
   });
 }
 
+export interface GoogleSignInInput {
+  idToken: string;
+  /** The server-issued nonce the Google request carried (spec 012). */
+  nonce: string;
+}
+
 /** FR-002 — `POST /auth/oauth/google` with the `id_token` from expo-auth-session. */
 export function useGoogleSignIn() {
   return useMutation({
-    mutationFn: (idToken: string) =>
-      authenticate('/auth/oauth/google', GoogleOAuthRequest.parse({ id_token: idToken })),
+    mutationFn: ({ idToken, nonce }: GoogleSignInInput) =>
+      authenticate(
+        '/auth/oauth/google',
+        GoogleOAuthRequest.parse({ id_token: idToken, nonce }),
+      ),
   });
 }
 
 export interface AppleSignInInput {
   identityToken: string;
+  /** The server-issued nonce; Apple was given its SHA-256 (spec 012). */
+  nonce: string;
   /** Apple supplies the name only on the very first authorisation. */
   displayName?: string;
 }
@@ -85,11 +96,12 @@ export interface AppleSignInInput {
 /** FR-002 — `POST /auth/oauth/apple` with the `identity_token` from expo-apple-authentication. */
 export function useAppleSignIn() {
   return useMutation({
-    mutationFn: ({ identityToken, displayName }: AppleSignInInput) =>
+    mutationFn: ({ identityToken, nonce, displayName }: AppleSignInInput) =>
       authenticate(
         '/auth/oauth/apple',
         AppleOAuthRequest.parse({
           identity_token: identityToken,
+          nonce,
           ...(displayName ? { display_name: displayName } : {}),
         }),
       ),

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { OAuth2Client, type TokenPayload } from 'google-auth-library';
 import type { createRemoteJWKSet, JWTPayload } from 'jose';
+import { createHash, timingSafeEqual } from 'node:crypto';
 
 import { loadEnv } from '@/common/config/env.schema';
 
@@ -110,7 +111,7 @@ export class OAuthTokenVerifier {
     this.clients = clients ?? defaultClients();
   }
 
-  async verifyGoogle(idToken: string): Promise<VerifiedIdentity> {
+  async verifyGoogle(idToken: string, nonce: string): Promise<VerifiedIdentity> {
     const audience = configuredAudience('google', loadEnv().GOOGLE_OAUTH_CLIENT_IDS);
 
     const payload = await this.attempt('google', async () => {
@@ -118,7 +119,9 @@ export class OAuthTokenVerifier {
       return ticket.getPayload();
     });
 
-    if (!payload?.sub) throw new OAuthTokenInvalidError('google');
+    if (!payload?.sub || !nonceMatches(payload.nonce, nonce)) {
+      throw new OAuthTokenInvalidError('google');
+    }
 
     return {
       provider: 'google',
@@ -129,7 +132,7 @@ export class OAuthTokenVerifier {
     };
   }
 
-  async verifyApple(identityToken: string): Promise<VerifiedIdentity> {
+  async verifyApple(identityToken: string, nonce: string): Promise<VerifiedIdentity> {
     const audience = configuredAudience('apple', loadEnv().APPLE_OAUTH_CLIENT_IDS);
 
     const payload = await this.attempt('apple', async () => {
@@ -141,7 +144,10 @@ export class OAuthTokenVerifier {
       return claims;
     });
 
-    if (!payload.sub) throw new OAuthTokenInvalidError('apple');
+    // The app hands Apple the SHA-256 of the nonce, so the raw value never appears in the token.
+    if (!payload.sub || !nonceMatches(payload.nonce, sha256Hex(nonce))) {
+      throw new OAuthTokenInvalidError('apple');
+    }
 
     const email = typeof payload.email === 'string' ? payload.email.toLowerCase() : null;
 
@@ -173,4 +179,17 @@ function configuredAudience(provider: OAuthProvider, ids: readonly string[] | un
   if (!ids || ids.length === 0) throw new OAuthProviderUnavailableError(provider);
 
   return [...ids];
+}
+
+/** Lower-case hex SHA-256: the form Apple echoes back and the app sends it. */
+export function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+/** The token's nonce claim equals the expected value; absent, or any other type, never does. */
+function nonceMatches(claim: unknown, expected: string): boolean {
+  if (typeof claim !== 'string') return false;
+  const a = Buffer.from(claim);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
