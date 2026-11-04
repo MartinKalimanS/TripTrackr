@@ -127,6 +127,18 @@ describe('tripsRepository', () => {
     expect(rows.map((row) => row.id)).toEqual([newer.id, older.id]);
   });
 
+  test('countUnsynced counts live trips the server has not acknowledged, and nothing else', () => {
+    const pushed = newTrip('Pushed');
+    newTrip('Waiting');
+    const gone = newTrip('Deleted');
+    sqlite.native
+      .prepare('UPDATE trips SET synced_at = ? WHERE id = ?')
+      .run('2026-05-01T00:00:00.000Z', pushed.id);
+    tripsRepository.remove(sqlite.db, gone.id);
+
+    expect(tripsRepository.countUnsynced(sqlite.db)).toBe(1);
+  });
+
   test('remove tombstones the trip and its stops; ordinary reads no longer see them', () => {
     const trip = newTrip();
     const stop = addStop(trip.id, rome.id, '2026-05-10', '2026-05-12');

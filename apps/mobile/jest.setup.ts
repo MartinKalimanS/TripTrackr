@@ -513,6 +513,7 @@ jest.mock('@/features/billing/use-entitlement', () => ({
     canCreateWithoutPaying: true,
     showPaywallEntry: false,
     mustPayToCreate: false,
+    settle: () => Promise.resolve(false),
     refetch: () => Promise.resolve(),
   }),
   useCoverTrip: () => ({ mutateAsync: () => Promise.resolve({ source: 'credit' }) }),

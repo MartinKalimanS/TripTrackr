@@ -13,7 +13,7 @@
  *   - every read filters `deleted_at IS NULL` — the sync engine is the only
  *     reader that may see tombstones (sync-protocol.md §1).
  */
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, isNull } from 'drizzle-orm';
 
 import type { AppDatabase } from '@/db/client';
 import { tripStops, trips, type TripRow } from '@/db/schema';
@@ -87,4 +87,17 @@ function remove(db: AppDatabase, id: string): void {
   });
 }
 
-export const tripsRepository = { listQuery, byIdQuery, create, remove };
+/**
+ * Live trips the server has not acknowledged yet (`synced_at` is null): made on this device and
+ * still waiting to be pushed. The server's count of held trips does not include them.
+ */
+function countUnsynced(db: AppDatabase): number {
+  const row = db
+    .select({ total: count() })
+    .from(trips)
+    .where(and(isNull(trips.deleted_at), isNull(trips.synced_at)))
+    .get();
+  return row?.total ?? 0;
+}
+
+export const tripsRepository = { listQuery, byIdQuery, create, remove, countUnsynced };
