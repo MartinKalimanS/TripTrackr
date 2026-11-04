@@ -122,6 +122,11 @@ export function useDatabase(): AppDatabase {
   return db;
 }
 
+/** The open database, or null outside the provider. For code that can do without it. */
+export function useOptionalDatabase(): AppDatabase | null {
+  return useContext(DatabaseContext);
+}
+
 export interface LocalStoreState {
   /** Non-null once opened AND migrated. */
   db: AppDatabase | null;

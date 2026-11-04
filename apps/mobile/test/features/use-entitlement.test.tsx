@@ -7,7 +7,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
 
-import { useCoverTrip, useEntitlement } from '@/features/billing/use-entitlement';
+import {
+  evaluateStanding,
+  useCoverTrip,
+  useEntitlement,
+} from '@/features/billing/use-entitlement';
 
 jest.unmock('@/features/billing/use-entitlement');
 
@@ -119,5 +123,47 @@ describe('useCoverTrip', () => {
     expect(paths[0]).toBe('/trips/6f1c2c4e-8b3a-4d1e-9f2a-0b7e1c2d3e4f/cover');
     expect(apiFetch.mock.calls[0]?.[2]).toEqual({ method: 'POST' });
     await waitFor(() => expect(paths).toContain('/me/entitlement'));
+  });
+});
+
+describe('evaluateStanding', () => {
+  test('counts trips made here that the server has not counted yet', () => {
+    const held = { ...base, trips_held: 2 };
+    expect(evaluateStanding(held, 0).mustPayToCreate).toBe(false);
+    expect(evaluateStanding(held, 1).mustPayToCreate).toBe(true);
+  });
+
+  test('something to spend means no purchase first', () => {
+    expect(evaluateStanding({ ...base, credits: 1 }, 2).mustPayToCreate).toBe(false);
+    expect(
+      evaluateStanding({ ...base, tier: 'unlimited', is_active: true }, 2)
+        .mustPayToCreate,
+    ).toBe(false);
+  });
+
+  test('says nothing without an answer or while charging is off', () => {
+    expect(evaluateStanding(null, 9).mustPayToCreate).toBe(false);
+    expect(evaluateStanding(undefined, 9).mustPayToCreate).toBe(false);
+    expect(evaluateStanding(quiet, 9).mustPayToCreate).toBe(false);
+  });
+});
+
+describe('settle', () => {
+  test('asks the server again and answers from the fresh standing', async () => {
+    apiFetch.mockResolvedValueOnce({ ...base, trips_held: 0 });
+    const { result } = await renderHook(() => useEntitlement(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+
+    apiFetch.mockResolvedValueOnce({ ...base, trips_held: 3 });
+    await expect(result.current.settle(0)).resolves.toBe(true);
+  });
+
+  test('falls back to the last answer when the server cannot be reached', async () => {
+    apiFetch.mockResolvedValueOnce({ ...base, trips_held: 3 });
+    const { result } = await renderHook(() => useEntitlement(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+
+    apiFetch.mockRejectedValueOnce(new Error('network'));
+    await expect(result.current.settle(0)).resolves.toBe(true);
   });
 });
