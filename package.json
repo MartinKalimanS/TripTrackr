@@ -28,7 +28,7 @@
     "infra:logs": "docker compose --env-file .env -f infra/docker-compose.yml logs -f api worker"
   },
   "devDependencies": {
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.10"
   },
   "overrides": {
     "@react-native/jest-preset": "0.86.2",
