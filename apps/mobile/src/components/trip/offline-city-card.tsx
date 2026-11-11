@@ -33,11 +33,9 @@
 import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
-import { COMING_SOON_HINT, useComingSoon } from '@/components/ui/coming-soon-button';
-import { Icon, type IconName } from '@/components/ui/icon';
+import { type IconName } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { InlineError } from '@/components/ui/inline-error';
-import { Tappable } from '@/components/ui/tappable';
 import { Text } from '@/components/ui/text';
 import { ToneChip, type ToneChipTone } from '@/components/ui/tone-chip';
 import {
@@ -93,24 +91,6 @@ function PackStatus({ cityId, state }: { cityId: number; state: OfflinePackState
   );
 }
 
-/** The pictured "Map >" link. Nothing opens the map from here yet: one toast, nothing else. */
-function MapLink({ city }: { city: OfflineCity }) {
-  const comingSoon = useComingSoon('The map view');
-  return (
-    <Tappable
-      testID={`coming-soon-offline-map-${city.cityId}`}
-      accessibilityLabel={`${city.cityName} on the map`}
-      accessibilityHint={COMING_SOON_HINT}
-      onPress={comingSoon}
-      className="flex-row items-center">
-      <Text variant="label" strong>
-        Map
-      </Text>
-      <Icon name="chevron-right" size={16} tone="default" />
-    </Tappable>
-  );
-}
-
 /**
  * What a traveller can do with a city's map that is not finished: download it (or try
  * again), stop a download, or remove what a failed one left.
@@ -123,7 +103,6 @@ function PackActions({ city, state, onDownload, onStop, onRemove }: CityPackCard
     <View
       className="flex-row flex-wrap items-center justify-between"
       style={{ columnGap: Space[2], rowGap: Space[1], marginTop: Space[2] }}>
-      <MapLink city={city} />
       <View
         testID={`offline-actions-${cityId}`}
         className="flex-row flex-wrap justify-end"

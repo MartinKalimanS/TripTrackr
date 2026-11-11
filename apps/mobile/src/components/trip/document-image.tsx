@@ -24,7 +24,6 @@
 import { useState } from 'react';
 import { Image, type ImageLoadEvent } from 'react-native';
 
-import { BrightnessBoost } from '@/components/trip/brightness-boost';
 import { DocumentHero } from '@/components/trip/document-hero';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-view';
 import { useDocumentImage } from '@/features/documents/use-documents';
@@ -95,7 +94,6 @@ export function DocumentImage({
           style={{ width: '100%', aspectRatio }}
         />
       </DocumentHero>
-      <BrightnessBoost />
     </>
   );
 }

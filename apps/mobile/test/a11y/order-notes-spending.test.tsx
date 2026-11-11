@@ -301,7 +301,6 @@ describe('Spending reading order', () => {
       'expenses-toggle-summary',
       'summary-total',
       'summary-average',
-      'coming-soon-budget',
       'category-bar',
       'expense-row-exp-1',
       'expense-row-exp-2',

@@ -74,7 +74,6 @@ describe('Trip reading order', () => {
       ...AREAS,
       'Stops',
       'trip-stops-count',
-      'trip-stops-view-list',
       'stop-row-stop-rome',
       'stop-row-stop-florence',
       'trip-add-stop',

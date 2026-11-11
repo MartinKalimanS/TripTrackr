@@ -113,10 +113,10 @@ describe('Trip states: no control is a dead end', () => {
     expectHealthy(['"Add stop"']);
   });
 
-  it('stops: the timeline, with the pictured List and Map toggle (Map is coming soon)', async () => {
+  it('stops: the timeline, and no List / Map toggle (spec 015 FR-009)', async () => {
     live.stops.data = [rome, florence];
     await render(<TripScreen />);
-    expect(screen.getByTestId('coming-soon-trip-map')).toBeTruthy();
+    expect(screen.queryByTestId('coming-soon-trip-map')).toBeNull();
     expect(deadControls()).toEqual([]);
     expect(misroutedComingSoon()).toEqual([]);
     expect(primaryControls().length).toBeLessThanOrEqual(1);

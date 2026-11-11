@@ -28,7 +28,6 @@
 import { View } from 'react-native';
 
 import { AnimatedNumber } from '@/components/ui/animated-number';
-import { COMING_SOON_HINT, useComingSoon } from '@/components/ui/coming-soon-button';
 import { isLargeText } from '@/components/ui/reflow';
 import { StatTile } from '@/components/ui/stat-tile';
 import { countOf, figureFormat } from '@/features/home/home-format';
@@ -121,16 +120,13 @@ function TripsTile({ trips, onPress }: { trips: number; onPress: () => void }) {
 function DistanceTile({ distanceKm }: { distanceKm: number }) {
   const locale = deviceLocale();
   const { value } = distanceFigure(distanceKm);
-  const soon = useComingSoon('Kilometres');
   return (
     <View testID="globe-stats-distance-tile">
       <StatTile
-        testID="coming-soon-distance"
+        testID="globe-distance"
         value={<Counting value={value} index={2} testID="globe-stat-distance" />}
         label="Kilometres"
         accessibilityLabel={`${formatDistance(distanceKm, locale).spoken} travelled`}
-        accessibilityHint={COMING_SOON_HINT}
-        onPress={soon}
       />
     </View>
   );

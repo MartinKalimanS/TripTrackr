@@ -13,10 +13,8 @@ import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
-import { COMING_SOON_HINT, useComingSoon } from '@/components/ui/coming-soon-button';
 import { Icon } from '@/components/ui/icon';
 import { Screen } from '@/components/ui/screen';
-import { SegmentedPill, type SegmentOption } from '@/components/ui/segmented-pill';
 import { StopsSkeleton, TripDetailSkeleton } from '@/components/ui/screen-skeletons';
 import { GhostStamp } from '@/components/ui/stamp';
 import { EmptyState, ErrorState } from '@/components/ui/state-view';
@@ -73,50 +71,7 @@ export function TripPlaceholder({
   );
 }
 
-/** The pictured toggle is 136 dp wide (`.seg` in `build.py`); it grows with the text, never shrinks. */
-const VIEW_TOGGLE_WIDTH = 136;
-
-const LIST_OPTION: SegmentOption = {
-  key: 'list',
-  label: 'List',
-  testID: 'trip-stops-view-list',
-  accessibilityLabel: 'List',
-};
-
-const MAP_OPTION: SegmentOption = {
-  key: 'map',
-  label: 'Map',
-  testID: 'coming-soon-trip-map',
-  accessibilityLabel: 'Map',
-  accessibilityHint: COMING_SOON_HINT,
-};
-
-const VIEW_OPTIONS = [LIST_OPTION, MAP_OPTION] as const;
-
-/**
- * The pictured List / Map toggle. The trip has no map view of its own (the globe is the one
- * map), so it is a coming-soon control (Q-11): List is what is shown, Map shows one toast.
- */
-function StopsViewToggle() {
-  const soon = useComingSoon('Map view');
-  return (
-    <View testID="trip-stops-view-box" style={{ minWidth: VIEW_TOGGLE_WIDTH }}>
-      <SegmentedPill
-        testID="trip-stops-view"
-        role="radiogroup"
-        size="sm"
-        accessibilityLabel="Stops view"
-        options={VIEW_OPTIONS}
-        selectedKey="list"
-        onSelect={(key) => {
-          if (key === 'map') soon();
-        }}
-      />
-    </View>
-  );
-}
-
-/** "Stops", how many there are, and the toggle: the heading of the timeline (`.sec-cap`). */
+/** "Stops" and how many there are: the heading of the timeline (`.sec-cap`). */
 export function StopsHeader({ count }: { count: number }) {
   return (
     <View
@@ -130,7 +85,6 @@ export function StopsHeader({ count }: { count: number }) {
           {count}
         </Text>
       </View>
-      <StopsViewToggle />
     </View>
   );
 }

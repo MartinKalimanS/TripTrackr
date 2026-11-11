@@ -89,7 +89,7 @@ describe('Home reading order: header, globe, sheet (contract C5-32)', () => {
       ...HEADER_AND_GLOBE,
       'globe-stats-countries-tile',
       'globe-stats-trips-tile',
-      'coming-soon-distance',
+      'globe-distance',
       'home-now-card',
       'home-next-row',
       'home-plan-trip-fab',

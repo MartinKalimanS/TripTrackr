@@ -77,7 +77,7 @@ const classes = (id: string) => String(screen.getByTestId(id, hidden).props.clas
 beforeEach(() => mockToast.show.mockClear());
 afterEach(() => jest.restoreAllMocks());
 
-describe('"Stops N" and the pictured List / Map toggle (trip.png)', () => {
+describe('"Stops N" (trip.png; spec 015 drops the List / Map toggle)', () => {
   test('says "Stops" as a header with the count beside it, in the muted ink', async () => {
     await render(<StopsHeader count={3} />);
     expect(screen.getByText('Stops').props.accessibilityRole).toBe('header');
@@ -85,45 +85,10 @@ describe('"Stops N" and the pictured List / Map toggle (trip.png)', () => {
     expect(classes('trip-stops-count')).toContain('text-muted');
   });
 
-  test('draws the toggle as pictured: List selected, Map beside it, one group named', async () => {
-    await render(<StopsHeader count={0} />);
-    const group = screen.getByTestId('trip-stops-view');
-    expect(group.props.accessibilityRole).toBe('radiogroup');
-    expect(group.props.accessibilityLabel).toBe('Stops view');
-    expect(screen.getByText('List')).toBeTruthy();
-    expect(screen.getByText('Map')).toBeTruthy();
-    expect(
-      screen.getByTestId('trip-stops-view-list').props.accessibilityState,
-    ).toMatchObject({ selected: true, checked: true });
-    expect(
-      screen.getByTestId('coming-soon-trip-map').props.accessibilityState,
-    ).toMatchObject({ selected: false, checked: false });
-  });
-
-  test('is 136 dp wide at least, as the prototype draws it', async () => {
+  test('draws no List / Map toggle: the trip has no map view of its own', async () => {
     await render(<StopsHeader count={3} />);
-    expect(flat('trip-stops-view-box').minWidth).toBe(136);
-  });
-
-  test('Map is a coming-soon control: named, hinted, and its only effect is one toast', async () => {
-    await render(<StopsHeader count={3} />);
-    const map = screen.getByTestId('coming-soon-trip-map');
-    expect(map.props.accessibilityLabel).toBe('Map');
-    expect(map.props.accessibilityHint).toBe('Not available yet');
-    await fireEvent.press(map);
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(mockToast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'coming-soon' }),
-    );
-    expect(
-      screen.getByTestId('trip-stops-view-list').props.accessibilityState,
-    ).toMatchObject({ selected: true });
-  });
-
-  test('pressing List again does nothing at all', async () => {
-    await render(<StopsHeader count={3} />);
-    await fireEvent.press(screen.getByTestId('trip-stops-view-list'));
-    expect(mockToast.show).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('trip-stops-view')).toBeNull();
+    expect(screen.queryByTestId('coming-soon-trip-map')).toBeNull();
   });
 
   test('wraps under the heading at large text instead of clipping', async () => {

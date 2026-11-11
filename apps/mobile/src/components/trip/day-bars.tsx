@@ -21,8 +21,6 @@
 import { useRef } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { useComingSoon, COMING_SOON_HINT } from '@/components/ui/coming-soon-button';
-import { Tappable } from '@/components/ui/tappable';
 import { useColors } from '@/components/ui/theme-tokens';
 import { Text } from '@/components/ui/text';
 import type { DayBar } from '@/features/expenses/spending-summary';
@@ -64,36 +62,6 @@ function describeDay(day: DayBar, homeCurrency: string): string {
 
 export function describeChart(days: readonly DayBar[], homeCurrency: string): string {
   return `Spending per day. ${days.map((day) => describeDay(day, homeCurrency)).join('. ')}.`;
-}
-
-function BudgetControl() {
-  const onPress = useComingSoon('Budget');
-  const colors = useColors(CHART_KEYS);
-  return (
-    <Tappable
-      testID="coming-soon-budget"
-      accessibilityLabel="Budget"
-      accessibilityHint={COMING_SOON_HINT}
-      onPress={onPress}
-      className="flex-row items-center"
-      style={{ gap: Space[1], paddingStart: Space[2] }}>
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        className="flex-row"
-        style={{ gap: 2, width: 16 }}>
-        {[0, 1, 2].map((dash) => (
-          <View
-            key={dash}
-            style={{ width: 4, height: 2, backgroundColor: colors.muted }}
-          />
-        ))}
-      </View>
-      <Text variant="caption" tone="muted" capped>
-        Budget
-      </Text>
-    </Tappable>
-  );
 }
 
 type ColumnProps = { day: DayBar; width: number; today: boolean };
@@ -189,7 +157,6 @@ export function DayBars({ days, todayIndex, homeCurrency, fontScale = 1 }: DayBa
         <Text variant="callout" accessibilityRole="header">
           Per day
         </Text>
-        <BudgetControl />
       </View>
       <View
         accessible
