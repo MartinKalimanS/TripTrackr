@@ -48,6 +48,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
+import { OverAllowanceAlert } from '@/components/billing/over-allowance-alert';
 import { Banner } from '@/components/ui/banner';
 import { InlineError } from '@/components/ui/inline-error';
 import type { StopWithPlace } from '@/db/repositories/stops';
@@ -182,6 +183,7 @@ function SheetHead({ trip, stops, sync, overview, onRetry }: SheetHeadProps) {
           }
         />
       ) : null}
+      <OverAllowanceAlert tripId={trip.id} />
       <AreasStrip
         counts={overview.counts}
         spending={{ total: overview.spendingTotal, currency: trip.home_currency }}

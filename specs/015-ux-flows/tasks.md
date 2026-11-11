@@ -21,7 +21,7 @@
 - [x] T1504 [US3] Cover a trip past the free number on arrival with a Tier 1 use or a credit
       (`apps/api/src/modules/billing/allowance.service.ts`); contract tests in
       `apps/api/test/contract/sync-push-allowance.spec.ts` (5 tests, passing)
-- [ ] T1505 [US3] Show the over-allowance notice on the trip screen too (FR-008)
+- [x] T1505 [US3] Show the over-allowance notice on the trip screen too (FR-008)
 
 ## Phase 4: User Story 4 - No control that does nothing (P2)
 

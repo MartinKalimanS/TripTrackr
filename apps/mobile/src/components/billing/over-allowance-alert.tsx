@@ -18,19 +18,25 @@ import { ActionAlert } from '@/components/ui/action-alert';
 import { PAYWALL_COPY } from '@/features/billing/paywall-copy';
 import { useOverAllowanceTripIds, useSyncWarningsStore } from '@/sync/warnings';
 
-export function OverAllowanceAlert() {
+/**
+ * `tripId` scopes the notice to one trip (the trip screen, spec 015 FR-008): silent unless that
+ * trip is flagged, and it speaks about "this trip". Without it, the list's notice counts them all.
+ */
+export function OverAllowanceAlert({ tripId }: { tripId?: string } = {}) {
   const router = useRouter();
-  const flagged = useOverAllowanceTripIds();
+  const all = useOverAllowanceTripIds();
+  const flagged = tripId === undefined ? all : all.filter((id) => id === tripId);
   const first = flagged[0];
   if (!first) return null;
 
   const copy = PAYWALL_COPY.flagged;
+  const message = tripId === undefined ? copy.message(flagged.length) : copy.thisTrip;
   return (
     <ActionAlert
       testID="over-allowance-alert"
       tone="info"
       title={copy.title}
-      message={copy.message(flagged.length)}
+      message={message}
       action={{
         label: copy.action,
         onPress: () =>
