@@ -25,7 +25,7 @@
 
 ## Phase 4: User Story 4 - No control that does nothing (P2)
 
-- [ ] T1506 [US4] Search trips by name on the trips list (FR-010)
+- [x] T1506 [US4] Search trips by name on the trips list (FR-010)
 - [ ] T1507 [US4] Settings screen from You (FR-011)
 - [ ] T1508 [US4] Remove every remaining `ComingSoonButton` call site and the component (FR-009)
 
