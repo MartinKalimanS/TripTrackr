@@ -16,11 +16,11 @@
  * unchanged: `add-trip-screen`, `add-trip-title`, `currency-<CODE>`, `currency-other`,
  * `add-trip-error`, `add-trip-cancel`, `add-trip-save`.
  *
- * As pictured (feature 005, F6; `core/form.png`; owner decision Q-11): Cancel at the left of the
- * header and Save alone in the footer (a hairline above it), 24 dp between the groups, and the
- * pictured "Where to?", "Cover" and "Dates" rows drawn as COMING-SOON controls
- * (`pictured-rows.tsx`: one toast, nothing stored, no invented data: the app keeps the name and
- * the home currency, and a trip's dates come from its stops). "Expenses are only visible to you."
+ * As pictured (feature 005, F6; `core/form.png`): Cancel at the left of the header and Save alone
+ * in the footer (a hairline above it), 24 dp between the groups. "Where to?" saves the trip and
+ * opens its first stop (`pictured-rows.tsx`). The pictured "Cover" and "Dates" are not drawn: the
+ * app keeps the name and the home currency, and a trip's dates come from its stops (spec 015,
+ * T1509, FR-012). "Expenses are only visible to you."
  * sits under the currency row with a lock. The app's words stay ("Home currency", "Save trip").
  */
 import { useRouter } from 'expo-router';
@@ -29,11 +29,7 @@ import { Controller, useForm, type Control } from 'react-hook-form';
 import { View } from 'react-native';
 
 import { CurrencyPicker } from '@/components/trip/currency-picker';
-import {
-  PicturedCover,
-  PicturedDates,
-  PicturedDestination,
-} from '@/components/trip/pictured-rows';
+import { PicturedDestination } from '@/components/trip/pictured-rows';
 import { Field } from '@/components/ui/field';
 import { FormSheet } from '@/components/ui/form-sheet';
 import { Icon } from '@/components/ui/icon';
@@ -169,10 +165,6 @@ export default function AddTripScreen() {
       <TitleField control={control} onSubmitEditing={() => void save()} />
 
       <PicturedDestination onAction={() => void saveAndAddStop()} />
-
-      <PicturedCover />
-
-      <PicturedDates />
 
       <HomeCurrencyField control={control} />
 

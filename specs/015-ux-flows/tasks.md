@@ -31,7 +31,7 @@
 
 ## Phase 5: User Story 5 - Make a trip in one go (P2)
 
-- [ ] T1509 [US5] New trip shows only stored fields; "Save and add first stop" (FR-012)
+- [x] T1509 [US5] New trip shows only stored fields; "Save and add first stop" (FR-012)
 
 ## Final
 
