@@ -366,18 +366,12 @@ describe('<PhotosScreen> — the floating "Add photos" (FR-044)', () => {
 });
 
 describe('<PhotosScreen> — the pictured controls without a capability (Q-11)', () => {
-  test('select-all and more are drawn in the bar as coming-soon buttons, named from the picture', async () => {
+  test('the bar draws no control the app cannot honour: no select-all, no more (spec 015)', async () => {
     await render(<PhotosScreen />);
 
-    for (const [id, name] of [
-      ['coming-soon-photos-select', 'Select photos'],
-      ['coming-soon-photos-more', 'More'],
-    ] as const) {
-      const control = screen.getByTestId(id);
-      expect(control.props.accessibilityLabel).toBe(name);
-      expect(control.props.accessibilityHint).toBe('Not available yet');
-      expect(control.props.accessibilityRole).toBe('button');
-    }
+    expect(screen.queryByTestId('coming-soon-photos-select')).toBeNull();
+    expect(screen.queryByTestId('coming-soon-photos-more')).toBeNull();
+    expect(screen.queryByText('Not available yet')).toBeNull();
   });
 
   test('the camera is the app’s own control beside them, with its own name and id', async () => {

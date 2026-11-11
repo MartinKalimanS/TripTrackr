@@ -278,13 +278,11 @@ describe('<DocumentsScreen> — trip/[id]/documents (T118)', () => {
     expect(screen.getByTestId('documents-title').props.accessibilityRole).toBe('header');
   });
 
-  test('the pictured "more" control is a coming-soon control; there is no share control of any kind', async () => {
+  test('no dead "more" control (spec 015) and no share control of any kind', async () => {
     mockDocuments.data = [doc()];
     await render(<DocumentsScreen />);
 
-    const more = screen.getByTestId('coming-soon-documents-more');
-    expect(more.props.accessibilityLabel).toBe('More');
-    expect(more.props.accessibilityHint).toBe('Not available yet');
+    expect(screen.queryByTestId('coming-soon-documents-more')).toBeNull();
     expect(buttonLabels().filter((label) => SHARING.test(label))).toEqual([]);
   });
 

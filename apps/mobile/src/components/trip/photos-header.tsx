@@ -37,7 +37,6 @@ import { Linking, View } from 'react-native';
 import { UploadSummaryPill } from '@/components/trip/upload-summary-pill';
 import { AreaHeader, areaMargin } from '@/components/ui/area-header';
 import { Button } from '@/components/ui/button';
-import { ComingSoonButton } from '@/components/ui/coming-soon-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { InlineError } from '@/components/ui/inline-error';
 import { PermissionState } from '@/components/ui/permission-state';
@@ -177,19 +176,6 @@ function BarActions({ capture }: { capture: PhotoCapture }) {
         accessibilityLabel={GALLERY_COPY.takeLabel}
         busy={capture.busy}
         onPress={() => void capture.takePhoto()}
-      />
-      <ComingSoonButton
-        name="photos-select"
-        label="Select photos"
-        icon="checks"
-        variant="tonal"
-      />
-      <ComingSoonButton
-        name="photos-more"
-        label="More"
-        thing="More photo actions"
-        icon="ellipsis"
-        variant="tonal"
       />
     </>
   );

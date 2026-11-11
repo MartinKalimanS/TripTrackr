@@ -752,7 +752,7 @@ describe('<ExpenseDayGroup> (prototype .dgh; picture expenses.png)', () => {
 });
 
 describe('<ExpensesHeader> (T550; FR-044, FR-055)', () => {
-  test('is the shared area header: "Spending", the trip and the count, "Only you" and the coming-soon more', async () => {
+  test('is the shared area header: "Spending", the trip and the count, "Only you"; no dead control (spec 015)', async () => {
     await render(<ExpensesHeader tripTitle="Portugal" count={3} writeError={null} />);
 
     expect(screen.getByTestId('expenses-title')).toHaveTextContent('Spending');
@@ -761,9 +761,7 @@ describe('<ExpensesHeader> (T550; FR-044, FR-055)', () => {
     );
     expect(screen.getByTestId('privacy-chip')).toBeTruthy();
     expect(screen.getByLabelText('Back')).toBeTruthy();
-    const more = screen.getByTestId('coming-soon-expenses-more');
-    await fireEvent.press(more);
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('coming-soon-expenses-more')).toBeNull();
     expect(screen.queryByTestId('expenses-write-error')).toBeNull();
   });
 

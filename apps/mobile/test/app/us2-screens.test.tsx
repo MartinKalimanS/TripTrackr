@@ -263,7 +263,7 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
     expect(screen.getByTestId('notes-filter-city:101')).toBeTruthy();
   });
 
-  test('draws its own header, as pictured (T551): Back, "Notes", the trip and the count, the search; no old title line', async () => {
+  test('draws its own header, as pictured (T551): Back, "Notes", the trip and the count; no old title line and no dead control (spec 015)', async () => {
     mockNotes.data = [note({})];
     await render(<NotesScreen />);
 
@@ -273,7 +273,7 @@ describe('<NotesScreen> — trip/[id]/notes (T084, T085)', () => {
       'Italy, spring 2026 · 1 note',
     );
     expect(screen.queryByTestId('notes-title')).toBeNull();
-    expect(screen.getByTestId('coming-soon-notes-search')).toBeTruthy();
+    expect(screen.queryByTestId('coming-soon-notes-search')).toBeNull();
     // What is not title or back keeps its old reading order: the filters, then the action.
     const order = screen
       .getAllByTestId(/^notes-(filter-all|add)$/)
@@ -631,7 +631,7 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441, T550)', () 
     expect(order).toEqual(wanted);
   });
 
-  test('draws its own header: Back, "Spending", the trip and the count, "Only you" and the coming-soon more', async () => {
+  test('draws its own header: Back, "Spending", the trip and the count, "Only you"; no dead control (spec 015)', async () => {
     logOne();
     await render(<ExpensesScreen />);
 
@@ -641,9 +641,8 @@ describe('<ExpensesScreen> — trip/[id]/expenses (T086, T087, T441, T550)', () 
       'Italy, spring 2026 · 1 expense',
     );
     expect(screen.getByTestId('privacy-chip')).toBeTruthy();
-    const more = screen.getByTestId('coming-soon-expenses-more');
-    expect(more.props.accessibilityLabel).toBe('More');
-    expect(more.props.accessibilityHint).toBe('Not available yet');
+    expect(screen.queryByTestId('coming-soon-expenses-more')).toBeNull();
+    expect(screen.queryByText('Not available yet')).toBeNull();
   });
 
   test('the count is not guessed while the store has not answered or could not be read', async () => {

@@ -22,7 +22,6 @@
 import { View } from 'react-native';
 
 import { AreaHeader, areaMargin } from '@/components/ui/area-header';
-import { ComingSoonButton } from '@/components/ui/coming-soon-button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { documentsSubtitle } from '@/features/documents/document-ticket';
@@ -44,15 +43,6 @@ export function DocumentsHeader({ tripTitle, count }: DocumentsHeaderProps) {
         titleTestID="documents-title"
         subtitleTestID="documents-subtitle"
         privacy
-        actions={
-          <ComingSoonButton
-            name="documents-more"
-            label="More"
-            thing="More document actions"
-            icon="ellipsis"
-            variant="tonal"
-          />
-        }
       />
       <View
         className="flex-row items-start"
