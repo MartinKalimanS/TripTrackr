@@ -13,7 +13,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react-n
 import * as ExpoHaptics from 'expo-haptics';
 import { AccessibilityInfo, Platform } from 'react-native';
 
-import ProfileScreen from '@/app/(tabs)/profile';
+import ProfileScreen from '@/app/(tabs)/profile/settings';
 import { useSessionStore } from '@/features/auth/session-store';
 import { UnsyncedChangesError } from '@/features/auth/use-sign-out';
 import { __resetAppearanceStoreForTests } from '@/hooks/appearance-store';

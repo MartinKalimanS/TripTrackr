@@ -14,6 +14,7 @@ import type * as HeroUI from 'heroui-native';
 import { Text } from 'react-native';
 
 import ProfileScreen from '@/app/(tabs)/profile';
+import SettingsScreen from '@/app/(tabs)/profile/settings';
 import { FirstSyncGate } from '@/components/sync/first-sync-gate';
 import { ConflictNotices } from '@/components/ui/conflict-notice';
 import { useSessionStore } from '@/features/auth/session-store';
@@ -147,7 +148,7 @@ beforeEach(() => {
 });
 
 describe('the profile over the real kit (T448)', () => {
-  test('renders the identity, the two groups and the set-apart block without error', async () => {
+  test('renders the identity on You, and the two groups and the set-apart block on Settings', async () => {
     await inKit(<ProfileScreen />);
 
     const identity = screen.getByTestId('profile-identity');
@@ -155,6 +156,8 @@ describe('the profile over the real kit (T448)', () => {
       'Ana Lovelace',
     );
     expect(within(identity).getByText('AL', hidden)).toBeTruthy();
+    await screen.unmount();
+    await inKit(<SettingsScreen />);
     expect(screen.getByTestId('profile-account-group')).toBeTruthy();
     expect(screen.getByTestId('profile-app-group')).toBeTruthy();
     expect(screen.getByTestId('profile-version')).toHaveTextContent('1.2.3 (45)');
@@ -164,7 +167,7 @@ describe('the profile over the real kit (T448)', () => {
   });
 
   test('Sign out is one named button the kit presses; Delete account is named and unavailable', async () => {
-    await inKit(<ProfileScreen />);
+    await inKit(<SettingsScreen />);
 
     const signOut = screen.getByTestId('profile-sign-out');
     expect(signOut.props.accessibilityRole).toBe('button');
@@ -186,7 +189,7 @@ describe('the profile over the real kit (T448)', () => {
 
   test('while signing out the row is announced busy, draws the kit spinner and ignores presses', async () => {
     mockSignOut.isPending = true;
-    await inKit(<ProfileScreen />);
+    await inKit(<SettingsScreen />);
 
     const row = screen.getByTestId('profile-sign-out');
     expect(row.props.accessibilityState).toMatchObject({ busy: true });
@@ -199,7 +202,7 @@ describe('the profile over the real kit (T448)', () => {
 
   test('the warning is a card with the one primary and the destructive choice; both press', async () => {
     mockSignOut.error = new UnsyncedChangesError(2, 1, 'offline');
-    await inKit(<ProfileScreen />);
+    await inKit(<SettingsScreen />);
 
     const warning = screen.getByTestId('sign-out-warning');
     expect(warning.props.accessibilityRole).toBe('alert');

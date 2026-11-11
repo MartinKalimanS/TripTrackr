@@ -28,7 +28,13 @@ export default function ProfileLayout() {
 
   return (
     <ToastZone bottom={tabZone}>
-      <Stack screenOptions={{ ...options, headerShown: Platform.OS !== 'ios' }} />
+      <Stack screenOptions={{ ...options, headerShown: Platform.OS !== 'ios' }}>
+        {/* Settings has a header with Back on both platforms (spec 015, T1507). */}
+        <Stack.Screen
+          name="settings"
+          options={{ headerShown: true, title: 'Settings' }}
+        />
+      </Stack>
     </ToastZone>
   );
 }

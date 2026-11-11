@@ -9,6 +9,7 @@
 import { render, screen } from '@testing-library/react-native';
 
 import ProfileScreen from '@/app/(tabs)/profile';
+import SettingsScreen from '@/app/(tabs)/profile/settings';
 import { useSessionStore } from '@/features/auth/session-store';
 import type { PassportData } from '@/features/passport/use-passport';
 
@@ -96,23 +97,23 @@ describe('You states: no control is a dead end', () => {
     expectHealthy();
   });
 
-  it('when the passport cannot be read: words and an icon, and Sign out still works', async () => {
+  it('when the passport cannot be read: words and an icon, and Settings still works', async () => {
     mockPassport.error = new Error('database is locked');
     await render(<ProfileScreen />);
     expect(screen.getByText('Couldn’t read your passport')).toBeTruthy();
-    expect(screen.getByTestId('profile-sign-out')).toBeTruthy();
+    expect(screen.getByTestId('profile-settings')).toBeTruthy();
     expectHealthy();
   });
 
-  it('with no country: zeros, a ghost stamp and the pictured coming-soon controls', async () => {
+  it('with no country: zeros, a ghost stamp, and Settings', async () => {
     await render(<ProfileScreen />);
     expect(screen.getByTestId('stamps-empty')).toBeTruthy();
-    expect(screen.getByTestId('coming-soon-share-passport')).toBeTruthy();
+    expect(screen.getByTestId('profile-settings')).toBeTruthy();
     expectHealthy();
   });
 
   it('Delete account is named and available: it opens the confirmation, it does not do nothing', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     const remove = screen.getByTestId('profile-delete-account');
     expect(remove.props.accessibilityState).not.toMatchObject({ disabled: true });
     expect(remove.props.accessibilityLabel).toBe('Delete account');

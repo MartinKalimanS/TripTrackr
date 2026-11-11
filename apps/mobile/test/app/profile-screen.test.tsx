@@ -9,6 +9,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 
 import ProfileScreen from '@/app/(tabs)/profile';
+import SettingsScreen from '@/app/(tabs)/profile/settings';
 import { useTourStore } from '@/features/tour/tour-store';
 import { useSessionStore } from '@/features/auth/session-store';
 import { toGlobeTrips, type GlobeStopRow } from '@/features/globe/globe-data';
@@ -173,7 +174,7 @@ beforeEach(() => {
 });
 
 describe('<ProfileScreen> - the pictured order', () => {
-  test('identity, period, passport, recap, stamps, then Account, App and the set-apart block', async () => {
+  test('identity, period, passport, recap and stamps; the rows moved to Settings', async () => {
     await render(<ProfileScreen />);
     const ids = [
       'profile-identity',
@@ -181,22 +182,32 @@ describe('<ProfileScreen> - the pictured order', () => {
       'passport-card',
       'coming-soon-recap',
       'stamps-page',
-      'profile-account-group',
-      'profile-app-group',
-      'profile-actions',
     ];
     const order = screen
       .getAllByTestId(new RegExp(`^(${ids.join('|')})$`))
       .map((node) => node.props.testID);
     expect(order).toEqual(ids);
+    expect(screen.queryByTestId('profile-account-group')).toBeNull();
+    expect(screen.queryByTestId('profile-sign-out')).toBeNull();
   });
 
-  test('every id the flows and the parity test know survives', async () => {
+  test('every id the flows and the parity test know survives, on You or on Settings', async () => {
     await render(<ProfileScreen />);
     for (const id of [
       'profile-screen',
       'profile-identity',
       'profile-display-name',
+      'profile-settings',
+      'passport-card',
+      'passport-period',
+      'stamps-page',
+    ]) {
+      expect(screen.getByTestId(id, hidden)).toBeTruthy();
+    }
+    await screen.unmount();
+    await render(<SettingsScreen />);
+    for (const id of [
+      'settings-screen',
       'profile-email',
       'profile-account-group',
       'profile-app-group',
@@ -204,19 +215,25 @@ describe('<ProfileScreen> - the pictured order', () => {
       'profile-actions',
       'profile-sign-out',
       'profile-delete-account',
-      'passport-card',
-      'passport-period',
-      'stamps-page',
     ]) {
       expect(screen.getByTestId(id, hidden)).toBeTruthy();
     }
     expect(screen.getByTestId('profile-sign-out-icon', hidden)).toBeTruthy();
   });
 
-  test('says "Traveller since 2021" from the account and the email in Account', async () => {
+  test('says "Traveller since 2021" on You, and Settings shows the email in Account', async () => {
     await render(<ProfileScreen />);
     expect(screen.getByText('Traveller since 2021')).toBeOnTheScreen();
+    await screen.unmount();
+    await render(<SettingsScreen />);
     expect(screen.getByTestId('profile-email')).toHaveTextContent('marta@example.com');
+  });
+
+  test('Settings on You opens the Settings screen (spec 015, T1507)', async () => {
+    await render(<ProfileScreen />);
+    await fireEvent.press(screen.getByTestId('profile-settings'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/profile/settings');
+    expect(mockToast.show).not.toHaveBeenCalled();
   });
 });
 
@@ -268,7 +285,7 @@ describe('<ProfileScreen> - Take the tour (feature 007, FR-007)', () => {
   });
 
   test('the App group offers a row that replays the tour', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     const row = screen.getByTestId('profile-take-tour');
     expect(row.props.accessibilityRole).toBe('button');
     expect(screen.getByText('Take the tour')).toBeOnTheScreen();
@@ -279,7 +296,7 @@ describe('<ProfileScreen> - Take the tour (feature 007, FR-007)', () => {
 
   test('pressing it goes to the Globe and starts the tour at step 1', async () => {
     useTourStore.setState({ open: false, step: 3 });
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     await fireEvent.press(screen.getByTestId('profile-take-tour'));
     expect(mockRouter.navigate).toHaveBeenCalledWith('/');
     expect(useTourStore.getState()).toMatchObject({ open: true, step: 0 });
@@ -287,17 +304,16 @@ describe('<ProfileScreen> - Take the tour (feature 007, FR-007)', () => {
 });
 
 describe('<ProfileScreen> - the pictured controls without a capability (Q-11)', () => {
-  test.each([
-    'coming-soon-share-passport',
-    'coming-soon-profile-settings',
-    'coming-soon-recap',
-  ])('%s shows one toast and changes nothing', async (id) => {
-    await render(<ProfileScreen />);
-    await fireEvent.press(screen.getByTestId(id));
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('passport-countries')).toHaveTextContent(/^3$/);
-    expect(mockSignOut.mutate).not.toHaveBeenCalled();
-  });
+  test.each(['coming-soon-recap'])(
+    '%s shows one toast and changes nothing',
+    async (id) => {
+      await render(<ProfileScreen />);
+      await fireEvent.press(screen.getByTestId(id));
+      expect(mockToast.show).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('passport-countries')).toHaveTextContent(/^3$/);
+      expect(mockSignOut.mutate).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('<ProfileScreen> - every state is designed', () => {
@@ -308,17 +324,16 @@ describe('<ProfileScreen> - every state is designed', () => {
     expect(skeleton.props.accessibilityRole).toBe('progressbar');
     expect(screen.queryByTestId('passport-card')).toBeNull();
     expect(screen.getByTestId('profile-display-name')).toBeOnTheScreen();
-    expect(screen.getByTestId('profile-sign-out')).toBeOnTheScreen();
+    expect(screen.getByTestId('profile-settings')).toBeOnTheScreen();
   });
 
-  test('when the store cannot be read: words and an icon, and Sign out still works', async () => {
+  test('when the store cannot be read: words and an icon, and Settings is still there', async () => {
     mockPassport.error = new Error('database is locked');
     await render(<ProfileScreen />);
     expect(screen.getByText('Couldn\u2019t read your passport')).toBeOnTheScreen();
     expect(screen.getByText('Your trips are safe on this phone.')).toBeOnTheScreen();
     expect(screen.queryByText('database is locked')).toBeNull();
-    await fireEvent.press(screen.getByTestId('profile-sign-out'));
-    expect(mockSignOut.mutate).toHaveBeenCalled();
+    expect(screen.getByTestId('profile-settings')).toBeOnTheScreen();
   });
 
   test('with no country: zeros, no lap line, a ghost stamp and the next step', async () => {
@@ -330,18 +345,17 @@ describe('<ProfileScreen> - every state is designed', () => {
     expect(screen.getByText('No stamps yet')).toBeOnTheScreen();
   });
 
-  test('without a session profile there is no identity, but the screen and Sign out remain', async () => {
+  test('without a session profile Settings has no Account group, but Sign out remains', async () => {
     useSessionStore.setState({ status: 'signed-in', user: null });
-    await render(<ProfileScreen />);
-    expect(screen.queryByTestId('profile-identity')).toBeNull();
+    await render(<SettingsScreen />);
     expect(screen.queryByTestId('profile-account-group')).toBeNull();
     expect(screen.getByTestId('profile-sign-out')).toBeOnTheScreen();
   });
 });
 
-describe('<ProfileScreen> - Sign out and Delete account are unchanged', () => {
+describe('<SettingsScreen> - Sign out and Delete account are unchanged', () => {
   test('Sign out goes through the mutation; the guard warning shows under its row', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     await fireEvent.press(screen.getByTestId('profile-sign-out'));
     expect(mockSignOut.mutate).toHaveBeenCalledWith();
     const actions = screen.getByTestId('profile-actions');
@@ -390,9 +404,9 @@ describe('<ProfileScreen> - a 120-stamp passport scrolls (D5-08)', () => {
         3,
       );
     }
-    // Sign out, at the very end, is reachable and still pressable.
-    await fireEvent.press(screen.getByTestId('profile-sign-out'));
-    expect(mockSignOut.mutate).toHaveBeenCalled();
+    // Settings, at the top, is still reachable and pressable after the long scroll.
+    await fireEvent.press(screen.getByTestId('profile-settings'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/profile/settings');
   });
 
   test('stamps are baked three at a time as they are laid out, and become pictures', async () => {
