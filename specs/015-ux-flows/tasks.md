@@ -27,11 +27,16 @@
 
 - [x] T1506 [US4] Search trips by name on the trips list (FR-010)
 - [x] T1507 [US4] Settings screen from You (FR-011)
-- [ ] T1508 [US4] Remove every remaining `ComingSoonButton` call site and the component (FR-009)
+- [x] T1508 [US4] Remove every remaining `ComingSoonButton` call site (FR-009); the Home's Search opens the
+      trips search. Left: "Forgot password?" (T1511)
 
 ## Phase 5: User Story 5 - Make a trip in one go (P2)
 
 - [x] T1509 [US5] New trip shows only stored fields; "Save and add first stop" (FR-012)
+
+- [ ] T1511 [US4] Password reset in the app: "Forgot password?" asks for the email
+      (`POST /auth/password-reset/request`), and the emailed link opens a reset screen in the app (deep link or
+      universal link replacing `APP_PUBLIC_URL/reset-password`) that calls `POST /auth/password-reset/confirm`
 
 ## Final
 

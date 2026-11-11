@@ -103,10 +103,10 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
   specification: `specs/005-sunrise-passport-ui/reference/` (`README.md`, `UI-SPEC.md`, `IMPLEMENTATION-PLAN.md`,
   `screens/`, `prototype/`, and one `as-built/*.md` note per feature with its deviations and device checks).
   UI primitives come from `components/ui/*` only, and only that folder imports `heroui-native` (research D4-02,
-  D4-03). **Owner rule Q-11:** a control the pictures draw for a capability the app does not have (search, share,
-  more, settings, budget, formatting) is drawn as pictured through `components/ui/coming-soon-button.tsx`: one
-  toast, no navigation, no write, never invented data. Do not add a dead control any other way, and do not
-  reintroduce neumorphism (`test/no-neumorphism.test.ts`). Hermes has no `Intl.PluralRules`: use `countParts`.
+  D4-03). **No dead controls (spec 015 FR-009, which retires owner rule Q-11):** a control the pictures draw for a
+  capability the app does not have is NOT drawn. Build it, or leave it out; never a button whose only effect is
+  "coming soon". The one remaining `ComingSoonButton` user is "Forgot password?" on login, until password reset
+  opens in the app (spec 015 T1511). Do not reintroduce neumorphism (`test/no-neumorphism.test.ts`). Hermes has no `Intl.PluralRules`: use `countParts`.
 - **Test kits that guard the look.** `test/scale/` (reflow at 1, 1.15, 1.5, 2 and the fixed-height ratchet with
   its allow-list), `test/a11y/` (reading order per screen, decorative art hidden, reach-all lists, final values),
   `test/appearance/` (every screen in four themes, reduced transparency and motion, live switching, the
