@@ -1,7 +1,7 @@
 /**
  * `HomeHeader` - the transparent zone over the globe (feature 005, T537; contract C5-32 "Home";
  * FR-014, FR-015, FR-021, FR-026): the greeting with the date and, at the right, the tools
- * (`HomeTools`: the ONE global sync chip and the coming-soon search button); under them
+ * (`HomeTools`: the ONE global sync chip and the search button); under them
  * the ONE `SyncStatusBanner` (a slim, non-blocking note when the phone is offline or a sync
  * failed), and, only after the traveller has moved the globe, a recentre
  * control below it.

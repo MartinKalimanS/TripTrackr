@@ -12,6 +12,20 @@ const PROVIDERS: Readonly<Record<string, string>> = {
   MAC_APP_STORE: 'app_store',
   PLAY_STORE: 'play_store',
 };
+
+/**
+ * The provider a purchase is recorded under. The RevenueCat Test Store only counts when the owner
+ * switched it on AND the event says SANDBOX: a development stack can sell to itself, and a
+ * production-flagged Test Store event is never honoured.
+ */
+function providerOf(event: RevenueCatEvent): string | undefined {
+  if (event.store === 'TEST_STORE') {
+    const open = loadEnv().BILLING_ACCEPT_TEST_STORE && event.environment === 'SANDBOX';
+    return open ? 'test_store' : undefined;
+  }
+  return PROVIDERS[event.store ?? ''];
+}
+
 const SUBSCRIPTION_STARTS = new Set([
   'INITIAL_PURCHASE',
   'RENEWAL',
@@ -42,7 +56,7 @@ export class BillingEventsService {
   }
 
   private async route(event: RevenueCatEvent): Promise<boolean> {
-    const provider = PROVIDERS[event.store ?? ''];
+    const provider = providerOf(event);
     const product = event.product_id
       ? loadEnv().BILLING_PRODUCTS[event.product_id]
       : undefined;

@@ -13,6 +13,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 import { Platform } from 'react-native';
 
 import ProfileScreen from '@/app/(tabs)/profile';
+import SettingsScreen from '@/app/(tabs)/profile/settings';
 import TripsScreen from '@/app/(tabs)/trips';
 import { useSessionStore } from '@/features/auth/session-store';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
@@ -37,6 +38,8 @@ jest.mock('@/features/passport/use-passport', () => ({
 jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
   return {
+    // The trips screen reads `?search=1` (spec 015, T1508); nothing asks for it here.
+    useLocalSearchParams: () => ({}),
     useRouter: () => ({
       push: mockPush,
       navigate: mockNavigate,
@@ -250,9 +253,11 @@ const classesOf = (node: { props: { className?: unknown } }) =>
     .filter(Boolean);
 
 describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
-  test('shows who is signed in', async () => {
+  test('shows who is signed in: the name on You, the email in Settings', async () => {
     await render(<ProfileScreen />);
     expect(screen.getByTestId('profile-display-name')).toHaveTextContent('Ana');
+    await screen.unmount();
+    await render(<SettingsScreen />);
     expect(screen.getByTestId('profile-email')).toHaveTextContent('ana@example.com');
   });
 
@@ -260,11 +265,8 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     await render(<ProfileScreen />);
     const identity = screen.getByTestId('profile-identity');
     expect(within(identity).getByTestId('profile-display-name')).toBeTruthy();
-    // The email is not pictured in the identity block: it is the first row of Account.
+    // The email is not pictured in the identity block: it is the first row of Account, in Settings.
     expect(within(identity).queryByTestId('profile-email')).toBeNull();
-    expect(
-      within(screen.getByTestId('profile-account-group')).getByTestId('profile-email'),
-    ).toBeTruthy();
     // The initials of "Ana", in the avatar, hidden from assistive technology (decorative).
     expect(screen.queryByText('A')).toBeNull();
     const initials = screen.getByText('A', hidden);
@@ -276,9 +278,12 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
 
   test('a long name and email wrap in full rather than being cut off (FR-029)', async () => {
     await render(<ProfileScreen />);
-    for (const id of ['profile-display-name', 'profile-email']) {
-      expect(screen.getByTestId(id).props.numberOfLines).toBeUndefined();
-    }
+    expect(
+      screen.getByTestId('profile-display-name').props.numberOfLines,
+    ).toBeUndefined();
+    await screen.unmount();
+    await render(<SettingsScreen />);
+    expect(screen.getByTestId('profile-email').props.numberOfLines).toBeUndefined();
   });
 
   test('the name is the heading of the screen on iOS, where the large native title gives way to it (FR-030)', async () => {
@@ -289,14 +294,14 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
   });
 
   test('says the home currency as one phrase, as it always did, in a grouped Account row', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     const account = screen.getByTestId('profile-account-group');
     expect(within(account).getByLabelText('Home currency: EUR')).toBeTruthy();
     expect(within(account).getByText('EUR', hidden)).toBeTruthy();
   });
 
   test('groups the account and the app under their own headings', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     expect(screen.getByText('Account').props.accessibilityRole).toBe('header');
     expect(screen.getByText('App').props.accessibilityRole).toBe('header');
     const app = screen.getByTestId('profile-app-group');
@@ -305,7 +310,7 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
   });
 
   test('shows the app version from the embedded config', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     expect(screen.getByText(/1\.2\.3/)).toBeTruthy();
     expect(screen.getByText(/\(45\)/)).toBeTruthy();
   });
@@ -335,7 +340,7 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
   });
 
   test('sets Sign out and Delete account apart: after the groups, in a block of their own, not in either group', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     const actions = screen.getByTestId('profile-actions');
     expect(within(actions).getByTestId('profile-sign-out')).toBeTruthy();
     expect(within(actions).getByTestId('profile-delete-account')).toBeTruthy();
@@ -344,12 +349,11 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
       expect(inside.queryByTestId('profile-sign-out')).toBeNull();
       expect(inside.queryByTestId('profile-delete-account')).toBeNull();
     }
-    // Reading order: identity, account, app, then the set-apart block.
+    // Reading order in Settings: account, app, then the set-apart block.
     const order = screen
-      .getAllByTestId(/^profile-(identity|account-group|app-group|actions)$/)
+      .getAllByTestId(/^profile-(account-group|app-group|actions)$/)
       .map((node) => node.props.testID);
     expect(order).toEqual([
-      'profile-identity',
       'profile-account-group',
       'profile-app-group',
       'profile-actions',
@@ -357,7 +361,7 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
   });
 
   test('both are destructive by words, an icon and the danger ink, never colour alone (FR-025)', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     for (const [row, title] of [
       ['profile-sign-out', 'Sign out'],
       ['profile-delete-account', 'Delete account'],
@@ -373,7 +377,7 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
   });
 
   test('says in words what signing out does here (the hint says it to a screen reader)', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     expect(
       screen.getByText('Your trips are kept on this device, encrypted.'),
     ).toBeTruthy();
@@ -382,13 +386,15 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     );
   });
 
-  test('has no primary control: the buttons are the pictured coming-soon ones and the rows (FR-005)', async () => {
+  test('has no primary control on You or on Settings, and nothing says "coming soon" (FR-005)', async () => {
     await render(<ProfileScreen />);
-    const buttons = screen.getAllByRole('button');
+    let buttons = screen.getAllByRole('button');
+    expect(buttons.map((node) => node.props.testID)).toEqual(['profile-settings']);
+    expect(buttons.filter((node) => node.props.variant === 'primary')).toHaveLength(0);
+    await screen.unmount();
+    await render(<SettingsScreen />);
+    buttons = screen.getAllByRole('button');
     expect(buttons.map((node) => node.props.testID)).toEqual([
-      'coming-soon-share-passport',
-      'coming-soon-profile-settings',
-      'coming-soon-recap',
       'profile-export-data',
       'profile-take-tour',
       'profile-about',
@@ -406,23 +412,23 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
       entitlement: { tier: null, credits: 0, ...patch },
     });
 
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     expect(screen.queryByTestId('profile-manage-plan')).toBeNull();
 
     const spy = jest
       .spyOn(entitlementHook, 'useEntitlement')
       .mockReturnValue(held({ credits: 1 }));
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     expect(screen.getByTestId('profile-manage-plan')).toBeTruthy();
 
     spy.mockReturnValue(held({ tier: 'tier1' }));
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     expect(screen.getByTestId('profile-manage-plan')).toBeTruthy();
     spy.mockRestore();
   });
 
   test('signs out through the mutation (FR-004) and marks the row busy while it runs', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     await fireEvent.press(screen.getByTestId('profile-sign-out'));
     expect(mockSignOut.mutate).toHaveBeenCalled();
     expect(screen.getByLabelText('Sign out')).toBe(
@@ -430,7 +436,7 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     );
 
     mockSignOut.isPending = true;
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     const busy = screen.getAllByTestId('profile-sign-out').at(-1);
     expect(busy?.props.accessibilityState).toMatchObject({ busy: true });
     expect(busy?.props.accessibilityLabel).toBe('Sign out');
@@ -444,7 +450,7 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     // App Store Review 5.1.1(v) and Google Play's account-deletion policy both
     // require in-app deletion to be discoverable. It opens the Delete account
     // sheet (feature 008), where the traveller confirms with their password.
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     const row = screen.getByLabelText('Delete account');
     expect(row).toBe(screen.getByTestId('profile-delete-account'));
     expect(row.props.accessibilityState).not.toMatchObject({ disabled: true });
@@ -462,6 +468,8 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     await render(<ProfileScreen />);
     expect(screen.queryByTestId('profile-display-name')).toBeNull();
     expect(screen.queryByTestId('profile-identity')).toBeNull();
+    await screen.unmount();
+    await render(<SettingsScreen />);
     expect(screen.queryByTestId('profile-account-group')).toBeNull();
     expect(screen.getByText('Version')).toBeTruthy();
     expect(screen.getByTestId('profile-sign-out')).toBeTruthy();
@@ -482,7 +490,7 @@ describe('profile without an embedded config', () => {
   test('does not crash when expo-constants has no expoConfig (dev client, Expo Go)', async () => {
     mockConstants.expoConfig = null;
 
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     expect(screen.getByText('Version')).toBeTruthy();
     expect(screen.getByTestId('profile-version').props.children).toBe('unknown');
   });
@@ -490,7 +498,7 @@ describe('profile without an embedded config', () => {
   test('omits the build number when the config carries none (remote versioning)', async () => {
     mockConstants.expoConfig = { version: '1.2.3' };
 
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     expect(screen.getByTestId('profile-version').props.children).toBe('1.2.3');
   });
 });

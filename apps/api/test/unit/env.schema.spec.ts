@@ -135,4 +135,28 @@ describe('env schema', () => {
       expect(() => loadEnv()).not.toThrow();
     });
   });
+
+  describe('BILLING_ACCEPT_TEST_STORE', () => {
+    afterEach(() => {
+      delete process.env.BILLING_ACCEPT_TEST_STORE;
+    });
+
+    it('is refused in production, where the Test Store would sell without payment', () => {
+      applyUnitTestEnv({
+        NODE_ENV: 'production',
+        FX_RATES_URL: 'https://feed.example/usd',
+        BILLING_ACCEPT_TEST_STORE: 'true',
+      });
+
+      expect(() => loadEnv()).toThrow(/BILLING_ACCEPT_TEST_STORE/);
+    });
+
+    it('is off by default and allowed in development', () => {
+      applyUnitTestEnv({ NODE_ENV: 'development' });
+      expect(loadEnv().BILLING_ACCEPT_TEST_STORE).toBe(false);
+
+      applyUnitTestEnv({ NODE_ENV: 'development', BILLING_ACCEPT_TEST_STORE: 'true' });
+      expect(loadEnv().BILLING_ACCEPT_TEST_STORE).toBe(true);
+    });
+  });
 });

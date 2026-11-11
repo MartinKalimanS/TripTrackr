@@ -7,16 +7,15 @@
  *   <AreaHeader
  *     title="Photos" subtitle="Portugal Road Trip · 128 photos"
  *     titleTestID="photos-title" subtitleTestID="photos-subtitle"
- *     actions={<><ComingSoonButton name="photos-select" label="Select photos" icon="checks"
- *                variant="tonal" /><ComingSoonButton name="photos-more" label="More"
- *                icon="ellipsis" variant="tonal" /></>} />
+ *     actions={<IconButton testID="photos-take" icon="camera" variant="tonal"
+ *                accessibilityLabel="Take a photo with the camera" onPress={take} />} />
  *
  *   <AreaHeader title="Documents" subtitle="Portugal Road Trip · 5 saved" privacy actions={more} />
  *
  * Props: `title`, `subtitle` (one line, ends in an ellipsis when too long), `privacy` (the
  * "Only you" `PrivacyChip`, for what only the traveller can see), `actions` (the controls at the
- * end of the bar, after the chip, drawn by the screen: the pictured search and more buttons are
- * `ComingSoonButton`s with `variant="tonal"`), `onBack` (default: the router's back, or home when
+ * end of the bar, after the chip, drawn by the screen: real controls only, `IconButton`s with
+ * `variant="tonal"`; spec 015 FR-009), `onBack` (default: the router's back, or home when
  * there is nothing to go back to), `testID`, `titleTestID`, `subtitleTestID`.
  *
  * The bar: Back at the start, the chip and the actions at the end, 44 dp tall at the least and

@@ -25,7 +25,6 @@ import { View } from 'react-native';
 
 import { AreaHeader, areaMargin } from '@/components/ui/area-header';
 import { ChipGroup, type ChipOption } from '@/components/ui/chip';
-import { ComingSoonButton } from '@/components/ui/coming-soon-button';
 import { InlineError } from '@/components/ui/inline-error';
 import { notesSubtitle } from '@/features/notes/note-days';
 import type { AnchorTarget } from '@/features/notes/use-move-note';
@@ -68,15 +67,6 @@ export function NotesHeader({
         subtitle={notesSubtitle(tripTitle, count)}
         titleTestID="notes-header-title"
         subtitleTestID="notes-subtitle"
-        actions={
-          <ComingSoonButton
-            name="notes-search"
-            label="Search notes"
-            thing="Search"
-            icon="search"
-            variant="tonal"
-          />
-        }
       />
       <View
         style={{ paddingHorizontal: areaMargin(), paddingTop: Space[3], gap: Space[3] }}>

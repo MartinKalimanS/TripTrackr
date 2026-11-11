@@ -12,6 +12,7 @@
 import { render } from '@testing-library/react-native';
 
 import ProfileScreen from '@/app/(tabs)/profile';
+import SettingsScreen from '@/app/(tabs)/profile/settings';
 import { useSessionStore } from '@/features/auth/session-store';
 import { toGlobeTrips, type GlobeStopRow } from '@/features/globe/globe-data';
 import {
@@ -157,12 +158,13 @@ beforeEach(() => {
 });
 
 describe('You reading order', () => {
-  test('identity, period, passport, recap, stamps, Account, App, then sign out and delete', async () => {
+  test('identity, Settings, period, passport and stamps', async () => {
     await render(<ProfileScreen />);
     const nodes = accessibleNodes();
     expectReadingOrder(nodes, [
       'profile-display-name',
       'profile-since',
+      'profile-settings',
       'passport-period-all',
       'passport-period-2026',
       'passport-period-2025',
@@ -172,10 +174,17 @@ describe('You reading order', () => {
       'passport-figure-distance',
       'passport-figure-continents',
       /around the Earth/,
-      'coming-soon-recap',
       'Stamps',
       'stamps-count',
       'stamp-US',
+    ]);
+    expect(unnamed(nodes)).toEqual([]);
+  });
+
+  test('Settings reads Account, App, then sign out and delete (spec 015, T1507)', async () => {
+    await render(<SettingsScreen />);
+    const nodes = accessibleNodes();
+    expectReadingOrder(nodes, [
       'Account',
       'Email: marta@example.com',
       'Home currency: EUR',
@@ -234,7 +243,7 @@ describe('You reading order', () => {
   });
 
   test('the sign-out guard and delete account are both buttons, and delete account is available', async () => {
-    await render(<ProfileScreen />);
+    await render(<SettingsScreen />);
     const nodes = accessibleNodes();
     expect(nodes.find((node) => node.id === 'profile-sign-out')).toMatchObject({
       name: 'Sign out',

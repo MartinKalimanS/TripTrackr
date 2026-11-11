@@ -37,6 +37,8 @@ export const PAYWALL_COPY = {
       count === 1
         ? 'One trip was added past your free trips. It stays exactly as it is; choose how to cover it.'
         : `${count} trips were added past your free trips. They stay exactly as they are; choose how to cover them.`,
+    thisTrip:
+      'This trip was added past your free trips. It stays exactly as it is; choose how to cover it.',
     action: 'See options',
     later: 'Later',
   },

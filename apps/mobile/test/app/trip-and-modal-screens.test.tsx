@@ -450,11 +450,7 @@ describe('<AddTripScreen> as a form sheet (T434; FR-005, FR-009, FR-024, FR-025,
       mockToast.show.mockClear();
     });
 
-    const toast = () =>
-      (jest.requireMock('heroui-native') as { mockToast: { show: jest.Mock } }).mockToast
-        .show;
-
-    test('draws the destination, cover and dates rows in the picture order, between the name and the currency', async () => {
+    test('shows only what it stores: the name, Where to? and the currency (spec 015, T1509)', async () => {
       await render(<AddTripScreen />);
 
       const body = within(screen.getByTestId('add-trip-screen-body'));
@@ -467,10 +463,13 @@ describe('<AddTripScreen> as a form sheet (T434; FR-005, FR-009, FR-024, FR-025,
         'Trip name',
         'Where to?',
         'Cities or countries',
-        'Cover',
-        'Dates',
         'Home currency',
       ]);
+      expect(screen.queryByTestId('coming-soon-trip-cover')).toBeNull();
+      expect(screen.queryByTestId('coming-soon-trip-dates')).toBeNull();
+      expect(screen.getByTestId('trip-destination-add').props.accessibilityHint).toBe(
+        'Saves the trip, then adds its first stop',
+      );
     });
 
     test('"Where to?" saves the trip and opens its first stop', async () => {
@@ -496,36 +495,10 @@ describe('<AddTripScreen> as a form sheet (T434; FR-005, FR-009, FR-024, FR-025,
       expect(mockActions.createTrip).not.toHaveBeenCalled();
     });
 
-    test.each([
-      ['coming-soon-trip-cover', 'Photos'],
-      ['coming-soon-trip-dates', 'Add dates'],
-    ])(
-      '%s is a real button named "%s" that answers with ONE toast and nothing else',
-      async (id, name) => {
-        await render(<AddTripScreen />);
-
-        const control = screen.getByTestId(id);
-        expect(control.props.accessibilityRole).toBe('button');
-        expect(control.props.accessibilityLabel).toBe(name);
-        expect(control.props.accessibilityHint).toBe('Not available yet');
-
-        await fireEvent.press(control);
-        await fireEvent.press(control);
-
-        expect(toast()).toHaveBeenCalledTimes(2);
-        expect(toast().mock.calls[0][0]).toMatchObject({ id: 'coming-soon' });
-        expect(mockActions.createTrip).not.toHaveBeenCalled();
-        expect(mockPush).not.toHaveBeenCalled();
-        expect(mockBack).not.toHaveBeenCalled();
-        expect(mockReplace).not.toHaveBeenCalled();
-      },
-    );
-
-    test('a coming-soon row is no input: it is not saved, and Save still needs only the name and the currency', async () => {
+    test('Save still needs only the name and the currency', async () => {
       mockActions.createTrip.mockReturnValue({ ...trip, id: 'new-trip' });
       await render(<AddTripScreen />);
 
-      await fireEvent.press(screen.getByTestId('coming-soon-trip-dates'));
       await fireEvent.changeText(screen.getByTestId('add-trip-title'), 'Portugal');
       await fireEvent.press(screen.getByTestId('add-trip-save'));
 
@@ -750,7 +723,7 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
       expect(flat('stop-editor').flex).toBe(1);
     });
 
-    test('names the actions as before: Save stop when adding, Save dates when editing', async () => {
+    test('names the actions: Save stop when adding, and Edit stop with Save stop when editing', async () => {
       await renderEditor();
       expect(screen.getByTestId('stop-editor-save').props.accessibilityLabel).toBe(
         'Save stop',
@@ -759,9 +732,9 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
       await screen.unmount();
 
       await renderEditor(editMode);
-      expect(screen.getByText('Edit dates').props.accessibilityRole).toBe('header');
+      expect(screen.getByText('Edit stop').props.accessibilityRole).toBe('header');
       expect(screen.getByTestId('stop-editor-save').props.accessibilityLabel).toBe(
-        'Save dates',
+        'Save stop',
       );
     });
 
@@ -808,11 +781,11 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
       ]);
     });
 
-    test('editing shows the place as a card with no picker and no way to change the city', async () => {
+    test('editing shows the place as a card, with Change city and no picker until asked (spec 015)', async () => {
       await renderEditor(editMode);
 
       expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Roma');
-      expect(screen.queryByTestId('stop-editor-change-city')).toBeNull();
+      expect(screen.getByTestId('stop-editor-change-city')).toBeTruthy();
       expect(screen.queryByTestId('pick-florence')).toBeNull();
       expect(screen.getByTestId('stop-editor-arrive')).toBeTruthy();
       expect(screen.getByTestId('stop-editor-depart')).toBeTruthy();

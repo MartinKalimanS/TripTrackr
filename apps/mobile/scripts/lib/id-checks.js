@@ -16,7 +16,8 @@ const ENTRY_KEYS = ['id', 'reason'];
 const BASELINE_KEYS = ['source', ...LIST_KEYS];
 const SOURCE_KEYS = ['ref', 'sha'];
 /** A task of `specs/004-app-ui-redesign/tasks.md`: T and exactly three digits. */
-const TASK_ID = /\bT\d{3}\b/;
+// Three digits up to feature 014 (T432), four from 015 on (T1503), so they never collide.
+const TASK_ID = /\bT\d{3,4}\b/;
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const UNRESOLVED_FILE = 'test/fixtures/testid-unresolved-count.json';
 

@@ -163,30 +163,17 @@ describe('<StatsRow> what a screen reader hears', () => {
     );
   });
 
-  test('countries and trips are buttons; the kilometres are a coming-soon button', async () => {
+  test('countries and trips are buttons; the kilometres are a figure, not a button (spec 015)', async () => {
     await render(row());
     expect(screen.getByLabelText('14 of 195 countries').props.accessibilityRole).toBe(
       'button',
     );
     expect(screen.getByLabelText('22 trips').props.accessibilityRole).toBe('button');
     const distance = screen.getByLabelText('61,480 kilometres travelled');
-    expect(distance.props.accessibilityRole).toBe('button');
-    expect(distance.props.accessibilityHint).toBe('Not available yet');
-    expect(distance).toBe(screen.getByTestId('coming-soon-distance'));
+    expect(distance.props.accessibilityRole).not.toBe('button');
+    expect(distance.props.accessibilityHint).toBeUndefined();
+    expect(screen.queryByTestId('coming-soon-distance')).toBeNull();
     expect(screen.getByTestId('globe-stats-distance-tile')).toBeOnTheScreen();
-  });
-
-  test('pressing the kilometres shows the coming-soon toast and nothing else', async () => {
-    const onOpenCountries = jest.fn();
-    const onOpenTrips = jest.fn();
-    await render(row({ onOpenCountries, onOpenTrips }));
-    await fireEvent.press(screen.getByTestId('coming-soon-distance'));
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(mockToast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'coming-soon' }),
-    );
-    expect(onOpenCountries).not.toHaveBeenCalled();
-    expect(onOpenTrips).not.toHaveBeenCalled();
   });
 
   test('countries opens the list and trips opens the trips; the kilometres open nothing', async () => {
@@ -278,13 +265,13 @@ describe('<StatsRow> as pictured (home.png, prototype .stats / .stat)', () => {
     }
   });
 
-  test('each label is the muted caption, followed by a 16 dp chevron in the subtle ink', async () => {
+  test('each label is the muted caption; the two that open something carry a 16 dp chevron', async () => {
     await render(row());
     for (const label of ['Countries', 'Trips', 'Kilometres']) {
       expect(String(screen.getByText(label).props.className)).toContain('text-muted');
     }
     const chevrons = glyphsIn();
-    expect(chevrons).toHaveLength(3);
+    expect(chevrons).toHaveLength(2);
     for (const glyph of chevrons) {
       expect(glyph).toMatchObject({ name: 'chevron-right', size: 16 });
     }

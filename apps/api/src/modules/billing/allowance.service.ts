@@ -88,7 +88,23 @@ export class AllowanceService {
       return false;
     }
 
-    return (await this.repository.earlierOrdinaryTrips(tripId)) >= this.freeTrips();
+    const over = (await this.repository.earlierOrdinaryTrips(tripId)) >= this.freeTrips();
+    if (!over) return false;
+    return !(await this.coverOnArrival(tripId, standing));
+  }
+
+  /**
+   * Pays for a trip that arrived past the free number with what the traveller already holds: a
+   * Tier 1 use, then a credit (spec 015, FR-005; the order of `chooseCover` with no free slot to
+   * offer). `false` when nothing can pay, and the trip is flagged as before. The caller holds the
+   * traveller's lock and has checked the trip is not covered, so a retried push spends nothing more.
+   */
+  private async coverOnArrival(tripId: string, standing: Standing): Promise<boolean> {
+    const choice = chooseCover(standing, 0);
+    if (choice === null || choice.kind !== 'covered') return false;
+    if (!(await this.repository.isLiveOwnTrip(tripId))) return false;
+    await this.repository.insertCover(tripId, choice);
+    return true;
   }
 
   /**

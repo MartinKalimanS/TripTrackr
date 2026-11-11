@@ -164,23 +164,12 @@ describe('<NotesScreen> - the header as pictured (FR-044)', () => {
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
-  test('the pictured search is a coming-soon control: named, hinted, ONE toast and nothing else', async () => {
+  test('draws no search the app cannot honour (spec 015 FR-009)', async () => {
     mockNotes.data = [note('a')];
     await render(<NotesScreen />);
 
-    const search = screen.getByTestId('coming-soon-notes-search');
-    expect(search.props.accessibilityLabel).toBe('Search notes');
-    expect(search.props.accessibilityHint).toBe('Not available yet');
-    expect(search.props.accessibilityRole).toBe('button');
-
-    await fireEvent.press(search);
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(mockToast.show.mock.calls[0][0].id).toBe('coming-soon');
-    expect(screen.queryByTestId('note-editor')).toBeNull();
-    expect(mockBack).not.toHaveBeenCalled();
-    expect(Object.values(mockActions).every((action) => !action.mock.calls.length)).toBe(
-      true,
-    );
+    expect(screen.queryByTestId('coming-soon-notes-search')).toBeNull();
+    expect(screen.queryByLabelText('Search notes')).toBeNull();
   });
 
   test('a note has no visibility control: private by default, nothing to share', async () => {

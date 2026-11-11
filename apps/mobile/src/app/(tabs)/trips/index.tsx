@@ -30,8 +30,8 @@
  * rows (D5-17); the filter is component state and is forgotten with the screen.
  */
 import type { FlashListRef, ViewToken } from '@shopify/flash-list';
-import { Stack, useRouter } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
 
 import {
@@ -42,7 +42,8 @@ import {
 } from '@/components/trip/trips-list-parts';
 import { useTabZone } from '@/components/trip/use-tab-zone';
 import { YearScrubber } from '@/components/trip/year-scrubber';
-import { ComingSoonButton } from '@/components/ui/coming-soon-button';
+import { Field } from '@/components/ui/field';
+import { IconButton } from '@/components/ui/icon-button';
 import { ListScreen, type ListScreenProps } from '@/components/ui/list-screen';
 import { PlanTripFab } from '@/components/ui/plan-trip-fab';
 import { SyncChip } from '@/components/ui/sync-chip';
@@ -51,6 +52,7 @@ import { Spacing } from '@/constants/theme';
 import { OverAllowanceAlert } from '@/components/billing/over-allowance-alert';
 import { usePlanTrip } from '@/features/billing/use-plan-trip';
 import type { TripCardModel } from '@/features/trips/trip-card-model';
+import { searchTrips } from '@/features/trips/trip-search';
 import {
   YEAR_SCRUBBER_MIN_TRIPS,
   composeTripList,
@@ -117,12 +119,16 @@ function useYearStrip(items: readonly TripListItem[]) {
 }
 
 /** What the list shows now: the cards of a settled store, composed for the filter. */
-function useTripsList(filter: TripFilter) {
+function useTripsList(filter: TripFilter, query: string) {
   const { data, loading, error } = useTrips();
   // A failure or a first load shows its own state, never cards left from before.
   const settled = !loading && !error;
   const cards = settled ? data : NO_CARDS;
-  const items = useMemo(() => composeTripList(cards, filter), [cards, filter]);
+  // The search narrows what is listed only: the counts and "No trips yet" read every card.
+  const items = useMemo(
+    () => composeTripList(searchTrips(cards, query), filter),
+    [cards, filter, query],
+  );
   const sticky = useMemo(() => headerIndices(items), [items]);
   return { data, cards, items, sticky, loading, error, settled };
 }
@@ -131,14 +137,15 @@ interface HeaderToolsProps {
   kind: TripsSync['chip']['kind'];
   count: number;
   onRetry: () => void;
+  onSearch: () => void;
 }
 
 /**
- * The header's trailing controls (trips.png): the sync chip while changes wait, then the pictured
- * Search, a coming-soon control (Q-11: one toast, nothing else), 8 dp apart. Search is there in
- * every state; the chip only when there is something to say.
+ * The header's trailing controls (trips.png): the sync chip while changes wait, then Search, 8 dp
+ * apart. Search opens the search field at the top of the list (spec 015, T1506); it is there in
+ * every state, the chip only when there is something to say.
  */
-function HeaderTools({ kind, count, onRetry }: HeaderToolsProps) {
+function HeaderTools({ kind, count, onRetry, onSearch }: HeaderToolsProps) {
   return (
     <View
       testID="trips-header-tools"
@@ -149,26 +156,89 @@ function HeaderTools({ kind, count, onRetry }: HeaderToolsProps) {
           onRetry={kind === 'failed' ? onRetry : undefined}
         />
       )}
-      <ComingSoonButton
-        name="trips-search"
-        label="Search"
+      <IconButton
+        testID="trips-search"
         icon="search"
         variant="tonal"
+        accessibilityLabel="Search"
+        accessibilityHint="Find a trip by its name"
+        onPress={onSearch}
       />
     </View>
   );
 }
 
 /** The header's options: the trailing controls, rebuilt only when the chip changes. */
-function useHeaderOptions(sync: TripsSync) {
+function useHeaderOptions(sync: TripsSync, onSearch: () => void) {
   const kind = sync.chip.kind;
   const count = 'count' in sync.chip ? sync.chip.count : 0;
   const onRetry = sync.retry;
   return useMemo(
     () => ({
-      headerRight: () => <HeaderTools kind={kind} count={count} onRetry={onRetry} />,
+      headerRight: () => (
+        <HeaderTools kind={kind} count={count} onRetry={onRetry} onSearch={onSearch} />
+      ),
     }),
-    [kind, count, onRetry],
+    [kind, count, onRetry, onSearch],
+  );
+}
+
+/**
+ * The search: whether its field is open and what it holds. Closing it clears it. Arriving with
+ * `?search=1` (the Home's Search, spec 015 T1508) opens it, once; the param is then cleared so a
+ * later visit to the tab starts closed.
+ */
+function useTripSearch() {
+  const router = useRouter();
+  const { search: asked } = useLocalSearchParams<{ search?: string }>();
+  const [open, setOpen] = useState(asked === '1');
+  const [query, setQuery] = useState('');
+  // A later arrival (the tab is already mounted) is met during render, not in an effect.
+  const [seen, setSeen] = useState(asked);
+  if (asked !== seen) {
+    setSeen(asked);
+    if (asked === '1') setOpen(true);
+  }
+  // The param is the router's: clearing it is an update of the outside world.
+  useEffect(() => {
+    if (asked === '1') router.setParams({ search: undefined });
+  }, [asked, router]);
+  const show = useCallback(() => setOpen(true), []);
+  const close = useCallback(() => {
+    setOpen(false);
+    setQuery('');
+  }, []);
+  return { open, query, setQuery, show, close };
+}
+
+type TripSearch = ReturnType<typeof useTripSearch>;
+
+/** The search field at the top of the list, with the control that closes it. */
+function SearchRow({ search }: { search: TripSearch }) {
+  return (
+    <View
+      testID="trips-search-row"
+      style={{ flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two }}>
+      <View style={{ flex: 1 }}>
+        <Field
+          testID="trips-search-field"
+          label="Search trips"
+          value={search.query}
+          onChangeText={search.setQuery}
+          placeholder="Trip name"
+          autoFocus
+          autoCorrect={false}
+          returnKeyType="search"
+        />
+      </View>
+      <IconButton
+        testID="trips-search-clear"
+        icon="x"
+        variant="tonal"
+        accessibilityLabel="Close search"
+        onPress={search.close}
+      />
+    </View>
   );
 }
 
@@ -176,6 +246,7 @@ type TripsList = ReturnType<typeof useTripsList>;
 
 interface TripsListViewProps {
   list: TripsList;
+  search: TripSearch;
   strip: ReturnType<typeof useYearStrip>;
   sync: TripsSync;
   filter: TripFilter;
@@ -210,6 +281,7 @@ const LIST_SHAPE: Pick<
 };
 
 interface TripsHeaderProps {
+  search: TripSearch;
   cards: readonly TripCardModel[];
   settled: boolean;
   filter: TripFilter;
@@ -218,7 +290,14 @@ interface TripsHeaderProps {
 }
 
 /** The count, the filter and the banner; the counts are read again only when the cards change. */
-function TripsHeader({ cards, settled, filter, onFilter, banner }: TripsHeaderProps) {
+function TripsHeader({
+  search,
+  cards,
+  settled,
+  filter,
+  onFilter,
+  banner,
+}: TripsHeaderProps) {
   const span = useMemo(() => (settled ? tripSpan(cards) : null), [cards, settled]);
   const counts = useMemo(
     () => (settled ? tripFilterCounts(cards) : null),
@@ -226,6 +305,7 @@ function TripsHeader({ cards, settled, filter, onFilter, banner }: TripsHeaderPr
   );
   return (
     <>
+      {search.open ? <SearchRow search={search} /> : null}
       <OverAllowanceAlert />
       <TripsListHeader
         span={span}
@@ -239,7 +319,7 @@ function TripsHeader({ cards, settled, filter, onFilter, banner }: TripsHeaderPr
 }
 
 function TripsListView(props: TripsListViewProps) {
-  const { list, strip, sync, filter, onFilter, onOpen } = props;
+  const { list, search, strip, sync, filter, onFilter, onOpen } = props;
   const { cards, items, settled, loading, error } = list;
   // A failed store has no list to filter: the error stands alone.
   const showHeader = !error && (loading || cards.length > 0);
@@ -261,6 +341,7 @@ function TripsListView(props: TripsListViewProps) {
       header={
         showHeader ? (
           <TripsHeader
+            search={search}
             cards={cards}
             settled={settled}
             filter={filter}
@@ -277,6 +358,8 @@ function TripsListView(props: TripsListViewProps) {
           filter={filter}
           onPlan={props.onPlan}
           onResetFilter={() => onFilter('all')}
+          query={search.query}
+          onClearSearch={search.close}
         />
       }
       footer={<FabClearance />}
@@ -287,12 +370,13 @@ function TripsListView(props: TripsListViewProps) {
 export default function TripsScreen() {
   const router = useRouter();
   const [filter, setFilter] = useState<TripFilter>('all');
-  const list = useTripsList(filter);
+  const search = useTripSearch();
+  const list = useTripsList(filter, search.query);
   const sync = useTripsSync();
   const strip = useYearStrip(list.items);
   const tabZone = useTabZone();
   const toastUp = useToastVisible();
-  const headerOptions = useHeaderOptions(sync);
+  const headerOptions = useHeaderOptions(sync, search.show);
 
   const onPlan = usePlanTrip();
   const onOpen = useCallback((id: string) => router.push(`/trip/${id}`), [router]);
@@ -305,6 +389,7 @@ export default function TripsScreen() {
     <View className="flex-1">
       <TripsListView
         list={list}
+        search={search}
         strip={strip}
         sync={sync}
         filter={filter}

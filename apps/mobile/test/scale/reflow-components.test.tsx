@@ -347,7 +347,7 @@ describe.each(TEXT_SCALES)('at a font scale of %s', (scale) => {
     const tools = styleOf(screen.getByTestId('home-tools'));
     expect(tools.flexDirection).toBe(reflows(scale) ? 'column' : 'row');
     expect(tools.alignItems).toBe(reflows(scale) ? 'flex-end' : 'center');
-    expect(screen.getByTestId('coming-soon-search')).toBeOnTheScreen();
+    expect(screen.getByTestId('home-search')).toBeOnTheScreen();
     expectNoFixedTextSize(scale);
   });
 

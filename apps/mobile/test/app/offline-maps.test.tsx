@@ -137,9 +137,6 @@ jest.mock('@/hooks/use-mapbox-ready', () => ({
 }));
 
 type MockPack = { resume: jest.Mock };
-const { mockToast } = jest.requireMock('heroui-native') as {
-  mockToast: { show: jest.Mock; hide: jest.Mock };
-};
 const { offlineManager } = jest.requireMock('@rnmapbox/maps') as {
   offlineManager: {
     createPack: jest.Mock;
@@ -215,7 +212,6 @@ const variants = () =>
       .filter((button) => button.props.variant !== undefined)
       .map((button) => [button.props.testID as string, button.props.variant as string]),
   );
-const FAB = { 'coming-soon-offline-new-area': 'primary' };
 
 beforeEach(() => {
   offlineManager.__reset();
@@ -282,13 +278,11 @@ describe('<OfflineMapsScreen> — the pictured header (F11; UI-SPEC 9.2)', () =>
     expect(screen.getByText('No cities yet')).toBeTruthy();
   });
 
-  test('the header is fixed and the body scrolls, leaving room under its last row for the floating button', async () => {
+  test('the header is fixed and the body scrolls, with room under its last row', async () => {
     await renderScreen();
 
     const scroll = screen.getByTestId('offline-maps-scroll');
-    expect(scroll.props.contentContainerStyle.paddingBottom).toBeGreaterThanOrEqual(
-      52 + 16 + 16,
-    );
+    expect(scroll.props.contentContainerStyle.paddingBottom).toBeGreaterThanOrEqual(32);
     expect(within(scroll).queryByTestId('offline-maps-title')).toBeNull();
   });
 });
@@ -582,23 +576,22 @@ describe('<OfflineMapsScreen> — the actions (FR-005, FR-037)', () => {
     expect(screen.getByTestId('offline-remove-100')).toBeTruthy();
   });
 
-  test('the only primary is the floating "New area": Download and Try again are secondary, Stop and Remove destructive', async () => {
+  test('no control is primary: Download and Try again are secondary, Stop and Remove destructive', async () => {
     mockStops.data = [rome, florence];
     await seedReady(101, 8_100_000);
     await renderScreen();
-    expect(variants()).toMatchObject({ ...FAB, 'offline-download-100': 'secondary' });
+    expect(variants()).toMatchObject({ 'offline-download-100': 'secondary' });
 
     await fireEvent.press(screen.getByTestId('offline-download-100'));
     await waitFor(() => expect(offlineManager.createPack).toHaveBeenCalled());
-    expect(variants()).toMatchObject({ ...FAB, 'offline-stop-100': 'danger-soft' });
+    expect(variants()).toMatchObject({ 'offline-stop-100': 'danger-soft' });
 
     await act(async () => offlineManager.__emitError('city-100', 'timed out'));
     expect(variants()).toMatchObject({
-      ...FAB,
       'offline-download-100': 'secondary',
       'offline-remove-100': 'danger-soft',
     });
-    expect(Object.values(variants()).filter((v) => v === 'primary')).toHaveLength(1);
+    expect(Object.values(variants()).filter((v) => v === 'primary')).toHaveLength(0);
   });
 
   test('a download that never started offers Try again alone: nothing was saved, so nothing to remove', async () => {
@@ -751,7 +744,7 @@ describe('<OfflineMapsScreen> — "For this trip" and "Downloaded" (F11)', () =>
     expect(trash.props.accessibilityLabel).toBe('Remove Firenze’s offline map');
     expect(within(trash).queryByText('Remove')).toBeNull();
     expect(screen.queryByTestId('coming-soon-offline-map-101')).toBeNull();
-    expect(screen.getByTestId('coming-soon-offline-map-100')).toBeTruthy();
+    expect(screen.queryByTestId('coming-soon-offline-map-100')).toBeNull();
   });
 
   test('with every city saved the trip section says so, and nothing is left to download', async () => {
@@ -797,41 +790,14 @@ describe('<OfflineMapsScreen> — "For this trip" and "Downloaded" (F11)', () =>
   });
 });
 
-describe('<OfflineMapsScreen> — the pictured controls without a capability (Q-11)', () => {
-  beforeEach(() => mockToast.show.mockClear());
-
-  test('"Map >" is drawn on each map still to do, named from its city, and its only effect is one toast', async () => {
+describe('<OfflineMapsScreen> — no control that only says "coming soon" (spec 015 FR-009)', () => {
+  test('draws no "Map >" link and no "New area" button', async () => {
     mockStops.data = [rome, florence];
     await renderScreen();
 
-    for (const [id, name] of [
-      [100, 'Roma on the map'],
-      [101, 'Firenze on the map'],
-    ] as const) {
-      const link = screen.getByTestId(`coming-soon-offline-map-${id}`);
-      expect(link.props.accessibilityLabel).toBe(name);
-      expect(link.props.accessibilityHint).toBe('Not available yet');
-      expect(link.props.accessibilityRole).toBe('button');
-    }
-    await fireEvent.press(screen.getByTestId('coming-soon-offline-map-100'));
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(mockToast.show.mock.calls[0]?.[0]).toEqual(
-      expect.objectContaining({ id: 'coming-soon' }),
-    );
-    expect(offlineManager.createPack).not.toHaveBeenCalled();
-    expect(offlineManager.deletePack).not.toHaveBeenCalled();
-  });
-
-  test('"New area" is the one primary: a floating button named "Download a new area", one toast, nothing else', async () => {
-    await renderScreen();
-
-    const fab = screen.getByTestId('coming-soon-offline-new-area');
-    expect(fab.props.accessibilityLabel).toBe('Download a new area');
-    expect(fab.props.variant).toBe('primary');
-    expect(within(fab).getByText('New area')).toBeTruthy();
-    await fireEvent.press(fab);
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(offlineManager.createPack).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('coming-soon-offline-map-100')).toBeNull();
+    expect(screen.queryByTestId('coming-soon-offline-new-area')).toBeNull();
+    expect(screen.queryByText('Not available yet')).toBeNull();
   });
 });
 

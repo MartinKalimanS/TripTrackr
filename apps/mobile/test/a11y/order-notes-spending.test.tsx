@@ -232,13 +232,12 @@ beforeEach(() => {
 });
 
 describe('Notes reading order', () => {
-  test('Back, search, the heading, the filters, the days over their cards, then New note', async () => {
+  test('Back, the heading, the filters, the days over their cards, then New note', async () => {
     mockNotes.data = [note({}), note({ id: 'note-2', title: 'Wine', city_id: 100 })];
     await render(<NotesScreen />);
     const nodes = accessibleNodes();
     expectReadingOrder(nodes, [
       'Back',
-      'coming-soon-notes-search',
       'notes-header-title',
       'notes-subtitle',
       'notes-filter-all',
@@ -302,7 +301,6 @@ describe('Spending reading order', () => {
       'expenses-toggle-summary',
       'summary-total',
       'summary-average',
-      'coming-soon-budget',
       'category-bar',
       'expense-row-exp-1',
       'expense-row-exp-2',

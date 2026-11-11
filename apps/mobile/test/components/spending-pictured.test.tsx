@@ -379,19 +379,11 @@ describe('<DayBars> (prototype .bars, .bcol; picture expenses.png)', () => {
     expect(flat(screen.getByTestId('day-bar-2026-10-14', HIDDEN)).height).toBe(87);
   });
 
-  test('"Budget" is drawn as pictured with no amount and no line: a coming-soon control (Q-11)', async () => {
+  test('draws no budget control or line: the app keeps no budget (spec 015 FR-009)', async () => {
     await render(<DayBars days={days()} todayIndex={2} homeCurrency="CHF" />);
 
-    const budget = screen.getByTestId('coming-soon-budget');
-    expect(budget.props.accessibilityLabel).toBe('Budget');
-    expect(budget.props.accessibilityHint).toBe('Not available yet');
-    expect(budget).toHaveTextContent('Budget');
-    expect(budget).not.toHaveTextContent(/\d/);
+    expect(screen.queryByTestId('coming-soon-budget')).toBeNull();
     expect(screen.queryByTestId('day-bars-budget-line')).toBeNull();
-
-    await fireEvent.press(budget);
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(mockToast.show.mock.calls[0]![0]).toMatchObject({ id: 'coming-soon' });
   });
 
   test('the chart is ONE image to a screen reader, with every day in a sentence; "Per day" is a heading', async () => {
@@ -752,7 +744,7 @@ describe('<ExpenseDayGroup> (prototype .dgh; picture expenses.png)', () => {
 });
 
 describe('<ExpensesHeader> (T550; FR-044, FR-055)', () => {
-  test('is the shared area header: "Spending", the trip and the count, "Only you" and the coming-soon more', async () => {
+  test('is the shared area header: "Spending", the trip and the count, "Only you"; no dead control (spec 015)', async () => {
     await render(<ExpensesHeader tripTitle="Portugal" count={3} writeError={null} />);
 
     expect(screen.getByTestId('expenses-title')).toHaveTextContent('Spending');
@@ -761,9 +753,7 @@ describe('<ExpensesHeader> (T550; FR-044, FR-055)', () => {
     );
     expect(screen.getByTestId('privacy-chip')).toBeTruthy();
     expect(screen.getByLabelText('Back')).toBeTruthy();
-    const more = screen.getByTestId('coming-soon-expenses-more');
-    await fireEvent.press(more);
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('coming-soon-expenses-more')).toBeNull();
     expect(screen.queryByTestId('expenses-write-error')).toBeNull();
   });
 

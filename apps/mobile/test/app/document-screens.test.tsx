@@ -278,13 +278,11 @@ describe('<DocumentsScreen> — trip/[id]/documents (T118)', () => {
     expect(screen.getByTestId('documents-title').props.accessibilityRole).toBe('header');
   });
 
-  test('the pictured "more" control is a coming-soon control; there is no share control of any kind', async () => {
+  test('no dead "more" control (spec 015) and no share control of any kind', async () => {
     mockDocuments.data = [doc()];
     await render(<DocumentsScreen />);
 
-    const more = screen.getByTestId('coming-soon-documents-more');
-    expect(more.props.accessibilityLabel).toBe('More');
-    expect(more.props.accessibilityHint).toBe('Not available yet');
+    expect(screen.queryByTestId('coming-soon-documents-more')).toBeNull();
     expect(buttonLabels().filter((label) => SHARING.test(label))).toEqual([]);
   });
 
@@ -1275,7 +1273,7 @@ describe('<DocumentViewScreen> — Atlas (T443)', () => {
     expect(title.props.accessibilityRole).toBe('header');
   });
 
-  test('the picture is the hero: on a white plate under a band, with nothing but the brightness control near it (FR-033, FR-050)', async () => {
+  test('the picture is the hero: on a white plate under a band, with no control near it (FR-033, FR-050)', async () => {
     await render(<DocumentViewScreen />);
 
     const image = screen.getByTestId('document-image');
@@ -1300,14 +1298,11 @@ describe('<DocumentViewScreen> — Atlas (T443)', () => {
     expect(screen.getByTestId('document-hero-flight')).toHaveTextContent('AC834');
   });
 
-  test('the pictured brightness line is a coming-soon control that changes nothing', async () => {
+  test('draws no brightness control the app cannot honour (spec 015 FR-009)', async () => {
     await render(<DocumentViewScreen />);
 
-    const boost = screen.getByTestId('coming-soon-document-brightness');
-    expect(boost.props.accessibilityRole).toBe('button');
-    expect(boost.props.accessibilityLabel).toBe('Raise brightness for the code');
-    expect(boost.props.accessibilityHint).toBe('Not available yet');
-    expect(screen.queryByText(/brightness is raised/i)).toBeNull();
+    expect(screen.queryByTestId('coming-soon-document-brightness')).toBeNull();
+    expect(screen.queryByText('Not available yet')).toBeNull();
   });
 
   test('the pictured share, copy and linked-stop rows are not drawn: a document is never shareable', async () => {
@@ -1567,7 +1562,6 @@ describe('document screens — composed from the Atlas adapter layer only (FR-03
     'components/trip/document-ticket.tsx',
     'components/trip/document-hero.tsx',
     'components/trip/barcode-plate.tsx',
-    'components/trip/brightness-boost.tsx',
     'components/trip/documents-skeleton.tsx',
   ];
 

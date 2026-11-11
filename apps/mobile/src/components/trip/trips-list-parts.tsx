@@ -116,6 +116,9 @@ export interface TripsEmptyProps {
   filter: TripFilter;
   onPlan: () => void;
   onResetFilter: () => void;
+  /** What the traveller is searching for; blank when not searching (spec 015, T1506). */
+  query?: string;
+  onClearSearch?: () => void;
 }
 
 /** What the list shows instead of rows: the one state that applies. */
@@ -126,6 +129,8 @@ export function TripsEmpty({
   filter,
   onPlan,
   onResetFilter,
+  query = '',
+  onClearSearch,
 }: TripsEmptyProps): ReactElement {
   if (error) {
     return (
@@ -147,6 +152,21 @@ export function TripsEmpty({
           label: 'Plan a trip',
           onPress: onPlan,
           testID: 'trips-empty-plan-trip',
+        }}
+      />
+    );
+  }
+  if (query.trim() !== '' && onClearSearch) {
+    return (
+      <EmptyState
+        testID="trips-search-empty"
+        variant="filtered"
+        title={`No trip matches “${query.trim()}”`}
+        detail="Search looks at the names of your trips."
+        action={{
+          label: 'Clear search',
+          onPress: onClearSearch,
+          testID: 'trips-search-empty-clear',
         }}
       />
     );

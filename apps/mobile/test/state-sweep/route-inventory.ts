@@ -138,6 +138,18 @@ export const ROUTE_INVENTORY: readonly RouteRow[] = [
     sweep: SWEEP('profile'),
   },
   {
+    route: 'src/app/(tabs)/profile/settings.tsx',
+    loading: { na: 'reads the session in memory; nothing loads' },
+    empty: { na: 'there is always an App group and the set-apart block' },
+    error: {
+      shows:
+        'a failed sign-out is an alert under its row; the guard warning when changes wait',
+      pins: [['test/app/sync-runtime-profile.test.tsx', 'sign-out-warning']],
+    },
+    primary: 'none: no control in Settings is primary (FR-005)',
+    sweep: SWEEP('profile'),
+  },
+  {
     route: 'src/app/+not-found.tsx',
     loading: { na: 'a stale link resolves at once; nothing is read' },
     empty: {

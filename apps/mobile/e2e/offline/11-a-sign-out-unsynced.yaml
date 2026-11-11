@@ -42,7 +42,17 @@ appId: com.triptrackr.app
     id: 'tab-profile'
 - assertVisible:
     id: 'profile-screen'
-# The You screen is longer now (the passport and the stamps come before the groups): scroll to it.
+# You keeps the passport; the rows are in Settings (spec 015, T1507). The tab may still
+# show Settings from an earlier visit, so it is opened only when it is not already there.
+- runFlow:
+    when:
+      notVisible:
+        id: 'settings-screen'
+    commands:
+      - tapOn:
+          id: 'profile-settings'
+- assertVisible:
+    id: 'settings-screen'
 - scrollUntilVisible:
     element:
       id: 'profile-sign-out'
@@ -135,6 +145,17 @@ appId: com.triptrackr.app
 - tapOn: 'Back'
 - tapOn:
     id: 'tab-profile'
+# You keeps the passport; the rows are in Settings (spec 015, T1507). The tab may still
+# show Settings from an earlier visit, so it is opened only when it is not already there.
+- runFlow:
+    when:
+      notVisible:
+        id: 'settings-screen'
+    commands:
+      - tapOn:
+          id: 'profile-settings'
+- assertVisible:
+    id: 'settings-screen'
 - scrollUntilVisible:
     element:
       id: 'profile-sign-out'

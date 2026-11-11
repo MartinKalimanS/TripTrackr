@@ -33,6 +33,8 @@ const mockRetry = jest.fn();
 jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
   return {
+    // The trips screen reads `?search=1` (spec 015, T1508); nothing asks for it here.
+    useLocalSearchParams: () => ({}),
     useRouter: () => ({ push: mockPush, navigate: jest.fn(), back: jest.fn() }),
     Stack: {
       Screen: (props: {

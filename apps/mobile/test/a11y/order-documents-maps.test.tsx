@@ -263,7 +263,7 @@ describe('Offline maps reading order', () => {
     );
   }
 
-  test('Back, the heading, the storage, then each city with its state and its buttons, the note, the new area', async () => {
+  test('Back, the heading, the storage, then each city with its state and its buttons, then the note', async () => {
     await renderMaps();
     const nodes = accessibleNodes();
     expectReadingOrder(nodes, [
@@ -280,7 +280,6 @@ describe('Offline maps reading order', () => {
       'offline-status-101',
       'offline-download-101',
       'offline-maps-note',
-      'coming-soon-offline-new-area',
     ]);
     expect(unnamed(nodes)).toEqual([]);
     expect(exposedArt()).toEqual([]);

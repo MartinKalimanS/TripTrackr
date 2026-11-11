@@ -163,10 +163,10 @@ describe('<HomeHeader> - as pictured: 54 dp inset, 20 dp margins, tools at the r
   test('the search button is drawn at the right of the sync chip, 44 dp, over the sky', async () => {
     mockState.current = { kind: 'waiting', count: 3 };
     await renderHeader();
-    const search = screen.getByTestId('coming-soon-search');
+    const search = screen.getByTestId('home-search');
     expect(search.props.accessibilityRole).toBe('button');
     expect(search.props.accessibilityLabel).toBe('Search');
-    expect(search.props.accessibilityHint).toBe('Not available yet');
+    expect(search.props.accessibilityHint).toBe('Find a trip by its name');
     expect(StyleSheet.flatten(search.props.style)).toMatchObject({
       width: 44,
       height: 44,
@@ -182,7 +182,7 @@ describe('<HomeHeader> - as pictured: 54 dp inset, 20 dp margins, tools at the r
 
   test('the search button is there when nothing waits to sync, and the chip is not', async () => {
     await renderHeader();
-    expect(screen.getByTestId('coming-soon-search')).toBeTruthy();
+    expect(screen.getByTestId('home-search')).toBeTruthy();
     expect(screen.queryByTestId('sync-chip')).toBeNull();
   });
 
@@ -193,7 +193,7 @@ describe('<HomeHeader> - as pictured: 54 dp inset, 20 dp margins, tools at the r
       'home-greeting-date',
       'home-greeting',
       'sync-chip',
-      'coming-soon-search',
+      'home-search',
       'sync-banner',
       'home-recentre',
     ];
@@ -203,13 +203,15 @@ describe('<HomeHeader> - as pictured: 54 dp inset, 20 dp margins, tools at the r
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  test('pressing search shows ONE "Search is coming soon" toast and goes nowhere', async () => {
+  test('pressing search opens the trips search (spec 015, T1508), shows no toast, and does not recentre', async () => {
     const onRecentre = jest.fn();
     await renderHeader({ onRecentre });
-    await fireEvent.press(screen.getByTestId('coming-soon-search'));
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(mockToast.show.mock.calls[0][0].id).toBe('coming-soon');
-    Object.values(router).forEach((fn) => expect(fn).not.toHaveBeenCalled());
+    await fireEvent.press(screen.getByTestId('home-search'));
+    expect(mockToast.show).not.toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith({
+      pathname: '/trips',
+      params: { search: '1' },
+    });
     expect(onRecentre).not.toHaveBeenCalled();
   });
 
@@ -262,6 +264,6 @@ describe('<HomeHeader> - as the pictures place it', () => {
     await renderHeader({});
     expect(screen.getByTestId('home-greeting')).toHaveTextContent('Hello, Marta');
     expect(screen.getByTestId('home-greeting-date')).not.toHaveTextContent('195');
-    expect(screen.getByTestId('coming-soon-search')).toBeTruthy();
+    expect(screen.getByTestId('home-search')).toBeTruthy();
   });
 });

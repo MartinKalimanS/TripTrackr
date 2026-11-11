@@ -33,16 +33,14 @@
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useContext, useMemo, useState, type ReactElement } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { OfflineMapsSkeleton } from '@/components/trip/offline-maps-skeleton';
 import { CityPackCard } from '@/components/trip/offline-city-card';
 import { StorageBar } from '@/components/trip/storage-bar';
 import { describePlace } from '@/components/trip/stop-row';
-import { AreaFab, areaFabClearance } from '@/components/ui/area-fab';
 import { AreaHeader, areaMargin } from '@/components/ui/area-header';
-import { COMING_SOON_HINT, useComingSoon } from '@/components/ui/coming-soon-button';
 import { EmptyState, ErrorState } from '@/components/ui/state-view';
 import { Text } from '@/components/ui/text';
 import type { StopWithPlace } from '@/db/repositories/stops';
@@ -56,7 +54,6 @@ import { storageCaption, storageFigures } from '@/features/trips/offline-storage
 import { useOfflinePacks } from '@/features/trips/use-offline-pack';
 import { useTrip, useTripStops, type LiveResult } from '@/features/trips/use-trips';
 import { useAppearance } from '@/hooks/use-appearance';
-import { useFontScale } from '@/hooks/use-font-scale';
 import { useHaptics } from '@/hooks/use-haptics';
 import { useMapboxReady } from '@/hooks/use-mapbox-ready';
 import { freeDiskBytes } from '@/lib/disk-space';
@@ -295,10 +292,8 @@ export default function OfflineMapsScreen() {
   const cities = useMemo(() => tripCities(stops.data), [stops.data]);
   const router = useRouter();
   const { tokens } = useAppearance();
-  const fontScale = useFontScale();
   const insets = useContext(SafeAreaInsetsContext) ?? NO_INSETS;
   const margin = areaMargin();
-  const newArea = useComingSoon('New area');
 
   return (
     <View
@@ -319,7 +314,7 @@ export default function OfflineMapsScreen() {
           paddingTop: Space[4],
           paddingStart: margin + insets.left,
           paddingEnd: margin + insets.right,
-          paddingBottom: areaFabClearance(Platform.OS, fontScale) + insets.bottom,
+          paddingBottom: Space[8] + insets.bottom,
         }}>
         <OfflineMapsBody
           stops={stops}
@@ -328,14 +323,6 @@ export default function OfflineMapsScreen() {
           tripTitle={trip.data?.title ?? null}
         />
       </ScrollView>
-      <AreaFab
-        label="New area"
-        accessibilityLabel="Download a new area"
-        accessibilityHint={COMING_SOON_HINT}
-        icon="map-pin"
-        testID="coming-soon-offline-new-area"
-        onPress={newArea}
-      />
     </View>
   );
 }

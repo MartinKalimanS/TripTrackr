@@ -255,16 +255,19 @@ describe('billing webhook', () => {
   });
 
   describe('things we do not act on', () => {
-    test.each(['unknown-type', 'unknown-product', 'anonymous-user', 'transfer'])(
-      '%s is acknowledged with 200 and grants nothing',
-      async (name) => {
-        const response = await send(mine(name));
+    test.each([
+      'unknown-type',
+      'unknown-product',
+      'anonymous-user',
+      'transfer',
+      'non-renewing-purchase-test-store',
+    ])('%s is acknowledged with 200 and grants nothing', async (name) => {
+      const response = await send(mine(name));
 
-        expect(response.status).toBe(200);
-        expect(await creditRows()).toHaveLength(0);
-        expect((await entitlement()).is_active).toBe(false);
-      },
-    );
+      expect(response.status).toBe(200);
+      expect(await creditRows()).toHaveLength(0);
+      expect((await entitlement()).is_active).toBe(false);
+    });
 
     test('a body that is not an event is a 400 once authentic', async () => {
       const response = await send({ hello: 'world' });

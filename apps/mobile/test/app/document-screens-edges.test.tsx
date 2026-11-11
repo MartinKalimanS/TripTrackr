@@ -303,13 +303,13 @@ describe('<DocumentsHeader> — edges', () => {
     expect(screen.getByTestId('documents-privacy')).toHaveTextContent(/Only you/);
   });
 
-  test('the bar has Back, the "Only you" chip and the one pictured coming-soon control; nothing that sends a document', async () => {
+  test('the bar has Back and the "Only you" chip; no dead control and nothing that sends a document', async () => {
     await render(<DocumentsHeader tripTitle={null} count={0} />);
 
     expect(screen.getByLabelText('Back')).toBeTruthy();
     expect(screen.getByTestId('privacy-chip')).toBeTruthy();
-    expect(screen.getByTestId('coming-soon-documents-more')).toBeTruthy();
-    expect(screen.getAllByRole('button')).toHaveLength(2);
+    expect(screen.queryByTestId('coming-soon-documents-more')).toBeNull();
+    expect(screen.getAllByRole('button')).toHaveLength(1);
     expect(screen.queryByTestId('documents-add')).toBeNull();
   });
 });

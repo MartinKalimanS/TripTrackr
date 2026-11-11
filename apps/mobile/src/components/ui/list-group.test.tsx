@@ -312,7 +312,7 @@ describe('<ListRow onPress> is one control with a cue - FR-024, FR-026', () => {
     const accessibilityActions = [
       { name: 'moveUp', label: 'Move up' },
       { name: 'moveDown', label: 'Move down' },
-      { name: 'edit', label: 'Edit dates' },
+      { name: 'edit', label: 'Edit stop' },
       { name: 'delete', label: 'Remove stop' },
     ];
     await renderRow({

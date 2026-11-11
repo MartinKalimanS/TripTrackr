@@ -66,6 +66,8 @@ type Host = ComponentType<Record<string, unknown>>;
 export const factories = {
   router: () => ({
     useRouter: () => ({ push: router.push, navigate: router.navigate, back: jest.fn() }),
+    // The trips screen reads `?search=1` (spec 015, T1508); nothing asks for it here.
+    useLocalSearchParams: () => ({}),
     useIsFocused: () => focus.focused,
     useFocusEffect: () => undefined,
   }),

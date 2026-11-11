@@ -3,7 +3,7 @@
  * said so in words and left the way out to the header now also name it as a button. A trip that
  * is not on this device ("Back to your trips"), a document that is not ("Back to documents") and
  * a trip with no city to save a map for ("Back to the trip"). Each is a secondary (the state
- * has no primary of its own to add; Offline maps keeps its pictured coming-soon New area), has
+ * has no primary of its own to add), has
  * an id of its own, keeps the header's "Back" where it was, and leaves no control that does
  * nothing.
  *
@@ -196,8 +196,8 @@ describe('offline maps for a trip with no city to save', () => {
     const back = screen.getByTestId('offline-maps-empty-back');
     expect(back).toBe(screen.getByLabelText('Back to the trip'));
     expect(back.props.variant).toBe('secondary');
-    // The one primary is the pictured New area button, a coming-soon control (Q-11).
-    expect(primaries()).toEqual(['Download a new area']);
+    // No primary: the pictured New area is not drawn (spec 015 FR-009).
+    expect(primaries()).toEqual([]);
 
     await fireEvent.press(back);
     expect(mockBack).toHaveBeenCalledTimes(1);

@@ -9,7 +9,7 @@
  * - Arrival and Departure are the two halves of one block and behave as `DateField` did
  *   (ids, names, hint, the Android dialog the Maestro flows tap, the iOS calendar);
  * - the Nights stepper is derived from the dates: it moves the departure, stores nothing;
- * - "Getting there" and "Note" are coming-soon controls: a toast and nothing else;
+ * - "Getting there" and "Note" are not drawn: the app keeps neither (spec 015 FR-009);
  * - Save stays in the footer above the keyboard in every state (rule 8).
  */
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -28,7 +28,6 @@ import {
 } from '@/features/trips/stop-dates';
 import { formatDistance } from '@/lib/locale';
 
-import { hostsWhere } from '../helpers/host-nodes';
 import {
   PHONE_360X640,
   expectActionAboveKeyboard,
@@ -149,12 +148,32 @@ describe('the place, as pictured', () => {
     expect(screen.queryByTestId('stop-route')).toBeNull();
   });
 
-  test('editing shows the place without a flag and without a way to change it', async () => {
+  test('editing shows the place with a way to change it (spec 015, User Story 2)', async () => {
     await renderEditor(editMode);
 
     expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Porto');
     expect(screen.queryByTestId('stop-editor-place-flag')).toBeNull();
-    expect(screen.queryByTestId('stop-editor-change-city')).toBeNull();
+    expect(screen.getByTestId('stop-editor-change-city')).toBeTruthy();
+  });
+
+  test('changing the city of a stop keeps its dates and saves the new city', async () => {
+    await renderEditor(editMode);
+
+    await fireEvent.press(screen.getByTestId('stop-editor-change-city'));
+    expect(screen.getByTestId('pick-porto')).toBeTruthy();
+    expect(screen.getByTestId('stop-editor-save').props.accessibilityState).toMatchObject(
+      {
+        disabled: true,
+      },
+    );
+
+    await fireEvent.press(screen.getByTestId('pick-porto'));
+    await fireEvent.press(screen.getByTestId('stop-editor-save'));
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      city_id: mockPorto.id,
+      arrive_date: '2026-10-15',
+      depart_date: '2026-10-19',
+    });
   });
 });
 
@@ -422,7 +441,7 @@ describe('the Nights stepper', () => {
     });
   });
 
-  test('editing a stop has the stepper too, and "Save dates" keeps its words', async () => {
+  test('editing a stop has the stepper too', async () => {
     await renderEditor(editMode);
 
     expect(nightsText()).toHaveTextContent('4');
@@ -492,80 +511,17 @@ describe('on Android', () => {
   });
 });
 
-describe('"Getting there" and "Note": drawn as pictured, coming soon (Q-11)', () => {
-  test('four transport chips in one sideways row, none chosen, each a hinted button', async () => {
+describe('"Getting there" and "Note" are not drawn (spec 015 FR-009)', () => {
+  test('a chosen place shows Place, Dates and Nights, then the footer, and no field the app cannot keep', async () => {
     await chosen();
 
-    expect(screen.getByText('Getting there')).toBeTruthy();
-    expect(screen.getAllByText('(optional)')).toHaveLength(2);
-    for (const name of ['car', 'train', 'plane', 'walk']) {
-      const chip = screen.getByTestId(`coming-soon-stop-mode-${name}`);
-      expect(chip.props.accessibilityRole).toBe('button');
-      expect(chip.props.accessibilityHint).toBe('Not available yet');
-      expect(chip.props.accessibilityState).toMatchObject({ selected: false });
-    }
-    expect(screen.getByLabelText('Car')).toBeTruthy();
-    expect(screen.getByLabelText('Walk')).toBeTruthy();
-  });
-
-  test('a chip press is one toast and nothing else: nothing is chosen, nothing saved', async () => {
-    await chosen();
-    await fireEvent.press(screen.getByTestId('coming-soon-stop-mode-train'));
-
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(mockToast.show.mock.calls[0]?.[0]).toMatchObject({ id: 'coming-soon' });
-    expect(
-      screen.getByTestId('coming-soon-stop-mode-train').props.accessibilityState,
-    ).toMatchObject({ selected: false });
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  test('the note is a labelled box that is a button, not an input, with no invented text', async () => {
-    await chosen();
-
-    const note = screen.getByTestId('coming-soon-stop-note');
-    expect(screen.getByText('Note')).toBeTruthy();
-    expect(note.props.accessibilityRole).toBe('button');
-    expect(note.props.accessibilityLabel).toBe('Note');
-    expect(note.props.accessibilityHint).toBe('Not available yet');
-    expect(flat(note).minHeight).toBeGreaterThanOrEqual(96);
-    expect(screen.queryByText(/Livraria|Lello|Ribeira/)).toBeNull();
-
-    await fireEvent.press(note);
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  test('neither is a text input: the sheet has no field that would keep what is typed', async () => {
-    await chosen();
-    expect(hostsWhere((node) => node.type === 'TextInput')).toHaveLength(0);
-  });
-
-  test('they are shown when adding only, and after a place is chosen', async () => {
-    await renderEditor();
     expect(screen.queryByTestId('stop-getting-there')).toBeNull();
     expect(screen.queryByTestId('stop-note')).toBeNull();
-    await screen.unmount();
-
-    await renderEditor(editMode);
-    expect(screen.queryByTestId('stop-getting-there')).toBeNull();
-    expect(screen.queryByTestId('stop-note')).toBeNull();
-  });
-
-  test('reads in the pictured order: place, route, dates, nights, getting there, note, then the footer', async () => {
-    await chosen();
-
+    expect(screen.queryByText('Not available yet')).toBeNull();
     const order = screen
       .getAllByText(/^(Place|Dates|Nights|Getting there|Note|Save stop)$/)
       .map((node) => String(node.props.children));
-    expect(order).toEqual([
-      'Place',
-      'Dates',
-      'Nights',
-      'Getting there',
-      'Note',
-      'Save stop',
-    ]);
+    expect(order).toEqual(['Place', 'Dates', 'Nights', 'Save stop']);
   });
 });
 
@@ -589,15 +545,6 @@ describe('Save is sticky above the keyboard (C4-10 rule 8)', () => {
     await renderEditor(editMode);
     expectActionAboveKeyboard('stop-editor', 'stop-editor-save');
   });
-
-  test('the coming-soon chips answer with the keyboard up (taps are kept)', async () => {
-    await chosen();
-    await showKeyboard();
-
-    await fireEvent.press(screen.getByTestId('coming-soon-stop-mode-plane'));
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expectActionAboveKeyboard('stop-editor', 'stop-editor-save');
-  });
 });
 
 describe('the pictured parts are tokens and adapters only', () => {
@@ -606,7 +553,6 @@ describe('the pictured parts are tokens and adapters only', () => {
     'route-preview',
     'stop-dates-block',
     'nights-stepper',
-    'stop-coming-soon',
     'stop-field-label',
   ].map((name) => [
     name,
@@ -621,13 +567,6 @@ describe('the pictured parts are tokens and adapters only', () => {
       expect(source).not.toMatch(/use-appearance|Colors\[/);
     },
   );
-
-  test('the coming-soon fields import no router, store, repository, client or network', () => {
-    const source = String(sources.find(([name]) => name === 'stop-coming-soon')?.[1]);
-    expect(source).not.toMatch(
-      /expo-router|@\/db|@\/features|@\/sync|api-client|fetch\(|useState/,
-    );
-  });
 
   test('the route preview and the stepper keep to the pure helpers for every figure', () => {
     const route = String(sources.find(([name]) => name === 'route-preview')?.[1]);

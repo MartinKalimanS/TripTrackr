@@ -32,7 +32,11 @@ import {
   type StopDates,
   type StopWithPlace,
 } from '@/db/repositories/stops';
-import { tripsRepository, type CreateTripInput } from '@/db/repositories/trips';
+import {
+  tripsRepository,
+  type CreateTripInput,
+  type TripPatch,
+} from '@/db/repositories/trips';
 import type { TripRow, TripStopRow } from '@/db/schema';
 
 import type { TripCover } from './trip-cover';
@@ -202,6 +206,8 @@ export function useTripStops(tripId: string): LiveResult<StopWithPlace[]> {
 
 export interface TripActions {
   createTrip: (input: Omit<CreateTripInput, 'id'>) => TripRow;
+  /** Rename a trip or change its home currency (spec 015, FR-001). */
+  updateTrip: (tripId: string, patch: TripPatch) => void;
   removeTrip: (tripId: string) => void;
   addStop: (input: Omit<AddStopInput, 'id'>) => TripStopRow;
   updateStopDates: (stopId: string, dates: StopDates) => void;
@@ -221,6 +227,7 @@ export function useTripActions(): TripActions {
   return useMemo(
     () => ({
       createTrip: (input) => tripsRepository.create(db, { id: randomUUID(), ...input }),
+      updateTrip: (tripId, patch) => tripsRepository.update(db, tripId, patch),
       removeTrip: (tripId) => tripsRepository.remove(db, tripId),
       addStop: (input) => stopsRepository.add(db, { id: randomUUID(), ...input }),
       updateStopDates: (stopId, dates) => stopsRepository.updateDates(db, stopId, dates),

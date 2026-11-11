@@ -156,7 +156,7 @@ describe('<StopRow>', () => {
 
     await fireEvent.press(screen.getByLabelText('Move Roma up'));
     await fireEvent.press(screen.getByLabelText('Move Roma down'));
-    await fireEvent.press(screen.getByLabelText('Edit dates for Roma'));
+    await fireEvent.press(screen.getByLabelText('Edit stop Roma'));
     await fireEvent.press(screen.getByLabelText('Remove Roma'));
     expect(handlers.onMoveUp).toHaveBeenCalledTimes(1);
     expect(handlers.onMoveDown).toHaveBeenCalledTimes(1);
@@ -252,7 +252,7 @@ describe('<StopRow>', () => {
       expect(row.props.accessibilityActions).toEqual([
         { name: 'moveUp', label: 'Move up' },
         { name: 'moveDown', label: 'Move down' },
-        { name: 'edit', label: 'Edit dates' },
+        { name: 'edit', label: 'Edit stop' },
         { name: 'delete', label: 'Remove stop' },
       ]);
     });
@@ -263,7 +263,7 @@ describe('<StopRow>', () => {
       const controls: [string, string][] = [
         ['stop-move-up-s1', 'Move Roma up'],
         ['stop-move-down-s1', 'Move Roma down'],
-        ['stop-edit-s1', 'Edit dates for Roma'],
+        ['stop-edit-s1', 'Edit stop Roma'],
         ['stop-remove-s1', 'Remove Roma'],
       ];
       for (const [id, name] of controls) {

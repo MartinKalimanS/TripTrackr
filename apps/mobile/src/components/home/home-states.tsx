@@ -22,7 +22,6 @@ import {
 } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
-import { ComingSoonButton } from '@/components/ui/coming-soon-button';
 import { Scrim } from '@/components/ui/scrim';
 import { HomeSkeleton } from '@/components/ui/screen-skeletons';
 import { skeletonDisc } from '@/features/home/home-layout';
@@ -32,6 +31,7 @@ import { deviceLocale } from '@/lib/locale';
 import { ScreenMargin, Space } from '@/theme';
 
 import { useHomeLayout } from './use-home-layout';
+import { HomeSearchButton } from './home-search-button';
 
 const NO_INSETS = { top: 0, bottom: 0, left: 0, right: 0 };
 
@@ -52,9 +52,9 @@ export function HomeLoading({ name }: { name: string | null }) {
           sheetHeight={detents.half}
         />
       </View>
-      {/* The pictured search disc: a real coming-soon control, outside the announced region. */}
+      {/* The search disc, outside the announced region: it opens the trips search. */}
       <View style={[styles.search, { top: insets.top }]}>
-        <ComingSoonButton name="search" label="Search" icon="search" />
+        <HomeSearchButton />
       </View>
     </View>
   );

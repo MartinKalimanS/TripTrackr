@@ -19,7 +19,6 @@ import type { PassportData } from '@/features/passport/use-passport';
 import { PassportCard } from './passport-card';
 import { PassportSkeleton } from './passport-skeleton';
 import { PeriodSwitch } from './period-switch';
-import { RecapEntry } from './recap-entry';
 import { StampsPage } from './stamps-page';
 
 export interface PassportSectionProps {
@@ -64,7 +63,6 @@ export function PassportSection({
     <>
       <PeriodSwitch periods={data.periods} selected={period} onSelect={setChosen} />
       <PassportCard totals={totals} holder={holder} />
-      <RecapEntry period={period} thisYear={Number(today.slice(0, 4))} />
       <StampsPage stamps={stamps} period={period} />
     </>
   );

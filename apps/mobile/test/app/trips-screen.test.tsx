@@ -40,10 +40,19 @@ const mockPush = jest.fn();
 const mockStackScreen = jest.fn();
 const mockRetry = jest.fn();
 
+const mockSetParams = jest.fn();
+const mockParams: { search?: string } = {};
+
 jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
   return {
-    useRouter: () => ({ push: mockPush, navigate: jest.fn(), back: jest.fn() }),
+    useRouter: () => ({
+      push: mockPush,
+      navigate: jest.fn(),
+      back: jest.fn(),
+      setParams: mockSetParams,
+    }),
+    useLocalSearchParams: () => mockParams,
     Stack: {
       Screen: (props: {
         options?: { headerRight?: (arg: Record<string, unknown>) => React.ReactNode };
@@ -668,30 +677,54 @@ describe('<TripsScreen> - nothing behind the pill or the button (FR-024)', () =>
   });
 });
 
-describe('<TripsScreen> - the header: the sync chip and the pictured Search (Q-11)', () => {
+describe('<TripsScreen> - the header: the sync chip and Search (spec 015, T1506)', () => {
   test.each(['ios', 'android'] as const)(
-    'on %s: Search is drawn as pictured, a real button that answers with one toast',
+    'on %s: Search is a 44 dp button that opens a field and filters the list by name',
     async (os) => {
       mockTrips.data = MIXED();
       platform = await renderOn(os);
 
-      const search = screen.getByTestId('coming-soon-trips-search');
+      const search = screen.getByTestId('trips-search');
       expect(search.props.accessibilityRole).toBe('button');
       expect(search.props.accessibilityLabel).toBe('Search');
-      expect(search.props.accessibilityHint).toBe('Not available yet');
-      // The picture's disc: cream with a hairline (the `tonal` look), 44 dp.
-      expect(flat(search)).toMatchObject({
-        borderWidth: 1,
-        width: 44,
-        height: 44,
-      });
+      expect(flat(search)).toMatchObject({ borderWidth: 1, width: 44, height: 44 });
+      expect(screen.queryByTestId('trips-search-field')).toBeNull();
 
       await fireEvent.press(search);
-      expect(mockToast.show).toHaveBeenCalledTimes(1);
-      expect(mockToast.show.mock.calls[0]?.[0]).toMatchObject({ id: 'coming-soon' });
+      await fireEvent.changeText(screen.getByTestId('trips-search-field'), 'portugal');
+
+      expect(screen.getByText('Portugal Road Trip')).toBeTruthy();
+      expect(screen.queryByText('Trip tokyo')).toBeNull();
+      expect(mockToast.show).not.toHaveBeenCalled();
       expect(mockPush).not.toHaveBeenCalled();
     },
   );
+
+  test('arriving from the Home’s Search opens the field, once (spec 015, T1508)', async () => {
+    mockTrips.data = MIXED();
+    mockParams.search = '1';
+    try {
+      platform = await renderOn('ios');
+      expect(screen.getByTestId('trips-search-field')).toBeTruthy();
+      expect(mockSetParams).toHaveBeenCalledWith({ search: undefined });
+    } finally {
+      delete mockParams.search;
+      mockSetParams.mockClear();
+    }
+  });
+
+  test('a search with no match says so and offers to clear it; closing clears the search', async () => {
+    mockTrips.data = MIXED();
+    platform = await renderOn('ios');
+
+    await fireEvent.press(screen.getByTestId('trips-search'));
+    await fireEvent.changeText(screen.getByTestId('trips-search-field'), 'zanzibar');
+    expect(screen.getByText('No trip matches “zanzibar”')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('trips-search-clear'));
+    expect(screen.queryByTestId('trips-search-field')).toBeNull();
+    expect(screen.getByText('Trip tokyo')).toBeTruthy();
+  });
 
   test('is in the header with nothing waiting to sync, and in an empty or failed store too', async () => {
     for (const state of ['empty', 'loading', 'error'] as const) {
@@ -699,7 +732,7 @@ describe('<TripsScreen> - the header: the sync chip and the pictured Search (Q-1
       mockTrips.loading = state === 'loading';
       mockTrips.error = state === 'error' ? new Error('x') : null;
       platform = await renderOn('ios');
-      expect(screen.getAllByTestId('coming-soon-trips-search').length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId('trips-search').length).toBeGreaterThan(0);
       platform.restore();
       platform = undefined;
     }
@@ -711,9 +744,9 @@ describe('<TripsScreen> - the header: the sync chip and the pictured Search (Q-1
     platform = await renderOn('ios');
 
     const order = screen
-      .getAllByTestId(/^(sync-chip|coming-soon-trips-search)$/)
+      .getAllByTestId(/^(sync-chip|trips-search)$/)
       .map((node) => node.props.testID);
-    expect(order).toEqual(['sync-chip', 'coming-soon-trips-search']);
+    expect(order).toEqual(['sync-chip', 'trips-search']);
   });
 
   test('the two sit in one row 8 dp apart, centred on each other', async () => {

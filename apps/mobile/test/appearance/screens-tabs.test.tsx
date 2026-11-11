@@ -11,6 +11,7 @@ import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import HomeScreen from '@/app/(tabs)/index';
 import ProfileScreen from '@/app/(tabs)/profile';
+import SettingsScreen from '@/app/(tabs)/profile/settings';
 import TripsScreen from '@/app/(tabs)/trips';
 import { ActiveCallout } from '@/components/globe/active-callout';
 import { TabBar } from '@/components/navigation/tab-bar';
@@ -286,13 +287,22 @@ sweepScreen(
   },
 );
 
-// ---- You: the passport card, the stamps page, the groups.
+// ---- You: the passport card and the stamps page.
 sweepScreen(
   'You',
   () => <ProfileScreen />,
   () => {
     resetWindow();
     mockPassport.data = passportData();
+  },
+);
+
+// ---- Settings (spec 015, T1507): the Account and App groups and the set-apart block.
+sweepScreen(
+  'Settings',
+  () => <SettingsScreen />,
+  () => {
+    resetWindow();
   },
 );
 

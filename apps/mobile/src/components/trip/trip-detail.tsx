@@ -48,6 +48,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
+import { OverAllowanceAlert } from '@/components/billing/over-allowance-alert';
 import { Banner } from '@/components/ui/banner';
 import { InlineError } from '@/components/ui/inline-error';
 import type { StopWithPlace } from '@/db/repositories/stops';
@@ -57,7 +58,7 @@ import { dayProgress } from '@/features/trips/trip-progress';
 import { deriveTripStatus, tripDateRange } from '@/features/trips/trip-status';
 import { useTripOverview } from '@/features/trips/trip-overview';
 import { useTripSync, type TripSync } from '@/features/trips/use-trip-sync';
-import { useTripStops } from '@/features/trips/use-trips';
+import { useTripActions, useTripStops } from '@/features/trips/use-trips';
 import { useAccessibilityFlags } from '@/hooks/use-accessibility-flags';
 import { Radii, Space } from '@/theme';
 
@@ -75,8 +76,9 @@ import { PinnedStrip } from './pinned-strip';
 import { ProgressRow } from './progress-row';
 import { StopEditor } from './stop-editor';
 import { StopsBody, StopsHeader } from './trip-states';
-import { useReportCollapsed } from './trip-header-controls';
+import { useReportCollapsed, useTripOptionsState } from './trip-header-controls';
 import { TripHero, type TripHeroCountry } from './trip-hero';
+import { TripOptions } from './trip-options';
 import { useStopEditor, useStopWrites } from './use-stop-editing';
 
 /** The first stop with a known country names the trip's country (its flag is the stop's). */
@@ -181,6 +183,7 @@ function SheetHead({ trip, stops, sync, overview, onRetry }: SheetHeadProps) {
           }
         />
       ) : null}
+      <OverAllowanceAlert tripId={trip.id} />
       <AreasStrip
         counts={overview.counts}
         spending={{ total: overview.spendingTotal, currency: trip.home_currency }}
@@ -310,6 +313,34 @@ function EditorHost({ editing }: { editing: ReturnType<typeof useStopEditor> }) 
   );
 }
 
+/**
+ * The trip's options, asked for by the header's "More" (spec 015, FR-001 to FR-003). Saving writes
+ * to the local store and closes; deleting tombstones the trip and leaves the screen, since there is
+ * no trip left to show.
+ */
+function OptionsHost({ trip }: { trip: TripRow }) {
+  const router = useRouter();
+  const options = useTripOptionsState();
+  const { updateTrip, removeTrip } = useTripActions();
+  return (
+    <TripOptions
+      visible={options.open}
+      trip={trip}
+      onClose={options.close}
+      onSave={(values) => {
+        updateTrip(trip.id, values);
+        options.close();
+      }}
+      onDelete={() => {
+        options.close();
+        removeTrip(trip.id);
+        if (router.canGoBack()) router.back();
+        else router.replace('/');
+      }}
+    />
+  );
+}
+
 interface DetailHeroProps {
   trip: TripRow;
   stops: readonly StopWithPlace[];
@@ -374,6 +405,7 @@ export function TripDetail({ trip }: { trip: TripRow }) {
       ) : null}
       <CollapsedBar title={trip.title} style={scroll.collapse.barStyle} />
       <EditorHost editing={editing} />
+      <OptionsHost trip={trip} />
     </View>
   );
 }

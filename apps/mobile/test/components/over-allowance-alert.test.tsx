@@ -59,3 +59,24 @@ test('Later hides that trip only, and the next one is asked about', async () => 
   expect(screen.getByText(/One trip was added past your free trips/)).toBeTruthy();
   await act(async () => useSyncWarningsStore.getState().reset());
 });
+
+describe('on the trip itself (spec 015, T1505, FR-008)', () => {
+  test('is silent on a trip that is not flagged, even when another one is', async () => {
+    useSyncWarningsStore.getState().flagOverAllowance('trip-2');
+    await render(<OverAllowanceAlert tripId="trip-1" />);
+    expect(screen.queryByTestId('over-allowance-alert')).toBeNull();
+  });
+
+  test('speaks about this trip and opens the paywall for it', async () => {
+    useSyncWarningsStore.getState().flagOverAllowance('trip-1');
+    useSyncWarningsStore.getState().flagOverAllowance('trip-2');
+    await render(<OverAllowanceAlert tripId="trip-2" />);
+
+    expect(screen.getByText(/This trip was added past your free trips/)).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('over-allowance-alert-action'));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/modal/paywall',
+      params: { tripId: 'trip-2' },
+    });
+  });
+});

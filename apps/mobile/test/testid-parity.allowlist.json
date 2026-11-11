@@ -17,6 +17,10 @@
     {
       "id": "<param> <param> visited, <param> travelled",
       "reason": "The one-sentence summary of the 004 statistics overlay (components/globe/stats-overlay.tsx). Feature 005 draws the Home statistics as three tiles (stats-row.tsx), each announced on its own, and no screen has drawn the overlay since the Home was composed (T537, note 11 of its as-built section in contracts/components.md); the unused component was deleted by T564. The ids globe-stats, globe-stat-countries and globe-stat-distance that the Maestro flows read are served by stats-row.tsx. Recorded in specs/005-sunrise-passport-ui/reference/as-built/f14-atlas.md."
+    },
+    {
+      "id": "Edit dates for <param>",
+      "reason": "The stop row's edit action now edits the whole stop, city included, so it is named 'Edit stop <place>' (spec 015, T1503, FR-004). No Maestro flow taps it by name; the testID stop-edit-<id> is unchanged."
     }
   ]
 }

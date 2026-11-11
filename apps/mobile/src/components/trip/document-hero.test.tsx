@@ -3,15 +3,13 @@
  * FR-064; UI-SPEC 9.2; prototype `.scan`, `.qr`): the scan as the hero on a fixed white plate,
  * the pictured brightness line as a coming-soon control, and the ticket-shaped skeleton.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { render, screen, within } from '@testing-library/react-native';
 import { StyleSheet, Text as RNText } from 'react-native';
 
-import { comingSoonMessage } from '@/components/ui/coming-soon-button';
 import { Palettes } from '@/theme';
 
 import { asCss, mockThemeColors } from '../../../test/helpers/theme-colors';
 import { BarcodePlate, PLATE_PADDING } from './barcode-plate';
-import { BrightnessBoost } from './brightness-boost';
 import { DocumentHero } from './document-hero';
 import { TICKET_MIN_HEIGHT } from './document-ticket';
 import { DocumentsSkeleton } from './documents-skeleton';
@@ -87,35 +85,6 @@ describe('<DocumentHero>', () => {
 
     expect(screen.queryByTestId('document-hero-flight')).toBeNull();
     expect(screen.queryAllByRole('button')).toEqual([]);
-  });
-});
-
-describe('<BrightnessBoost>', () => {
-  test('is a coming-soon control: a named button, hinted, and its caption claims nothing', async () => {
-    await render(<BrightnessBoost />);
-
-    const boost = screen.getByTestId('coming-soon-document-brightness');
-    expect(boost.props.accessibilityRole).toBe('button');
-    expect(boost.props.accessibilityLabel).toBe('Raise brightness for the code');
-    expect(boost.props.accessibilityHint).toBe('Not available yet');
-    expect(screen.getByText('Brightness boost')).toBeTruthy();
-    expect(screen.queryByText(/is raised/i)).toBeNull();
-  });
-
-  test('its press shows the one coming-soon toast and nothing else', async () => {
-    const { mockToast } = jest.requireMock('heroui-native') as {
-      mockToast: { show: jest.Mock };
-    };
-    mockToast.show.mockClear();
-    await render(<BrightnessBoost />);
-
-    await fireEvent.press(screen.getByTestId('coming-soon-document-brightness'));
-
-    expect(mockToast.show).toHaveBeenCalledTimes(1);
-    expect(mockToast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'coming-soon' }),
-    );
-    expect(comingSoonMessage('Brightness boost')).toBe('Brightness boost is coming soon');
   });
 });
 

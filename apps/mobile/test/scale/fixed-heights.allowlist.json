@@ -111,11 +111,6 @@
       "reason": "A stamp image: decorative art hidden from assistive technology (FR-076); the traveller reads the country in the list"
     },
     {
-      "file": "src/components/profile/recap-entry.tsx",
-      "count": 1,
-      "reason": "The 48 dp tile with a sparkle icon; the words beside it grow and the row has a minimum"
-    },
-    {
       "file": "src/components/profile/stamps-page.tsx",
       "count": 1,
       "reason": "The decorative ticket notch at the corner of the stamps page, hidden from assistive technology"
@@ -127,7 +122,7 @@
     },
     {
       "file": "src/components/trip/day-bars.tsx",
-      "count": 3,
+      "count": 2,
       "reason": "The bars of the per-day chart: a 2 dp dash, the 4 dp stub and each bar are shapes; the chart box is a MINIMUM since T561 (its labels grow)"
     },
     {

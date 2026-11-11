@@ -147,7 +147,7 @@ function EditButtons({ id, place, onEdit, onRemove }: ActionsProps) {
         variant="text"
         size="sm"
         icon={DATES}
-        accessibilityLabel={`Edit dates for ${place}`}
+        accessibilityLabel={`Edit stop ${place}`}
         onPress={onEdit}>
         Dates
       </Button>
@@ -178,7 +178,7 @@ function StopActions(props: ActionsProps) {
 const ROW_ACTIONS = [
   { name: 'moveUp', label: 'Move up' },
   { name: 'moveDown', label: 'Move down' },
-  { name: 'edit', label: 'Edit dates' },
+  { name: 'edit', label: 'Edit stop' },
   { name: 'delete', label: 'Remove stop' },
 ];
 

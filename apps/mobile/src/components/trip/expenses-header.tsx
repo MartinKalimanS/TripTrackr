@@ -19,7 +19,6 @@
 import { View } from 'react-native';
 
 import { AreaHeader, areaMargin } from '@/components/ui/area-header';
-import { ComingSoonButton } from '@/components/ui/coming-soon-button';
 import { InlineError } from '@/components/ui/inline-error';
 import { Space } from '@/theme';
 
@@ -50,15 +49,6 @@ export function ExpensesHeader({ tripTitle, count, writeError }: ExpensesHeaderP
         titleTestID="expenses-title"
         subtitleTestID="expenses-subtitle"
         privacy
-        actions={
-          <ComingSoonButton
-            name="expenses-more"
-            label="More"
-            thing="More spending actions"
-            icon="ellipsis"
-            variant="tonal"
-          />
-        }
       />
       {writeError ? (
         <View style={{ paddingHorizontal: areaMargin(), paddingTop: Space[2] }}>
