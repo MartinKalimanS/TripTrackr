@@ -115,10 +115,10 @@ describe('Home states: the globe is always there, but while loading (FR-021, 003
     globe.loading = true;
     await render(ui());
     expect(screen.getByText(/^[A-Za-z]{3} [0-9]{1,2} [A-Za-z]{3}$/, HIDDEN)).toBeTruthy();
-    // The pictured search disc is real and stays out of the announced region.
-    expect(screen.getByTestId('coming-soon-search')).toBeTruthy();
+    // The search disc is real and stays out of the announced region.
+    expect(screen.getByTestId('home-search')).toBeTruthy();
     expect(screen.getByTestId('home-skeleton')).not.toContainElement(
-      screen.getByTestId('coming-soon-search'),
+      screen.getByTestId('home-search'),
     );
     const sheet = screen.getByTestId('home-skeleton-sheet', HIDDEN);
     expect(StyleSheet.flatten(sheet.props.style)).toMatchObject({
@@ -270,7 +270,7 @@ describe('Home layers and reading order (FR-010, FR-017)', () => {
     await renderHome();
     expect(screen.getByTestId('home-greeting')).toHaveTextContent('Hello, Ana');
     expect(screen.queryByText(/of 195 countries/)).toBeNull();
-    expect(screen.getByTestId('coming-soon-search')).toBeTruthy();
+    expect(screen.getByTestId('home-search')).toBeTruthy();
   });
 });
 

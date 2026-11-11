@@ -30,8 +30,8 @@
  * rows (D5-17); the filter is component state and is forgotten with the screen.
  */
 import type { FlashListRef, ViewToken } from '@shopify/flash-list';
-import { Stack, useRouter } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
 
 import {
@@ -183,10 +183,26 @@ function useHeaderOptions(sync: TripsSync, onSearch: () => void) {
   );
 }
 
-/** The search: whether its field is open and what it holds. Closing it clears it. */
+/**
+ * The search: whether its field is open and what it holds. Closing it clears it. Arriving with
+ * `?search=1` (the Home's Search, spec 015 T1508) opens it, once; the param is then cleared so a
+ * later visit to the tab starts closed.
+ */
 function useTripSearch() {
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const { search: asked } = useLocalSearchParams<{ search?: string }>();
+  const [open, setOpen] = useState(asked === '1');
   const [query, setQuery] = useState('');
+  // A later arrival (the tab is already mounted) is met during render, not in an effect.
+  const [seen, setSeen] = useState(asked);
+  if (asked !== seen) {
+    setSeen(asked);
+    if (asked === '1') setOpen(true);
+  }
+  // The param is the router's: clearing it is an update of the outside world.
+  useEffect(() => {
+    if (asked === '1') router.setParams({ search: undefined });
+  }, [asked, router]);
   const show = useCallback(() => setOpen(true), []);
   const close = useCallback(() => {
     setOpen(false);

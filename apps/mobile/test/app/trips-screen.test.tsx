@@ -40,10 +40,19 @@ const mockPush = jest.fn();
 const mockStackScreen = jest.fn();
 const mockRetry = jest.fn();
 
+const mockSetParams = jest.fn();
+const mockParams: { search?: string } = {};
+
 jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
   return {
-    useRouter: () => ({ push: mockPush, navigate: jest.fn(), back: jest.fn() }),
+    useRouter: () => ({
+      push: mockPush,
+      navigate: jest.fn(),
+      back: jest.fn(),
+      setParams: mockSetParams,
+    }),
+    useLocalSearchParams: () => mockParams,
     Stack: {
       Screen: (props: {
         options?: { headerRight?: (arg: Record<string, unknown>) => React.ReactNode };
@@ -690,6 +699,19 @@ describe('<TripsScreen> - the header: the sync chip and Search (spec 015, T1506)
       expect(mockPush).not.toHaveBeenCalled();
     },
   );
+
+  test('arriving from the Home’s Search opens the field, once (spec 015, T1508)', async () => {
+    mockTrips.data = MIXED();
+    mockParams.search = '1';
+    try {
+      platform = await renderOn('ios');
+      expect(screen.getByTestId('trips-search-field')).toBeTruthy();
+      expect(mockSetParams).toHaveBeenCalledWith({ search: undefined });
+    } finally {
+      delete mockParams.search;
+      mockSetParams.mockClear();
+    }
+  });
 
   test('a search with no match says so and offers to clear it; closing clears the search', async () => {
     mockTrips.data = MIXED();

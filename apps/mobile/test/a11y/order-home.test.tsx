@@ -76,7 +76,7 @@ beforeEach(() => {
 const HEADER_AND_GLOBE: OrderMatcher[] = [
   'home-greeting-date',
   'home-greeting',
-  'coming-soon-search',
+  'home-search',
   'globe-map',
 ];
 
