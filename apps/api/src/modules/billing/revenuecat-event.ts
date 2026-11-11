@@ -12,6 +12,7 @@ export const RevenueCatWebhook = z.object({
     app_user_id: z.string().min(1).optional(),
     product_id: z.string().optional(),
     store: z.string().optional(),
+    environment: z.string().optional(),
     transaction_id: z.string().optional(),
     original_transaction_id: z.string().optional(),
     purchased_at_ms: z.number().optional(),

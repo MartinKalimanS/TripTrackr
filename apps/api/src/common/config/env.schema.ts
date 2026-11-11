@@ -103,6 +103,8 @@ const envSchema = z
     TIER1_YEARLY_TRIPS: z.coerce.number().int().positive().default(10),
     BILLING_ENFORCED: switchValue.default(false),
     BILLING_PRODUCTS: billingProducts.default({}),
+    // Sells to a development stack from the RevenueCat Test Store (`test_` SDK keys). Never in production.
+    BILLING_ACCEPT_TEST_STORE: switchValue.default(false),
 
     // Tombstone grace window before hard deletion (sync-protocol.md §5).
     TOMBSTONE_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
@@ -146,6 +148,13 @@ const envSchema = z
     SENTRY_DSN: z.string().url().optional(),
   })
   .superRefine((env, ctx) => {
+    if (env.NODE_ENV === 'production' && env.BILLING_ACCEPT_TEST_STORE) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['BILLING_ACCEPT_TEST_STORE'],
+        message: 'must be false in production; the Test Store sells without payment',
+      });
+    }
     if (env.NODE_ENV === 'production' && !env.FX_RATES_URL.startsWith('https://')) {
       ctx.addIssue({
         code: 'custom',
