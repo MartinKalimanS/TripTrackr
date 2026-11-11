@@ -134,11 +134,38 @@ describe('evaluateStanding', () => {
   });
 
   test('something to spend means no purchase first', () => {
-    expect(evaluateStanding({ ...base, credits: 1 }, 2).mustPayToCreate).toBe(false);
+    expect(evaluateStanding({ ...base, credits: 1 }, 0).mustPayToCreate).toBe(false);
+    expect(evaluateStanding({ ...base, year_uses_left: 1 }, 0).mustPayToCreate).toBe(
+      false,
+    );
     expect(
       evaluateStanding({ ...base, tier: 'unlimited', is_active: true }, 2)
         .mustPayToCreate,
     ).toBe(false);
+  });
+
+  test('a credit the server has not spent yet is already promised to the trip over the limit', () => {
+    // Three free trips plus a fourth that arrived over the limit and awaits its cover: the one
+    // credit belongs to it, so a fifth trip needs a purchase.
+    expect(
+      evaluateStanding({ ...base, trips_held: 4, credits: 1 }, 0).mustPayToCreate,
+    ).toBe(true);
+  });
+
+  test('a trip made here and not yet synced uses the credit as well', () => {
+    expect(evaluateStanding({ ...base, credits: 1 }, 1).mustPayToCreate).toBe(true);
+  });
+
+  test('two credits cover two trips over the limit and no more', () => {
+    const two = { ...base, credits: 2 };
+    expect(evaluateStanding({ ...two, trips_held: 4 }, 0).mustPayToCreate).toBe(false);
+    expect(evaluateStanding({ ...two, trips_held: 5 }, 0).mustPayToCreate).toBe(true);
+  });
+
+  test('year uses and credits are spent together', () => {
+    const mixed = { ...base, year_uses_left: 1, credits: 1 };
+    expect(evaluateStanding({ ...mixed, trips_held: 4 }, 0).mustPayToCreate).toBe(false);
+    expect(evaluateStanding({ ...mixed, trips_held: 5 }, 0).mustPayToCreate).toBe(true);
   });
 
   test('says nothing without an answer or while charging is off', () => {

@@ -32,6 +32,10 @@ export type Standing = {
 /**
  * Whether a new trip needs a purchase first. `unsynced` is the trips made on this device that the
  * server has not counted yet, so a traveller cannot get past the limit just by being quick.
+ *
+ * A credit or a year use is spent when a trip is covered, not when it is made, so a trip that is
+ * already over the free number and still waiting for its cover has first claim on what the traveller
+ * holds. Only what is left after those trips can pay for a new one.
  */
 export function evaluateStanding(
   data: EntitlementResponse | null | undefined,
@@ -39,11 +43,15 @@ export function evaluateStanding(
 ): Standing {
   const charging = data?.charging_enabled === true;
   const atLimit = charging && data.trips_held + unsynced >= data.allowance;
+  const waitingForCover = charging
+    ? Math.max(0, data.trips_held + unsynced - data.allowance)
+    : 0;
+  const spendable = charging ? data.credits + data.year_uses_left : 0;
   const canCreateWithoutPaying =
     !atLimit ||
     (data !== null &&
       data !== undefined &&
-      (data.credits > 0 || data.year_uses_left > 0 || data.tier === 'unlimited'));
+      (data.tier === 'unlimited' || spendable > waitingForCover));
   return {
     atLimit,
     canCreateWithoutPaying,
