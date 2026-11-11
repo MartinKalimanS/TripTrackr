@@ -139,6 +139,35 @@ describe('tripsRepository', () => {
     expect(tripsRepository.countUnsynced(sqlite.db)).toBe(1);
   });
 
+  test('update renames a trip and changes its currency, re-dirtying it for the next push', () => {
+    const trip = newTrip();
+    sqlite.db.update(trips).set({ is_dirty: false, synced_at: trip.created_at }).run();
+
+    tripsRepository.update(sqlite.db, trip.id, {
+      title: 'Italy, spring',
+      home_currency: 'EUR',
+    });
+
+    const [row] = tripsRepository.byIdQuery(sqlite.db, trip.id).all();
+    expect(row).toMatchObject({
+      title: 'Italy, spring',
+      home_currency: 'EUR',
+      is_dirty: true,
+    });
+    expect(row?.updated_at >= trip.updated_at).toBe(true);
+    expect(row?.created_at).toBe(trip.created_at);
+  });
+
+  test('update leaves a deleted trip alone', () => {
+    const trip = newTrip();
+    tripsRepository.remove(sqlite.db, trip.id);
+
+    tripsRepository.update(sqlite.db, trip.id, { title: 'Back again' });
+
+    const [row] = sqlite.db.select().from(trips).all();
+    expect(row?.title).toBe(trip.title);
+  });
+
   test('remove tombstones the trip and its stops; ordinary reads no longer see them', () => {
     const trip = newTrip();
     const stop = addStop(trip.id, rome.id, '2026-05-10', '2026-05-12');

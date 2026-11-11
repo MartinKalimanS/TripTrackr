@@ -68,6 +68,20 @@ function create(db: AppDatabase, input: CreateTripInput): TripRow {
   return row;
 }
 
+/** What a traveller may change on a trip they made (spec 015, FR-001). */
+export type TripPatch = Partial<Pick<CreateTripInput, 'title' | 'home_currency'>>;
+
+/**
+ * Rename a trip or change its home currency. Recorded expenses keep the rate they were saved with
+ * (the server does the same, push-trips.ts). A deleted or unknown trip is left alone.
+ */
+function update(db: AppDatabase, id: string, patch: TripPatch): void {
+  db.update(trips)
+    .set({ ...patch, updated_at: nowIso(), is_dirty: true })
+    .where(and(eq(trips.id, id), isNull(trips.deleted_at)))
+    .run();
+}
+
 /**
  * Tombstone the trip and its live stops together, as the server does
  * (rest-api.md §3, DELETE /trips/:id). Both become dirty so the sync engine
@@ -100,4 +114,11 @@ function countUnsynced(db: AppDatabase): number {
   return row?.total ?? 0;
 }
 
-export const tripsRepository = { listQuery, byIdQuery, create, remove, countUnsynced };
+export const tripsRepository = {
+  listQuery,
+  byIdQuery,
+  create,
+  update,
+  remove,
+  countUnsynced,
+};

@@ -1,10 +1,11 @@
 /**
- * F5 `TripHeaderBack` / `TripHeaderTools` (UI-SPEC section 6; trip.png, trip-collapsed.png): the
- * navigator's header over the picture draws Back, Share and More as 44 dp glass discs; once the
- * solid bar is complete the same three lose their disc. The screen reports the switch through
- * `useReportCollapsed`; without a provider the controls stay glass.
+ * F5 `TripHeaderBack` / `TripHeaderTools` (UI-SPEC section 6; trip.png, trip-collapsed.png; spec
+ * 015 FR-001, FR-009): the navigator's header over the picture draws Back and More as 44 dp glass
+ * discs; once the solid bar is complete the same two lose their disc. The screen reports the
+ * switch through `useReportCollapsed`; without a provider the controls stay glass. More asks for
+ * the trip's options; no control only says that something is missing.
  */
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import {
@@ -12,6 +13,7 @@ import {
   TripHeaderProvider,
   TripHeaderTools,
   useReportCollapsed,
+  useTripOptionsState,
 } from '@/components/trip/trip-header-controls';
 
 jest.mock('expo-router', () => ({
@@ -40,10 +42,21 @@ function Reporter({ value }: { value: number }) {
   return null;
 }
 
+function OptionsProbe() {
+  const { Text: MockText } = jest.requireActual('react-native');
+  const options = useTripOptionsState();
+  return (
+    <MockText testID="options-probe" onPress={options.close}>
+      {options.open ? 'open' : 'closed'}
+    </MockText>
+  );
+}
+
 function header(progress: number | null) {
   return (
     <TripHeaderProvider>
       {progress === null ? null : <Reporter value={progress} />}
+      <OptionsProbe />
       <TripHeaderBack />
       <TripHeaderTools />
     </TripHeaderProvider>
@@ -51,9 +64,9 @@ function header(progress: number | null) {
 }
 
 describe('the trip header controls', () => {
-  test('draw Back, Share and More as 44 dp glass discs over the picture', async () => {
+  test('draw Back and More as 44 dp glass discs over the picture', async () => {
     await render(header(0));
-    for (const label of ['Back', 'Share', 'More']) {
+    for (const label of ['Back', 'More']) {
       const style = StyleSheet.flatten(
         screen.getByLabelText(label).props.style,
       ) as Record<string, unknown>;
@@ -62,13 +75,18 @@ describe('the trip header controls', () => {
     }
   });
 
-  test('Share and More are the coming-soon controls of the picture, 8 dp apart', async () => {
+  test('More asks for the trip options and nothing says "coming soon"', async () => {
     await render(header(0));
-    expect(screen.getByTestId('coming-soon-trip-share').props.accessibilityHint).toBe(
-      'Not available yet',
-    );
-    expect(screen.getByTestId('coming-soon-trip-more')).toBeTruthy();
-    expect(flat('trip-header-tools')).toMatchObject({ flexDirection: 'row', gap: 8 });
+    expect(screen.queryByLabelText('Share')).toBeNull();
+    expect(screen.queryByTestId('coming-soon-trip-more')).toBeNull();
+    expect(flat('trip-header-tools')).toMatchObject({ flexDirection: 'row' });
+    expect(screen.getByTestId('options-probe').props.children).toBe('closed');
+
+    await fireEvent.press(screen.getByTestId('trip-more'));
+    expect(screen.getByTestId('options-probe').props.children).toBe('open');
+
+    await fireEvent.press(screen.getByTestId('options-probe'));
+    expect(screen.getByTestId('options-probe').props.children).toBe('closed');
   });
 
   test('lose their disc once the bar is complete, and get it back when it is not', async () => {
@@ -80,7 +98,7 @@ describe('the trip header controls', () => {
       >;
     const glass = disc('Back').backgroundColor;
     await act(async () => view.rerender(header(1)));
-    for (const label of ['Back', 'Share', 'More']) {
+    for (const label of ['Back', 'More']) {
       expect(disc(label).backgroundColor).not.toBe(glass);
     }
     expect(screen.getAllByLabelText('Back')).toHaveLength(1);
@@ -95,7 +113,7 @@ describe('the trip header controls', () => {
         <TripHeaderTools />
       </>,
     );
-    expect(screen.getByLabelText('Share')).toBeTruthy();
+    expect(screen.getByLabelText('More')).toBeTruthy();
     expect(screen.getByLabelText('Back')).toBeTruthy();
   });
 });
