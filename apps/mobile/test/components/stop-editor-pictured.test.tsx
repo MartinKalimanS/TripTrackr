@@ -149,12 +149,32 @@ describe('the place, as pictured', () => {
     expect(screen.queryByTestId('stop-route')).toBeNull();
   });
 
-  test('editing shows the place without a flag and without a way to change it', async () => {
+  test('editing shows the place with a way to change it (spec 015, User Story 2)', async () => {
     await renderEditor(editMode);
 
     expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Porto');
     expect(screen.queryByTestId('stop-editor-place-flag')).toBeNull();
-    expect(screen.queryByTestId('stop-editor-change-city')).toBeNull();
+    expect(screen.getByTestId('stop-editor-change-city')).toBeTruthy();
+  });
+
+  test('changing the city of a stop keeps its dates and saves the new city', async () => {
+    await renderEditor(editMode);
+
+    await fireEvent.press(screen.getByTestId('stop-editor-change-city'));
+    expect(screen.getByTestId('pick-porto')).toBeTruthy();
+    expect(screen.getByTestId('stop-editor-save').props.accessibilityState).toMatchObject(
+      {
+        disabled: true,
+      },
+    );
+
+    await fireEvent.press(screen.getByTestId('pick-porto'));
+    await fireEvent.press(screen.getByTestId('stop-editor-save'));
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      city_id: mockPorto.id,
+      arrive_date: '2026-10-15',
+      depart_date: '2026-10-19',
+    });
   });
 });
 
@@ -422,7 +442,7 @@ describe('the Nights stepper', () => {
     });
   });
 
-  test('editing a stop has the stepper too, and "Save dates" keeps its words', async () => {
+  test('editing a stop has the stepper too', async () => {
     await renderEditor(editMode);
 
     expect(nightsText()).toHaveTextContent('4');

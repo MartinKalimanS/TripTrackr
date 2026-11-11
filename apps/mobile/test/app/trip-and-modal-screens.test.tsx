@@ -750,7 +750,7 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
       expect(flat('stop-editor').flex).toBe(1);
     });
 
-    test('names the actions as before: Save stop when adding, Save dates when editing', async () => {
+    test('names the actions: Save stop when adding, and Edit stop with Save stop when editing', async () => {
       await renderEditor();
       expect(screen.getByTestId('stop-editor-save').props.accessibilityLabel).toBe(
         'Save stop',
@@ -759,9 +759,9 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
       await screen.unmount();
 
       await renderEditor(editMode);
-      expect(screen.getByText('Edit dates').props.accessibilityRole).toBe('header');
+      expect(screen.getByText('Edit stop').props.accessibilityRole).toBe('header');
       expect(screen.getByTestId('stop-editor-save').props.accessibilityLabel).toBe(
-        'Save dates',
+        'Save stop',
       );
     });
 
@@ -808,11 +808,11 @@ describe('<StopEditor> - a page sheet on the form-sheet pattern (T437; FR-005, F
       ]);
     });
 
-    test('editing shows the place as a card with no picker and no way to change the city', async () => {
+    test('editing shows the place as a card, with Change city and no picker until asked (spec 015)', async () => {
       await renderEditor(editMode);
 
       expect(screen.getByTestId('stop-editor-place')).toHaveTextContent('Roma');
-      expect(screen.queryByTestId('stop-editor-change-city')).toBeNull();
+      expect(screen.getByTestId('stop-editor-change-city')).toBeTruthy();
       expect(screen.queryByTestId('pick-florence')).toBeNull();
       expect(screen.getByTestId('stop-editor-arrive')).toBeTruthy();
       expect(screen.getByTestId('stop-editor-depart')).toBeTruthy();

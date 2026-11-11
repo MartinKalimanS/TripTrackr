@@ -175,8 +175,9 @@ describe('The stop editor', () => {
     const nodes = accessibleNodes();
     expectReadingOrder(nodes, [
       'stop-editor-cancel',
-      'Edit dates',
+      'Edit stop',
       'stop-editor-place',
+      'stop-editor-change-city',
       'stop-editor-arrive',
       'stop-editor-depart',
       'stop-editor-nights-less',

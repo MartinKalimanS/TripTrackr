@@ -107,9 +107,12 @@ function initialDates(mode: StopEditorMode): { arrive: string; depart: string } 
 
 function useStopEditorForm(mode: StopEditorMode, onSubmit: StopEditorProps['onSubmit']) {
   const [place, setPlace] = useState<Place | null>(null);
+  /** Editing: the traveller asked to choose another city (spec 015, FR-004). */
+  const [changing, setChanging] = useState(false);
   const [{ arrive, depart }, setDates] = useState(() => initialDates(mode));
 
-  const cityId = mode.kind === 'edit' ? mode.stop.city_id : (place?.city.id ?? null);
+  const kept = mode.kind === 'edit' && !changing ? mode.stop.city_id : null;
+  const cityId = place?.city.id ?? kept;
   const dateError = validateStopDates(arrive, depart);
   const canSave = cityId !== null && dateError === null;
 
@@ -135,9 +138,16 @@ function useStopEditorForm(mode: StopEditorMode, onSubmit: StopEditorProps['onSu
     onSubmit({ city_id: cityId, arrive_date: arrive, depart_date: depart });
   };
 
+  /** Back to the picker: a chosen city is dropped, and so is the one the stop had. */
+  const changePlace = (next: Place | null) => {
+    setPlace(next);
+    if (next === null) setChanging(true);
+  };
+
   return {
     place,
-    setPlace,
+    setPlace: changePlace,
+    changing,
     arrive,
     depart,
     dateError,
@@ -152,23 +162,28 @@ function useStopEditorForm(mode: StopEditorMode, onSubmit: StopEditorProps['onSu
 type PlaceSectionProps = {
   mode: StopEditorMode;
   place: Place | null;
+  changing: boolean;
   onChange: (place: Place | null) => void;
 };
 
-/** The place: the picker until a city is chosen, then the field with the route under it. */
-function PlaceSection({ mode, place, onChange }: PlaceSectionProps) {
-  if (mode.kind === 'edit') {
+/**
+ * The place: the picker until a city is chosen, then the field with the route under it. Editing
+ * starts on the stop's own city, with "Change city" back to the picker (spec 015, FR-004).
+ */
+function PlaceSection({ mode, place, changing, onChange }: PlaceSectionProps) {
+  if (mode.kind === 'edit' && !changing) {
     return (
       <View className="gap-2">
         <StopFieldLabel>Place</StopFieldLabel>
-        <PlaceField name={mode.placeName} />
+        <PlaceField name={mode.placeName} onClear={() => onChange(null)} />
       </View>
     );
   }
   if (!place) {
     return <CityPicker onSelect={(city, country) => onChange({ city, country })} />;
   }
-  const route = planRoute(mode.previousStops ?? [], {
+  const previous = mode.kind === 'add' ? (mode.previousStops ?? []) : [];
+  const route = planRoute(previous, {
     name: place.city.name,
     lat: place.city.lat,
     lng: place.city.lng,
@@ -215,22 +230,27 @@ function StopDates({ form }: StopDatesProps) {
 function StopEditorForm({ mode, onCancel, onSubmit }: Omit<StopEditorProps, 'visible'>) {
   const form = useStopEditorForm(mode, onSubmit);
   const adding = mode.kind === 'add';
-  const chosen = mode.kind === 'edit' || form.place !== null;
+  const chosen = (mode.kind === 'edit' && !form.changing) || form.place !== null;
 
   return (
     <FormSheet
       host="modal"
       testID="stop-editor"
-      title={adding ? 'Add stop' : 'Edit dates'}
+      title={adding ? 'Add stop' : 'Edit stop'}
       actions={{
         testIDPrefix: 'stop-editor',
-        saveLabel: adding ? 'Save stop' : 'Save dates',
+        saveLabel: 'Save stop',
         onCancel,
         onSave: form.submit,
         saveDisabled: !form.canSave,
       }}>
       <View style={{ gap: Space[5] }}>
-        <PlaceSection mode={mode} place={form.place} onChange={form.setPlace} />
+        <PlaceSection
+          mode={mode}
+          place={form.place}
+          changing={form.changing}
+          onChange={form.setPlace}
+        />
         {chosen ? <StopDates form={form} /> : null}
         {chosen && adding ? <GettingThere /> : null}
         {chosen && adding ? <StopNote /> : null}

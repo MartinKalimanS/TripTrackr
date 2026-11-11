@@ -111,7 +111,7 @@ describe('Trip reading order', () => {
       expect.stringMatching(/^Stop 2: Firenze, Italy./),
     ]);
     for (const row of rows) {
-      expect(row.actions).toEqual(['Move up', 'Move down', 'Edit dates', 'Remove stop']);
+      expect(row.actions).toEqual(['Move up', 'Move down', 'Edit stop', 'Remove stop']);
     }
   });
 

@@ -99,7 +99,7 @@ describe('<StopRow> keeps the 004 row: ids, name, controls and actions', () => {
     for (const [id, name] of [
       ['stop-move-up-s2', 'Move Sintra up'],
       ['stop-move-down-s2', 'Move Sintra down'],
-      ['stop-edit-s2', 'Edit dates for Sintra'],
+      ['stop-edit-s2', 'Edit stop Sintra'],
       ['stop-remove-s2', 'Remove Sintra'],
     ]) {
       const control = screen.getByTestId(id as string);
