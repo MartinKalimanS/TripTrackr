@@ -174,15 +174,9 @@ beforeEach(() => {
 });
 
 describe('<ProfileScreen> - the pictured order', () => {
-  test('identity, period, passport, recap and stamps; the rows moved to Settings', async () => {
+  test('identity, period, passport and stamps; the rows moved to Settings', async () => {
     await render(<ProfileScreen />);
-    const ids = [
-      'profile-identity',
-      'passport-period',
-      'passport-card',
-      'coming-soon-recap',
-      'stamps-page',
-    ];
+    const ids = ['profile-identity', 'passport-period', 'passport-card', 'stamps-page'];
     const order = screen
       .getAllByTestId(new RegExp(`^(${ids.join('|')})$`))
       .map((node) => node.props.testID);
@@ -255,13 +249,13 @@ describe("<ProfileScreen> - the figures are the traveller's own", () => {
     ).toEqual(['All time', 'Year 2026', 'Year 2025']);
   });
 
-  test('choosing a year redraws the card, the recap and the stamps for it', async () => {
+  test('choosing a year redraws the card and the stamps for it', async () => {
     await render(<ProfileScreen />);
     await fireEvent.press(screen.getByTestId('passport-period-2026'));
     expect(screen.getByText('Passport \u00b7 2026')).toBeOnTheScreen();
     expect(screen.getByTestId('passport-countries')).toHaveTextContent(/^2$/);
     expect(screen.getByTestId('passport-trips')).toHaveTextContent(/^2$/);
-    expect(screen.getByText('Your 2026 in 7 slides')).toBeOnTheScreen();
+    expect(screen.queryByTestId('coming-soon-recap')).toBeNull();
     expect(screen.getByTestId('stamps-count')).toHaveTextContent('2 of 195');
     expect(screen.queryByTestId('stamp-PT')).toBeNull();
     await fireEvent.press(screen.getByTestId('passport-period-all'));
@@ -301,19 +295,6 @@ describe('<ProfileScreen> - Take the tour (feature 007, FR-007)', () => {
     expect(mockRouter.navigate).toHaveBeenCalledWith('/');
     expect(useTourStore.getState()).toMatchObject({ open: true, step: 0 });
   });
-});
-
-describe('<ProfileScreen> - the pictured controls without a capability (Q-11)', () => {
-  test.each(['coming-soon-recap'])(
-    '%s shows one toast and changes nothing',
-    async (id) => {
-      await render(<ProfileScreen />);
-      await fireEvent.press(screen.getByTestId(id));
-      expect(mockToast.show).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId('passport-countries')).toHaveTextContent(/^3$/);
-      expect(mockSignOut.mutate).not.toHaveBeenCalled();
-    },
-  );
 });
 
 describe('<ProfileScreen> - every state is designed', () => {

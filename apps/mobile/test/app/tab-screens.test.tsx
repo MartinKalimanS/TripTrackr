@@ -386,13 +386,10 @@ describe('<ProfileScreen> (T065, restyled by T448; FR-016)', () => {
     );
   });
 
-  test('has no primary control on You or on Settings, and nothing says "coming soon" but the recap (FR-005)', async () => {
+  test('has no primary control on You or on Settings, and nothing says "coming soon" (FR-005)', async () => {
     await render(<ProfileScreen />);
     let buttons = screen.getAllByRole('button');
-    expect(buttons.map((node) => node.props.testID)).toEqual([
-      'profile-settings',
-      'coming-soon-recap',
-    ]);
+    expect(buttons.map((node) => node.props.testID)).toEqual(['profile-settings']);
     expect(buttons.filter((node) => node.props.variant === 'primary')).toHaveLength(0);
     await screen.unmount();
     await render(<SettingsScreen />);

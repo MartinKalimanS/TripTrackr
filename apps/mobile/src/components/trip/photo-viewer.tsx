@@ -1,28 +1,25 @@
 /**
  * The photo viewer - tasks.md T117, restyled for Sunrise Passport by T549 (feature 005;
  * contract C5-26; UI-SPEC 9.2; FR-028, FR-029, FR-041, FR-045, FR-046, FR-080 as amended by
- * Q-11; research D5-13; User Story 5, Acceptance Scenarios 2, 6).
+ * spec 015; research D5-13; User Story 5, Acceptance Scenarios 2, 6).
  *
  * A full-screen React Native `Modal` laid out as the picture draws it (`photo-viewer.png`,
  * prototype `.viewer`): the photograph on its own blurred ambient (`expo-image`
- * `blurRadius`, no backdrop filter) under a scrim, a glass top bar (Close, "N of M", Share,
- * More), the photo in a rounded card the traveller can zoom (pinch, double-tap), pan, swipe
+ * `blurRadius`, no backdrop filter) under a scrim, a glass top bar (Close and "N of M"), the photo in a rounded card the traveller can zoom (pinch, double-tap), pan, swipe
  * between and pull down to close (`components/ui/photo-viewer`, the zoom toolkit's only
  * importer), and a sheet beneath it.
  *
  * The sheet is the detail block the viewer always had, in the picture's order: where and
  * when the photo was taken (in the time zone of the city it is filed under, when this device
  * has that city) with where its bytes are, so a photo that has not uploaded is never
- * presented as saved (the same badge as the grid's, and its explanation); a caption row; the
- * actions Share, Save copy and Delete; and the filing chips, the retry, the write error and
+ * presented as saved (the same badge as the grid's, and its explanation); the Delete
+ * action; and the filing chips, the retry, the write error and
  * the private note. A filing that contradicts the photo's own position is SAID, never
  * silently corrected (spec edge case; data-model section 5).
  *
- * What the pictures draw and the app cannot do (owner answer Q-11): Share (twice), More, the
- * caption row and Save copy are real, focusable buttons whose only effect is the one
- * "<Thing> is coming soon" toast. They write nothing and send nothing, and the caption row is
- * a prompt, not a stored caption. Delete is real: it asks first (`Alert`), then removes the
- * photo and closes the view.
+ * What the pictures draw and the app cannot do (Share twice, More, a caption, Save copy) is not
+ * drawn (spec 015 FR-009 retires Q-11). Delete is real: it asks first (`Alert`), then removes
+ * the photo and closes the view.
  *
  * Words the app already says win over the picture's: the close control is "Close photo", the
  * place line reads "Filed under Roma, Italy" or "Not filed under a city", and the time line
@@ -35,7 +32,7 @@
  * (`photo-viewer-error`), not swallowed. A full image that will not draw says so
  * (`photo-viewer-image-unavailable`). Android's Back closes the view (`onRequestClose`).
  *
- * Visibility posture: private. The pictured Share is a coming-soon control: nothing here
+ * Visibility posture: private. Nothing here
  * shares, publishes or sets visibility (per-photo visibility is User Story 7), and the
  * photo is drawn from this device's own private files, never from a link.
  */
@@ -55,11 +52,6 @@ import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { PhotoRetryButton, PhotoStatusBadge } from '@/components/trip/photo-status';
 import { PrivateNote } from '@/components/trip/private-note';
 import { ChipGroup, type ChipOption } from '@/components/ui/chip';
-import {
-  COMING_SOON_HINT,
-  ComingSoonButton,
-  useComingSoon,
-} from '@/components/ui/coming-soon-button';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { InlineError } from '@/components/ui/inline-error';
@@ -98,14 +90,7 @@ const AMBIENT_SCALE = 1.2;
 const SHEET_MAX_SHARE = 0.55;
 /** An action tile is at least this tall at the default text size (the prototype's 64). */
 const TILE_MIN_HEIGHT = 64;
-const CAPTION_MIN_HEIGHT = 52;
 const NO_INSETS = { top: 0, bottom: 0, left: 0, right: 0 };
-
-const COMING_SOON = {
-  caption: { thing: 'Captions', prompt: 'Add a caption' },
-  share: { thing: 'Sharing', label: 'Share' },
-  saveCopy: { thing: 'Saving a copy', label: 'Save copy' },
-} as const;
 
 export type PhotoViewerProps = {
   photo: PhotoWithPlace;
@@ -191,22 +176,6 @@ function TopBar({ onClose, position }: TopBarProps) {
         testID="photo-viewer-close"
       />
       {position ? <PositionPill {...position} /> : null}
-      <View className="flex-row" style={{ gap: Space[2] }}>
-        <ComingSoonButton
-          name="share"
-          label="Share"
-          thing={COMING_SOON.share.thing}
-          icon="share"
-          variant="glass"
-        />
-        <ComingSoonButton
-          name="more"
-          label="More"
-          thing="More actions"
-          icon="ellipsis"
-          variant="glass"
-        />
-      </View>
     </View>
   );
 }
@@ -275,30 +244,6 @@ function WhenAndWhere({ photo }: { photo: PhotoWithPlace }) {
   );
 }
 
-/** The caption row as pictured: a prompt that says captions are coming, and stores nothing. */
-function CaptionRow() {
-  const onPress = useComingSoon(COMING_SOON.caption.thing);
-  const scale = Math.max(1, useFontScale());
-  return (
-    <Tappable
-      testID="photo-viewer-caption"
-      accessibilityLabel="Add a caption"
-      accessibilityHint={COMING_SOON_HINT}
-      onPress={onPress}
-      className="flex-row items-center border border-border bg-surface-secondary px-4"
-      style={{
-        ...styles.lg,
-        minHeight: CAPTION_MIN_HEIGHT * scale,
-        gap: Space[3],
-      }}>
-      <Icon name="pencil" size={20} tone="muted" />
-      <Text tone="muted" className="shrink">
-        {COMING_SOON.caption.prompt}
-      </Text>
-    </Tappable>
-  );
-}
-
 const TILE_CLASS =
   'flex-1 items-center border border-separator bg-surface-secondary px-2 py-2';
 
@@ -318,37 +263,6 @@ function TileFace({ icon, text, tone = 'default' }: TileFaceProps) {
         {text}
       </Text>
     </>
-  );
-}
-
-/** Pictured, not built (Q-11): one toast, nothing else. */
-function ShareTile() {
-  const onPress = useComingSoon(COMING_SOON.share.thing);
-  return (
-    <Tappable
-      testID="photo-viewer-share"
-      accessibilityLabel="Share"
-      accessibilityHint={COMING_SOON_HINT}
-      onPress={onPress}
-      className={TILE_CLASS}
-      style={useTileStyle()}>
-      <TileFace icon="share" text="Share" />
-    </Tappable>
-  );
-}
-
-function SaveCopyTile() {
-  const onPress = useComingSoon(COMING_SOON.saveCopy.thing);
-  return (
-    <Tappable
-      testID="photo-viewer-save-copy"
-      accessibilityLabel="Save copy"
-      accessibilityHint={COMING_SOON_HINT}
-      onPress={onPress}
-      className={TILE_CLASS}
-      style={useTileStyle()}>
-      <TileFace icon="download" text="Save copy" />
-    </Tappable>
   );
 }
 
@@ -377,8 +291,6 @@ function DeleteTile({ onConfirmed }: { onConfirmed: () => void }) {
 function Actions({ onConfirmedDelete }: { onConfirmedDelete: () => void }) {
   return (
     <View testID="photo-viewer-actions" className="flex-row" style={{ gap: Space[2] }}>
-      <ShareTile />
-      <SaveCopyTile />
       <DeleteTile onConfirmed={onConfirmedDelete} />
     </View>
   );
@@ -462,7 +374,6 @@ function Sheet({ photo, stops, actions, onClose }: PhotoViewerProps) {
           photo={photo}
           onRetry={() => attempt(() => actions.retryUpload(photo.id))}
         />
-        <CaptionRow />
         <Actions
           onConfirmedDelete={() => {
             if (attemptRemoval(() => actions.remove(photo.id))) onClose();

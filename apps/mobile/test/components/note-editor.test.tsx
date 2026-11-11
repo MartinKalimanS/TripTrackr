@@ -472,51 +472,30 @@ describe('<NoteEditor> with the keyboard up (C4-10 rule 8; the keyboard-visibili
   });
 });
 
-describe('<NoteEditor> - the pictured extras (F9, T551; Q-11)', () => {
+describe('<NoteEditor> - the strip above the keyboard (F9, T551; spec 015)', () => {
   const { mockToast } = jest.requireMock('heroui-native') as {
     mockToast: { show: jest.Mock };
   };
   beforeEach(() => mockToast.show.mockClear());
 
-  const TOOLS = [
-    ['coming-soon-note-bold', 'Bold'],
-    ['coming-soon-note-list', 'Bulleted list'],
-    ['coming-soon-note-checklist', 'Checklist'],
-    ['coming-soon-note-photo', 'Add photo'],
-    ['coming-soon-note-place', 'Tag place'],
-  ] as const;
-
-  test('the formatting strip is in the footer, so it rides the keyboard up with Save', async () => {
+  test('the strip is in the footer and holds Dismiss keyboard alone: no formatting tool the app cannot honour', async () => {
     await renderEditor();
     await showKeyboard();
 
     const footer = within(screen.getByTestId('note-editor-footer'));
     const bar = footer.getByTestId('note-editor-format');
     expect(bar.props.accessibilityRole).toBe('toolbar');
-    for (const [id] of TOOLS) expect(within(bar).getByTestId(id)).toBeTruthy();
+    expect(
+      within(bar)
+        .getAllByRole('button')
+        .map((node) => node.props.testID),
+    ).toEqual(['note-editor-dismiss-keyboard']);
+    expect(screen.queryByText('Not available yet')).toBeNull();
     expect(
       within(screen.getByTestId(BODY)).queryByTestId('note-editor-format'),
     ).toBeNull();
     expectActionAboveKeyboard('note-editor', 'note-editor-save', { bodyTestID: BODY });
   });
-
-  test.each(TOOLS)(
-    '%s is a coming-soon button: named, hinted, one toast, and never touches the note',
-    async (id, name) => {
-      const { onSubmit } = await renderEditor();
-      await fireEvent.changeText(screen.getByTestId('note-editor-body'), 'Plain words');
-
-      const control = screen.getByTestId(id);
-      expect(control.props.accessibilityLabel).toBe(name);
-      expect(control.props.accessibilityHint).toBe('Not available yet');
-      expect(control.props.accessibilityRole).toBe('button');
-
-      await fireEvent.press(control);
-      expect(mockToast.show).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId('note-editor-body').props.value).toBe('Plain words');
-      expect(onSubmit).not.toHaveBeenCalled();
-    },
-  );
 
   test('Dismiss keyboard is real: it puts the keyboard away and does nothing else', async () => {
     const dismiss = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => undefined);

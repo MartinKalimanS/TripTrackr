@@ -67,7 +67,6 @@ import { PlaceField } from './place-field';
 import { RoutePreview } from './route-preview';
 import { StopDatesBlock } from './stop-dates-block';
 import { StopFieldLabel } from './stop-field-label';
-import { GettingThere, StopNote } from './stop-coming-soon';
 
 export type StopEditorValues = {
   city_id: number;
@@ -252,8 +251,6 @@ function StopEditorForm({ mode, onCancel, onSubmit }: Omit<StopEditorProps, 'vis
           onChange={form.setPlace}
         />
         {chosen ? <StopDates form={form} /> : null}
-        {chosen && adding ? <GettingThere /> : null}
-        {chosen && adding ? <StopNote /> : null}
       </View>
     </FormSheet>
   );

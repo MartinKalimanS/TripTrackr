@@ -158,7 +158,7 @@ beforeEach(() => {
 });
 
 describe('You reading order', () => {
-  test('identity, Settings, period, passport, recap and stamps', async () => {
+  test('identity, Settings, period, passport and stamps', async () => {
     await render(<ProfileScreen />);
     const nodes = accessibleNodes();
     expectReadingOrder(nodes, [
@@ -174,7 +174,6 @@ describe('You reading order', () => {
       'passport-figure-distance',
       'passport-figure-continents',
       /around the Earth/,
-      'coming-soon-recap',
       'Stamps',
       'stamps-count',
       'stamp-US',

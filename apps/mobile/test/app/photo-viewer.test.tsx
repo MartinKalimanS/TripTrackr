@@ -430,62 +430,21 @@ describe('<PhotoViewer> - progressive loading and the honest error', () => {
   });
 });
 
-describe('<PhotoViewer> - pictured controls with no capability (Q-11)', () => {
-  const pictured = [
-    ['coming-soon-share', 'Share', 'Sharing is coming soon'],
-    ['coming-soon-more', 'More', 'More actions is coming soon'],
-    ['photo-viewer-caption', 'Add a caption', 'Captions is coming soon'],
-    ['photo-viewer-share', 'Share', 'Sharing is coming soon'],
-    ['photo-viewer-save-copy', 'Save copy', 'Saving a copy is coming soon'],
-  ] as const;
-
-  test.each(pictured)('%s is a real, focusable button named "%s"', async (id, name) => {
+describe('<PhotoViewer> - no control that only says "coming soon" (spec 015 FR-009)', () => {
+  test('draws no Share, More, caption prompt or Save copy; Delete is the one action', async () => {
     await open();
-    const control = screen.getByTestId(id);
-    expect(control.props.accessibilityRole).toBe('button');
-    expect(control.props.accessibilityLabel).toBe(name);
-    expect(control.props.accessibilityHint).toBe('Not available yet');
-    expect(control.props.accessibilityState).toMatchObject({ disabled: false });
-  });
-
-  test.each(pictured)(
-    '%s shows one toast and does nothing else',
-    async (id, _name, message) => {
-      await open();
-      await fireEvent.press(screen.getByTestId(id));
-
-      expect(mockToast.show).toHaveBeenCalledTimes(1);
-      const request = mockToast.show.mock.calls[0]![0] as { id: string };
-      expect(request.id).toBe('coming-soon');
-      await render(
-        (
-          mockToast.show.mock.calls[0]![0] as {
-            component: (p: Record<string, unknown>) => React.ReactElement;
-          }
-        ).component({
-          id: 'coming-soon',
-          index: 0,
-          total: { value: 1 },
-          heights: { value: {} },
-          show: jest.fn(),
-          hide: jest.fn(),
-        }),
-      );
-      expect(screen.getAllByText(message).length).toBeGreaterThan(0);
-      for (const write of Object.values(mockActions))
-        expect(write).not.toHaveBeenCalled();
-      expect(onClose).not.toHaveBeenCalled();
-      expect(onChange).not.toHaveBeenCalled();
-    },
-  );
-
-  test('the caption row stores nothing: it is a prompt, with no input and no invented caption', async () => {
-    await open();
-    const row = screen.getByTestId('photo-viewer-caption');
-    expect(within(row).getByText('Add a caption')).toBeTruthy();
-    expect(within(row).getByTestId(glyphId('pencil'), hidden)).toBeTruthy();
+    for (const id of [
+      'coming-soon-share',
+      'coming-soon-more',
+      'photo-viewer-caption',
+      'photo-viewer-share',
+      'photo-viewer-save-copy',
+    ]) {
+      expect(screen.queryByTestId(id)).toBeNull();
+    }
+    expect(screen.queryByText('Not available yet')).toBeNull();
+    expect(screen.getByTestId('photo-viewer-delete')).toBeTruthy();
     expect(screen.queryByPlaceholderText(/./)).toBeNull();
-    expect(screen.queryByText(/Pena Palace|clock tower/i)).toBeNull();
   });
 
   test('nothing offers to publish or set visibility; the viewer says it is private', async () => {
@@ -587,11 +546,8 @@ describe('<PhotoViewer> - dark, contrast and text scales', () => {
       useAppearance.mockReturnValue(appearance({ fontScale: scale }));
       await open();
 
-      expect(styleOf(screen.getByTestId('photo-viewer-share')).minHeight).toBe(
+      expect(styleOf(screen.getByTestId('photo-viewer-delete')).minHeight).toBe(
         64 * scale,
-      );
-      expect(styleOf(screen.getByTestId('photo-viewer-caption')).minHeight).toBe(
-        52 * scale,
       );
       for (const id of ['photo-viewer-place']) {
         const node = screen.getByTestId(id);
@@ -609,6 +565,5 @@ describe('<PhotoViewer> - dark, contrast and text scales', () => {
     useAppearance.mockReturnValue(appearance({ fontScale: 2 }));
     await open();
     expect(styleOf(screen.getByLabelText('Close photo')).width).toBe(44);
-    expect(styleOf(screen.getByTestId('coming-soon-share')).width).toBe(44);
   });
 });

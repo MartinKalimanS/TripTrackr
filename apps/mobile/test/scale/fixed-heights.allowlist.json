@@ -111,11 +111,6 @@
       "reason": "A stamp image: decorative art hidden from assistive technology (FR-076); the traveller reads the country in the list"
     },
     {
-      "file": "src/components/profile/recap-entry.tsx",
-      "count": 1,
-      "reason": "The 48 dp tile with a sparkle icon; the words beside it grow and the row has a minimum"
-    },
-    {
       "file": "src/components/profile/stamps-page.tsx",
       "count": 1,
       "reason": "The decorative ticket notch at the corner of the stamps page, hidden from assistive technology"
