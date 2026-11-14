@@ -105,8 +105,8 @@ and `research.md` (decisions are numbered `D-nn` — cite them).
   UI primitives come from `components/ui/*` only, and only that folder imports `heroui-native` (research D4-02,
   D4-03). **No dead controls (spec 015 FR-009, which retires owner rule Q-11):** a control the pictures draw for a
   capability the app does not have is NOT drawn. Build it, or leave it out; never a button whose only effect is
-  "coming soon". The one remaining `ComingSoonButton` user is "Forgot password?" on login, until password reset
-  opens in the app (spec 015 T1511). Do not reintroduce neumorphism (`test/no-neumorphism.test.ts`). Hermes has no `Intl.PluralRules`: use `countParts`.
+  "coming soon". The `ComingSoonButton` component is gone (T1511: "Forgot password?" opens the reset request).
+  Do not reintroduce neumorphism (`test/no-neumorphism.test.ts`). Hermes has no `Intl.PluralRules`: use `countParts`.
 - **Test kits that guard the look.** `test/scale/` (reflow at 1, 1.15, 1.5, 2 and the fixed-height ratchet with
   its allow-list), `test/a11y/` (reading order per screen, decorative art hidden, reach-all lists, final values),
   `test/appearance/` (every screen in four themes, reduced transparency and motion, live switching, the

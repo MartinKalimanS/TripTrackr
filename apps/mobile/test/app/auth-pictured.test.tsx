@@ -1,7 +1,7 @@
 /**
  * F12 (T555) - Sign in and Create account as pictured (`more/auth.png`, `register.png`;
  * UI-SPEC 7): the heading with its one serif accent word, the error summary that names every
- * problem and links to its field, "Forgot password?" in the label row (a coming-soon control),
+ * problem and links to its field, "Forgot password?" in the label row (it opens the reset request),
  * the visible password rule, the legal line with real links and the privacy promise. The
  * credential fields' own props, the error mapping and the logging are unchanged and still
  * pinned by `auth-security.test.tsx`; the spot checks here show the new parts did not touch them.
@@ -128,23 +128,19 @@ describe('Sign in as pictured', () => {
     expect(screen.queryByTestId('auth-error-summary')).toBeNull();
   });
 
-  test('"Forgot password?" is a coming-soon control in the password label row: one toast and nothing else', async () => {
+  test('"Forgot password?" sits in the password label row and opens the reset request', async () => {
     await render(<LoginScreen />);
-    const forgot = screen.getByTestId('coming-soon-forgot-password');
+    const forgot = screen.getByTestId('login-forgot-password');
     expect(forgot.props.accessibilityRole).toBe('button');
     expect(forgot.props.accessibilityLabel).toBe('Forgot password?');
-    expect(forgot.props.accessibilityHint).toBe('Not available yet');
+    expect(forgot.props.accessibilityHint).toBeUndefined();
     const order = idsInOrder();
-    expect(order.indexOf('coming-soon-forgot-password')).toBeLessThan(
+    expect(order.indexOf('login-forgot-password')).toBeLessThan(
       order.indexOf('login-password'),
     );
 
     await fireEvent.press(forgot);
-    expect(mockShow).toHaveBeenCalledTimes(1);
-    expect(mockShow).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Password reset is coming soon' }),
-    );
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith('/forgot-password');
     expect(mockMutations.login.mutate).not.toHaveBeenCalled();
   });
 

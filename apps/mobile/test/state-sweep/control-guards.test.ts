@@ -92,25 +92,13 @@ describe('guard (b): a Tier 3 control that is not a coming-soon control', () => 
     expect(kinds('const a = <Button onPress={() => { save(); }} />;')).toEqual([]);
   });
 
-  it('fails on a control that says coming soon without the one toast', () => {
+  it('fails on any control that says coming soon (the component is retired, spec 015 FR-009)', () => {
     expect(
       kinds('const a = <Button testID="coming-soon-share" onPress={go} />;'),
     ).toEqual(['coming-soon-not-routed']);
     expect(
       kinds('const a = <Button accessibilityHint="Not available yet" onPress={go} />;'),
     ).toEqual(['coming-soon-not-routed']);
-  });
-
-  it('accepts the same control once it is routed through the adapter', () => {
-    expect(
-      kinds(
-        "const soon = useComingSoon('Share');\n" +
-          'const a = <Button testID="coming-soon-share" onPress={soon} />;',
-      ),
-    ).toEqual([]);
-    expect(
-      kinds('const a = <ComingSoonButton name="share" label="Share" icon="share" />;'),
-    ).toEqual([]);
   });
 });
 

@@ -46,6 +46,7 @@ const DOCS = 'test/app/document-screens.test.tsx';
 const MAPS = 'test/app/offline-maps.test.tsx';
 const MODAL = 'test/app/trip-and-modal-screens.test.tsx';
 const AUTH = 'test/app/auth-screens.test.tsx';
+const RECOVERY = 'test/app/account-recovery-screens.test.tsx';
 const WELCOME = 'test/app/welcome-pictured.test.tsx';
 const ROOT = 'test/app/root-layout.test.tsx';
 const FIRST_SYNC = 'test/components/sync-runtime-first-sync.test.tsx';
@@ -483,7 +484,7 @@ export const ROUTE_INVENTORY: readonly RouteRow[] = [
     },
     empty: { na: 'a form, not a list' },
     error: {
-      shows: 'an error summary and the field errors; the reset link is coming soon',
+      shows: 'an error summary and the field errors',
       pins: [[AUTH, 'login-error']],
     },
     primary: '"Sign in"',
@@ -501,6 +502,51 @@ export const ROUTE_INVENTORY: readonly RouteRow[] = [
       pins: [[AUTH, 'register-error']],
     },
     primary: '"Create account"',
+    sweep: SWEEP('gates'),
+  },
+  {
+    route: 'src/app/(auth)/forgot-password.tsx',
+    loading: {
+      shows: 'a busy "Sending…" button',
+      pins: [[RECOVERY, 'forgot-password-submit']],
+    },
+    empty: { na: 'a form, not a list' },
+    error: {
+      shows:
+        'words under the field, an alert when the request did not get through; the same sent message for any address',
+      pins: [[RECOVERY, 'forgot-password-error']],
+    },
+    primary: '"Send reset link"',
+    sweep: SWEEP('gates'),
+  },
+  {
+    route: 'src/app/reset-password.tsx',
+    loading: {
+      shows: 'a busy "Saving…" button',
+      pins: [[RECOVERY, 'reset-password-submit']],
+    },
+    empty: { na: 'a form, not a list' },
+    error: {
+      shows:
+        'a missing, malformed, expired or used link says so with "Ask for a new link"; an offline failure keeps the form',
+      pins: [[RECOVERY, 'reset-password-invalid']],
+    },
+    primary: '"Save new password" (a bad link: "Ask for a new link")',
+    sweep: SWEEP('gates'),
+  },
+  {
+    route: 'src/app/verify-email.tsx',
+    loading: {
+      shows: '"Confirming your email" while the request is out',
+      pins: [[RECOVERY, 'Email confirmed']],
+    },
+    empty: { na: 'no list: it confirms one address' },
+    error: {
+      shows:
+        '"This link is no longer valid" with the way on; an offline failure offers "Try again"',
+      pins: [[RECOVERY, 'This link is no longer valid']],
+    },
+    primary: '"Go to sign in" or "Continue" (a failure: "Try again")',
     sweep: SWEEP('gates'),
   },
   {

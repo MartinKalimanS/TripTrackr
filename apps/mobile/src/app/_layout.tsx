@@ -266,6 +266,11 @@ function RootStack({
         <Stack.Screen name="(dev)" />
       </Stack.Protected>
 
+      {/* The emailed links (T1511): a reset link is opened by someone who cannot sign in, a
+          verification link by either. Outside both groups, so neither state turns them away. */}
+      <Stack.Screen name="reset-password" />
+      <Stack.Screen name="verify-email" />
+
       {/* Reachable in either state: a bad link is not a reason to sign in. */}
       <Stack.Screen name="+not-found" />
     </Stack>

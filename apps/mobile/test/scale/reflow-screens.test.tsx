@@ -18,6 +18,7 @@
 import { render, screen } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 
+import ForgotPasswordScreen from '@/app/(auth)/forgot-password';
 import LoginScreen from '@/app/(auth)/login';
 import RegisterScreen from '@/app/(auth)/register';
 import WelcomeScreen from '@/app/(auth)/welcome';
@@ -36,6 +37,15 @@ import {
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), replace: jest.fn() }),
+}));
+jest.mock('@/features/auth/account-recovery', () => ({
+  ...jest.requireActual('@/features/auth/account-recovery'),
+  useRequestPasswordReset: () => ({
+    mutate: jest.fn(),
+    isPending: false,
+    isSuccess: false,
+    error: null,
+  }),
 }));
 jest.mock('@/lib/sentry', () => ({
   Sentry: { captureException: jest.fn() },
@@ -185,6 +195,13 @@ describe.each(TEXT_SCALES)('Welcome at a font scale of %s', (scale) => {
 
 describe.each([
   ['Sign in', LoginScreen, 'login-screen', 'login-submit', ['login-email']],
+  [
+    'Reset password',
+    ForgotPasswordScreen,
+    'forgot-password-screen',
+    'forgot-password-submit',
+    ['forgot-password-email'],
+  ],
   [
     'Create account',
     RegisterScreen,
