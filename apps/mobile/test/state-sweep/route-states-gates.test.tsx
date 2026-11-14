@@ -10,9 +10,12 @@
 import { act, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
+import ForgotPasswordScreen from '@/app/(auth)/forgot-password';
 import LoginScreen from '@/app/(auth)/login';
 import RegisterScreen from '@/app/(auth)/register';
 import WelcomeScreen from '@/app/(auth)/welcome';
+import ResetPasswordScreen from '@/app/reset-password';
+import VerifyEmailScreen from '@/app/verify-email';
 import { RequireLocalStore } from '@/components/require-local-store';
 import { FirstSyncGate } from '@/components/sync/first-sync-gate';
 import { LocalStoreProvider } from '@/db/client';
@@ -28,8 +31,15 @@ import {
 } from '../helpers/dead-controls';
 
 jest.mock('@/hooks/use-appearance');
+const mockRouteParams: { token?: string } = {};
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn(), back: jest.fn(), replace: jest.fn() }),
+  useRouter: () => ({
+    push: jest.fn(),
+    back: jest.fn(),
+    replace: jest.fn(),
+    setParams: jest.fn(),
+  }),
+  useLocalSearchParams: () => mockRouteParams,
 }));
 jest.mock('@/lib/sentry', () => ({
   Sentry: { captureException: jest.fn() },
@@ -55,6 +65,13 @@ jest.mock('@/features/auth/use-session', () => ({
   useAppleSignIn: () => mockMutations.apple,
   useGoogleSignIn: () => mockMutations.google,
 }));
+const mockRecovery = { request: stub(), confirm: stub(), verify: stub() };
+jest.mock('@/features/auth/account-recovery', () => ({
+  ...jest.requireActual('@/features/auth/account-recovery'),
+  useRequestPasswordReset: () => mockRecovery.request,
+  useConfirmPasswordReset: () => mockRecovery.confirm,
+  useVerifyEmail: () => mockRecovery.verify,
+}));
 jest.mock('expo-auth-session/providers/google', () => ({
   useIdTokenAuthRequest: () => [{ loaded: true }, null, jest.fn()],
 }));
@@ -68,10 +85,14 @@ const { __store: statusStore } = jest.requireMock('@/sync/engine') as {
 
 beforeEach(() => {
   useAppearance.mockReturnValue(appearance());
-  for (const mutation of Object.values(mockMutations)) {
+  for (const mutation of [
+    ...Object.values(mockMutations),
+    ...Object.values(mockRecovery),
+  ]) {
     mutation.isPending = false;
     mutation.error = null;
   }
+  mockRouteParams.token = undefined;
   statusStore.setState({
     phase: 'idle',
     firstSyncComplete: false,
@@ -187,6 +208,48 @@ describe('Welcome, Sign in and Create account: no control is a dead end', () => 
   it('Create account: busy', async () => {
     mockMutations.register.isPending = true;
     await render(<RegisterScreen />);
+    expectHealthy();
+  });
+});
+
+const TOKEN = 'abcDEF0123456789_-abcDEF0123456789';
+
+describe('Forgot password, Reset password and Verify email: no control is a dead end', () => {
+  it('Forgot password: idle, busy and refused', async () => {
+    await render(<ForgotPasswordScreen />);
+    expectHealthy(['"Send reset link"']);
+  });
+
+  it('Forgot password: busy', async () => {
+    mockRecovery.request.isPending = true;
+    await render(<ForgotPasswordScreen />);
+    expectHealthy();
+  });
+
+  it('Reset password: the form, busy and offline', async () => {
+    mockRouteParams.token = TOKEN;
+    await render(<ResetPasswordScreen />);
+    expectHealthy(['"Save new password"']);
+    mockRecovery.confirm.isPending = true;
+    await render(<ResetPasswordScreen />);
+    expectHealthy();
+  });
+
+  it('Reset password: a bad link offers one primary, a new request', async () => {
+    mockRouteParams.token = 'nope';
+    await render(<ResetPasswordScreen />);
+    expectHealthy(['"Ask for a new link"']);
+  });
+
+  it('Verify email: confirming, confirmed and invalid', async () => {
+    mockRouteParams.token = TOKEN;
+    await render(<VerifyEmailScreen />);
+    expectHealthy([]);
+  });
+
+  it('Verify email: a bad link', async () => {
+    mockRouteParams.token = 'nope';
+    await render(<VerifyEmailScreen />);
     expectHealthy();
   });
 });

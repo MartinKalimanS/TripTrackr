@@ -140,16 +140,39 @@ friends, `NODE_ENV=production`, memory/CPU ceilings (postgres 1.5 GB, api 512 MB
 512 MB, redis 256 MB, backup 256 MB, traefik 128 MB), Postgres tuned to its ceiling, RustFS not
 started, and the `backup` service.
 
-Deploying a new version:
+`api`, `worker` and `migrate` run the registry image named by `API_IMAGE`, which the overlay
+requires. Nothing is built for them on the server. Set it for a manual `docker compose` run, for
+example `API_IMAGE=ghcr.io/<owner>/triptrackr-api:sha-abc1234`; `deploy.sh` does this for you.
 
-```bash
-git pull
-docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml \
-  up -d --build          # rebuilds the image, re-runs migrate, restarts api and worker
-```
+## Deploying
 
-`migrate` runs before `api` and `worker` start (`service_completed_successfully`). A failed
-migration stops the rollout; the previous containers keep serving.
+Roadmap step S-27. A push to `main` (touching the API, contracts or `infra/`) or a `v*.*.*` tag runs
+`.github/workflows/api-deploy.yml`: build the image, push it to GHCR, wait for approval, then SSH
+to the host and run `infra/scripts/deploy.sh <image>`. The script checks `.env` and
+`infra/secrets/*.txt`, takes a backup, records the running image, pulls the new one, runs
+`migrate` once, restarts `api` and `worker`, polls `/health` (120 s) and checks the API connects
+as `triptrackr_api`. On any failure it restarts the previous image and exits non-zero. Run it by
+hand the same way: `./infra/scripts/deploy.sh ghcr.io/<owner>/triptrackr-api:sha-abc1234`
+(`SKIP_BACKUP=1` for the very first deploy). Migrations must be expand-then-contract so the
+previous API still runs against the migrated schema. **Redeploy an older version** with the
+workflow's "Run workflow" button and its `tag` input.
+
+What the owner must set up once:
+
+| Where                                         | Name                                                   | Value                                                                                                                      |
+| --------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| GitHub, Settings > Environments               | Environment `production`                               | Create it and add **required reviewers** (the owner). The deploy job pauses there until approved.                          |
+| Environment `production`, secret              | `DEPLOY_HOST`                                          | Hostname or IP of the VPS.                                                                                                 |
+| Environment `production`, secret              | `DEPLOY_USER`                                          | The non-root login on the VPS (member of the `docker` group, can `git pull` in the checkout).                              |
+| Environment `production`, secret              | `DEPLOY_SSH_KEY`                                       | Private key (OpenSSH, no passphrase) whose public half is in that user's `authorized_keys`. Dedicated to deploys.          |
+| Environment `production`, secret              | `DEPLOY_KNOWN_HOSTS`                                   | Output of `ssh-keyscan -t ed25519 <host>`, verified against the server's real fingerprint (host-key pinning).              |
+| Environment `production`, variable (optional) | `DEPLOY_PATH`                                          | Checkout directory on the VPS. Default `/opt/triptrackr`.                                                                  |
+| GitHub, Settings > Actions                    | Workflow permissions                                   | Allow Actions to write packages (the workflow requests `packages: write` for the image job only).                          |
+| GitHub Packages                               | `ghcr.io/<owner>/triptrackr-api`                       | After the first push, make the package public, or run `docker login ghcr.io` on the VPS once with a `read:packages` token. |
+| On the VPS                                    | Checkout, `.env`, `infra/secrets/*.txt`, stack running | Clone the repo to `DEPLOY_PATH`, create `.env` and the secret files (above), run the production stack once.                |
+
+No secret lives in the repository; `GITHUB_TOKEN` is automatic. Runtime secrets (database, JWT,
+document key) stay on the VPS, never in GitHub.
 
 ## Backups
 

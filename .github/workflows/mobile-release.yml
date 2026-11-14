@@ -1,0 +1,109 @@
+# Mobile release (docs/roadmap/CICD-AND-RELEASE.md section 2.3, step S-30).
+#
+# A `vX.Y.Z` tag (or a manual dispatch) re-runs the mobile gates, then asks EAS to build
+# and, for the production profile, submit to TestFlight and the Play internal track.
+#
+# Nothing here needs a secret to be safe: with no `EXPO_TOKEN` the build job prints one
+# clear notice and succeeds without building. The owner adds the secret to the GitHub
+# environment `production-mobile` (docs/release/owner-checklist.md) and the same workflow
+# starts building. Human approval stays on that environment (required reviewers).
+#
+# `expo/expo-github-action` is third-party: pin it to a full commit SHA (version in a
+# comment) when the owner finalises the repository settings.
+
+name: Mobile release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        type: choice
+        options: [all, ios, android]
+        default: all
+      profile:
+        description: 'EAS build profile (preview never submits to a store)'
+        type: choice
+        options: [production, preview]
+        default: production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-release
+  cancel-in-progress: false
+
+env:
+  CI: 'true'
+  EXPO_NO_TELEMETRY: '1'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify:
+    name: Verify (typecheck and tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test -w packages/contracts
+      - run: npm run test:cov -w apps/mobile
+
+  build:
+    name: EAS build and submit
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production-mobile
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      PLATFORM: ${{ inputs.platform || 'all' }}
+      PROFILE: ${{ inputs.profile || 'production' }}
+    steps:
+      - name: Check for the EAS token
+        id: token
+        run: |
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=EAS build skipped::EXPO_TOKEN is not set in the production-mobile environment. Nothing was built. See docs/release/owner-checklist.md section 'Expo / EAS'."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.token.outputs.present == 'true'
+      - uses: actions/setup-node@v7
+        if: steps.token.outputs.present == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        if: steps.token.outputs.present == 'true'
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+        if: steps.token.outputs.present == 'true'
+
+      # --no-wait: the step succeeds when the builds are queued; EAS finishes them and,
+      # with --auto-submit, hands each to EAS Submit (iOS to TestFlight, Android to the
+      # internal track) using the submit profile of the same name.
+      - name: EAS build
+        if: steps.token.outputs.present == 'true'
+        working-directory: apps/mobile
+        run: |
+          submit_flag=""
+          if [ "$PROFILE" = "production" ]; then submit_flag="--auto-submit"; fi
+          eas build --platform "$PLATFORM" --profile "$PROFILE" --non-interactive --no-wait $submit_flag

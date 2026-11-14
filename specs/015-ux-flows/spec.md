@@ -106,6 +106,34 @@ default, the home currency. Adding the first place is the offered next step, sta
 2. **Given** a name, **When** the traveller chooses "Save and add first stop", **Then** the trip is
    saved and the first stop's editor opens; "Save trip" alone saves and opens the trip.
 
+---
+
+### User Story 6 - Get back into my account (Priority: P1)
+
+A traveller who forgot their password asks for a reset from the sign-in screen, opens the emailed
+link on their phone, and chooses a new password in the app. A traveller who registered opens the
+emailed verification link and the app confirms the address.
+
+**Why this priority**: Without it a forgotten password is a lost account, and "Forgot password?" is
+the last control that does nothing.
+
+**Independent Test**: From sign in, ask for a reset; open `triptrackr://reset-password?token=...`;
+set a new password; sign in with it.
+
+**Acceptance Scenarios**:
+
+1. **Given** the sign-in screen, **When** the traveller taps "Forgot password?" and sends their
+   email, **Then** they are told to look for an email, in the same words whether or not an account
+   uses that address.
+2. **Given** a reset link opened on the phone, **When** the traveller enters a new password of at
+   least 12 characters and saves, **Then** the password is changed and they are sent to sign in.
+3. **Given** a link that is expired, used or malformed, **Then** the app says so in words and offers
+   to ask for a new one; nothing is changed.
+4. **Given** a verification link opened on the phone, **Then** the app confirms the address, or says
+   the link is no longer valid, signed in or not.
+5. **Given** either link, **Then** the token is never shown, logged or left in the address the app
+   keeps.
+
 ### Edge Cases
 
 - Deleting a trip that was never synced removes it locally and sends nothing.
@@ -136,6 +164,12 @@ default, the home currency. Adding the first place is the offered next step, sta
 - **FR-011**: You MUST offer a Settings screen holding account, plan, data and app rows.
 - **FR-012**: The New trip form MUST show only fields it stores, with the home currency defaulted.
 - **FR-013**: Every action here MUST work offline and reach the server later, as all writes do.
+- **FR-015**: "Forgot password?" MUST ask for an email and request a reset, answering the same way
+  for a known and an unknown address.
+- **FR-016**: A reset link MUST open a screen in the app that sets a new password, and a
+  verification link one that confirms the address; both MUST work signed in or signed out.
+- **FR-017**: A link's token MUST be checked for shape before it is sent, MUST NOT be displayed or
+  logged, and MUST be removed from the route once read.
 - **FR-014**: Expenses and documents keep their privacy posture; nothing here exposes them.
 
 ### Key Entities
@@ -151,6 +185,7 @@ default, the home currency. Adding the first place is the offered next step, sta
 - **SC-002**: With one credit, the fourth trip is covered and the fifth asks for payment, with no step
   between buying and using the credit.
 - **SC-003**: Zero controls in the app answer with "coming soon".
+- **SC-006**: A traveller who forgot their password is signed in again without contacting support.
 - **SC-004**: A wrong city on a stop is corrected without deleting the stop.
 - **SC-005**: A new trip with its first stop is made without meeting a row that does nothing.
 

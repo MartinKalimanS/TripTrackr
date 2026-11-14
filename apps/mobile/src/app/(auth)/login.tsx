@@ -19,7 +19,7 @@
  * Pictured by F12 (T555; `more/auth.png`): the heading "Welcome back" with one serif accent
  * word, an error summary above the fields once the traveller has tried ("Fix 2 things to sign
  * in": the count in words, an icon, each problem a link that moves focus to its field),
- * "Forgot password?" in the password label row (a coming-soon control: one toast, nothing else)
+ * "Forgot password?" in the password label row (it opens the reset request, `forgot-password`)
  * and, in the native header, the link to Create account. NOT drawn, on purpose: the pictured
  * show-password eye (T447 keeps the credential fields as they are: no reveal toggle), and the
  * provider buttons above the form (UI-SPEC 7 puts them under it, the primary stays in the
@@ -34,13 +34,13 @@
  * Visibility posture: the screen holds only what the traveller types, in this component's
  * state, until the screen is gone; the mutation drops it with the screen (`gcTime: 0`).
  */
+import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { View, type TextInput } from 'react-native';
 
 import { ErrorSummary } from '@/components/auth/error-summary';
 import { SocialSignIn } from '@/components/auth/social-sign-in';
 import { Button } from '@/components/ui/button';
-import { COMING_SOON_HINT, useComingSoon } from '@/components/ui/coming-soon-button';
 import { Field } from '@/components/ui/field';
 import { InlineError } from '@/components/ui/inline-error';
 import { Screen } from '@/components/ui/screen';
@@ -54,17 +54,16 @@ import {
 } from '@/features/auth/form-validation';
 import { useLogin } from '@/features/auth/use-session';
 
-/** "Forgot password?" in the password label row: pictured, with no capability behind it yet. */
+/** "Forgot password?" in the password label row: opens the reset request (spec 015 FR-015). */
 function ForgotPassword() {
-  const onPress = useComingSoon('Password reset');
+  const router = useRouter();
   return (
     <Button
-      testID="coming-soon-forgot-password"
+      testID="login-forgot-password"
       variant="text"
       size="sm"
       accessibilityLabel="Forgot password?"
-      accessibilityHint={COMING_SOON_HINT}
-      onPress={onPress}>
+      onPress={() => router.push('/forgot-password')}>
       Forgot password?
     </Button>
   );

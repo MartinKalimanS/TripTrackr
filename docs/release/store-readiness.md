@@ -10,6 +10,26 @@ Owner placeholders: `[[PLACEHOLDER: owner]]`. Fill in a name, not a team.
 Legend: **B** = blocking for submission · **R** = required before the social/sharing layer goes
 live (which is itself gated on the offline-sync acceptance suite — constitution II).
 
+## Release configuration status (updated 2026-11-14)
+
+Ready in the repository, awaiting only the owner's accounts and keys (rows below stay open until
+evidence exists; every external item is listed with its exact name in
+[`owner-checklist.md`](./owner-checklist.md)):
+
+- `apps/mobile/eas.json`: `development`, `preview`, `production` profiles (`autoIncrement`, remote
+  app version), per-environment EAS variables by name only, `production` and `production-rollout`
+  submit profiles with placeholders (`ascAppId`, `serviceAccountKeyPath`).
+- `.github/workflows/mobile-release.yml`: tag or manual dispatch, runs typecheck, lint and tests, then
+  `eas build` with auto-submit behind the `production-mobile` approval. With no `EXPO_TOKEN` it
+  prints a notice and builds nothing.
+- `.github/workflows/release-please.yml`, `release-please-config.json`, `.release-please-manifest.json`:
+  release PR, CHANGELOG and `vX.Y.Z` tags.
+
+Owner-blocked: Apple and Google accounts and app records, ASC API key and Play service account,
+`EXPO_TOKEN`, EAS environment variables, RevenueCat products, Mapbox, Sentry, OAuth client ids, the
+domain and legal texts, the production server. Not yet done by anyone: the first EAS builds, the
+`v0.9.0-rc.1` dry run, store listings and screenshots, the compliance run (S-34).
+
 ---
 
 ## 1. Apple — App Store

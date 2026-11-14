@@ -12,6 +12,7 @@
 import { render } from '@testing-library/react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
+import ForgotPasswordScreen from '@/app/(auth)/forgot-password';
 import LoginScreen from '@/app/(auth)/login';
 import RegisterScreen from '@/app/(auth)/register';
 import WelcomeScreen from '@/app/(auth)/welcome';
@@ -27,6 +28,16 @@ import {
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn(), replace: jest.fn() }),
+}));
+
+jest.mock('@/features/auth/account-recovery', () => ({
+  ...jest.requireActual('@/features/auth/account-recovery'),
+  useRequestPasswordReset: () => ({
+    mutate: jest.fn(),
+    isPending: false,
+    isSuccess: false,
+    error: null,
+  }),
 }));
 
 jest.mock('@/lib/sentry', () => ({
@@ -151,7 +162,7 @@ describe('Sign in reading order', () => {
     expectReadingOrder(nodes, [
       'Welcome back',
       'login-email',
-      'coming-soon-forgot-password',
+      'login-forgot-password',
       'login-password',
       'login-submit',
       'or continue with',
@@ -169,6 +180,21 @@ describe('Sign in reading order', () => {
       ['login-email', 'Email'],
       ['login-password', 'Password'],
     ]);
+  });
+});
+
+describe('Reset password request reading order', () => {
+  test('heading, the explanation, the email, the primary, then the way back', async () => {
+    await render(<ForgotPasswordScreen />);
+    const nodes = accessibleNodes();
+    expectReadingOrder(nodes, [
+      'Reset your password',
+      'forgot-password-email',
+      'forgot-password-submit',
+      'forgot-password-back',
+    ]);
+    expect(unnamed(nodes)).toEqual([]);
+    expect(exposedArt()).toEqual([]);
   });
 });
 

@@ -1,0 +1,137 @@
+# API deploy (roadmap S-27, docs/roadmap/CICD-AND-RELEASE.md section 2.2).
+#
+# Builds the API image, pushes it to GHCR, then deploys it to the production
+# host over SSH with infra/scripts/deploy.sh (migrate, restart, health check,
+# rollback on failure).
+#
+# Owner set-up (infra/README.md, "Deploying"):
+#   - GitHub Environment `production` with REQUIRED REVIEWERS (the owner). The
+#     deploy job waits there; nothing reaches the server unapproved.
+#   - Environment secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS.
+#   - Optional environment variable: DEPLOY_PATH (default /opt/triptrackr).
+#   - The package ghcr.io/<owner>/triptrackr-api must be pullable by the server
+#     (public, or `docker login ghcr.io` once on the host with a read:packages token).
+#
+# Triggers: every push to main builds and pushes an image (and deploys it after
+# approval); a v*.*.* tag does the same with a semver tag; workflow_dispatch
+# redeploys an existing tag without building.
+
+name: API deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+    paths:
+      - 'apps/api/**'
+      - 'packages/contracts/**'
+      - 'infra/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/api-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing image tag to deploy (sha-1234567 or a version); skips the build'
+        required: true
+
+permissions:
+  contents: read
+
+# One deploy at a time; a running deploy is never cancelled mid-migration.
+concurrency:
+  group: api-deploy
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  image:
+    name: Build and push image
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      ref: ${{ steps.out.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image name (lower-case, as GHCR requires)
+        id: name
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/triptrackr-api" >> "$GITHUB_OUTPUT"
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.name.outputs.image }}
+          tags: |
+            type=sha
+            type=semver,pattern={{version}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Reference to deploy (the immutable sha tag)
+        id: out
+        run: echo "ref=${{ steps.name.outputs.image }}:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to production
+    needs: image
+    # Runs after a build, or alone for a manual redeploy (the image job is skipped).
+    if: ${{ !cancelled() && (needs.image.result == 'success' || needs.image.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Required reviewers are configured on this environment in the repository
+    # settings (Settings > Environments > production).
+    environment: production
+    steps:
+      - name: Resolve image reference
+        id: ref
+        env:
+          BUILT_REF: ${{ needs.image.outputs.ref }}
+          INPUT_TAG: ${{ inputs.tag }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          if [[ -n "$BUILT_REF" ]]; then
+            ref="$BUILT_REF"
+          else
+            [[ "$INPUT_TAG" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "::error::invalid tag"; exit 1; }
+            ref="ghcr.io/${OWNER,,}/triptrackr-api:${INPUT_TAG}"
+          fi
+          echo "ref=${ref}" >> "$GITHUB_OUTPUT"
+          echo "Deploying ${ref}"
+
+      - name: Deploy over SSH (pinned host key)
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          REF: ${{ steps.ref.outputs.ref }}
+        run: |
+          for v in SSH_KEY KNOWN_HOSTS HOST DEPLOY_USER; do
+            [[ -n "${!v}" ]] || { echo "::error::secret for ${v} is not set on the production environment"; exit 1; }
+          done
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=yes -o BatchMode=yes \
+            "${DEPLOY_USER}@${HOST}" \
+            "cd '${DEPLOY_PATH:-/opt/triptrackr}' && git pull --ff-only && ./infra/scripts/deploy.sh '${REF}'"

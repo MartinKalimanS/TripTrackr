@@ -68,6 +68,10 @@ export default function AuthLayout() {
         name="register"
         options={{ ...pushed, title: 'Create account', headerRight: renderToLogin }}
       />
+      <Stack.Screen
+        name="forgot-password"
+        options={{ ...pushed, title: 'Reset password' }}
+      />
     </Stack>
   );
 }
