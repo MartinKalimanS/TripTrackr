@@ -9,6 +9,10 @@
 # Requires Docker Compose v2.24 or newer (the `!reset` tag). Check with
 # `docker compose version`.
 #
+# API image. `api`, `worker` and `migrate` run the image named by API_IMAGE
+# (required; infra/scripts/deploy.sh exports it). Nothing is built for them on
+# the server; `--build` above then only affects the `backup` image.
+#
 # Differences from development:
 #   - No default passwords. A missing POSTGRES_PASSWORD or API_DB_PASSWORD
 #     aborts `up` with a message instead of silently using "triptrackr".
@@ -82,6 +86,7 @@ services:
     profiles: ['donotstart']
 
   migrate:
+    image: ${API_IMAGE:?API_IMAGE must be set (a registry image reference); deploy.sh sets it}
     environment:
       MIGRATION_DATABASE_URL: postgresql://${POSTGRES_USER:-triptrackr}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env for production}@postgres:5432/${POSTGRES_DB:-triptrackr}
       API_DB_PASSWORD: ${API_DB_PASSWORD:?API_DB_PASSWORD must be set in .env for production}
@@ -90,6 +95,10 @@ services:
       - api_db_password
 
   api:
+    image: ${API_IMAGE:?API_IMAGE must be set (a registry image reference); deploy.sh sets it}
+    # Production runs the registry image built by .github/workflows/api-deploy.yml,
+    # never a local build.
+    build: !reset null
     ports: !reset []
     mem_limit: 512m
     cpus: 1
@@ -123,6 +132,7 @@ services:
       - 'traefik.http.routers.api.middlewares=api-headers@docker,api-ratelimit@docker'
 
   worker:
+    image: ${API_IMAGE:?API_IMAGE must be set (a registry image reference); deploy.sh sets it}
     mem_limit: 512m
     cpus: 1
     environment:

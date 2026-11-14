@@ -1,0 +1,91 @@
+# Static public site (step S-32): privacy policy, terms, account deletion, support and the
+# reset-password / verify-email bridge pages. Built by scripts/build-site.mjs from site/src and
+# docs/legal; deployed to CLOUDFLARE PAGES (chosen over GitHub Pages: private repositories need a
+# paid plan for Pages, and Cloudflare honours the generated _headers file: no-store and
+# no-referrer on the token pages). Setup is documented in site/README.md.
+#
+# Pull requests only build and test. A push to main deploys when the repository variable
+# SITE_DEPLOY is "true". The build is strict (fails on any open [[PLACEHOLDER: ...]] or draft
+# banner) when the repository variable SITE_STRICT is "true": switch it on once counsel signs off.
+
+name: Site
+
+on:
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'docs/legal/**'
+      - 'scripts/build-site*.mjs'
+      - '.github/workflows/site.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'docs/legal/**'
+      - 'scripts/build-site*.mjs'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SITE_URL: ${{ vars.SITE_URL }}
+      SITE_CONTACT_EMAIL: ${{ vars.SITE_CONTACT_EMAIL }}
+      SITE_COMPANY: ${{ vars.SITE_COMPANY }}
+      SITE_LEGAL_ENTITY: ${{ vars.SITE_LEGAL_ENTITY }}
+      SITE_ADDRESS: ${{ vars.SITE_ADDRESS }}
+      SITE_JURISDICTION: ${{ vars.SITE_JURISDICTION }}
+      SITE_LAST_UPDATED: ${{ vars.SITE_LAST_UPDATED }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      # The builder has no dependencies: no `npm ci` needed.
+      - name: Test the builder
+        run: node --test scripts/build-site.test.mjs
+      - name: Build
+        run: node scripts/build-site.mjs ${{ vars.SITE_STRICT == 'true' && '--strict' || '' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site-dist
+          path: site/dist
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Cloudflare Pages
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.SITE_DEPLOY == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production-site
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: site-dist
+          path: site-dist
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_PAGES_PROJECT: ${{ vars.CF_PAGES_PROJECT }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID" && test -n "$CF_PAGES_PROJECT"
+          npx --yes wrangler@4 pages deploy site-dist --project-name "$CF_PAGES_PROJECT" --branch main

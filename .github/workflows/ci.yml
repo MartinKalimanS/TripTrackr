@@ -263,6 +263,7 @@ jobs:
       API_DB_PASSWORD: ci-placeholder
       API_HOST: api.example.test
       ACME_EMAIL: ops@example.test
+      API_IMAGE: ghcr.io/example/triptrackr-api:sha-0000000
     steps:
       - uses: actions/checkout@v7
       - run: cp .env.example .env
@@ -293,6 +294,23 @@ jobs:
           [[ "$published" == '["443","80"]' ]] \
             || fail "only Traefik may publish ports (80, 443); found ${published}"
           echo "roles and ports wired as specified"
+
+      # The production stack runs a registry image, never a local build, and
+      # refuses to render without API_IMAGE (S-27).
+      - name: Production overlay takes the API image from API_IMAGE
+        run: |
+          cfg=$(docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config --format json)
+          fail() { echo "::error::$1"; exit 1; }
+          for svc in api worker migrate; do
+            img=$(echo "$cfg" | jq -r ".services.${svc}.image")
+            [[ "$img" == "$API_IMAGE" ]] || fail "${svc}.image must equal API_IMAGE (got: ${img})"
+            [[ $(echo "$cfg" | jq ".services.${svc}.build // null") == null ]] \
+              || fail "${svc} must not build locally in production"
+          done
+          if env -u API_IMAGE docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config -q 2>/dev/null; then
+            fail "the production overlay must fail when API_IMAGE is unset"
+          fi
+          echo "api, worker and migrate use API_IMAGE"
 
   # ---------------------------------------------------------------------------
   # Constitution: "CI MUST run ... migrations against an ephemeral database" and
